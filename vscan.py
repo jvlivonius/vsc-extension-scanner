@@ -22,6 +22,7 @@ from pathlib import Path
 from extension_discovery import ExtensionDiscovery
 from vscan_api import VscanAPIClient
 from output_formatter import OutputFormatter
+from cache_manager import CacheManager
 from utils import log, setup_logging
 
 
@@ -72,6 +73,45 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         help='Enable verbose output to stderr'
     )
 
+    # Cache-related arguments
+    parser.add_argument(
+        '--cache-dir',
+        type=str,
+        default=None,
+        help='Cache directory path (default: ~/.vscan/)'
+    )
+
+    parser.add_argument(
+        '--cache-max-age',
+        type=int,
+        default=7,
+        help='Maximum age of cached results in days (default: 7)'
+    )
+
+    parser.add_argument(
+        '--refresh-cache',
+        action='store_true',
+        help='Force refresh of all cached results'
+    )
+
+    parser.add_argument(
+        '--no-cache',
+        action='store_true',
+        help='Disable cache (always scan fresh)'
+    )
+
+    parser.add_argument(
+        '--clear-cache',
+        action='store_true',
+        help='Clear all cached results and exit'
+    )
+
+    parser.add_argument(
+        '--cache-stats',
+        action='store_true',
+        help='Show cache statistics and exit'
+    )
+
     parser.add_argument(
         '--version', '-V',
         action='version',
@@ -88,6 +128,43 @@ def main():
     # Setup logging based on verbose flag
     verbose = args.verbose
     setup_logging(verbose)
+
+    # Initialize cache manager
+    cache_manager = CacheManager(cache_dir=args.cache_dir) if not args.no_cache else None
+
+    # Handle cache-only commands
+    if args.cache_stats:
+        if cache_manager is None:
+            log("Error: Cannot show cache stats when --no-cache is specified", "ERROR")
+            return 2
+
+        stats = cache_manager.get_cache_stats()
+        log("Cache Statistics", "INFO")
+        log("=" * 60, "INFO")
+        log(f"Database path: {stats['database_path']}", "INFO")
+        log(f"Total entries: {stats['total_entries']}", "INFO")
+        log(f"Database size: {stats['database_size_kb']:.2f} KB", "INFO")
+        log("", "INFO")
+
+        if stats['total_entries'] > 0:
+            log("Risk breakdown:", "INFO")
+            for risk, count in stats['risk_breakdown'].items():
+                log(f"  {risk}: {count}", "INFO")
+            log("", "INFO")
+            log(f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}", "INFO")
+            log(f"Oldest entry: {stats['oldest_entry']}", "INFO")
+            log(f"Newest entry: {stats['newest_entry']}", "INFO")
+
+        return 0
+
+    if args.clear_cache:
+        if cache_manager is None:
+            log("Error: Cannot clear cache when --no-cache is specified", "ERROR")
+            return 2
+
+        count = cache_manager.clear_cache()
+        log(f"Cleared {count} cache entries", "SUCCESS")
+        return 0
 
     log("VS Code Extension Security Scanner", "INFO")
     log(f"Version {VERSION}", "INFO")
@@ -136,76 +213,121 @@ def main():
 
     # Step 2: Scan extensions using vscan.dev API
     log("Step 2: Scanning extensions for vulnerabilities...", "INFO")
+    if cache_manager and not args.refresh_cache:
+        log(f"Cache enabled (max age: {args.cache_max_age} days)", "INFO")
+    elif args.no_cache:
+        log("Cache disabled", "INFO")
+    elif args.refresh_cache:
+        log("Forcing cache refresh", "INFO")
+
     api_client = VscanAPIClient(delay=args.delay, verbose=verbose)
 
     scan_results = []
     vulnerabilities_found = 0
     successful_scans = 0
     failed_scans = 0
-    cached_results = 0  # Extensions that returned instantly (cached)
+    cached_results = 0  # Extensions loaded from cache
+    fresh_scans = 0  # Extensions scanned fresh from API
 
     for idx, ext in enumerate(extensions, 1):
         progress_prefix = f"[{idx}/{len(extensions)}]"
-        log(f"{progress_prefix} Scanning {ext['id']} v{ext['version']}...", "INFO", newline=False)
+        extension_id = ext['id']
+        version = ext['version']
 
-        # Define progress callback for this extension
-        scan_start_time = time.time()
-        did_show_progress = [False]  # Use list to allow modification in nested function
-
-        def progress_callback(progress_pct, message):
-            """Show progress updates during analysis."""
-            if progress_pct > 0 and progress_pct < 100:
-                did_show_progress[0] = True
-                log(f" ({progress_pct}%: {message})", "INFO", newline=False)
-
-        try:
-            result = api_client.scan_extension(
-                ext['publisher'],
-                ext['name'],
-                progress_callback=progress_callback if verbose else None
+        # Check cache first (unless refresh or no-cache is requested)
+        cached_result = None
+        if cache_manager and not args.refresh_cache:
+            cached_result = cache_manager.get_cached_result(
+                extension_id,
+                version,
+                max_age_days=args.cache_max_age
             )
 
-            scan_duration = time.time() - scan_start_time
+        if cached_result:
+            # Use cached result
+            log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO", newline=False)
 
-            # Merge extension metadata with scan result
-            result.update({
+            # Merge extension metadata with cached result
+            cached_result.update({
                 'id': ext['id'],
                 'version': ext['version'],
                 'path': ext['path']
             })
 
-            scan_results.append(result)
+            scan_results.append(cached_result)
+            cached_results += 1
+            successful_scans += 1
 
-            # Check for vulnerabilities
-            if result.get('scan_status') == 'success':
-                successful_scans += 1
-
-                # Check if result was cached (very fast response)
-                if scan_duration < 3.0:  # Less than 3 seconds = likely cached
-                    cached_results += 1
-
-                vuln_count = result.get('vulnerabilities', {}).get('count', 0)
-                if vuln_count > 0:
-                    vulnerabilities_found += vuln_count
-                    log(" ⚠ Vulnerabilities found", "WARNING")
-                else:
-                    log(" ✓", "SUCCESS")
+            vuln_count = cached_result.get('vulnerabilities', {}).get('count', 0)
+            if vuln_count > 0:
+                vulnerabilities_found += vuln_count
+                log(" ⚠", "WARNING")
             else:
-                failed_scans += 1
-                log(f" ✗ {result.get('error', 'Unknown error')}", "ERROR")
+                log(" ✓", "SUCCESS")
 
-        except Exception as e:
-            failed_scans += 1
-            log(f" ✗ Error: {e}", "ERROR")
-            scan_results.append({
-                'id': ext['id'],
-                'name': ext['name'],
-                'publisher': ext['publisher'],
-                'version': ext['version'],
-                'path': ext['path'],
-                'scan_status': 'error',
-                'error': str(e)
-            })
+        else:
+            # Scan fresh from API
+            log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO", newline=False)
+
+            # Define progress callback for this extension
+            scan_start_time = time.time()
+            did_show_progress = [False]  # Use list to allow modification in nested function
+
+            def progress_callback(progress_pct, message):
+                """Show progress updates during analysis."""
+                if progress_pct > 0 and progress_pct < 100:
+                    did_show_progress[0] = True
+                    log(f" ({progress_pct}%: {message})", "INFO", newline=False)
+
+            try:
+                result = api_client.scan_extension(
+                    ext['publisher'],
+                    ext['name'],
+                    progress_callback=progress_callback if verbose else None
+                )
+
+                scan_duration = time.time() - scan_start_time
+
+                # Merge extension metadata with scan result
+                result.update({
+                    'id': ext['id'],
+                    'version': ext['version'],
+                    'path': ext['path']
+                })
+
+                scan_results.append(result)
+
+                # Save to cache if successful
+                if result.get('scan_status') == 'success' and cache_manager:
+                    cache_manager.save_result(extension_id, version, result)
+
+                # Check for vulnerabilities
+                if result.get('scan_status') == 'success':
+                    successful_scans += 1
+                    fresh_scans += 1
+
+                    vuln_count = result.get('vulnerabilities', {}).get('count', 0)
+                    if vuln_count > 0:
+                        vulnerabilities_found += vuln_count
+                        log(" ⚠ Vulnerabilities found", "WARNING")
+                    else:
+                        log(" ✓", "SUCCESS")
+                else:
+                    failed_scans += 1
+                    log(f" ✗ {result.get('error', 'Unknown error')}", "ERROR")
+
+            except Exception as e:
+                failed_scans += 1
+                log(f" ✗ Error: {e}", "ERROR")
+                scan_results.append({
+                    'id': ext['id'],
+                    'name': ext['name'],
+                    'publisher': ext['publisher'],
+                    'version': ext['version'],
+                    'path': ext['path'],
+                    'scan_status': 'error',
+                    'error': str(e)
+                })
 
     log("", "INFO")
 
@@ -240,8 +362,18 @@ def main():
     log(f"Total extensions scanned: {len(extensions)}", "INFO")
     log(f"Successful scans: {successful_scans}", "INFO")
     log(f"Failed scans: {failed_scans}", "INFO" if failed_scans == 0 else "WARNING")
-    if cached_results > 0:
-        log(f"Cached results (instant): {cached_results}", "INFO")
+
+    # Cache statistics
+    if cache_manager and (cached_results > 0 or fresh_scans > 0):
+        log("", "INFO")
+        log("Cache Statistics:", "INFO")
+        log(f"  From cache: {cached_results} (⚡ instant)", "INFO")
+        log(f"  Fresh scans: {fresh_scans} (🔍 API calls)", "INFO")
+        if len(extensions) > 0:
+            cache_hit_rate = (cached_results / len(extensions)) * 100
+            log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO")
+
+    log("", "INFO")
     log(f"Vulnerabilities found: {vulnerabilities_found}", "INFO" if vulnerabilities_found == 0 else "WARNING")
     log(f"Scan duration: {scan_duration:.1f} seconds", "INFO")
     if len(extensions) > 0:

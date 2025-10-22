@@ -43,3 +43,10 @@ Thumbs.db
 # Output files
 results.json
 scan_results_*.json
+
+# Cache
+.vscan/
+cache.db
+cache.db-journal
+*.db
+*.db-journal
