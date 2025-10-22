@@ -4,7 +4,7 @@ A standalone Python CLI tool that performs security audits of installed VS Code 
 
 ## Project Status
 
-**Phase 1 Complete ✅** | Phase 2: Not Started ⏳ | Phase 3: Not Started ⏳
+**Phase 1 Complete ✅** | **Phase 2 Complete ✅** | Phase 3: Not Started ⏳
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for detailed progress tracking.
 
@@ -17,16 +17,17 @@ See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for detailed progress track
 
 ## Quick Start
 
-**Note:** Core tool is not yet implemented (Phase 2). API validation is complete.
+**The tool is now fully functional!** (Phase 2 complete)
 
 ```bash
-# Phase 1: Test API (working now)
-python3 test_api.py
+# Run the scanner
+python3 vscan.py                           # Scan all extensions
+python3 vscan.py --output results.json    # Save to file
+python3 vscan.py --verbose                # Show detailed progress
+python3 vscan.py --delay 2.0              # Custom delay between requests
 
-# Phase 2: Run scanner (once implemented)
-python vscan.py                           # Scan all extensions
-python vscan.py --output results.json    # Save to file
-python vscan.py --verbose                # Show detailed progress
+# Test API endpoints (Phase 1)
+python3 test_api.py
 ```
 
 ## Phase 1 Results
