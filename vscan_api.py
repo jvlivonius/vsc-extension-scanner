@@ -19,6 +19,9 @@ class VscanAPIClient:
     BASE_URL = "https://vscan.dev/api/extensions"
     USER_AGENT = "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)"
 
+    # Maximum response size (10MB)
+    MAX_RESPONSE_SIZE = 10 * 1024 * 1024
+
     def __init__(self, delay: float = 1.5, verbose: bool = False, timeout: int = 30):
         """
         Initialize API client.
@@ -82,7 +85,24 @@ class VscanAPIClient:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 status_code = response.getcode()
-                raw_response = response.read().decode('utf-8')
+
+                # Read response with size limit
+                raw_response = b''
+                chunk_size = 8192
+                total_read = 0
+
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+
+                    total_read += len(chunk)
+                    if total_read > self.MAX_RESPONSE_SIZE:
+                        raise Exception(f"Response exceeds maximum size ({self.MAX_RESPONSE_SIZE} bytes)")
+
+                    raw_response += chunk
+
+                raw_response = raw_response.decode('utf-8')
 
                 try:
                     json_data = json.loads(raw_response)

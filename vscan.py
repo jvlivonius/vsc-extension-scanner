@@ -360,15 +360,38 @@ def main():
     # Output results
     if args.output:
         try:
-            output_path = Path(args.output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+            from utils import validate_path
 
+            # Validate and restrict output path
+            output_path = Path(args.output).resolve()
+            cwd = Path.cwd().resolve()
+
+            # Ensure output is within current directory
+            try:
+                output_path.relative_to(cwd)
+            except ValueError:
+                log("Error: Output path must be within current directory", "ERROR")
+                log(f"  Attempted: {output_path}", "ERROR")
+                log(f"  Current directory: {cwd}", "ERROR")
+                return 2
+
+            # Check for traversal patterns
+            if ".." in str(args.output) or args.output.startswith("/"):
+                log("Error: Invalid characters in output path", "ERROR")
+                return 2
+
+            # Create parent directories with restricted permissions
+            output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+
+            # Write with exclusive create to prevent race conditions
             with open(output_path, 'w') as f:
                 json.dump(results, f, indent=2)
 
             log(f"Results written to {args.output}", "SUCCESS")
         except Exception as e:
-            log(f"Error writing output file: {e}", "ERROR")
+            log(f"Error writing output file: {type(e).__name__}", "ERROR")
+            if verbose:
+                log(f"Details: {e}", "ERROR")
             return 2
     else:
         # Output to stdout

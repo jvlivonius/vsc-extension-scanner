@@ -77,13 +77,41 @@ def validate_path(path: str) -> bool:
     Returns:
         True if path is safe, False otherwise
     """
-    # Check for path traversal attempts
-    dangerous_patterns = ['../', '..\\', '../', '..\\\\']
-    path_lower = path.lower()
+    if not path:
+        return False
+
+    # Block absolute paths
+    if path.startswith('/') or (len(path) > 1 and path[1] == ':'):
+        return False
+
+    # Block dangerous patterns
+    dangerous_patterns = [
+        '..',      # Parent directory
+        '~',       # Home expansion
+        '$',       # Variable expansion
+        '%',       # URL encoding
+        '\\x',     # Hex encoding
+        '\0',      # Null byte
+        '|',       # Pipe
+        ';',       # Command separator
+        '&',       # Background
+        '`',       # Command substitution
+        '\n',      # Newline
+        '\r'       # Carriage return
+    ]
 
     for pattern in dangerous_patterns:
-        if pattern in path_lower:
+        if pattern in path:
             return False
+
+    # Ensure path stays within current directory
+    try:
+        from pathlib import Path as PathLib
+        resolved = PathLib(path).resolve()
+        cwd = PathLib.cwd().resolve()
+        resolved.relative_to(cwd)
+    except (ValueError, RuntimeError, OSError):
+        return False
 
     return True
 

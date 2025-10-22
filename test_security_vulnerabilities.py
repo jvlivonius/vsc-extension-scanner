@@ -278,8 +278,12 @@ class SecurityTester:
         print("Test 4.1: Cache poisoning detection...")
 
         try:
-            # Create temporary cache
-            with tempfile.TemporaryDirectory() as tmpdir:
+            # Create temporary cache in home directory (required by security fixes)
+            import os
+            tmpdir = os.path.join(os.path.expanduser("~"), ".vscan_test_temp")
+            os.makedirs(tmpdir, exist_ok=True)
+
+            try:
                 cache = cache_manager.CacheManager(cache_dir=tmpdir)
 
                 # Save legitimate result
@@ -318,6 +322,12 @@ class SecurityTester:
                 else:
                     print("   ✅ Cache tampering detected")
                     self.tests_passed += 1
+
+            finally:
+                # Cleanup
+                import shutil
+                if os.path.exists(tmpdir):
+                    shutil.rmtree(tmpdir)
 
         except Exception as e:
             print(f"   ⚠️  Test error: {e}")
