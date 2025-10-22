@@ -43,6 +43,8 @@ Thumbs.db
 # Output files
 results.json
 scan_results_*.json
+test*.json
+phase*.json
 
 # Cache
 .vscan/

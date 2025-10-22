@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 2 Complete (Core Implementation with Caching)
+**Current Status:** Phase 4 Complete (v2.0 - Enhanced Data Integration)
 
 See **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** for detailed progress tracking.
 
@@ -33,8 +33,9 @@ See **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** for detailed progress t
 # Phase 1: API Validation (complete)
 python3 test_api.py
 
-# Phase 2: Run the tool (implemented)
-python vscan.py                          # Scan with caching
+# Phase 2+: Run the tool (v2.0 implemented)
+python vscan.py                          # Standard scan
+python vscan.py --detailed               # Detailed scan with full data
 python vscan.py --extensions-dir /path   # Custom directory
 python vscan.py --output results.json    # Save to file
 python vscan.py --verbose                # Detailed progress
@@ -100,35 +101,91 @@ The vscan.dev API has been fully reverse-engineered and validated in Phase 1.
 - 30-second timeout per HTTP request
 - Clear, actionable error messages for common scenarios
 
-### JSON Output Schema
+### JSON Output Schema (v2.0)
 
+**Standard Mode (default):**
 ```json
 {
+  "schema_version": "2.0",
+  "output_mode": "standard",
   "summary": {
     "total_extensions_scanned": 42,
     "vulnerabilities_found": 3,
-    "scan_timestamp": "2025-10-22T14:30:00Z",
+    "scan_timestamp": "2025-10-23T14:30:00Z",
     "scan_duration_seconds": 95.5
+  },
+  "cache_stats": {
+    "from_cache": 30,
+    "fresh_scans": 12,
+    "cache_hit_rate": 71.4
   },
   "extensions": [
     {
-      "name": "Extension Name",
-      "id": "publisher.extension-name",
-      "version": "1.2.3",
-      "publisher": "Publisher Name",
+      "name": "python",
+      "display_name": "Python",
+      "id": "ms-python.python",
+      "version": "2024.10.0",
+      "publisher": "ms-python",
+      "publisher_verified": true,
       "security_score": 82,
-      "risk_level": "medium",
+      "risk_level": "high",
       "vulnerabilities": {
         "count": 0,
         "critical": 0,
         "high": 0,
         "moderate": 0,
-        "low": 0,
-        "info": 0
+        "low": 0
       },
-      "last_updated": "2025-10-15",
-      "vscan_url": "https://vscan.dev/extension/publisher.extension-name",
+      "dependencies_count": 45,
+      "risk_factors_count": 3,
+      "last_updated": "2024-10-15",
+      "vscan_url": "https://vscan.dev/extension/ms-python.python",
       "scan_status": "success"
+    }
+  ]
+}
+```
+
+**Detailed Mode (--detailed flag):**
+```json
+{
+  "schema_version": "2.0",
+  "output_mode": "detailed",
+  "summary": { /* same as standard */ },
+  "cache_stats": { /* same as standard */ },
+  "extensions": [
+    {
+      /* All standard fields, plus: */
+      "description": "IntelliSense, linting, debugging...",
+      "publisher_domain": "microsoft.com",
+      "publisher_reputation": 100,
+      "install_count": 50000000,
+      "rating": 4.5,
+      "rating_count": 1234,
+      "dependencies": [
+        {
+          "name": "vscode-languageclient",
+          "version": "8.1.0",
+          "risk_level": "low",
+          "has_vulnerabilities": false
+        }
+      ],
+      "security_score_breakdown": {
+        "code_quality": 85,
+        "dependencies": 90,
+        "permissions": 75,
+        "network_usage": 80
+      },
+      "risk_factors": [
+        {
+          "type": "network_access",
+          "severity": "medium",
+          "description": "Extension makes network requests"
+        }
+      ],
+      "keywords": ["python", "intellisense", "linting"],
+      "repository_url": "https://github.com/microsoft/vscode-python",
+      "homepage_url": "https://github.com/microsoft/vscode-python"
     }
   ]
 }
@@ -136,6 +193,8 @@ The vscan.dev API has been fully reverse-engineered and validated in Phase 1.
 
 **Field Details:**
 
+- `schema_version`: "2.0" (for v2.0 output format)
+- `output_mode`: "standard" or "detailed"
 - `scan_status` values: `"success"`, `"not_found"`, `"error"`
 - Include error message for failed scans
 - All vscan.dev requests must use HTTPS
@@ -223,6 +282,7 @@ Average time per extension: 0.6s
 | `--no-cache` | - | flag | Disable cache (always scan fresh) | False |
 | `--clear-cache` | - | flag | Clear all cached results and exit | False |
 | `--cache-stats` | - | flag | Show cache statistics and exit | False |
+| `--detailed` | - | flag | Include detailed security analysis | False |
 | `--help` | `-h` | flag | Show help message | - |
 | `--version` | `-V` | flag | Show version information | - |
 
@@ -295,15 +355,33 @@ vscan.py                     # Main CLI entry point (370 lines)
 - Implements analyze → poll status → retrieve results workflow
 - Added caching layer for performance optimization
 
-### ⏳ Phase 3: Testing & Refinement (NEXT)
+### ✅ Phase 3: Testing & Refinement (COMPLETE)
 
 - Test caching system thoroughly
-- Test on macOS, Windows, Linux
-- Test with various extension sets
-- Test error scenarios
-- Refine user experience
+- Test on macOS (focused platform)
+- Test with various extension sets (3, 66 extensions)
+- Test error scenarios (rate limiting)
+- Refine user experience (fixed cache-stats UX bug)
 
-**Complete test plan:** [docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)
+**Status:** Complete. See [docs/testing/MACOS_TEST_RESULTS.md](docs/testing/MACOS_TEST_RESULTS.md)
+
+### ✅ Phase 4: Enhanced Data Integration (COMPLETE)
+
+**Implemented Features:**
+
+✅ Complete vscan.dev data capture (all fields)
+✅ Dual-mode JSON output (standard/detailed)
+✅ Publisher verification and reputation tracking
+✅ Comprehensive dependency analysis
+✅ Security score breakdown by module
+✅ Risk factor identification and reporting
+✅ Cache schema v2.0 with automatic v1→v2 migration
+✅ Maintained performance (28x speedup with cache)
+
+**Reference Documentation:**
+
+- Implementation plan: [docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md](docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md)
+- Phase 4 summary: [docs/PHASE4_COMPLETION_SUMMARY.md](docs/PHASE4_COMPLETION_SUMMARY.md)
 
 ## vscan.dev API Quick Reference
 

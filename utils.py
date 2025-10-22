@@ -24,7 +24,7 @@ def setup_logging(verbose: bool = False):
     _VERBOSE = verbose
 
 
-def log(message: str, level: str = "INFO", newline: bool = True):
+def log(message: str, level: str = "INFO", newline: bool = True, force: bool = False):
     """
     Log message to stderr.
 
@@ -32,11 +32,19 @@ def log(message: str, level: str = "INFO", newline: bool = True):
         message: Message to log
         level: Log level (INFO, SUCCESS, WARNING, ERROR)
         newline: Whether to print newline after message
+        force: Force printing even if not verbose (for important messages)
     """
-    # Always print ERROR and WARNING
-    if level in ("ERROR", "WARNING"):
+    # Always print ERROR, WARNING, and forced messages
+    if level in ("ERROR", "WARNING") or force:
         end = '\n' if newline else ''
-        print(f"[{level}] {message}", file=sys.stderr, end=end, flush=True)
+        if level in ("ERROR", "WARNING"):
+            print(f"[{level}] {message}", file=sys.stderr, end=end, flush=True)
+        else:
+            # For forced INFO/SUCCESS messages, don't add level prefix for ERROR/WARNING
+            if level == "SUCCESS":
+                print(f"[✓] {message}", file=sys.stderr, end=end, flush=True)
+            else:
+                print(message, file=sys.stderr, end=end, flush=True)
         return
 
     # Only print INFO and SUCCESS if verbose is enabled

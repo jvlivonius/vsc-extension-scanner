@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 class CacheManager:
     """Manages caching of extension scan results using SQLite."""
 
-    SCHEMA_VERSION = "1.0"
+    SCHEMA_VERSION = "2.0"
 
     def __init__(self, cache_dir: Optional[str] = None):
         """
@@ -27,10 +27,17 @@ class CacheManager:
         """
         self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".vscan"
         self.cache_db = self.cache_dir / "cache.db"
-        self._init_database()
+
+        # Check if migration is needed before init
+        needs_migration = self._check_if_migration_needed()
+
+        if needs_migration:
+            self._migrate_v1_to_v2()
+        else:
+            self._init_database()
 
     def _init_database(self):
-        """Initialize SQLite database with schema."""
+        """Initialize SQLite database with schema v2.0."""
         # Create cache directory if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,7 +45,7 @@ class CacheManager:
         cursor = conn.cursor()
 
         try:
-            # Create scan_cache table
+            # Create scan_cache table (v2 schema with additional fields)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS scan_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +54,11 @@ class CacheManager:
                     scan_result TEXT NOT NULL,
                     scanned_at TIMESTAMP NOT NULL,
                     risk_level TEXT,
+                    security_score INTEGER,
                     vulnerabilities_count INTEGER DEFAULT 0,
+                    dependencies_count INTEGER DEFAULT 0,
+                    publisher_verified BOOLEAN DEFAULT 0,
+                    has_risk_factors BOOLEAN DEFAULT 0,
                     UNIQUE(extension_id, version)
                 )
             """)
@@ -73,6 +84,18 @@ class CacheManager:
                 CREATE INDEX IF NOT EXISTS idx_risk_level
                 ON scan_cache(risk_level)
             """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_security_score
+                ON scan_cache(security_score)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_vulnerabilities
+                ON scan_cache(vulnerabilities_count)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_publisher_verified
+                ON scan_cache(publisher_verified)
+            """)
 
             # Store schema version
             cursor.execute(
@@ -81,6 +104,142 @@ class CacheManager:
             )
 
             conn.commit()
+        finally:
+            conn.close()
+
+    def _check_if_migration_needed(self) -> bool:
+        """Check if database exists and needs migration."""
+        if not self.cache_db.exists():
+            return False  # New database, no migration needed
+
+        conn = sqlite3.connect(self.cache_db)
+        cursor = conn.cursor()
+
+        try:
+            # Check if scan_cache table exists
+            cursor.execute("""
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name='scan_cache'
+            """)
+            if not cursor.fetchone():
+                return False  # No table yet, fresh install
+
+            # Check if new columns exist
+            cursor.execute("PRAGMA table_info(scan_cache)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            # If security_score column doesn't exist, we need migration
+            return "security_score" not in columns
+
+        except sqlite3.Error:
+            return False
+        finally:
+            conn.close()
+
+    def _get_schema_version(self) -> str:
+        """Get current schema version from database."""
+        conn = sqlite3.connect(self.cache_db)
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("SELECT value FROM metadata WHERE key = 'schema_version'")
+            row = cursor.fetchone()
+            return row[0] if row else "1.0"  # Default to 1.0 if not found
+        except sqlite3.Error:
+            return "1.0"  # If table doesn't exist, assume v1
+        finally:
+            conn.close()
+
+    def _migrate_v1_to_v2(self):
+        """Migrate cache database from v1.0 to v2.0 schema."""
+        conn = sqlite3.connect(self.cache_db)
+        cursor = conn.cursor()
+
+        try:
+            # Check if we need to migrate (check for missing columns)
+            cursor.execute("PRAGMA table_info(scan_cache)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            if "security_score" in columns:
+                # Already migrated
+                return
+
+            # Add new columns to existing table
+            cursor.execute("""
+                ALTER TABLE scan_cache
+                ADD COLUMN security_score INTEGER
+            """)
+            cursor.execute("""
+                ALTER TABLE scan_cache
+                ADD COLUMN dependencies_count INTEGER DEFAULT 0
+            """)
+            cursor.execute("""
+                ALTER TABLE scan_cache
+                ADD COLUMN publisher_verified BOOLEAN DEFAULT 0
+            """)
+            cursor.execute("""
+                ALTER TABLE scan_cache
+                ADD COLUMN has_risk_factors BOOLEAN DEFAULT 0
+            """)
+
+            # Create new indexes
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_security_score
+                ON scan_cache(security_score)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_vulnerabilities
+                ON scan_cache(vulnerabilities_count)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_publisher_verified
+                ON scan_cache(publisher_verified)
+            """)
+
+            # Update existing rows with parsed data from scan_result JSON
+            cursor.execute("SELECT id, scan_result FROM scan_cache")
+            rows = cursor.fetchall()
+
+            for row_id, scan_result_json in rows:
+                try:
+                    result = json.loads(scan_result_json)
+
+                    # Extract new fields from result
+                    security_score = result.get("security_score")
+                    dependencies = result.get("dependencies", {})
+                    dependencies_count = dependencies.get("total_count", 0)
+                    metadata = result.get("metadata", {})
+                    publisher = metadata.get("publisher", {})
+                    publisher_verified = 1 if publisher.get("verified") else 0
+                    risk_factors = result.get("risk_factors", [])
+                    has_risk_factors = 1 if len(risk_factors) > 0 else 0
+
+                    # Update row
+                    cursor.execute("""
+                        UPDATE scan_cache
+                        SET security_score = ?,
+                            dependencies_count = ?,
+                            publisher_verified = ?,
+                            has_risk_factors = ?
+                        WHERE id = ?
+                    """, (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id))
+
+                except (json.JSONDecodeError, Exception):
+                    # Skip rows that can't be parsed
+                    continue
+
+            # Update schema version
+            cursor.execute(
+                "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                ("schema_version", "2.0")
+            )
+
+            conn.commit()
+            print(f"Successfully migrated cache from v1.0 to v2.0 ({len(rows)} entries)", file=__import__('sys').stderr)
+
+        except sqlite3.Error as e:
+            print(f"Cache migration error: {e}", file=__import__('sys').stderr)
+            conn.rollback()
         finally:
             conn.close()
 
@@ -145,7 +304,7 @@ class CacheManager:
         result: Dict[str, Any]
     ):
         """
-        Save scan result to cache.
+        Save scan result to cache (v2 schema).
 
         Args:
             extension_id: Extension ID (e.g., "ms-python.python")
@@ -168,17 +327,35 @@ class CacheManager:
             scan_result_json = json.dumps(result_to_store)
             scanned_at = datetime.now().isoformat()
 
-            # Extract risk level and vulnerability count
+            # Extract indexed fields for v2 schema
             risk_level = result_to_store.get('risk_level')
+            security_score = result_to_store.get('security_score')
+
+            # Vulnerabilities
             vulnerabilities = result_to_store.get('vulnerabilities', {})
             vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
+
+            # Dependencies
+            dependencies = result_to_store.get('dependencies', {})
+            dependencies_count = dependencies.get('total_count', 0)
+
+            # Publisher verification
+            metadata = result_to_store.get('metadata', {})
+            publisher = metadata.get('publisher', {})
+            publisher_verified = 1 if publisher.get('verified') else 0
+
+            # Risk factors
+            risk_factors = result_to_store.get('risk_factors', [])
+            has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
             # Insert or replace
             cursor.execute("""
                 INSERT OR REPLACE INTO scan_cache
-                (extension_id, version, scan_result, scanned_at, risk_level, vulnerabilities_count)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (extension_id, version, scan_result_json, scanned_at, risk_level, vuln_count))
+                (extension_id, version, scan_result, scanned_at, risk_level, security_score,
+                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
+                  vuln_count, dependencies_count, publisher_verified, has_risk_factors))
 
             conn.commit()
 

@@ -1,43 +1,63 @@
 # VS Code Extension Security Scanner
 
-A standalone Python CLI tool that performs security audits of installed VS Code extensions using the vscan.dev security analysis service.
+A standalone Python CLI tool that performs comprehensive security audits of installed VS Code extensions using the vscan.dev security analysis service.
+
+**Version:** 2.0.0 | **Status:** Production Ready ✅
 
 ## Project Status
 
-**Phase 1 Complete ✅** | **Phase 2 Complete ✅** | **Caching Complete ✅** | Phase 3: In Progress 🔄
+**All Phases Complete!** ✅ ✅ ✅ ✅
+
+- ✅ Phase 1: Research & Discovery
+- ✅ Phase 2: Core Implementation
+- ✅ Phase 2.5: Caching System
+- ✅ Phase 3: Testing & Refinement (macOS)
+- ✅ Phase 4: Enhanced Data Integration
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for detailed progress tracking.
+
+## What's New in v2.0
+
+- **🔍 Complete Data Capture:** All vscan.dev analysis data including dependencies, risk factors, and security score breakdowns
+- **📊 Dual Output Modes:** Standard (concise) and Detailed (comprehensive with `--detailed` flag)
+- **✅ Publisher Verification:** See verified publisher status and reputation
+- **📦 Dependency Analysis:** Complete list of dependencies with individual risk assessments
+- **🔒 Security Insights:** Understand WHY extensions have specific risk levels
+- **⚡ Enhanced Cache:** Auto-migrates from v1.0, 28x faster with intelligent caching
+- **📈 Better Statistics:** Install counts, ratings, and update frequencies
 
 ## What This Tool Does
 
 1. **Auto-discovers** installed VS Code extensions on your system
-2. **Queries** vscan.dev for security analysis of each extension
-3. **Reports** security scores, risk levels, and vulnerabilities
-4. **Outputs** results in JSON format for easy parsing
+2. **Queries** vscan.dev for comprehensive security analysis
+3. **Analyzes** dependencies, permissions, and security score components
+4. **Reports** security scores, risk levels, vulnerabilities, and risk factors
+5. **Outputs** results in JSON format (standard or detailed mode)
 
 ## Quick Start
 
-**The tool is now fully functional!** (Phase 2 complete with caching)
-
 ```bash
-# Run the scanner (with caching enabled by default)
-python3 vscan.py                           # Scan all extensions
-python3 vscan.py --output results.json    # Save to file
-python3 vscan.py --verbose                # Show detailed progress
+# Standard scan (enhanced summary)
+python3 vscan.py --output results.json
+
+# Detailed scan (comprehensive security data)
+python3 vscan.py --output results.json --detailed
+
+# With progress indicators
+python3 vscan.py --output results.json --verbose
 
 # Cache management
-python3 vscan.py --cache-stats            # View cache statistics
-python3 vscan.py --refresh-cache          # Force refresh all
-python3 vscan.py --no-cache               # Disable caching
-python3 vscan.py --clear-cache            # Clear cache
+python3 vscan.py --cache-stats --verbose   # View cache statistics
+python3 vscan.py --refresh-cache           # Force refresh all
+python3 vscan.py --clear-cache             # Clear cache
 
 # Advanced options
-python3 vscan.py --delay 2.0              # Custom delay between requests
-python3 vscan.py --cache-max-age 14       # 14-day cache expiry
-python3 vscan.py --cache-dir /custom/path # Custom cache location
+python3 vscan.py --delay 2.0               # Custom delay between requests
+python3 vscan.py --cache-max-age 14        # 14-day cache expiry
+python3 vscan.py --no-cache                # Disable caching
 
-# Test API endpoints (Phase 1)
-python3 test_api.py
+# Version information
+python3 vscan.py --version
 ```
 
 ## Phase 1 Results

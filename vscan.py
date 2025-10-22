@@ -26,7 +26,7 @@ from cache_manager import CacheManager
 from utils import log, setup_logging
 
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 
 
 def parse_arguments():
@@ -113,6 +113,12 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
     )
 
     parser.add_argument(
+        '--detailed',
+        action='store_true',
+        help='Include detailed security analysis (dependencies, risk factors, score breakdown)'
+    )
+
+    parser.add_argument(
         '--version', '-V',
         action='version',
         version=f'%(prog)s {VERSION}'
@@ -139,21 +145,21 @@ def main():
             return 2
 
         stats = cache_manager.get_cache_stats()
-        log("Cache Statistics", "INFO")
-        log("=" * 60, "INFO")
-        log(f"Database path: {stats['database_path']}", "INFO")
-        log(f"Total entries: {stats['total_entries']}", "INFO")
-        log(f"Database size: {stats['database_size_kb']:.2f} KB", "INFO")
-        log("", "INFO")
+        log("Cache Statistics", "INFO", force=True)
+        log("=" * 60, "INFO", force=True)
+        log(f"Database path: {stats['database_path']}", "INFO", force=True)
+        log(f"Total entries: {stats['total_entries']}", "INFO", force=True)
+        log(f"Database size: {stats['database_size_kb']:.2f} KB", "INFO", force=True)
+        log("", "INFO", force=True)
 
         if stats['total_entries'] > 0:
-            log("Risk breakdown:", "INFO")
+            log("Risk breakdown:", "INFO", force=True)
             for risk, count in stats['risk_breakdown'].items():
-                log(f"  {risk}: {count}", "INFO")
-            log("", "INFO")
-            log(f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}", "INFO")
-            log(f"Oldest entry: {stats['oldest_entry']}", "INFO")
-            log(f"Newest entry: {stats['newest_entry']}", "INFO")
+                log(f"  {risk}: {count}", "INFO", force=True)
+            log("", "INFO", force=True)
+            log(f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}", "INFO", force=True)
+            log(f"Oldest entry: {stats['oldest_entry']}", "INFO", force=True)
+            log(f"Newest entry: {stats['newest_entry']}", "INFO", force=True)
 
         return 0
 
@@ -163,7 +169,7 @@ def main():
             return 2
 
         count = cache_manager.clear_cache()
-        log(f"Cleared {count} cache entries", "SUCCESS")
+        log(f"Cleared {count} cache entries", "SUCCESS", force=True)
         return 0
 
     log("VS Code Extension Security Scanner", "INFO")
@@ -335,8 +341,21 @@ def main():
     scan_duration = time.time() - start_time
     log("Step 3: Generating results...", "INFO")
 
+    # Prepare cache statistics
+    cache_stats_data = {
+        "from_cache": cached_results,
+        "fresh_scans": fresh_scans,
+        "cache_hit_rate": round((cached_results / len(scan_results) * 100), 1) if len(scan_results) > 0 else 0.0
+    }
+
     formatter = OutputFormatter()
-    results = formatter.format_output(scan_results, scan_timestamp, scan_duration)
+    results = formatter.format_output(
+        scan_results,
+        scan_timestamp,
+        scan_duration,
+        detailed=args.detailed,
+        cache_stats=cache_stats_data if not args.no_cache else None
+    )
 
     # Output results
     if args.output:

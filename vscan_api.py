@@ -239,6 +239,240 @@ class VscanAPIClient:
             # Wait before next poll
             time.sleep(poll_interval)
 
+    def _parse_extension_metadata(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract extension metadata from API response.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed metadata dictionary
+        """
+        metadata = {}
+
+        try:
+            ext_info = api_response.get("extensionInfo", {})
+            analysis_modules = api_response.get("analysisModules", {})
+            meta_module = analysis_modules.get("metadata", {})
+            meta_data = meta_module.get("metadata", {})
+
+            # Basic extension info
+            metadata["name"] = ext_info.get("name")
+            metadata["version"] = ext_info.get("version")
+            metadata["display_name"] = meta_data.get("displayName")
+            metadata["description"] = meta_data.get("description")
+
+            # Publisher info
+            publisher_info = meta_data.get("publisherInfo", {})
+            metadata["publisher"] = {
+                "id": publisher_info.get("name"),
+                "name": publisher_info.get("displayName"),
+                "verified": publisher_info.get("isVerified", False),
+                "domain": publisher_info.get("domain")
+            }
+
+            # URLs
+            metadata["repository_url"] = meta_data.get("repositoryUrl")
+            metadata["homepage_url"] = meta_data.get("homepageUrl")
+            metadata["support_url"] = meta_data.get("supportUrl")
+            metadata["privacy_policy_url"] = meta_data.get("privacyPolicyUrl")
+
+            # License and categories
+            metadata["license"] = meta_data.get("license")
+            metadata["keywords"] = meta_data.get("keywords", [])
+            metadata["categories"] = meta_data.get("categories", [])
+
+            # Statistics
+            stats = meta_data.get("statistics", {})
+            metadata["statistics"] = {
+                "installs": stats.get("installCount"),
+                "updates": stats.get("updateCount"),
+                "rating": round(stats.get("averageRating", 0), 2),
+                "rating_count": stats.get("ratingCount")
+            }
+
+            # Dates
+            metadata["last_updated"] = meta_data.get("lastUpdated")
+
+            # Author
+            author = meta_data.get("author", {})
+            metadata["author_name"] = author.get("name")
+
+        except Exception as e:
+            # Return partial metadata on error
+            pass
+
+        return metadata
+
+    def _parse_security_details(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract detailed security score breakdown from API response.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed security details dictionary
+        """
+        security = {}
+
+        try:
+            security_score = api_response.get("securityScore", {})
+
+            # Basic security score
+            security["score"] = security_score.get("score")
+            security["risk_level"] = security_score.get("riskLevel")
+
+            # Score contributions (how each module affected the score)
+            contributions = security_score.get("contributions", {})
+            security["score_contributions"] = {
+                "base": contributions.get("base"),
+                "metadata": contributions.get("metadata"),
+                "dependencies": contributions.get("dependencies"),
+                "socket": contributions.get("socket"),
+                "virus_total": contributions.get("virusTotal"),
+                "permissions": contributions.get("permissions"),
+                "ossf_scorecard": contributions.get("ossfScorecard"),
+                "network_endpoints": contributions.get("networkEndpoints"),
+                "sensitive_info": contributions.get("sensitiveInfo"),
+                "obfuscation": contributions.get("obfuscation"),
+                "consolidated_ast": contributions.get("consolidatedAst"),
+                "open_grep": contributions.get("openGrep")
+            }
+
+            # Module risk levels
+            module_risks = security_score.get("moduleRiskLevels", {})
+            security["module_risk_levels"] = {
+                "metadata": module_risks.get("metadata"),
+                "dependencies": module_risks.get("dependencies"),
+                "socket": module_risks.get("socket"),
+                "virus_total": module_risks.get("virusTotal"),
+                "permissions": module_risks.get("permissions"),
+                "ossf_scorecard": module_risks.get("ossfScorecard"),
+                "network_endpoints": module_risks.get("networkEndpoints"),
+                "sensitive_info": module_risks.get("sensitiveInfo"),
+                "obfuscation": module_risks.get("obfuscation"),
+                "consolidated_ast": module_risks.get("consolidatedAst"),
+                "open_grep": module_risks.get("openGrep")
+            }
+
+            # Security notes
+            security["security_notes"] = security_score.get("notes", [])
+
+        except Exception as e:
+            # Return partial security data on error
+            pass
+
+        return security
+
+    def _parse_dependencies(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract and structure dependency information from API response.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed dependencies dictionary with summary and list
+        """
+        dependencies_data = {
+            "total_count": 0,
+            "runtime_count": 0,
+            "dev_count": 0,
+            "with_vulnerabilities": 0,
+            "high_risk_count": 0,
+            "medium_risk_count": 0,
+            "low_risk_count": 0,
+            "list": []
+        }
+
+        try:
+            analysis_modules = api_response.get("analysisModules", {})
+            deps_module = analysis_modules.get("dependencies", {})
+            deps_list = deps_module.get("dependencies", [])
+
+            # Vulnerability summary
+            vuln_summary = deps_module.get("vulnerabilities", {}).get("summary", {})
+            dependencies_data["vulnerabilities"] = {
+                "total": vuln_summary.get("total", 0),
+                "critical": vuln_summary.get("critical", 0),
+                "high": vuln_summary.get("high", 0),
+                "moderate": vuln_summary.get("moderate", 0),
+                "low": vuln_summary.get("low", 0),
+                "info": vuln_summary.get("info", 0)
+            }
+
+            # Process dependency list
+            for dep in deps_list:
+                dep_info = {
+                    "name": dep.get("name"),
+                    "version": dep.get("version"),
+                    "type": dep.get("type"),
+                    "risk": dep.get("risk"),
+                    "reason": dep.get("reason"),
+                    "vulnerabilities": dep.get("vulnerabilities", [])
+                }
+
+                dependencies_data["list"].append(dep_info)
+
+                # Count by type
+                if dep.get("type") == "runtime":
+                    dependencies_data["runtime_count"] += 1
+                elif dep.get("type") == "dev":
+                    dependencies_data["dev_count"] += 1
+
+                # Count by risk
+                risk = dep.get("risk", "").lower()
+                if risk == "high":
+                    dependencies_data["high_risk_count"] += 1
+                elif risk == "medium":
+                    dependencies_data["medium_risk_count"] += 1
+                elif risk == "low":
+                    dependencies_data["low_risk_count"] += 1
+
+                # Count vulnerabilities
+                if dep.get("vulnerabilities") and len(dep.get("vulnerabilities", [])) > 0:
+                    dependencies_data["with_vulnerabilities"] += 1
+
+            dependencies_data["total_count"] = len(deps_list)
+
+        except Exception as e:
+            # Return partial dependency data on error
+            pass
+
+        return dependencies_data
+
+    def _parse_risk_factors(self, api_response: Dict[str, Any]) -> list:
+        """
+        Extract risk factor details from API response.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            List of risk factor dictionaries
+        """
+        risk_factors = []
+
+        try:
+            analysis_modules = api_response.get("analysisModules", {})
+            meta_module = analysis_modules.get("metadata", {})
+            factors = meta_module.get("riskFactors", [])
+
+            for factor in factors:
+                risk_factors.append({
+                    "type": factor.get("type"),
+                    "description": factor.get("description"),
+                    "severity": factor.get("risk")
+                })
+
+        except Exception as e:
+            # Return empty list on error
+            pass
+
+        return risk_factors
+
     def scan_extension(
         self,
         publisher: str,
@@ -247,6 +481,7 @@ class VscanAPIClient:
     ) -> Dict[str, Any]:
         """
         Complete scan workflow: submit → poll → retrieve results.
+        Now captures complete API response with comprehensive parsing.
 
         Args:
             publisher: Extension publisher
@@ -254,7 +489,7 @@ class VscanAPIClient:
             progress_callback: Optional callback(progress, message) for progress updates
 
         Returns:
-            Scan result dict with standardized fields
+            Scan result dict with complete parsed data
 
         Raises:
             Exception: If scan fails
@@ -264,6 +499,12 @@ class VscanAPIClient:
             "publisher": publisher,
             "scan_status": "error",
             "error": None,
+            "raw_response": None,
+            "metadata": {},
+            "security": {},
+            "dependencies": {},
+            "risk_factors": [],
+            # Legacy fields for backward compatibility
             "security_score": None,
             "risk_level": None,
             "vulnerabilities": {
@@ -297,7 +538,17 @@ class VscanAPIClient:
             # Step 3: Get results
             api_results = self.get_results(analysis_id)
 
-            # Parse results
+            # Store raw response
+            result["raw_response"] = api_results
+            result["analysis_id"] = analysis_id
+
+            # Parse all data categories
+            result["metadata"] = self._parse_extension_metadata(api_results)
+            result["security"] = self._parse_security_details(api_results)
+            result["dependencies"] = self._parse_dependencies(api_results)
+            result["risk_factors"] = self._parse_risk_factors(api_results)
+
+            # Extract legacy fields for backward compatibility
             if "securityScore" in api_results:
                 result["security_score"] = api_results["securityScore"].get("score")
                 result["risk_level"] = api_results["securityScore"].get("riskLevel")
@@ -317,6 +568,9 @@ class VscanAPIClient:
 
             if "analysisTimestamp" in api_results:
                 result["analysis_timestamp"] = api_results["analysisTimestamp"]
+
+            # Check for errors in analysis
+            result["has_errors"] = api_results.get("hasErrors", False)
 
             result["scan_status"] = "success"
 
