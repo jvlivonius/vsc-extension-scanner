@@ -4,9 +4,9 @@ A standalone Python CLI tool that performs security audits of installed VS Code 
 
 ## Project Status
 
-- ✅ **Phase 1: Research & Discovery** - COMPLETED
-- ⏳ **Phase 2: Core Implementation** - Not Started
-- ⏳ **Phase 3: Testing & Refinement** - Not Started
+**Phase 1 Complete ✅** | Phase 2: Not Started ⏳ | Phase 3: Not Started ⏳
+
+See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for detailed progress tracking.
 
 ## What This Tool Does
 
@@ -17,18 +17,21 @@ A standalone Python CLI tool that performs security audits of installed VS Code 
 
 ## Quick Start
 
-**Note:** Tool is not yet implemented. See Phase 1 research below.
+**Note:** Core tool is not yet implemented (Phase 2). API validation is complete.
 
 ```bash
-# Once implemented:
+# Phase 1: Test API (working now)
+python3 test_api.py
+
+# Phase 2: Run scanner (once implemented)
 python vscan.py                           # Scan all extensions
 python vscan.py --output results.json    # Save to file
 python vscan.py --verbose                # Show detailed progress
 ```
 
-## Phase 1 Completion
+## Phase 1 Results
 
-### API Endpoints Validated ✅
+### API Validation ✅
 
 All three vscan.dev API endpoints have been reverse-engineered and validated:
 
@@ -38,45 +41,41 @@ All three vscan.dev API endpoints have been reverse-engineered and validated:
 
 ### Test Results
 
-Tested with 3 popular extensions:
-- **ms-python.python** - Security Score: 82/100 (high risk)
-- **esbenp.prettier-vscode** - Security Score: 82/100 (medium risk)
-- **ms-azuretools.vscode-docker** - Security Score: 93/100 (medium risk)
+| Extension | Security Score | Risk Level | Status |
+|-----------|---------------|------------|--------|
+| ms-python.python | 82/100 | high | ✅ Validated |
+| esbenp.prettier-vscode | 82/100 | medium | ✅ Validated |
+| ms-azuretools.vscode-docker | 93/100 | medium | ✅ Validated |
 
 **Key Finding:** Popular extensions are cached by vscan.dev and return results instantly (0.0s).
 
-### Documentation
+## Documentation
 
-- **[API_RESEARCH.md](API_RESEARCH.md)** - Comprehensive API documentation and findings
-- **[CLAUDE.md](CLAUDE.md)** - Project guidance and technical specifications
-- **[PRD.md](PRD.md)** - Product Requirements Document
-- **[test_api.py](test_api.py)** - API validation script
+### Core Documentation
 
-### Run API Tests
+- **[README.md](README.md)** (this file) - Project overview
+- **[CLAUDE.md](CLAUDE.md)** - Development guidance for Claude Code
 
-```bash
-python3 test_api.py
-```
+### Detailed Documentation
 
-Output: JSON results to stdout, detailed logs to stderr
+- **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - Current status and roadmap
+- **[docs/design/PRD.md](docs/design/PRD.md)** - Product requirements document
+- **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API research
+- **[docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)** - Test plan
 
-## Architecture
+### Test Code
 
-### Extension Discovery
-- Auto-detect VS Code extensions directory by platform:
-  - macOS: `~/.vscode/extensions/`
-  - Windows: `%USERPROFILE%\.vscode\extensions\`
-  - Linux: `~/.vscode/extensions/`
-- Parse `package.json` for extension metadata
-- Support custom paths via `--extensions-dir`
+- **[test_api.py](test_api.py)** - API validation script (working implementation)
 
-### vscan.dev Integration
-- Asynchronous analysis workflow
-- Poll status until completion
-- Parse security scores and vulnerability data
-- Handle cached results (instant responses)
+## Technology Stack
 
-### Output Format
+- **Language:** Python 3.8+
+- **HTTP Library:** `urllib.request` (standard library, no external dependencies)
+- **CLI Parsing:** `argparse` (standard library)
+- **Distribution:** Standalone `.py` script (no installation required)
+- **Output Format:** JSON
+
+## Example Output
 
 ```json
 {
@@ -107,36 +106,29 @@ Output: JSON results to stdout, detailed logs to stderr
 }
 ```
 
-## Technology Stack
-
-- **Language:** Python 3.8+
-- **HTTP Library:** `urllib.request` (standard library, no dependencies)
-- **CLI Parsing:** `argparse` (standard library)
-- **Distribution:** Standalone `.py` script (no installation required)
-
 ## Next Steps
 
-### Phase 2: Core Implementation
+See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for detailed roadmap.
 
-1. Implement extension discovery for all platforms
-2. Parse package.json files
-3. Integrate vscan.dev API client
-4. Generate JSON output
-5. Add error handling and logging
-6. Create progress indicators
+**Phase 2: Core Implementation** (4-6 hours estimated)
 
-### Phase 3: Testing & Refinement
+- Implement extension discovery for all platforms
+- Integrate vscan.dev API client (based on test_api.py)
+- Generate JSON output
+- Add error handling and progress indicators
 
-1. Test on macOS, Windows, Linux
-2. Test with various extension sets
-3. Test error scenarios
-4. Refine user experience
+**Phase 3: Testing & Refinement** (2-4 hours estimated)
+
+- Cross-platform testing (macOS, Windows, Linux)
+- Edge case testing
+- Performance optimization
+- User experience polish
+
+## Contributing
+
+This is a standalone security tool. See [docs/design/PRD.md](docs/design/PRD.md) for scope and requirements.
 
 ## References
 
 - [vscan.dev](https://vscan.dev) - VS Code Extension Security Analyzer
-- [VS Code Extension API](https://code.visualstudio.com/api)
-
-## License
-
-See project requirements for licensing details.
+- [VS Code Extension API](https://code.visualstudio.com/api) - Extension documentation
