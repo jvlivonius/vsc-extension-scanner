@@ -140,13 +140,32 @@ def main():
 
     scan_results = []
     vulnerabilities_found = 0
+    successful_scans = 0
+    failed_scans = 0
+    cached_results = 0  # Extensions that returned instantly (cached)
 
     for idx, ext in enumerate(extensions, 1):
-        progress = f"[{idx}/{len(extensions)}]"
-        log(f"{progress} Scanning {ext['id']} v{ext['version']}...", "INFO", newline=False)
+        progress_prefix = f"[{idx}/{len(extensions)}]"
+        log(f"{progress_prefix} Scanning {ext['id']} v{ext['version']}...", "INFO", newline=False)
+
+        # Define progress callback for this extension
+        scan_start_time = time.time()
+        did_show_progress = [False]  # Use list to allow modification in nested function
+
+        def progress_callback(progress_pct, message):
+            """Show progress updates during analysis."""
+            if progress_pct > 0 and progress_pct < 100:
+                did_show_progress[0] = True
+                log(f" ({progress_pct}%: {message})", "INFO", newline=False)
 
         try:
-            result = api_client.scan_extension(ext['publisher'], ext['name'])
+            result = api_client.scan_extension(
+                ext['publisher'],
+                ext['name'],
+                progress_callback=progress_callback if verbose else None
+            )
+
+            scan_duration = time.time() - scan_start_time
 
             # Merge extension metadata with scan result
             result.update({
@@ -159,6 +178,12 @@ def main():
 
             # Check for vulnerabilities
             if result.get('scan_status') == 'success':
+                successful_scans += 1
+
+                # Check if result was cached (very fast response)
+                if scan_duration < 3.0:  # Less than 3 seconds = likely cached
+                    cached_results += 1
+
                 vuln_count = result.get('vulnerabilities', {}).get('count', 0)
                 if vuln_count > 0:
                     vulnerabilities_found += vuln_count
@@ -166,9 +191,11 @@ def main():
                 else:
                     log(" ✓", "SUCCESS")
             else:
+                failed_scans += 1
                 log(f" ✗ {result.get('error', 'Unknown error')}", "ERROR")
 
         except Exception as e:
+            failed_scans += 1
             log(f" ✗ Error: {e}", "ERROR")
             scan_results.append({
                 'id': ext['id'],
@@ -211,8 +238,15 @@ def main():
     log("=" * 60, "INFO")
     log("Scan Complete!", "SUCCESS")
     log(f"Total extensions scanned: {len(extensions)}", "INFO")
+    log(f"Successful scans: {successful_scans}", "INFO")
+    log(f"Failed scans: {failed_scans}", "INFO" if failed_scans == 0 else "WARNING")
+    if cached_results > 0:
+        log(f"Cached results (instant): {cached_results}", "INFO")
     log(f"Vulnerabilities found: {vulnerabilities_found}", "INFO" if vulnerabilities_found == 0 else "WARNING")
     log(f"Scan duration: {scan_duration:.1f} seconds", "INFO")
+    if len(extensions) > 0:
+        avg_time = scan_duration / len(extensions)
+        log(f"Average time per extension: {avg_time:.1f}s", "INFO")
     log("=" * 60, "INFO")
 
     # Exit codes:

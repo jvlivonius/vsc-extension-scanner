@@ -19,16 +19,18 @@ class VscanAPIClient:
     BASE_URL = "https://vscan.dev/api/extensions"
     USER_AGENT = "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)"
 
-    def __init__(self, delay: float = 1.5, verbose: bool = False):
+    def __init__(self, delay: float = 1.5, verbose: bool = False, timeout: int = 30):
         """
         Initialize API client.
 
         Args:
             delay: Delay between API requests in seconds
             verbose: Enable verbose logging
+            timeout: Timeout for individual HTTP requests in seconds
         """
         self.delay = delay
         self.verbose = verbose
+        self.timeout = timeout
         self.last_request_time = 0
 
     def _throttle(self):
@@ -43,7 +45,7 @@ class VscanAPIClient:
         url: str,
         method: str = "GET",
         data: Optional[Dict[str, Any]] = None,
-        timeout: int = 30
+        timeout: Optional[int] = None
     ) -> Tuple[int, Dict[str, Any]]:
         """
         Make HTTP request to vscan.dev API.
@@ -52,7 +54,7 @@ class VscanAPIClient:
             url: Request URL
             method: HTTP method (GET or POST)
             data: Request payload (for POST)
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (None = use default)
 
         Returns:
             Tuple of (status_code, json_response)
@@ -60,6 +62,10 @@ class VscanAPIClient:
         Raises:
             Exception: If request fails
         """
+        # Use default timeout if not specified
+        if timeout is None:
+            timeout = self.timeout
+
         headers = {
             "User-Agent": self.USER_AGENT,
             "Accept": "application/json"
@@ -104,7 +110,10 @@ class VscanAPIClient:
                 raise Exception(f"HTTP error {status_code}: {json_data.get('error', 'Unknown error')}")
 
         except urllib.error.URLError as e:
-            raise Exception(f"Network error: {e.reason}")
+            error_msg = str(e.reason) if hasattr(e, 'reason') else str(e)
+            if "timed out" in error_msg.lower():
+                raise Exception(f"Request timed out after {timeout}s. The extension may take longer to analyze.")
+            raise Exception(f"Network error: {error_msg}")
 
         except Exception as e:
             raise Exception(f"Request failed: {e}")
@@ -185,7 +194,8 @@ class VscanAPIClient:
         self,
         analysis_id: str,
         poll_interval: float = 2.0,
-        max_wait: int = 300
+        max_wait: int = 300,
+        progress_callback: Optional[callable] = None
     ) -> str:
         """
         Poll status endpoint until analysis is complete.
@@ -194,6 +204,7 @@ class VscanAPIClient:
             analysis_id: Analysis ID to poll
             poll_interval: Seconds between polls
             max_wait: Maximum seconds to wait
+            progress_callback: Optional callback(progress, message) for progress updates
 
         Returns:
             Final status ("completed" or "failed")
@@ -202,6 +213,7 @@ class VscanAPIClient:
             Exception: If polling times out or fails
         """
         start_time = time.time()
+        last_progress = 0
 
         while True:
             elapsed = time.time() - start_time
@@ -211,6 +223,13 @@ class VscanAPIClient:
 
             status_response = self.check_status(analysis_id)
             status = status_response.get("status")
+            progress = status_response.get("progress", 0)
+            message = status_response.get("message", "")
+
+            # Call progress callback if provided and progress changed
+            if progress_callback and progress != last_progress:
+                progress_callback(progress, message)
+                last_progress = progress
 
             if status == "completed":
                 return status
@@ -220,13 +239,19 @@ class VscanAPIClient:
             # Wait before next poll
             time.sleep(poll_interval)
 
-    def scan_extension(self, publisher: str, name: str) -> Dict[str, Any]:
+    def scan_extension(
+        self,
+        publisher: str,
+        name: str,
+        progress_callback: Optional[callable] = None
+    ) -> Dict[str, Any]:
         """
         Complete scan workflow: submit → poll → retrieve results.
 
         Args:
             publisher: Extension publisher
             name: Extension name
+            progress_callback: Optional callback(progress, message) for progress updates
 
         Returns:
             Scan result dict with standardized fields
@@ -258,7 +283,12 @@ class VscanAPIClient:
             analysis_id = self.submit_analysis(publisher, name)
 
             # Step 2: Poll until complete
-            final_status = self.poll_until_complete(analysis_id, poll_interval=2.0, max_wait=300)
+            final_status = self.poll_until_complete(
+                analysis_id,
+                poll_interval=2.0,
+                max_wait=300,
+                progress_callback=progress_callback
+            )
 
             if final_status != "completed":
                 result["error"] = f"Analysis did not complete: {final_status}"
