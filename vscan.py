@@ -29,6 +29,37 @@ from utils import log, setup_logging, validate_path, sanitize_string, show_error
 VERSION = "2.0.0"
 
 
+def load_config_file() -> dict:
+    """
+    Load configuration from ~/.vscan/config.json if it exists.
+
+    Returns:
+        dict: Configuration dictionary, or empty dict if file doesn't exist or is invalid
+    """
+    config_path = Path.home() / ".vscan" / "config.json"
+
+    if not config_path.exists():
+        return {}
+
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+
+        # Validate that config is a dictionary
+        if not isinstance(config, dict):
+            log("Warning: config.json must be a JSON object, ignoring", "WARNING")
+            return {}
+
+        return config
+
+    except json.JSONDecodeError as e:
+        log(f"Warning: Invalid JSON in config.json: {e}", "WARNING")
+        return {}
+    except Exception as e:
+        log(f"Warning: Could not read config.json: {e}", "WARNING")
+        return {}
+
+
 def bounded_int(min_val: int, max_val: int):
     """Create a validator for bounded integer values."""
     def validator(value):
@@ -76,6 +107,11 @@ Examples:
   %(prog)s --min-risk-level high               Only show high/critical risk extensions
   %(prog)s --include-ids "ms-python.python"    Scan only specific extension
   %(prog)s --exclude-ids "local.test"          Exclude specific extensions
+
+Configuration:
+  Settings can be saved in ~/.vscan/config.json (JSON format)
+  Example: {"delay": 2.0, "max_retries": 5, "exclude_ids": "local.test"}
+  Command-line arguments override config file settings
 
 For more information, see: https://github.com/your-repo/vsc-extension-scanner
         """
@@ -204,7 +240,58 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         version=f'%(prog)s {VERSION}'
     )
 
-    return parser.parse_args()
+    # Parse command line arguments first
+    args = parser.parse_args()
+
+    # Load configuration file and merge with defaults (CLI args take precedence)
+    config = load_config_file()
+
+    if config:
+        # Map config file keys to argument attributes
+        # Only apply config values if CLI argument is at default value
+        config_mappings = {
+            'delay': ('delay', 1.5),
+            'max_retries': ('max_retries', 3),
+            'retry_delay': ('retry_delay', 2.0),
+            'cache_max_age': ('cache_max_age', 7),
+            'cache_dir': ('cache_dir', None),
+            'output': ('output', None),
+            'extensions_dir': ('extensions_dir', None),
+            'exclude_ids': ('exclude_ids', None),
+            'publisher': ('publisher', None),
+            'detailed': ('detailed', False),
+        }
+
+        for config_key, (attr_name, default_value) in config_mappings.items():
+            if config_key in config:
+                current_value = getattr(args, attr_name)
+
+                # Only use config value if CLI arg is still at default
+                if current_value == default_value:
+                    config_value = config[config_key]
+
+                    # Validate config value types
+                    if config_key in ['delay', 'retry_delay']:
+                        try:
+                            config_value = float(config_value)
+                        except (ValueError, TypeError):
+                            log(f"Warning: Invalid value for '{config_key}' in config.json, using default", "WARNING")
+                            continue
+
+                    if config_key in ['max_retries', 'cache_max_age']:
+                        try:
+                            config_value = int(config_value)
+                        except (ValueError, TypeError):
+                            log(f"Warning: Invalid value for '{config_key}' in config.json, using default", "WARNING")
+                            continue
+
+                    if config_key == 'detailed' and not isinstance(config_value, bool):
+                        log(f"Warning: 'detailed' in config.json must be boolean, using default", "WARNING")
+                        continue
+
+                    setattr(args, attr_name, config_value)
+
+    return args
 
 
 def handle_cache_commands(args, cache_manager):
