@@ -9,6 +9,7 @@ for unchanged extensions.
 import sqlite3
 import json
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
@@ -46,6 +47,27 @@ class CacheManager:
             self._migrate_v1_to_v2()
         else:
             self._init_database()
+
+    @contextmanager
+    def _db_connection(self):
+        """
+        Context manager for database connections.
+        Provides automatic connection management with proper cleanup.
+
+        Yields:
+            sqlite3.Connection: Database connection
+
+        Example:
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM scan_cache")
+                # Connection automatically closed on exit
+        """
+        conn = sqlite3.connect(self.cache_db)
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
@@ -293,42 +315,40 @@ class CacheManager:
         Returns:
             Cached result dict if found and valid, None otherwise
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Calculate cutoff timestamp
-            cutoff = datetime.now() - timedelta(days=max_age_days)
-            cutoff_str = cutoff.isoformat()
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute("""
-                SELECT scan_result, scanned_at
-                FROM scan_cache
-                WHERE extension_id = ?
-                  AND version = ?
-                  AND scanned_at >= ?
-            """, (extension_id, version, cutoff_str))
+                # Calculate cutoff timestamp
+                cutoff = datetime.now() - timedelta(days=max_age_days)
+                cutoff_str = cutoff.isoformat()
 
-            row = cursor.fetchone()
+                cursor.execute("""
+                    SELECT scan_result, scanned_at
+                    FROM scan_cache
+                    WHERE extension_id = ?
+                      AND version = ?
+                      AND scanned_at >= ?
+                """, (extension_id, version, cutoff_str))
 
-            if row:
-                scan_result_json, scanned_at = row
-                result = json.loads(scan_result_json)
+                row = cursor.fetchone()
 
-                # Add cache metadata
-                result['_cache_hit'] = True
-                result['_cached_at'] = scanned_at
+                if row:
+                    scan_result_json, scanned_at = row
+                    result = json.loads(scan_result_json)
 
-                return result
+                    # Add cache metadata
+                    result['_cache_hit'] = True
+                    result['_cached_at'] = scanned_at
 
-            return None
+                    return result
+
+                return None
 
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail - just return None (cache miss)
             print(f"Cache read error: {e}", file=__import__('sys').stderr)
             return None
-        finally:
-            conn.close()
 
     def save_result(
         self,
@@ -348,56 +368,53 @@ class CacheManager:
         if result.get('scan_status') != 'success':
             return
 
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Remove cache metadata before storing
-            result_to_store = result.copy()
-            result_to_store.pop('_cache_hit', None)
-            result_to_store.pop('_cached_at', None)
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            scan_result_json = json.dumps(result_to_store)
-            scanned_at = datetime.now().isoformat()
+                # Remove cache metadata before storing
+                result_to_store = result.copy()
+                result_to_store.pop('_cache_hit', None)
+                result_to_store.pop('_cached_at', None)
 
-            # Extract indexed fields for v2 schema
-            risk_level = result_to_store.get('risk_level')
-            security_score = result_to_store.get('security_score')
+                scan_result_json = json.dumps(result_to_store)
+                scanned_at = datetime.now().isoformat()
 
-            # Vulnerabilities
-            vulnerabilities = result_to_store.get('vulnerabilities', {})
-            vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
+                # Extract indexed fields for v2 schema
+                risk_level = result_to_store.get('risk_level')
+                security_score = result_to_store.get('security_score')
 
-            # Dependencies
-            dependencies = result_to_store.get('dependencies', {})
-            dependencies_count = dependencies.get('total_count', 0)
+                # Vulnerabilities
+                vulnerabilities = result_to_store.get('vulnerabilities', {})
+                vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
 
-            # Publisher verification
-            metadata = result_to_store.get('metadata', {})
-            publisher = metadata.get('publisher', {})
-            publisher_verified = 1 if publisher.get('verified') else 0
+                # Dependencies
+                dependencies = result_to_store.get('dependencies', {})
+                dependencies_count = dependencies.get('total_count', 0)
 
-            # Risk factors
-            risk_factors = result_to_store.get('risk_factors', [])
-            has_risk_factors = 1 if len(risk_factors) > 0 else 0
+                # Publisher verification
+                metadata = result_to_store.get('metadata', {})
+                publisher = metadata.get('publisher', {})
+                publisher_verified = 1 if publisher.get('verified') else 0
 
-            # Insert or replace
-            cursor.execute("""
-                INSERT OR REPLACE INTO scan_cache
-                (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                  vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+                # Risk factors
+                risk_factors = result_to_store.get('risk_factors', [])
+                has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
-            conn.commit()
+                # Insert or replace
+                cursor.execute("""
+                    INSERT OR REPLACE INTO scan_cache
+                    (extension_id, version, scan_result, scanned_at, risk_level, security_score,
+                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
+                      vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+
+                conn.commit()
 
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail the scan
             print(f"Cache write error: {e}", file=__import__('sys').stderr)
-            conn.rollback()
-        finally:
-            conn.close()
 
     def cleanup_old_entries(self, max_age_days: int = 7) -> int:
         """
@@ -480,82 +497,90 @@ class CacheManager:
         Returns:
             Dictionary with cache statistics
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Total entries
-            cursor.execute("SELECT COUNT(*) FROM scan_cache")
-            total_entries = cursor.fetchone()[0]
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            # Count by risk level
-            cursor.execute("""
-                SELECT risk_level, COUNT(*)
-                FROM scan_cache
-                GROUP BY risk_level
-            """)
-            risk_breakdown = {row[0] or 'unknown': row[1] for row in cursor.fetchall()}
+                # Total entries
+                cursor.execute("SELECT COUNT(*) FROM scan_cache")
+                total_entries = cursor.fetchone()[0]
 
-            # Extensions with vulnerabilities
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM scan_cache
-                WHERE vulnerabilities_count > 0
-            """)
-            with_vulnerabilities = cursor.fetchone()[0]
+                # Count by risk level
+                cursor.execute("""
+                    SELECT risk_level, COUNT(*)
+                    FROM scan_cache
+                    GROUP BY risk_level
+                """)
+                risk_breakdown = {row[0] or 'unknown': row[1] for row in cursor.fetchall()}
 
-            # Oldest entry
-            cursor.execute("""
-                SELECT MIN(scanned_at)
-                FROM scan_cache
-            """)
-            oldest_entry_row = cursor.fetchone()
-            oldest_entry = oldest_entry_row[0] if oldest_entry_row and oldest_entry_row[0] else None
+                # Extensions with vulnerabilities
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM scan_cache
+                    WHERE vulnerabilities_count > 0
+                """)
+                with_vulnerabilities = cursor.fetchone()[0]
 
-            # Newest entry
-            cursor.execute("""
-                SELECT MAX(scanned_at)
-                FROM scan_cache
-            """)
-            newest_entry_row = cursor.fetchone()
-            newest_entry = newest_entry_row[0] if newest_entry_row and newest_entry_row[0] else None
+                # Oldest entry
+                cursor.execute("""
+                    SELECT MIN(scanned_at)
+                    FROM scan_cache
+                """)
+                oldest_entry_row = cursor.fetchone()
+                oldest_entry = oldest_entry_row[0] if oldest_entry_row and oldest_entry_row[0] else None
 
-            # Calculate average age of cache entries
-            now = time.time()
-            cursor.execute("SELECT scanned_at FROM scan_cache")
-            timestamps = [row[0] for row in cursor.fetchall() if row[0]]
+                # Newest entry
+                cursor.execute("""
+                    SELECT MAX(scanned_at)
+                    FROM scan_cache
+                """)
+                newest_entry_row = cursor.fetchone()
+                newest_entry = newest_entry_row[0] if newest_entry_row and newest_entry_row[0] else None
 
-            avg_age_days = None
-            if timestamps:
-                ages = [(now - ts) / 86400 for ts in timestamps]  # Convert to days
-                avg_age_days = round(sum(ages) / len(ages), 1)
+                # Calculate average age of cache entries
+                now = datetime.now()
+                cursor.execute("SELECT scanned_at FROM scan_cache")
+                timestamp_strs = [row[0] for row in cursor.fetchall() if row[0]]
 
-            # Count stale entries (older than max_age_days)
-            max_age_seconds = max_age_days * 86400
-            cutoff_time = now - max_age_seconds
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM scan_cache
-                WHERE scanned_at < ?
-            """, (cutoff_time,))
-            stale_entries = cursor.fetchone()[0]
+                avg_age_days = None
+                if timestamp_strs:
+                    ages = []
+                    for ts_str in timestamp_strs:
+                        try:
+                            ts = datetime.fromisoformat(ts_str)
+                            age_days = (now - ts).total_seconds() / 86400
+                            ages.append(age_days)
+                        except (ValueError, TypeError):
+                            continue
+                    if ages:
+                        avg_age_days = round(sum(ages) / len(ages), 1)
 
-            # Database size
-            db_size_bytes = self.cache_db.stat().st_size if self.cache_db.exists() else 0
-            db_size_kb = db_size_bytes / 1024
+                # Count stale entries (older than max_age_days)
+                cutoff = now - timedelta(days=max_age_days)
+                cutoff_str = cutoff.isoformat()
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM scan_cache
+                    WHERE scanned_at < ?
+                """, (cutoff_str,))
+                stale_entries = cursor.fetchone()[0]
 
-            return {
-                'total_entries': total_entries,
-                'risk_breakdown': risk_breakdown,
-                'extensions_with_vulnerabilities': with_vulnerabilities,
-                'oldest_entry': oldest_entry,
-                'newest_entry': newest_entry,
-                'average_age_days': avg_age_days,
-                'stale_entries': stale_entries,
-                'stale_threshold_days': max_age_days,
-                'database_size_kb': round(db_size_kb, 2),
-                'database_path': str(self.cache_db)
-            }
+                # Database size
+                db_size_bytes = self.cache_db.stat().st_size if self.cache_db.exists() else 0
+                db_size_kb = db_size_bytes / 1024
+
+                return {
+                    'total_entries': total_entries,
+                    'risk_breakdown': risk_breakdown,
+                    'extensions_with_vulnerabilities': with_vulnerabilities,
+                    'oldest_entry': oldest_entry,
+                    'newest_entry': newest_entry,
+                    'average_age_days': avg_age_days,
+                    'stale_entries': stale_entries,
+                    'stale_threshold_days': max_age_days,
+                    'database_size_kb': round(db_size_kb, 2),
+                    'database_path': str(self.cache_db)
+                }
 
         except sqlite3.Error as e:
             print(f"Cache stats error: {e}", file=__import__('sys').stderr)
@@ -563,8 +588,6 @@ class CacheManager:
                 'error': str(e),
                 'database_path': str(self.cache_db)
             }
-        finally:
-            conn.close()
 
     def clear_cache(self) -> int:
         """
