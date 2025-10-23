@@ -24,6 +24,21 @@ class VscanAPIClient:
     # Maximum response size (10MB)
     MAX_RESPONSE_SIZE = 10 * 1024 * 1024
 
+    # Retryable HTTP status codes (transient errors)
+    RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
+
+    # Retryable error patterns in error messages (includes status codes as strings)
+    RETRYABLE_ERROR_PATTERNS = [
+        "timeout",
+        "timed out",
+        "connection",
+        "rate limit",
+        "429",  # Rate limit in message
+        "502",  # Bad Gateway in message
+        "503",  # Service Unavailable in message
+        "504",  # Gateway Timeout in message
+    ]
+
     def __init__(
         self,
         delay: float = 1.5,
@@ -63,7 +78,7 @@ class VscanAPIClient:
 
     def _is_retryable_error(self, error: Exception, status_code: Optional[int] = None) -> bool:
         """
-        Determine if an error is retryable.
+        Determine if an error is retryable based on status code or error type.
 
         Args:
             error: The exception that occurred
@@ -72,63 +87,30 @@ class VscanAPIClient:
         Returns:
             True if the error should be retried, False otherwise
         """
-        error_str = str(error).lower()
-
-        # Timeout errors are retryable
-        if isinstance(error, urllib.error.URLError):
-            if isinstance(error.reason, TimeoutError):
-                return True
-            # Connection errors are retryable
-            if "connection" in str(error.reason).lower():
-                return True
-
-        # HTTP errors with specific status codes
+        # Extract status code from HTTPError if present
         if isinstance(error, urllib.error.HTTPError):
             status_code = error.code
 
-        # Check status code (from HTTPError or explicit parameter)
-        if status_code:
-            # Rate limiting - retryable with backoff
-            if status_code == 429:
-                return True
-            # Server errors - retryable
-            if status_code in [502, 503, 504]:
-                return True
-            # Other errors - not retryable
-            # 404 (not found), 500 (internal error), 4xx (client errors)
+        # Check if status code is retryable (429, 502, 503, 504)
+        if status_code in self.RETRYABLE_STATUS_CODES:
+            return True
+
+        # Non-retryable status codes (explicit client/server errors)
+        if status_code in {400, 401, 403, 404, 500}:
             return False
 
-        # Check error message patterns for retryable errors
-        retryable_patterns = [
-            "timeout",
-            "timed out",
-            "connection",
-            "rate limit",
-            "502",  # Bad Gateway
-            "503",  # Service Unavailable
-            "504",  # Gateway Timeout
-            "429",  # Too Many Requests
-        ]
+        # Check for timeout errors
+        if isinstance(error, urllib.error.URLError):
+            if isinstance(error.reason, TimeoutError):
+                return True
 
-        for pattern in retryable_patterns:
+        # Check error message for retryable patterns
+        error_str = str(error).lower()
+        for pattern in self.RETRYABLE_ERROR_PATTERNS:
             if pattern in error_str:
                 return True
 
-        # Non-retryable error patterns
-        non_retryable_patterns = [
-            "not found",
-            "404",
-            "500",  # Internal Server Error (not transient)
-            "400",  # Bad Request
-            "401",  # Unauthorized
-            "403",  # Forbidden
-        ]
-
-        for pattern in non_retryable_patterns:
-            if pattern in error_str:
-                return False
-
-        # Default: not retryable (fail safe)
+        # Default: not retryable (fail-safe)
         return False
 
     def _calculate_backoff_delay(self, attempt: int, retry_after: Optional[int] = None) -> float:
