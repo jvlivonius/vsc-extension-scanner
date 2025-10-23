@@ -317,10 +317,58 @@ def scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp):
     return scan_results, stats
 
 
+def _get_status_symbol(status: str) -> str:
+    """
+    Get consistent status symbol for progress output.
+
+    Args:
+        status: Status type (cached, scanning, success, warning, error)
+
+    Returns:
+        Unicode symbol for the status
+    """
+    symbols = {
+        'cached': '⚡',
+        'scanning': '🔍',
+        'success': '✓',
+        'warning': '⚠',
+        'error': '✗'
+    }
+    return symbols.get(status, '?')
+
+
+def _print_scan_progress(extension_id: str, version: str, progress_prefix: str,
+                         status: str, message: str = "", verbose: bool = False):
+    """
+    Print standardized scan progress with consistent formatting.
+
+    Args:
+        extension_id: Extension ID
+        version: Extension version
+        progress_prefix: Progress counter (e.g., "[1/42]")
+        status: Status type (cached, scanning, success, warning, error)
+        message: Additional message to display
+        verbose: Whether in verbose mode
+    """
+    symbol = _get_status_symbol(status)
+
+    if verbose:
+        # Verbose mode: Append status on same line
+        if message:
+            log(f" {symbol} {message}", status.upper() if status in ['warning', 'error'] else "SUCCESS")
+        else:
+            log(f" {symbol}", "SUCCESS")
+    else:
+        # Non-verbose mode: Only show problems (warnings/errors)
+        if status in ['warning', 'error']:
+            log(f"{symbol} {extension_id}: {message}", status.upper())
+
+
 def _process_cached_result(cached_result, ext, extension_id, version,
                            progress_prefix, verbose, stats, scan_results):
     """Process a cached scan result."""
-    log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO", newline=False)
+    log(f"{progress_prefix} {extension_id} v{version}... {_get_status_symbol('cached')} Cached",
+        "INFO", newline=False)
 
     # Merge extension metadata with cached result
     cached_result.update({
@@ -336,18 +384,17 @@ def _process_cached_result(cached_result, ext, extension_id, version,
     vuln_count = cached_result.get('vulnerabilities', {}).get('count', 0)
     if vuln_count > 0:
         stats['vulnerabilities_found'] += vuln_count
-        if verbose:
-            log(" ⚠", "WARNING")
-        else:
-            log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
+        _print_scan_progress(extension_id, version, progress_prefix, 'warning',
+                           f"{vuln_count} vulnerability(ies) found", verbose)
     else:
-        log(" ✓", "SUCCESS")
+        _print_scan_progress(extension_id, version, progress_prefix, 'success', "", verbose)
 
 
 def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
                           api_client, cache_manager, verbose, stats, scan_results):
     """Scan an extension fresh from the API."""
-    log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO", newline=False)
+    log(f"{progress_prefix} Scanning {extension_id} v{version}... {_get_status_symbol('scanning')}",
+        "INFO", newline=False)
 
     # Define progress callback
     def progress_callback(progress_pct, message):
@@ -383,26 +430,18 @@ def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
             vuln_count = result.get('vulnerabilities', {}).get('count', 0)
             if vuln_count > 0:
                 stats['vulnerabilities_found'] += vuln_count
-                if verbose:
-                    log(" ⚠ Vulnerabilities found", "WARNING")
-                else:
-                    log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
+                _print_scan_progress(extension_id, version, progress_prefix, 'warning',
+                                   f"{vuln_count} vulnerability(ies) found", verbose)
             else:
-                log(" ✓", "SUCCESS")
+                _print_scan_progress(extension_id, version, progress_prefix, 'success', "", verbose)
         else:
             stats['failed_scans'] += 1
             error_msg = result.get('error', 'Unknown error')
-            if verbose:
-                log(f" ✗ {error_msg}", "ERROR")
-            else:
-                log(f"✗ {extension_id}: {error_msg}", "ERROR")
+            _print_scan_progress(extension_id, version, progress_prefix, 'error', error_msg, verbose)
 
     except Exception as e:
         stats['failed_scans'] += 1
-        if verbose:
-            log(f" ✗ Error: {e}", "ERROR")
-        else:
-            log(f"✗ {extension_id}: Error - {e}", "ERROR")
+        _print_scan_progress(extension_id, version, progress_prefix, 'error', str(e), verbose)
         scan_results.append({
             'id': ext['id'],
             'name': ext['name'],
