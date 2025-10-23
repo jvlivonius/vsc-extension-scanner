@@ -175,18 +175,17 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
     return parser.parse_args()
 
 
-def main():
-    """Main entry point for the scanner."""
-    args = parse_arguments()
+def handle_cache_commands(args, cache_manager):
+    """
+    Handle cache-only commands (stats, clear).
 
-    # Setup logging based on verbose flag
-    verbose = args.verbose
-    setup_logging(verbose)
+    Args:
+        args: Parsed command-line arguments
+        cache_manager: CacheManager instance or None
 
-    # Initialize cache manager
-    cache_manager = CacheManager(cache_dir=args.cache_dir) if not args.no_cache else None
-
-    # Handle cache-only commands
+    Returns:
+        Exit code (0 for success, 2 for error) or None if no cache command
+    """
     if args.cache_stats:
         if cache_manager is None:
             log("Error: Cannot show cache stats when --no-cache is specified", "ERROR")
@@ -220,53 +219,53 @@ def main():
         log(f"Cleared {count} cache entries", "SUCCESS", force=True)
         return 0
 
-    log("VS Code Extension Security Scanner", "INFO")
-    log(f"Version {VERSION}", "INFO")
-    log("=" * 60, "INFO")
-    log("", "INFO")
+    # No cache command specified
+    return None
 
-    start_time = time.time()
-    scan_timestamp = datetime.utcnow().isoformat() + 'Z'
 
-    # Step 1: Discover extensions
+def discover_extensions(args):
+    """
+    Discover installed VS Code extensions.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        Tuple of (extensions_list, extensions_dir) or (None, None) on error
+
+    Raises:
+        FileNotFoundError: If extensions directory cannot be found
+        Exception: If discovery fails
+    """
     log("Step 1: Discovering VS Code extensions...", "INFO")
     discovery = ExtensionDiscovery(custom_dir=args.extensions_dir)
 
-    try:
-        extensions_dir = discovery.find_extensions_directory()
-        log(f"Found VS Code extensions directory: {sanitize_string(str(extensions_dir), max_length=150)}", "SUCCESS")
-    except FileNotFoundError as e:
-        log(sanitize_string(str(e), max_length=200), "ERROR")
-        log("", "ERROR")
-        log("Please ensure VS Code is installed or specify a custom directory with --extensions-dir", "ERROR")
-        return 2  # Exit code 2: Scan failed
+    extensions_dir = discovery.find_extensions_directory()
+    log(f"Found VS Code extensions directory: {sanitize_string(str(extensions_dir), max_length=150)}", "SUCCESS")
 
-    try:
-        extensions = discovery.discover_extensions()
-        log(f"Discovered {len(extensions)} extensions", "SUCCESS")
-    except Exception as e:
-        log(f"Error discovering extensions: {sanitize_string(str(e), max_length=200)}", "ERROR")
-        return 2
+    extensions = discovery.discover_extensions()
+    log(f"Discovered {len(extensions)} extensions", "SUCCESS")
 
-    if len(extensions) == 0:
-        log("No extensions found to scan", "WARNING")
-        # Output empty results
-        formatter = OutputFormatter()
-        results = formatter.format_output([], scan_timestamp, 0)
+    return extensions, extensions_dir
 
-        if args.output:
-            with open(args.output, 'w') as f:
-                json.dump(results, f, indent=2)
-            log(f"Results written to {args.output}", "INFO")
-        else:
-            print(json.dumps(results, indent=2))
 
-        return 0
+def scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp):
+    """
+    Scan extensions for vulnerabilities.
 
+    Args:
+        extensions: List of extension metadata dicts
+        args: Parsed command-line arguments
+        cache_manager: CacheManager instance or None
+        verbose: Verbose logging flag
+        scan_timestamp: ISO timestamp of scan start
+
+    Returns:
+        Tuple of (scan_results, stats_dict)
+    """
     log("", "INFO")
-
-    # Step 2: Scan extensions using vscan.dev API
     log("Step 2: Scanning extensions for vulnerabilities...", "INFO")
+
     if cache_manager and not args.refresh_cache:
         log(f"Cache enabled (max age: {args.cache_max_age} days)", "INFO")
     elif args.no_cache:
@@ -282,11 +281,14 @@ def main():
     )
 
     scan_results = []
-    vulnerabilities_found = 0
-    successful_scans = 0
-    failed_scans = 0
-    cached_results = 0  # Extensions loaded from cache
-    fresh_scans = 0  # Extensions scanned fresh from API
+    stats = {
+        'vulnerabilities_found': 0,
+        'successful_scans': 0,
+        'failed_scans': 0,
+        'cached_results': 0,
+        'fresh_scans': 0,
+        'api_client': api_client
+    }
 
     for idx, ext in enumerate(extensions, 1):
         progress_prefix = f"[{idx}/{len(extensions)}]"
@@ -304,119 +306,129 @@ def main():
 
         if cached_result:
             # Use cached result
-            log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO", newline=False)
+            _process_cached_result(cached_result, ext, extension_id, version,
+                                   progress_prefix, verbose, stats, scan_results)
+        else:
+            # Scan fresh from API
+            _scan_extension_fresh(ext, extension_id, version, progress_prefix,
+                                 api_client, cache_manager, verbose, stats, scan_results)
 
-            # Merge extension metadata with cached result
-            cached_result.update({
-                'id': ext['id'],
-                'version': ext['version'],
-                'path': ext['path']
-            })
+    log("", "INFO")
+    return scan_results, stats
 
-            scan_results.append(cached_result)
-            cached_results += 1
-            successful_scans += 1
 
-            vuln_count = cached_result.get('vulnerabilities', {}).get('count', 0)
+def _process_cached_result(cached_result, ext, extension_id, version,
+                           progress_prefix, verbose, stats, scan_results):
+    """Process a cached scan result."""
+    log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO", newline=False)
+
+    # Merge extension metadata with cached result
+    cached_result.update({
+        'id': ext['id'],
+        'version': ext['version'],
+        'path': ext['path']
+    })
+
+    scan_results.append(cached_result)
+    stats['cached_results'] += 1
+    stats['successful_scans'] += 1
+
+    vuln_count = cached_result.get('vulnerabilities', {}).get('count', 0)
+    if vuln_count > 0:
+        stats['vulnerabilities_found'] += vuln_count
+        if verbose:
+            log(" ⚠", "WARNING")
+        else:
+            log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
+    else:
+        log(" ✓", "SUCCESS")
+
+
+def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
+                          api_client, cache_manager, verbose, stats, scan_results):
+    """Scan an extension fresh from the API."""
+    log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO", newline=False)
+
+    # Define progress callback
+    def progress_callback(progress_pct, message):
+        """Show progress updates during analysis."""
+        if progress_pct > 0 and progress_pct < 100:
+            log(f" ({progress_pct}%: {message})", "INFO", newline=False)
+
+    try:
+        result = api_client.scan_extension(
+            ext['publisher'],
+            ext['name'],
+            progress_callback=progress_callback if verbose else None
+        )
+
+        # Merge extension metadata with scan result
+        result.update({
+            'id': ext['id'],
+            'version': ext['version'],
+            'path': ext['path']
+        })
+
+        scan_results.append(result)
+
+        # Save to cache if successful
+        if result.get('scan_status') == 'success' and cache_manager:
+            cache_manager.save_result(extension_id, version, result)
+
+        # Check for vulnerabilities
+        if result.get('scan_status') == 'success':
+            stats['successful_scans'] += 1
+            stats['fresh_scans'] += 1
+
+            vuln_count = result.get('vulnerabilities', {}).get('count', 0)
             if vuln_count > 0:
-                vulnerabilities_found += vuln_count
-                # In verbose mode, print on same line; in non-verbose, print full info
+                stats['vulnerabilities_found'] += vuln_count
                 if verbose:
-                    log(" ⚠", "WARNING")
+                    log(" ⚠ Vulnerabilities found", "WARNING")
                 else:
                     log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
             else:
                 log(" ✓", "SUCCESS")
-
         else:
-            # Scan fresh from API
-            log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO", newline=False)
+            stats['failed_scans'] += 1
+            error_msg = result.get('error', 'Unknown error')
+            if verbose:
+                log(f" ✗ {error_msg}", "ERROR")
+            else:
+                log(f"✗ {extension_id}: {error_msg}", "ERROR")
 
-            # Define progress callback for this extension
-            scan_start_time = time.time()
-            did_show_progress = [False]  # Use list to allow modification in nested function
+    except Exception as e:
+        stats['failed_scans'] += 1
+        if verbose:
+            log(f" ✗ Error: {e}", "ERROR")
+        else:
+            log(f"✗ {extension_id}: Error - {e}", "ERROR")
+        scan_results.append({
+            'id': ext['id'],
+            'name': ext['name'],
+            'publisher': ext['publisher'],
+            'version': ext['version'],
+            'path': ext['path'],
+            'scan_status': 'error',
+            'error': str(e)
+        })
 
-            def progress_callback(progress_pct, message):
-                """Show progress updates during analysis."""
-                if progress_pct > 0 and progress_pct < 100:
-                    did_show_progress[0] = True
-                    log(f" ({progress_pct}%: {message})", "INFO", newline=False)
 
-            try:
-                result = api_client.scan_extension(
-                    ext['publisher'],
-                    ext['name'],
-                    progress_callback=progress_callback if verbose else None
-                )
+def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data):
+    """
+    Generate and write output (JSON or HTML).
 
-                scan_duration = time.time() - scan_start_time
+    Args:
+        scan_results: List of scan result dicts
+        scan_duration: Total scan duration in seconds
+        scan_timestamp: ISO timestamp of scan start
+        args: Parsed command-line arguments
+        cache_stats_data: Cache statistics dict
 
-                # Merge extension metadata with scan result
-                result.update({
-                    'id': ext['id'],
-                    'version': ext['version'],
-                    'path': ext['path']
-                })
-
-                scan_results.append(result)
-
-                # Save to cache if successful
-                if result.get('scan_status') == 'success' and cache_manager:
-                    cache_manager.save_result(extension_id, version, result)
-
-                # Check for vulnerabilities
-                if result.get('scan_status') == 'success':
-                    successful_scans += 1
-                    fresh_scans += 1
-
-                    vuln_count = result.get('vulnerabilities', {}).get('count', 0)
-                    if vuln_count > 0:
-                        vulnerabilities_found += vuln_count
-                        # In verbose mode, print on same line; in non-verbose, print full info
-                        if verbose:
-                            log(" ⚠ Vulnerabilities found", "WARNING")
-                        else:
-                            log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
-                    else:
-                        log(" ✓", "SUCCESS")
-                else:
-                    failed_scans += 1
-                    error_msg = result.get('error', 'Unknown error')
-                    # In verbose mode, print on same line; in non-verbose, print full info
-                    if verbose:
-                        log(f" ✗ {error_msg}", "ERROR")
-                    else:
-                        log(f"✗ {extension_id}: {error_msg}", "ERROR")
-
-            except Exception as e:
-                failed_scans += 1
-                # In verbose mode, print on same line; in non-verbose, print full info
-                if verbose:
-                    log(f" ✗ Error: {e}", "ERROR")
-                else:
-                    log(f"✗ {extension_id}: Error - {e}", "ERROR")
-                scan_results.append({
-                    'id': ext['id'],
-                    'name': ext['name'],
-                    'publisher': ext['publisher'],
-                    'version': ext['version'],
-                    'path': ext['path'],
-                    'scan_status': 'error',
-                    'error': str(e)
-                })
-
-    log("", "INFO")
-
-    # Step 3: Generate output
-    scan_duration = time.time() - start_time
+    Returns:
+        Formatted results dict
+    """
     log("Step 3: Generating results...", "INFO")
-
-    # Prepare cache statistics
-    cache_stats_data = {
-        "from_cache": cached_results,
-        "fresh_scans": fresh_scans,
-        "cache_hit_rate": round((cached_results / len(scan_results) * 100), 1) if len(scan_results) > 0 else 0.0
-    }
 
     # Detect output format
     is_html_output = args.output and args.output.endswith('.html')
@@ -435,89 +447,191 @@ def main():
 
     # Output results
     if args.output:
-        try:
-            # Validate output path using centralized validation
-            if not validate_path(args.output):
-                log("Error: Invalid output path", "ERROR")
-                log(sanitize_string(f"Path validation failed for: {args.output}", max_length=100), "ERROR")
-                return 2
-
-            output_path = Path(args.output).resolve()
-
-            # Create parent directories with restricted permissions
-            output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
-
-            # Generate HTML or JSON based on file extension
-            if is_html_output:
-                from html_report_generator import HTMLReportGenerator
-
-                log("Generating HTML report...", "INFO")
-                html_gen = HTMLReportGenerator()
-                html_content = html_gen.generate_report(results)
-
-                with open(output_path, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-
-                log(f"HTML report written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
-            else:
-                # JSON output
-                with open(output_path, 'w') as f:
-                    json.dump(results, f, indent=2)
-
-                log(f"Results written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
-
-        except Exception as e:
-            log(f"Error writing output file: {type(e).__name__}", "ERROR")
-            if verbose:
-                log(sanitize_string(f"Details: {str(e)}", max_length=200), "ERROR")
-            return 2
+        _write_output_file(args.output, results, is_html_output)
     else:
         # Output to stdout
         print(json.dumps(results, indent=2))
 
-    # Summary (always show, not just in verbose mode)
+    return results
+
+
+def _write_output_file(output_path_str, results, is_html_output):
+    """Write output to file (JSON or HTML)."""
+    # Validate output path
+    if not validate_path(output_path_str):
+        log("Error: Invalid output path", "ERROR")
+        log(sanitize_string(f"Path validation failed for: {output_path_str}", max_length=100), "ERROR")
+        raise ValueError("Invalid output path")
+
+    output_path = Path(output_path_str).resolve()
+
+    # Create parent directories with restricted permissions
+    output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+
+    # Generate HTML or JSON based on file extension
+    if is_html_output:
+        from html_report_generator import HTMLReportGenerator
+
+        log("Generating HTML report...", "INFO")
+        html_gen = HTMLReportGenerator()
+        html_content = html_gen.generate_report(results)
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+
+        log(f"HTML report written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
+    else:
+        # JSON output
+        with open(output_path, 'w') as f:
+            json.dump(results, f, indent=2)
+
+        log(f"Results written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
+
+
+def print_summary(extensions, stats, scan_duration):
+    """
+    Print scan summary statistics.
+
+    Args:
+        extensions: List of discovered extensions
+        stats: Scan statistics dict
+        scan_duration: Total scan duration in seconds
+    """
     log("", "INFO", force=True)
     log("=" * 60, "INFO", force=True)
     log("Scan Complete!", "SUCCESS", force=True)
     log(f"Total extensions scanned: {len(extensions)}", "INFO", force=True)
-    log(f"Successful scans: {successful_scans}", "INFO", force=True)
-    log(f"Failed scans: {failed_scans}", "INFO" if failed_scans == 0 else "WARNING", force=True)
+    log(f"Successful scans: {stats['successful_scans']}", "INFO", force=True)
+    log(f"Failed scans: {stats['failed_scans']}",
+        "INFO" if stats['failed_scans'] == 0 else "WARNING", force=True)
 
-    # Cache statistics (always show, not just in verbose mode)
-    if cache_manager and (cached_results > 0 or fresh_scans > 0):
+    # Cache statistics
+    if stats.get('cached_results', 0) > 0 or stats.get('fresh_scans', 0) > 0:
         log("", "INFO", force=True)
         log("Cache Statistics:", "INFO", force=True)
-        log(f"  From cache: {cached_results} (⚡ instant)", "INFO", force=True)
-        log(f"  Fresh scans: {fresh_scans} (🔍 API calls)", "INFO", force=True)
+        log(f"  From cache: {stats['cached_results']} (⚡ instant)", "INFO", force=True)
+        log(f"  Fresh scans: {stats['fresh_scans']} (🔍 API calls)", "INFO", force=True)
         if len(extensions) > 0:
-            cache_hit_rate = (cached_results / len(extensions)) * 100
+            cache_hit_rate = (stats['cached_results'] / len(extensions)) * 100
             log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
 
     # Retry statistics
-    retry_stats = api_client.get_retry_stats()
-    if retry_stats['total_retries'] > 0:
-        log("", "INFO")
-        log("Retry Statistics:", "INFO")
-        log(f"  Total retry attempts: {retry_stats['total_retries']}", "INFO")
-        log(f"  Successful retries: {retry_stats['successful_retries']}", "INFO")
-        log(f"  Failed after retries: {retry_stats['failed_after_retries']}", "INFO" if retry_stats['failed_after_retries'] == 0 else "WARNING")
+    if 'api_client' in stats:
+        retry_stats = stats['api_client'].get_retry_stats()
+        if retry_stats['total_retries'] > 0:
+            log("", "INFO")
+            log("Retry Statistics:", "INFO")
+            log(f"  Total retry attempts: {retry_stats['total_retries']}", "INFO")
+            log(f"  Successful retries: {retry_stats['successful_retries']}", "INFO")
+            log(f"  Failed after retries: {retry_stats['failed_after_retries']}",
+                "INFO" if retry_stats['failed_after_retries'] == 0 else "WARNING")
 
     log("", "INFO", force=True)
-    log(f"Vulnerabilities found: {vulnerabilities_found}", "INFO" if vulnerabilities_found == 0 else "WARNING", force=True)
+    log(f"Vulnerabilities found: {stats['vulnerabilities_found']}",
+        "INFO" if stats['vulnerabilities_found'] == 0 else "WARNING", force=True)
     log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
     if len(extensions) > 0:
         avg_time = scan_duration / len(extensions)
         log(f"Average time per extension: {avg_time:.1f}s", "INFO", force=True)
     log("=" * 60, "INFO", force=True)
 
+
+def calculate_exit_code(vulnerabilities_found):
+    """
+    Calculate exit code based on scan results.
+
+    Args:
+        vulnerabilities_found: Number of vulnerabilities found
+
+    Returns:
+        Exit code (0 = clean, 1 = vulnerabilities found)
+    """
     # Exit codes:
     # 0 - Scan completed, no vulnerabilities
     # 1 - Scan completed, vulnerabilities found
-    # 2 - Scan failed
-    if vulnerabilities_found > 0:
-        return 1
-    else:
+    # 2 - Scan failed (handled elsewhere)
+    return 1 if vulnerabilities_found > 0 else 0
+
+
+def main():
+    """Main entry point for the scanner - orchestration only."""
+    args = parse_arguments()
+
+    # Setup logging
+    verbose = args.verbose
+    setup_logging(verbose)
+
+    # Initialize cache manager
+    cache_manager = CacheManager(cache_dir=args.cache_dir) if not args.no_cache else None
+
+    # Handle cache-only commands
+    cache_exit_code = handle_cache_commands(args, cache_manager)
+    if cache_exit_code is not None:
+        return cache_exit_code
+
+    # Print banner
+    log("VS Code Extension Scanner", "INFO")
+    log(f"Version {VERSION}", "INFO")
+    log("=" * 60, "INFO")
+    log("", "INFO")
+
+    start_time = time.time()
+    scan_timestamp = datetime.utcnow().isoformat() + 'Z'
+
+    # Step 1: Discover extensions
+    try:
+        extensions, extensions_dir = discover_extensions(args)
+    except FileNotFoundError as e:
+        log(sanitize_string(str(e), max_length=200), "ERROR")
+        log("", "ERROR")
+        log("Please ensure VS Code is installed or specify a custom directory with --extensions-dir", "ERROR")
+        return 2
+    except Exception as e:
+        log(f"Error discovering extensions: {sanitize_string(str(e), max_length=200)}", "ERROR")
+        return 2
+
+    # Handle empty extension list
+    if len(extensions) == 0:
+        log("No extensions found to scan", "WARNING")
+        formatter = OutputFormatter()
+        results = formatter.format_output([], scan_timestamp, 0)
+
+        if args.output:
+            try:
+                _write_output_file(args.output, results, args.output.endswith('.html'))
+            except Exception as e:
+                log(f"Error writing output file: {type(e).__name__}", "ERROR")
+                return 2
+        else:
+            print(json.dumps(results, indent=2))
+
         return 0
+
+    # Step 2: Scan extensions
+    scan_results, stats = scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp)
+
+    # Step 3: Generate output
+    scan_duration = time.time() - start_time
+
+    cache_stats_data = {
+        "from_cache": stats['cached_results'],
+        "fresh_scans": stats['fresh_scans'],
+        "cache_hit_rate": round((stats['cached_results'] / len(scan_results) * 100), 1) if len(scan_results) > 0 else 0.0
+    }
+
+    try:
+        results = generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data)
+    except Exception as e:
+        log(f"Error generating output: {type(e).__name__}", "ERROR")
+        if verbose:
+            log(sanitize_string(f"Details: {str(e)}", max_length=200), "ERROR")
+        return 2
+
+    # Print summary
+    print_summary(extensions, stats, scan_duration)
+
+    # Calculate and return exit code
+    return calculate_exit_code(stats['vulnerabilities_found'])
 
 
 if __name__ == "__main__":
