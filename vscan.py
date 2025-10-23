@@ -443,14 +443,6 @@ def main():
                 return 2
 
             output_path = Path(args.output).resolve()
-            cwd = Path.cwd().resolve()
-
-            # Double-check path is within current directory (validate_path already checks this)
-            try:
-                output_path.relative_to(cwd)
-            except ValueError:
-                log("Error: Output path must be within current directory", "ERROR")
-                return 2
 
             # Create parent directories with restricted permissions
             output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)

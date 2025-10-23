@@ -32,13 +32,6 @@ class CacheManager:
 
             cache_path = Path(cache_dir).expanduser().resolve()
 
-            # Ensure within user's home directory
-            home = Path.home().resolve()
-            try:
-                cache_path.relative_to(home)
-            except ValueError:
-                raise ValueError(f"Cache directory must be within home directory: {cache_path}")
-
             self.cache_dir = cache_path
         else:
             self.cache_dir = Path.home() / ".vscan"
