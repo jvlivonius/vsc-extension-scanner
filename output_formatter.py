@@ -96,6 +96,7 @@ class OutputFormatter:
             "successful_scans": successful,
             "failed_scans": failed,
             "vulnerabilities_found": total_vulnerabilities,
+            "critical_risk_extensions": risk_counts.get("critical", 0),
             "high_risk_extensions": risk_counts.get("high", 0),
             "medium_risk_extensions": risk_counts.get("medium", 0),
             "low_risk_extensions": risk_counts.get("low", 0),

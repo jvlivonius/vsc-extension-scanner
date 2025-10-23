@@ -6,9 +6,14 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 4 Complete + Retry Mechanism (v2.2)
+**Current Status:** Phase 4 Complete + HTML Report Feature (v2.2)
 
 **Latest Updates (v2.2 - 2025-10-23):**
+- ✅ **HTML Report Generation** (NEW!) - Interactive, self-contained HTML reports
+  - Auto-detected from `.html` file extension in `--output` flag
+  - Includes sortable tables, risk filters, search, and expandable details
+  - Data visualizations with pie charts, gauges, and bar charts
+  - Print-optimized with embedded CSS/JS (no external dependencies)
 - ✅ Implemented intelligent retry mechanism for transient API errors
 - ✅ Exponential backoff with jitter (2s, 4s, 8s delays)
 - ✅ Retry-After header support for rate limiting compliance
@@ -39,6 +44,10 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 - **[docs/phases/PHASE3_REQUIREMENTS.md](docs/phases/PHASE3_REQUIREMENTS.md)** - Phase 3: Testing & Refinement
 - **[docs/phases/PHASE4_REQUIREMENTS.md](docs/phases/PHASE4_REQUIREMENTS.md)** - Phase 4: Enhanced Data Integration
 
+### Features
+- **[docs/features/HTML_REPORT_SPECIFICATION.md](docs/features/HTML_REPORT_SPECIFICATION.md)** - HTML report feature spec (v2.2)
+- **[docs/features/RETRY_MECHANISM.md](docs/features/RETRY_MECHANISM.md)** - Retry mechanism documentation (v2.2)
+
 ### Research & Testing
 - **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API documentation
 - **[docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)** - Testing checklist
@@ -55,20 +64,22 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 - **Database:** SQLite3 (standard library, for caching)
 - **CLI Parsing:** `argparse` (standard library)
 - **Distribution:** Standalone `.py` script (no installation required)
-- **Output Format:** JSON
+- **Output Format:** JSON and HTML (self-contained with embedded CSS/JS)
 
 ## Development Commands
 
 ```bash
 # Testing (Phase 1)
 python3 tests/test_api.py          # API validation tests
+python3 tests/test_retry.py        # Retry mechanism tests
 python3 tests/test_security.py     # Security vulnerability tests
 
 # Phase 2+: Run the tool (v2.2 implemented)
 python vscan.py                          # Standard scan
 python vscan.py --detailed               # Detailed scan with full data
 python vscan.py --extensions-dir /path   # Custom directory
-python vscan.py --output results.json    # Save to file
+python vscan.py --output results.json    # Save JSON to file
+python vscan.py --output report.html     # Generate HTML report (auto-enables --detailed)
 python vscan.py --verbose                # Detailed progress
 python vscan.py --delay 2.0              # Custom delay
 
@@ -347,7 +358,8 @@ The following features are explicitly **out of scope**:
 - Support for VS Code variants (VSCodium, Cursor, etc.)
 - CI/CD pipeline integration
 - Scheduled/automated scanning
-- HTML or PDF report generation
+- ~~HTML report generation~~ ✅ **IMPLEMENTED in v2.2**
+- PDF report generation
 - Historical vulnerability tracking
 - Extension installation/removal functionality
 - GUI interface
@@ -376,6 +388,7 @@ vscan.py                     # Main CLI entry point (370 lines)
   ├── extension_discovery.py # Find and parse extensions (180 lines)
   ├── vscan_api.py           # vscan.dev API client (320 lines)
   ├── output_formatter.py    # Generate JSON output (180 lines)
+  ├── html_report_generator.py # Generate HTML reports (2,300 lines) [NEW]
   ├── cache_manager.py       # SQLite caching system (360 lines)
   └── utils.py               # Shared utilities (180 lines)
 ```
@@ -385,6 +398,7 @@ vscan.py                     # Main CLI entry point (370 lines)
 ✅ Extension discovery for all platforms (macOS, Windows, Linux)
 ✅ vscan.dev API integration with progress callbacks
 ✅ JSON output generation matching PRD specification
+✅ **HTML report generation** (interactive, self-contained reports) [NEW]
 ✅ Error handling and logging system
 ✅ Progress indicators with visual symbols
 ✅ CLI argument parsing with 12+ arguments

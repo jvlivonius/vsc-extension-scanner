@@ -57,7 +57,7 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         '--output', '-o',
         type=str,
         default=None,
-        help='Output file path for JSON results (default: stdout)'
+        help='Output file path for results (.json or .html, default: stdout)'
     )
 
     parser.add_argument(
@@ -287,7 +287,11 @@ def main():
             vuln_count = cached_result.get('vulnerabilities', {}).get('count', 0)
             if vuln_count > 0:
                 vulnerabilities_found += vuln_count
-                log(" ⚠", "WARNING")
+                # In verbose mode, print on same line; in non-verbose, print full info
+                if verbose:
+                    log(" ⚠", "WARNING")
+                else:
+                    log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
             else:
                 log(" ✓", "SUCCESS")
 
@@ -335,16 +339,29 @@ def main():
                     vuln_count = result.get('vulnerabilities', {}).get('count', 0)
                     if vuln_count > 0:
                         vulnerabilities_found += vuln_count
-                        log(" ⚠ Vulnerabilities found", "WARNING")
+                        # In verbose mode, print on same line; in non-verbose, print full info
+                        if verbose:
+                            log(" ⚠ Vulnerabilities found", "WARNING")
+                        else:
+                            log(f"⚠ {extension_id}: {vuln_count} vulnerability(ies) found", "WARNING")
                     else:
                         log(" ✓", "SUCCESS")
                 else:
                     failed_scans += 1
-                    log(f" ✗ {result.get('error', 'Unknown error')}", "ERROR")
+                    error_msg = result.get('error', 'Unknown error')
+                    # In verbose mode, print on same line; in non-verbose, print full info
+                    if verbose:
+                        log(f" ✗ {error_msg}", "ERROR")
+                    else:
+                        log(f"✗ {extension_id}: {error_msg}", "ERROR")
 
             except Exception as e:
                 failed_scans += 1
-                log(f" ✗ Error: {e}", "ERROR")
+                # In verbose mode, print on same line; in non-verbose, print full info
+                if verbose:
+                    log(f" ✗ Error: {e}", "ERROR")
+                else:
+                    log(f"✗ {extension_id}: Error - {e}", "ERROR")
                 scan_results.append({
                     'id': ext['id'],
                     'name': ext['name'],
@@ -368,12 +385,18 @@ def main():
         "cache_hit_rate": round((cached_results / len(scan_results) * 100), 1) if len(scan_results) > 0 else 0.0
     }
 
+    # Detect output format
+    is_html_output = args.output and args.output.endswith('.html')
+
+    # For HTML output, always use detailed mode
+    use_detailed = args.detailed or is_html_output
+
     formatter = OutputFormatter()
     results = formatter.format_output(
         scan_results,
         scan_timestamp,
         scan_duration,
-        detailed=args.detailed,
+        detailed=use_detailed,
         cache_stats=cache_stats_data if not args.no_cache else None
     )
 
@@ -399,11 +422,25 @@ def main():
             # Create parent directories with restricted permissions
             output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
 
-            # Write with exclusive create to prevent race conditions
-            with open(output_path, 'w') as f:
-                json.dump(results, f, indent=2)
+            # Generate HTML or JSON based on file extension
+            if is_html_output:
+                from html_report_generator import HTMLReportGenerator
 
-            log(f"Results written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
+                log("Generating HTML report...", "INFO")
+                html_gen = HTMLReportGenerator()
+                html_content = html_gen.generate_report(results)
+
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+
+                log(f"HTML report written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
+            else:
+                # JSON output
+                with open(output_path, 'w') as f:
+                    json.dump(results, f, indent=2)
+
+                log(f"Results written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
+
         except Exception as e:
             log(f"Error writing output file: {type(e).__name__}", "ERROR")
             if verbose:
@@ -413,23 +450,23 @@ def main():
         # Output to stdout
         print(json.dumps(results, indent=2))
 
-    # Summary
-    log("", "INFO")
-    log("=" * 60, "INFO")
-    log("Scan Complete!", "SUCCESS")
-    log(f"Total extensions scanned: {len(extensions)}", "INFO")
-    log(f"Successful scans: {successful_scans}", "INFO")
-    log(f"Failed scans: {failed_scans}", "INFO" if failed_scans == 0 else "WARNING")
+    # Summary (always show, not just in verbose mode)
+    log("", "INFO", force=True)
+    log("=" * 60, "INFO", force=True)
+    log("Scan Complete!", "SUCCESS", force=True)
+    log(f"Total extensions scanned: {len(extensions)}", "INFO", force=True)
+    log(f"Successful scans: {successful_scans}", "INFO", force=True)
+    log(f"Failed scans: {failed_scans}", "INFO" if failed_scans == 0 else "WARNING", force=True)
 
-    # Cache statistics
+    # Cache statistics (always show, not just in verbose mode)
     if cache_manager and (cached_results > 0 or fresh_scans > 0):
-        log("", "INFO")
-        log("Cache Statistics:", "INFO")
-        log(f"  From cache: {cached_results} (⚡ instant)", "INFO")
-        log(f"  Fresh scans: {fresh_scans} (🔍 API calls)", "INFO")
+        log("", "INFO", force=True)
+        log("Cache Statistics:", "INFO", force=True)
+        log(f"  From cache: {cached_results} (⚡ instant)", "INFO", force=True)
+        log(f"  Fresh scans: {fresh_scans} (🔍 API calls)", "INFO", force=True)
         if len(extensions) > 0:
             cache_hit_rate = (cached_results / len(extensions)) * 100
-            log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO")
+            log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
 
     # Retry statistics
     retry_stats = api_client.get_retry_stats()
@@ -440,13 +477,13 @@ def main():
         log(f"  Successful retries: {retry_stats['successful_retries']}", "INFO")
         log(f"  Failed after retries: {retry_stats['failed_after_retries']}", "INFO" if retry_stats['failed_after_retries'] == 0 else "WARNING")
 
-    log("", "INFO")
-    log(f"Vulnerabilities found: {vulnerabilities_found}", "INFO" if vulnerabilities_found == 0 else "WARNING")
-    log(f"Scan duration: {scan_duration:.1f} seconds", "INFO")
+    log("", "INFO", force=True)
+    log(f"Vulnerabilities found: {vulnerabilities_found}", "INFO" if vulnerabilities_found == 0 else "WARNING", force=True)
+    log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
     if len(extensions) > 0:
         avg_time = scan_duration / len(extensions)
-        log(f"Average time per extension: {avg_time:.1f}s", "INFO")
-    log("=" * 60, "INFO")
+        log(f"Average time per extension: {avg_time:.1f}s", "INFO", force=True)
+    log("=" * 60, "INFO", force=True)
 
     # Exit codes:
     # 0 - Scan completed, no vulnerabilities

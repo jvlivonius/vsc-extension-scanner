@@ -38,9 +38,7 @@ env/
 # Cache and output files
 .vscan/
 cache.db
-results.json
 *.json
-!package.json
 !tests/**/*.json
 
 # Testing
@@ -71,3 +69,10 @@ dmypy.json
 *.bak
 *.swp
 *~
+
+# Test and temporary output folder
+temp/
+
+# Node modules
+node_modules/
+package-lock.json
