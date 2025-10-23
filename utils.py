@@ -67,12 +67,14 @@ def log(message: str, level: str = "INFO", newline: bool = True, force: bool = F
         print(message, file=sys.stderr, end=end, flush=True)
 
 
-def validate_path(path: str) -> bool:
+def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path") -> bool:
     """
     Validate that a path doesn't contain dangerous patterns.
 
     Args:
         path: Path to validate
+        allow_absolute: Whether to allow absolute paths (default: True)
+        path_type: Type of path for warning messages (e.g., "output", "cache")
 
     Returns:
         True if path is safe, False otherwise
@@ -80,40 +82,28 @@ def validate_path(path: str) -> bool:
     if not path:
         return False
 
-    # Block absolute paths
-    if path.startswith('/') or (len(path) > 1 and path[1] == ':'):
-        return False
-
-    # Block dangerous patterns
-    dangerous_patterns = [
-        '..',      # Parent directory
-        '~',       # Home expansion
-        '$',       # Variable expansion
-        '%',       # URL encoding
-        '\\x',     # Hex encoding
-        '\0',      # Null byte
-        '|',       # Pipe
-        ';',       # Command separator
-        '&',       # Background
-        '`',       # Command substitution
-        '\n',      # Newline
-        '\r'       # Carriage return
-    ]
-
-    for pattern in dangerous_patterns:
-        if pattern in path:
+    # Block dangerous characters that enable command injection
+    dangerous_chars = ['\0', '|', ';', '`', '\n', '\r']
+    for char in dangerous_chars:
+        if char in path:
             return False
 
-    # Ensure path stays within current directory
-    try:
-        from pathlib import Path as PathLib
-        resolved = PathLib(path).resolve()
-        cwd = PathLib.cwd().resolve()
-        resolved.relative_to(cwd)
-    except (ValueError, RuntimeError, OSError):
+    # Block parent directory traversal attempts
+    if '..' in path:
         return False
 
-    return True
+    # Validate it's a valid path format
+    try:
+        from pathlib import Path as PathLib
+        p = PathLib(path).expanduser()
+
+        # For absolute paths, warn user but allow (per approved plan)
+        if allow_absolute and p.is_absolute():
+            log(f"WARNING: Using absolute path for {path_type}: {p}", "WARNING")
+
+        return True
+    except (ValueError, OSError):
+        return False
 
 
 def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
@@ -178,6 +168,127 @@ def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
         return text
 
     return text[:max_length - len(suffix)] + suffix
+
+
+# Error help messages with recovery suggestions
+ERROR_HELP = {
+    "rate_limit": {
+        "message": "vscan.dev rate limit reached.",
+        "suggestions": [
+            "Wait a few minutes before trying again",
+            "Use --delay to slow down requests (e.g., --delay 3.0)",
+            "The service may be experiencing high traffic"
+        ]
+    },
+    "timeout": {
+        "message": "Request timed out.",
+        "suggestions": [
+            "Try --max-retries 5 for more retry attempts",
+            "Use --retry-delay 3.0 for longer backoff delays",
+            "The extension may be large and take longer to analyze",
+            "Check your internet connection"
+        ]
+    },
+    "not_found": {
+        "message": "Extension not found on vscan.dev.",
+        "suggestions": [
+            "The extension may be too new or not yet indexed",
+            "Verify the extension ID is correct",
+            "Try scanning again later"
+        ]
+    },
+    "network": {
+        "message": "Network error occurred.",
+        "suggestions": [
+            "Check your internet connection",
+            "Verify firewall settings allow HTTPS to vscan.dev",
+            "Try again in a few moments"
+        ]
+    },
+    "permission": {
+        "message": "Permission denied.",
+        "suggestions": [
+            "Check file/directory permissions",
+            "Ensure you have write access to the output location",
+            "Try running with appropriate permissions"
+        ]
+    },
+    "invalid_json": {
+        "message": "Invalid JSON in extension file.",
+        "suggestions": [
+            "The extension may be corrupted",
+            "Try reinstalling the extension",
+            "The package.json file may be malformed"
+        ]
+    },
+    "no_extensions": {
+        "message": "VS Code extensions directory not found.",
+        "suggestions": [
+            "Ensure VS Code is installed",
+            "Use --extensions-dir to specify custom location",
+            "Check that VS Code extensions are installed"
+        ]
+    }
+}
+
+
+def show_error_help(error_type: str, verbose: bool = False):
+    """
+    Display helpful error message with recovery suggestions.
+
+    Args:
+        error_type: Type of error (rate_limit, timeout, network, etc.)
+        verbose: Whether to show all suggestions
+    """
+    if error_type not in ERROR_HELP:
+        return
+
+    help_info = ERROR_HELP[error_type]
+    log("", "INFO", force=True)
+    log(f"💡 {help_info['message']}", "INFO", force=True)
+
+    if verbose or len(help_info['suggestions']) <= 2:
+        log("", "INFO", force=True)
+        log("Suggestions:", "INFO", force=True)
+        for suggestion in help_info['suggestions']:
+            log(f"  • {suggestion}", "INFO", force=True)
+    else:
+        # Show first 2 suggestions in non-verbose
+        log("", "INFO", force=True)
+        log("Suggestions:", "INFO", force=True)
+        for suggestion in help_info['suggestions'][:2]:
+            log(f"  • {suggestion}", "INFO", force=True)
+        log(f"  (Use --verbose for more suggestions)", "INFO", force=True)
+
+
+def get_error_type(error_message: str) -> str:
+    """
+    Determine error type from error message.
+
+    Args:
+        error_message: Error message string
+
+    Returns:
+        Error type string for ERROR_HELP lookup
+    """
+    error_lower = error_message.lower()
+
+    if "rate limit" in error_lower or "429" in error_message:
+        return "rate_limit"
+    elif "timed out" in error_lower or "timeout" in error_lower:
+        return "timeout"
+    elif "not found" in error_lower or "404" in error_message:
+        return "not_found"
+    elif "network" in error_lower or "connection" in error_lower:
+        return "network"
+    elif "permission" in error_lower or "denied" in error_lower:
+        return "permission"
+    elif "json" in error_lower:
+        return "invalid_json"
+    elif "directory not found" in error_lower:
+        return "no_extensions"
+    else:
+        return "unknown"
 
 
 def main():

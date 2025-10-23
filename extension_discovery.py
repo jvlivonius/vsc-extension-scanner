@@ -46,13 +46,6 @@ class ExtensionDiscovery:
 
             custom_path = Path(self.custom_dir).expanduser().resolve()
 
-            # Ensure path is within user's home directory
-            home = Path.home().resolve()
-            try:
-                custom_path.relative_to(home)
-            except ValueError:
-                raise FileNotFoundError(f"Custom extensions directory must be within home directory: {custom_path}")
-
             if not custom_path.exists():
                 raise FileNotFoundError(f"Custom extensions directory not found: {custom_path}")
             if not custom_path.is_dir():
@@ -144,13 +137,9 @@ class ExtensionDiscovery:
             if file_size > MAX_PACKAGE_JSON_SIZE:
                 raise Exception(f"package.json too large: {file_size} bytes (max: {MAX_PACKAGE_JSON_SIZE})")
 
-            # Read with size limit
+            # Read and parse
             with open(package_json_path, 'r', encoding='utf-8') as f:
-                content = f.read(MAX_PACKAGE_JSON_SIZE + 1)
-
-                if len(content) > MAX_PACKAGE_JSON_SIZE:
-                    raise Exception(f"package.json exceeds size limit ({MAX_PACKAGE_JSON_SIZE} bytes)")
-
+                content = f.read()
                 package_data = json.loads(content)
 
                 # Validate it's a dictionary
