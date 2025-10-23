@@ -465,7 +465,7 @@ def cache_connection(self):
 
 ---
 
-### 3.3 Optimize JSON Parsing (MEDIUM PRIORITY)
+### 3.3 Optimize JSON Parsing ~~(MEDIUM PRIORITY)~~ **REJECTED**
 
 **Issue:** Full response parsing happens even when data not needed
 
@@ -474,34 +474,18 @@ def cache_connection(self):
 - Standard mode doesn't need detailed parsing
 - Raw response stored in memory unnecessarily
 
-**Files Affected:**
-- `vscan_api.py:464-696, 698-803`
+**Decision Made:**
+❌ **NOT implementing conditional parsing**
 
-**Recommended Solution:**
-```python
-def scan_extension(self, publisher, name, detailed=False, progress_callback=None):
-    """Scan with optional detailed parsing."""
-    # ... submit and poll ...
+**Rationale:**
+- HTML report generation requires full detailed data from cache
+- Conditional parsing would require re-scanning to generate HTML reports
+- Cache needs complete data regardless of output mode
+- Complexity not worth the minimal performance gain
+- Full parsing is needed for cache flexibility
 
-    if detailed:
-        # Full parsing
-        result["metadata"] = self._parse_extension_metadata(api_results)
-        result["security"] = self._parse_security_details(api_results)
-        result["dependencies"] = self._parse_dependencies(api_results)
-        result["risk_factors"] = self._parse_risk_factors(api_results)
-    else:
-        # Minimal parsing - only what's needed for standard output
-        result["security_score"] = api_results.get("securityScore", {}).get("score")
-        result["risk_level"] = api_results.get("securityScore", {}).get("riskLevel")
-        # ... only essential fields ...
-
-    # Only store raw_response in detailed mode
-    if detailed:
-        result["raw_response"] = api_results
-```
-
-**Impact:** Medium - reduces memory usage and processing time
-**Effort:** 2 hours
+**Status:** REJECTED - Keep full parsing for all scans
+**Effort Saved:** 2 hours
 
 ---
 
@@ -868,17 +852,16 @@ def test_cache_hit_workflow():
 
 **Total: ~15 hours** (removed parallel scanning)
 
-### Phase 2 - Medium Priority (Sprint 2: ~21 hours)
+### Phase 2 - Medium Priority (Sprint 2: ~19 hours)
 1. ✅ Error message sanitization (2h)
 2. ✅ Extension filtering with AND logic (4h)
 3. ✅ Improve cache UX (3h)
 4. ✅ Reduce cache database overhead (3h)
-5. ✅ Optimize JSON parsing (2h)
-6. ✅ Configuration file support (JSON in ~/.vscan/) (4h)
-7. ✅ Simplify retry logic (2h)
-8. ✅ Simplify logging (1h)
+5. ✅ Configuration file support (JSON in ~/.vscan/) (4h)
+6. ✅ Simplify retry logic (2h)
+7. ✅ Simplify logging (1h)
 
-**Total: ~21 hours** (removed consolidate parsing)
+**Total: ~19 hours** (removed JSON parsing optimization and consolidate parsing)
 
 ### Phase 3 - Low Priority (Sprint 3: ~9 hours)
 1. ✅ Database integrity checks (2h)
@@ -890,15 +873,16 @@ def test_cache_hit_workflow():
 
 **Total: ~11 hours**
 
-### Rejected Items (Effort Saved: 12 hours)
+### Rejected Items (Effort Saved: 14 hours)
 1. ❌ Parallel extension scanning (6h) - Complexity not worth it
 2. ❌ Consolidate parsing methods (4h) - Reduces readability
 3. ❌ Consolidate output formatting (2h) - No real benefit
-4. ❌ Smart cache warming (4h) - Over-engineering
-5. ❌ Memory footprint reduction (5h) - Edge case
-6. ❌ Production mode flag - Not needed
+4. ❌ Optimize JSON parsing (2h) - HTML reports need full data
+5. ❌ Smart cache warming (4h) - Over-engineering
+6. ❌ Memory footprint reduction (5h) - Edge case
+7. ❌ Production mode flag - Not needed
 
-**Grand Total: ~47 hours** (down from 59 hours)
+**Grand Total: ~45 hours** (down from 59 hours)
 
 ---
 
@@ -1002,19 +986,19 @@ All architectural questions have been answered and decisions are finalized:
 6. ✅ Better error messages with help text
 7. ✅ Extension filtering options (simple strings, AND logic)
 8. ✅ Cache UX improvements
-9. ✅ Optimize JSON parsing (conditional detailed mode)
-10. ✅ Configuration file support (JSON in ~/.vscan/)
-11. ✅ Cache connection pooling (context manager)
-12. ✅ Simplify retry logic
-13. ✅ Simplify logging function
+9. ✅ Configuration file support (JSON in ~/.vscan/)
+10. ✅ Cache connection pooling (context manager)
+11. ✅ Simplify retry logic
+12. ✅ Simplify logging function
 
 ### ❌ REJECTED (Complexity Outweighs Benefit)
 1. ❌ Parallel extension scanning - Too complex, API rate limiting issues
 2. ❌ Consolidate parsing methods - Reduces readability
 3. ❌ Consolidate output formatting - No real benefit
-4. ❌ Smart cache warming - Over-engineering
-5. ❌ Memory streaming for large scans - Edge case
-6. ❌ Production mode flag - Not needed
+4. ❌ Optimize JSON parsing - HTML reports need full data from cache
+5. ❌ Smart cache warming - Over-engineering
+6. ❌ Memory streaming for large scans - Edge case
+7. ❌ Production mode flag - Not needed
 
 ### ⏭️ DEFERRED (Low Priority, Can Add Later)
 1. ⏭️ CSV output format - Out of scope for v2.1
@@ -1050,12 +1034,11 @@ All architectural questions have been answered and decisions are finalized:
 - [ ] Improve progress output consistency
 - [ ] Add helpful error messages with recovery suggestions
 
-### Phase 2 (21 hours)
+### Phase 2 (19 hours)
 - [ ] Sanitize all error messages
 - [ ] Add extension filtering (--include-ids, --exclude-ids, --publisher, --min-risk-level)
 - [ ] Improve cache UX (show migration, suggest refresh)
 - [ ] Implement cache connection pooling (context manager)
-- [ ] Optimize JSON parsing (conditional detailed mode)
 - [ ] Add config file support (~/.vscan/config.json)
 - [ ] Simplify retry logic
 - [ ] Simplify logging function
@@ -1069,8 +1052,8 @@ All architectural questions have been answered and decisions are finalized:
 
 ---
 
-**Document Version:** 2.0 (Finalized)
+**Document Version:** 2.1 (Finalized)
 **Last Updated:** 2025-10-23
 **Status:** ✅ APPROVED - Ready for Implementation
-**Total Effort:** 47 hours (3 sprints)
+**Total Effort:** 45 hours (3 sprints)
 **Version Target:** v2.1.0
