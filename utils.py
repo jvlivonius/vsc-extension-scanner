@@ -67,12 +67,14 @@ def log(message: str, level: str = "INFO", newline: bool = True, force: bool = F
         print(message, file=sys.stderr, end=end, flush=True)
 
 
-def validate_path(path: str) -> bool:
+def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path") -> bool:
     """
     Validate that a path doesn't contain dangerous patterns.
 
     Args:
         path: Path to validate
+        allow_absolute: Whether to allow absolute paths (default: True)
+        path_type: Type of path for warning messages (e.g., "output", "cache")
 
     Returns:
         True if path is safe, False otherwise
@@ -80,40 +82,28 @@ def validate_path(path: str) -> bool:
     if not path:
         return False
 
-    # Block absolute paths
-    if path.startswith('/') or (len(path) > 1 and path[1] == ':'):
-        return False
-
-    # Block dangerous patterns
-    dangerous_patterns = [
-        '..',      # Parent directory
-        '~',       # Home expansion
-        '$',       # Variable expansion
-        '%',       # URL encoding
-        '\\x',     # Hex encoding
-        '\0',      # Null byte
-        '|',       # Pipe
-        ';',       # Command separator
-        '&',       # Background
-        '`',       # Command substitution
-        '\n',      # Newline
-        '\r'       # Carriage return
-    ]
-
-    for pattern in dangerous_patterns:
-        if pattern in path:
+    # Block dangerous characters that enable command injection
+    dangerous_chars = ['\0', '|', ';', '`', '\n', '\r']
+    for char in dangerous_chars:
+        if char in path:
             return False
 
-    # Ensure path stays within current directory
-    try:
-        from pathlib import Path as PathLib
-        resolved = PathLib(path).resolve()
-        cwd = PathLib.cwd().resolve()
-        resolved.relative_to(cwd)
-    except (ValueError, RuntimeError, OSError):
+    # Block parent directory traversal attempts
+    if '..' in path:
         return False
 
-    return True
+    # Validate it's a valid path format
+    try:
+        from pathlib import Path as PathLib
+        p = PathLib(path).expanduser()
+
+        # For absolute paths, warn user but allow (per approved plan)
+        if allow_absolute and p.is_absolute():
+            log(f"WARNING: Using absolute path for {path_type}: {p}", "WARNING")
+
+        return True
+    except (ValueError, OSError):
+        return False
 
 
 def sanitize_string(text: Optional[str], max_length: int = 500) -> str:

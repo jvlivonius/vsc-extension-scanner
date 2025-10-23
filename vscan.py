@@ -458,7 +458,7 @@ def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_sta
 def _write_output_file(output_path_str, results, is_html_output):
     """Write output to file (JSON or HTML)."""
     # Validate output path
-    if not validate_path(output_path_str):
+    if not validate_path(output_path_str, allow_absolute=True, path_type="output"):
         log("Error: Invalid output path", "ERROR")
         log(sanitize_string(f"Path validation failed for: {output_path_str}", max_length=100), "ERROR")
         raise ValueError("Invalid output path")
