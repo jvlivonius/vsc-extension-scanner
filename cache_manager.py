@@ -25,7 +25,24 @@ class CacheManager:
         Args:
             cache_dir: Directory to store cache database. Defaults to ~/.vscan/
         """
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".vscan"
+        if cache_dir:
+            # Validate cache directory path
+            if ".." in cache_dir or cache_dir.startswith("/etc") or cache_dir.startswith("/var"):
+                raise ValueError(f"Invalid cache directory path: {cache_dir}")
+
+            cache_path = Path(cache_dir).expanduser().resolve()
+
+            # Ensure within user's home directory
+            home = Path.home().resolve()
+            try:
+                cache_path.relative_to(home)
+            except ValueError:
+                raise ValueError(f"Cache directory must be within home directory: {cache_path}")
+
+            self.cache_dir = cache_path
+        else:
+            self.cache_dir = Path.home() / ".vscan"
+
         self.cache_db = self.cache_dir / "cache.db"
 
         # Check if migration is needed before init
@@ -38,8 +55,15 @@ class CacheManager:
 
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
-        # Create cache directory if it doesn't exist
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        # Create cache directory with restricted permissions (user-only)
+        self.cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+        # Ensure database file has restrictive permissions
+        if not self.cache_db.exists():
+            self.cache_db.touch(mode=0o600)
+        else:
+            # Update permissions on existing database
+            self.cache_db.chmod(0o600)
 
         conn = sqlite3.connect(self.cache_db)
         cursor = conn.cursor()

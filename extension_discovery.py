@@ -11,6 +11,9 @@ import platform
 from pathlib import Path
 from typing import List, Dict, Optional
 
+# Maximum package.json size (1MB)
+MAX_PACKAGE_JSON_SIZE = 1024 * 1024
+
 
 class ExtensionDiscovery:
     """Discovers and parses VS Code extensions."""
@@ -35,11 +38,24 @@ class ExtensionDiscovery:
             FileNotFoundError: If extensions directory cannot be found
         """
         if self.custom_dir:
+            # Validate path doesn't contain dangerous patterns
+            if ".." in self.custom_dir or self.custom_dir.startswith("/etc") or self.custom_dir.startswith("/var") or self.custom_dir.startswith("/sys"):
+                raise FileNotFoundError(f"Invalid or restricted path: {self.custom_dir}")
+
             custom_path = Path(self.custom_dir).expanduser().resolve()
+
+            # Ensure path is within user's home directory
+            home = Path.home().resolve()
+            try:
+                custom_path.relative_to(home)
+            except ValueError:
+                raise FileNotFoundError(f"Custom extensions directory must be within home directory: {custom_path}")
+
             if not custom_path.exists():
                 raise FileNotFoundError(f"Custom extensions directory not found: {custom_path}")
             if not custom_path.is_dir():
                 raise FileNotFoundError(f"Custom extensions path is not a directory: {custom_path}")
+
             return custom_path
 
         # Auto-detect based on platform
@@ -122,8 +138,23 @@ class ExtensionDiscovery:
             return None
 
         try:
+            # Check file size first
+            file_size = package_json_path.stat().st_size
+            if file_size > MAX_PACKAGE_JSON_SIZE:
+                raise Exception(f"package.json too large: {file_size} bytes (max: {MAX_PACKAGE_JSON_SIZE})")
+
+            # Read with size limit
             with open(package_json_path, 'r', encoding='utf-8') as f:
-                package_data = json.load(f)
+                content = f.read(MAX_PACKAGE_JSON_SIZE + 1)
+
+                if len(content) > MAX_PACKAGE_JSON_SIZE:
+                    raise Exception(f"package.json exceeds size limit ({MAX_PACKAGE_JSON_SIZE} bytes)")
+
+                package_data = json.loads(content)
+
+                # Validate it's a dictionary
+                if not isinstance(package_data, dict):
+                    raise Exception("package.json must be a JSON object")
 
         except json.JSONDecodeError as e:
             raise Exception(f"Invalid JSON in package.json: {e}")
