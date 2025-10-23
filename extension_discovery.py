@@ -11,6 +11,8 @@ import platform
 from pathlib import Path
 from typing import List, Dict, Optional
 
+from utils import log, sanitize_string
+
 # Maximum package.json size (1MB)
 MAX_PACKAGE_JSON_SIZE = 1024 * 1024
 
@@ -109,12 +111,11 @@ class ExtensionDiscovery:
                         extensions.append(metadata)
                 except Exception as e:
                     # Log warning but continue with other extensions
-                    from utils import log
-                    log(f"Warning: Failed to parse extension at {ext_dir}: {e}", "WARNING")
+                    log(f"Warning: Failed to parse extension at {sanitize_string(str(ext_dir), max_length=100)}: {sanitize_string(str(e), max_length=150)}", "WARNING")
                     continue
 
         except PermissionError as e:
-            raise Exception(f"Permission denied reading extensions directory: {e}")
+            raise Exception(f"Permission denied reading extensions directory: {sanitize_string(str(e), max_length=200)}")
 
         return extensions
 
@@ -202,7 +203,7 @@ class ExtensionDiscovery:
 def main():
     """Test the extension discovery module."""
     import sys
-    from utils import log, setup_logging
+    from utils import setup_logging
 
     setup_logging(verbose=True)
 

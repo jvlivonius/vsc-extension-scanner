@@ -23,7 +23,7 @@ from extension_discovery import ExtensionDiscovery
 from vscan_api import VscanAPIClient
 from output_formatter import OutputFormatter
 from cache_manager import CacheManager
-from utils import log, setup_logging
+from utils import log, setup_logging, validate_path, sanitize_string
 
 
 VERSION = "2.0.0"
@@ -186,9 +186,9 @@ def main():
 
     try:
         extensions_dir = discovery.find_extensions_directory()
-        log(f"Found VS Code extensions directory: {extensions_dir}", "SUCCESS")
+        log(f"Found VS Code extensions directory: {sanitize_string(str(extensions_dir), max_length=150)}", "SUCCESS")
     except FileNotFoundError as e:
-        log(str(e), "ERROR")
+        log(sanitize_string(str(e), max_length=200), "ERROR")
         log("", "ERROR")
         log("Please ensure VS Code is installed or specify a custom directory with --extensions-dir", "ERROR")
         return 2  # Exit code 2: Scan failed
@@ -197,7 +197,7 @@ def main():
         extensions = discovery.discover_extensions()
         log(f"Discovered {len(extensions)} extensions", "SUCCESS")
     except Exception as e:
-        log(f"Error discovering extensions: {e}", "ERROR")
+        log(f"Error discovering extensions: {sanitize_string(str(e), max_length=200)}", "ERROR")
         return 2
 
     if len(extensions) == 0:
@@ -360,24 +360,20 @@ def main():
     # Output results
     if args.output:
         try:
-            from utils import validate_path
+            # Validate output path using centralized validation
+            if not validate_path(args.output):
+                log("Error: Invalid output path", "ERROR")
+                log(sanitize_string(f"Path validation failed for: {args.output}", max_length=100), "ERROR")
+                return 2
 
-            # Validate and restrict output path
             output_path = Path(args.output).resolve()
             cwd = Path.cwd().resolve()
 
-            # Ensure output is within current directory
+            # Double-check path is within current directory (validate_path already checks this)
             try:
                 output_path.relative_to(cwd)
             except ValueError:
                 log("Error: Output path must be within current directory", "ERROR")
-                log(f"  Attempted: {output_path}", "ERROR")
-                log(f"  Current directory: {cwd}", "ERROR")
-                return 2
-
-            # Check for traversal patterns
-            if ".." in str(args.output) or args.output.startswith("/"):
-                log("Error: Invalid characters in output path", "ERROR")
                 return 2
 
             # Create parent directories with restricted permissions
@@ -387,11 +383,11 @@ def main():
             with open(output_path, 'w') as f:
                 json.dump(results, f, indent=2)
 
-            log(f"Results written to {args.output}", "SUCCESS")
+            log(f"Results written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
         except Exception as e:
             log(f"Error writing output file: {type(e).__name__}", "ERROR")
             if verbose:
-                log(f"Details: {e}", "ERROR")
+                log(sanitize_string(f"Details: {str(e)}", max_length=200), "ERROR")
             return 2
     else:
         # Output to stdout

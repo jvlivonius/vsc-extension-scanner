@@ -6,17 +6,39 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 4 Complete (v2.0 - Enhanced Data Integration)
+**Current Status:** Phase 4 Complete + Security/Code Quality Improvements (v2.1)
+
+**Latest Updates (v2.1 - 2025-10-23):**
+- ✅ Refactored security functions to eliminate unused code
+- ✅ All error messages now sanitized to prevent information disclosure
+- ✅ Test files organized in dedicated `tests/` directory
+- ✅ Added `.gitignore` for Python artifacts and cache files
+- ✅ Improved code quality and maintainability
 
 See **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** for detailed progress tracking.
+See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APPLIED.md)** for security improvements.
 
 ## Quick Reference Documentation
 
+### Core Documentation
 - **[README.md](README.md)** - Project overview and quick start
 - **[docs/design/PRD.md](docs/design/PRD.md)** - Full product requirements
-- **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API documentation
-- **[docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)** - Phase 3 test plan
 - **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - Current project status
+
+### Phase Requirements
+- **[docs/phases/PHASE1_REQUIREMENTS.md](docs/phases/PHASE1_REQUIREMENTS.md)** - Phase 1: Research & Discovery
+- **[docs/phases/PHASE2_REQUIREMENTS.md](docs/phases/PHASE2_REQUIREMENTS.md)** - Phase 2: Core Implementation
+- **[docs/phases/PHASE3_REQUIREMENTS.md](docs/phases/PHASE3_REQUIREMENTS.md)** - Phase 3: Testing & Refinement
+- **[docs/phases/PHASE4_REQUIREMENTS.md](docs/phases/PHASE4_REQUIREMENTS.md)** - Phase 4: Enhanced Data Integration
+
+### Research & Testing
+- **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API documentation
+- **[docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)** - Testing checklist
+- **[docs/testing/MACOS_TEST_RESULTS.md](docs/testing/MACOS_TEST_RESULTS.md)** - macOS test results
+
+### Results & Security
+- **[docs/results/](docs/results/)** - Phase completion summaries and test results
+- **[docs/security/](docs/security/)** - Security analysis and fixes
 
 ## Technology Stack
 
@@ -30,10 +52,11 @@ See **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** for detailed progress t
 ## Development Commands
 
 ```bash
-# Phase 1: API Validation (complete)
-python3 test_api.py
+# Testing (Phase 1)
+python3 tests/test_api.py          # API validation tests
+python3 tests/test_security.py     # Security vulnerability tests
 
-# Phase 2+: Run the tool (v2.0 implemented)
+# Phase 2+: Run the tool (v2.1 implemented)
 python vscan.py                          # Standard scan
 python vscan.py --detailed               # Detailed scan with full data
 python vscan.py --extensions-dir /path   # Custom directory
@@ -318,13 +341,17 @@ The following features are explicitly **out of scope**:
 
 ### ✅ Phase 1: Research & Discovery (COMPLETE)
 
+**Requirements:** [docs/phases/PHASE1_REQUIREMENTS.md](docs/phases/PHASE1_REQUIREMENTS.md)
+
 - Reverse-engineer vscan.dev API endpoints
 - Document request/response format
 - Validate endpoint behavior with test extensions
 
-**Status:** Complete. See [docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)
+**Results:** [docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)
 
 ### ✅ Phase 2: Core Implementation (COMPLETE)
+
+**Requirements:** [docs/phases/PHASE2_REQUIREMENTS.md](docs/phases/PHASE2_REQUIREMENTS.md)
 
 **Module Structure:**
 
@@ -357,15 +384,19 @@ vscan.py                     # Main CLI entry point (370 lines)
 
 ### ✅ Phase 3: Testing & Refinement (COMPLETE)
 
+**Requirements:** [docs/phases/PHASE3_REQUIREMENTS.md](docs/phases/PHASE3_REQUIREMENTS.md)
+
 - Test caching system thoroughly
 - Test on macOS (focused platform)
 - Test with various extension sets (3, 66 extensions)
 - Test error scenarios (rate limiting)
 - Refine user experience (fixed cache-stats UX bug)
 
-**Status:** Complete. See [docs/testing/MACOS_TEST_RESULTS.md](docs/testing/MACOS_TEST_RESULTS.md)
+**Results:** [docs/testing/MACOS_TEST_RESULTS.md](docs/testing/MACOS_TEST_RESULTS.md) | [docs/results/PHASE3_COMPLETION_SUMMARY.md](docs/results/PHASE3_COMPLETION_SUMMARY.md)
 
 ### ✅ Phase 4: Enhanced Data Integration (COMPLETE)
+
+**Requirements:** [docs/phases/PHASE4_REQUIREMENTS.md](docs/phases/PHASE4_REQUIREMENTS.md)
 
 **Implemented Features:**
 
@@ -378,10 +409,7 @@ vscan.py                     # Main CLI entry point (370 lines)
 ✅ Cache schema v2.0 with automatic v1→v2 migration
 ✅ Maintained performance (28x speedup with cache)
 
-**Reference Documentation:**
-
-- Implementation plan: [docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md](docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md)
-- Phase 4 summary: [docs/PHASE4_COMPLETION_SUMMARY.md](docs/PHASE4_COMPLETION_SUMMARY.md)
+**Results:** [docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md](docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md) | [docs/results/PHASE4_COMPLETION_SUMMARY.md](docs/results/PHASE4_COMPLETION_SUMMARY.md)
 
 ## vscan.dev API Quick Reference
 

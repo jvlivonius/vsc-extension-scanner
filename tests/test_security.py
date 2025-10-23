@@ -11,6 +11,9 @@ import json
 import sqlite3
 from pathlib import Path
 
+# Add parent directory to path so we can import modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Import modules to test
 from utils import validate_path, sanitize_string
 import extension_discovery

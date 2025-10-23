@@ -125,10 +125,32 @@ Comprehensive output including:
 
 ## Documentation
 
+### Quick Links
+
 - **[CLAUDE.md](CLAUDE.md)** - Development guidance and architecture details
+- **[docs/README.md](docs/README.md)** - Complete documentation index
 - **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - Development history and status
-- **[docs/design/PRD.md](docs/design/PRD.md)** - Complete product requirements
-- **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API documentation
+
+### Detailed Documentation
+
+- **Phase Requirements:**
+  - [Phase 1: Research & Discovery](docs/phases/PHASE1_REQUIREMENTS.md)
+  - [Phase 2: Core Implementation](docs/phases/PHASE2_REQUIREMENTS.md)
+  - [Phase 3: Testing & Refinement](docs/phases/PHASE3_REQUIREMENTS.md)
+  - [Phase 4: Enhanced Data Integration](docs/phases/PHASE4_REQUIREMENTS.md)
+
+- **Design & Research:**
+  - [Product Requirements Document (PRD)](docs/design/PRD.md)
+  - [vscan.dev API Research](docs/research/API_RESEARCH.md)
+
+- **Testing & Results:**
+  - [Testing Checklist](docs/testing/TESTING_CHECKLIST.md)
+  - [macOS Test Results](docs/testing/MACOS_TEST_RESULTS.md)
+  - [Phase Completion Summaries](docs/results/)
+
+- **Security:**
+  - [Security Analysis](docs/security/SECURITY_ANALYSIS.md)
+  - [Security Fixes Applied](docs/security/SECURITY_FIXES_APPLIED.md)
 
 ## References
 
