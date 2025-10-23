@@ -26,7 +26,7 @@ def setup_logging(verbose: bool = False):
 
 def log(message: str, level: str = "INFO", newline: bool = True, force: bool = False):
     """
-    Log message to stderr.
+    Log message to stderr with simplified logic.
 
     Args:
         message: Message to log
@@ -34,37 +34,26 @@ def log(message: str, level: str = "INFO", newline: bool = True, force: bool = F
         newline: Whether to print newline after message
         force: Force printing even if not verbose (for important messages)
     """
-    # Always print ERROR, WARNING, and forced messages
-    if level in ("ERROR", "WARNING") or force:
-        end = '\n' if newline else ''
-        if level in ("ERROR", "WARNING"):
-            print(f"[{level}] {message}", file=sys.stderr, end=end, flush=True)
-        else:
-            # For forced INFO/SUCCESS messages, don't add level prefix for ERROR/WARNING
-            if level == "SUCCESS":
-                print(f"[✓] {message}", file=sys.stderr, end=end, flush=True)
-            else:
-                print(message, file=sys.stderr, end=end, flush=True)
+    # Determine if message should be printed
+    should_print = (level in ("ERROR", "WARNING")) or force or _VERBOSE
+
+    if not should_print:
         return
 
-    # Only print INFO and SUCCESS if verbose is enabled
-    if not _VERBOSE:
-        return
+    # Map log levels to prefixes
+    prefixes = {
+        "ERROR": "[ERROR]",
+        "WARNING": "[WARNING]",
+        "SUCCESS": "[✓]",
+        "INFO": ""
+    }
 
-    # Format based on level
-    if level == "SUCCESS":
-        prefix = "[✓]"
-    elif level == "INFO":
-        prefix = ""
-    else:
-        prefix = f"[{level}]"
+    prefix = prefixes.get(level, f"[{level}]")
 
-    # Print to stderr (stdout is reserved for JSON output)
+    # Format and print message
+    output = f"{prefix} {message}".strip() if prefix else message
     end = '\n' if newline else ''
-    if prefix:
-        print(f"{prefix} {message}", file=sys.stderr, end=end, flush=True)
-    else:
-        print(message, file=sys.stderr, end=end, flush=True)
+    print(output, file=sys.stderr, end=end, flush=True)
 
 
 def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path") -> bool:
