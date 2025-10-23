@@ -36,8 +36,9 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                              Scan all extensions
-  %(prog)s --output results.json       Save results to file
+  %(prog)s                              Scan all extensions (JSON to stdout)
+  %(prog)s --output results.json       Save JSON results to file
+  %(prog)s --output report.html        Generate interactive HTML report
   %(prog)s --verbose                   Show detailed progress
   %(prog)s --delay 2.0                 Use 2 second delay between requests
   %(prog)s --extensions-dir /path     Use custom extensions directory

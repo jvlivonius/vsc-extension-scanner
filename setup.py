@@ -15,7 +15,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="vscode-extension-scanner",
-    version="2.2.0",
+    version="2.2.1",
     author="Joerg von Livonius",
     author_email="your.email@example.com",
     description="Security scanner for VS Code extensions using vscan.dev",

@@ -2,16 +2,18 @@
 
 A standalone Python CLI tool that performs comprehensive security audits of installed VS Code extensions using the vscan.dev security analysis service.
 
-**Version:** 2.2.0 | **Status:** Production Ready ✅
-
-All phases complete - ready for production use. See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for development history.
+**Version:** 2.2.1 | **Status:** Production Ready ✅
 
 ## What's New in v2.2
 
+- **📊 HTML Report Generation:** Interactive, self-contained HTML reports with sortable tables, charts, and expandable details
+- **🎨 Data Visualizations:** Pie charts for risk distribution, gauges for security scores, bar charts for vulnerabilities
+- **🔍 Advanced Filtering:** Search extensions, filter by risk level, toggle column visibility
+- **🖨️ Print-Optimized:** Professional reports ready for documentation and sharing
 - **🔄 Intelligent Retry Mechanism:** Automatic recovery from rate limiting, server errors, and network timeouts
 - **⏱️ Exponential Backoff:** Smart retry delays (2s, 4s, 8s) with randomized jitter
 - **🎯 Retry-After Support:** Respects vscan.dev rate limit headers
-- **📊 Retry Statistics:** Track retry attempts, successes, and failures
+- **📈 Retry Statistics:** Track retry attempts, successes, and failures
 - **⚙️ Configurable:** Control retry behavior with `--max-retries` and `--retry-delay`
 - **🔍 Transparent:** See retry attempts in verbose mode
 
@@ -31,18 +33,21 @@ All phases complete - ready for production use. See [docs/PROJECT_STATUS.md](doc
 2. **Queries** vscan.dev for comprehensive security analysis
 3. **Analyzes** dependencies, permissions, and security score components
 4. **Reports** security scores, risk levels, vulnerabilities, and risk factors
-5. **Outputs** results in JSON format (standard or detailed mode)
+5. **Outputs** results in JSON or interactive HTML format
 
 ## Quick Start
 
 ```bash
-# Standard scan (concise output)
+# Standard scan (concise JSON output)
 python3 vscan.py
 
 # Detailed scan (comprehensive security data)
 python3 vscan.py --detailed
 
-# Save to file with progress indicators
+# Generate interactive HTML report
+python3 vscan.py --output report.html
+
+# Save JSON to file with progress indicators
 python3 vscan.py --output results.json --verbose
 
 # Cache management
@@ -63,7 +68,8 @@ python3 vscan.py --no-cache                # Disable caching
 
 ## Features
 
-✅ **Dual output modes** - Standard (concise) and Detailed (comprehensive) JSON output
+✅ **HTML & JSON reports** - Interactive HTML reports with visualizations or structured JSON output
+✅ **Dual output modes** - Standard (concise) and Detailed (comprehensive) formats
 ✅ **Auto-discovery** - Finds VS Code extensions on all platforms (macOS, Windows, Linux)
 ✅ **Complete security analysis** - Dependencies, risk factors, security score breakdowns
 ✅ **Publisher verification** - Verified status and reputation tracking
@@ -72,9 +78,25 @@ python3 vscan.py --no-cache                # Disable caching
 ✅ **Progress indicators** - Real-time updates with visual symbols
 ✅ **Zero dependencies** - Uses only Python 3.8+ standard library
 
-## Output Modes
+## Output Formats
 
-### Standard Mode (default)
+### HTML Reports (`--output report.html`)
+
+Interactive, self-contained HTML reports with:
+
+- **Sortable overview table** - Click column headers to sort by any field
+- **Risk-based filtering** - Filter extensions by high/medium/low risk
+- **Search functionality** - Find extensions by name or publisher
+- **Data visualizations** - Pie charts, security gauges, bar charts
+- **Expandable details** - Click rows to see complete security analysis
+- **Print-optimized** - Professional formatting for documentation
+- **No external dependencies** - All CSS/JS embedded, works offline
+
+Perfect for sharing with teams, documentation, or visual analysis.
+
+### JSON Output (default or `--output results.json`)
+
+#### Standard Mode (default)
 
 Concise output with essential security information:
 
@@ -84,7 +106,7 @@ Concise output with essential security information:
 - Dependency and risk factor counts
 - Cache statistics
 
-### Detailed Mode (`--detailed`)
+#### Detailed Mode (`--detailed`)
 
 Comprehensive output including:
 
@@ -93,6 +115,8 @@ Comprehensive output including:
 - Individual risk factors with descriptions
 - Publisher reputation and install counts
 - Extension metadata (keywords, URLs, ratings)
+
+**Note:** HTML reports automatically enable detailed mode for comprehensive data.
 
 ## Example Output (Standard Mode)
 
@@ -138,36 +162,3 @@ Comprehensive output including:
 }
 ```
 
-## Documentation
-
-### Quick Links
-
-- **[CLAUDE.md](CLAUDE.md)** - Development guidance and architecture details
-- **[docs/README.md](docs/README.md)** - Complete documentation index
-- **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - Development history and status
-
-### Detailed Documentation
-
-- **Phase Requirements:**
-  - [Phase 1: Research & Discovery](docs/phases/PHASE1_REQUIREMENTS.md)
-  - [Phase 2: Core Implementation](docs/phases/PHASE2_REQUIREMENTS.md)
-  - [Phase 3: Testing & Refinement](docs/phases/PHASE3_REQUIREMENTS.md)
-  - [Phase 4: Enhanced Data Integration](docs/phases/PHASE4_REQUIREMENTS.md)
-
-- **Design & Research:**
-  - [Product Requirements Document (PRD)](docs/design/PRD.md)
-  - [vscan.dev API Research](docs/research/API_RESEARCH.md)
-
-- **Testing & Results:**
-  - [Testing Checklist](docs/testing/TESTING_CHECKLIST.md)
-  - [macOS Test Results](docs/testing/MACOS_TEST_RESULTS.md)
-  - [Phase Completion Summaries](docs/results/)
-
-- **Security:**
-  - [Security Analysis](docs/security/SECURITY_ANALYSIS.md)
-  - [Security Fixes Applied](docs/security/SECURITY_FIXES_APPLIED.md)
-
-## References
-
-- **[vscan.dev](https://vscan.dev)** - VS Code Extension Security Analyzer
-- **[VS Code Extension API](https://code.visualstudio.com/api)** - Extension documentation

@@ -5,7 +5,7 @@ A Python CLI tool for comprehensive security audits of VS Code extensions
 using the vscan.dev security analysis service.
 """
 
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 __author__ = "Joerg von Livonius"
 __description__ = "Security scanner for VS Code extensions using vscan.dev"
 
