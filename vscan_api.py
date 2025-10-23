@@ -22,7 +22,14 @@ class VscanAPIClient:
     # Maximum response size (10MB)
     MAX_RESPONSE_SIZE = 10 * 1024 * 1024
 
-    def __init__(self, delay: float = 1.5, verbose: bool = False, timeout: int = 30):
+    def __init__(
+        self,
+        delay: float = 1.5,
+        verbose: bool = False,
+        timeout: int = 30,
+        max_retries: int = 3,
+        retry_base_delay: float = 2.0
+    ):
         """
         Initialize API client.
 
@@ -30,11 +37,20 @@ class VscanAPIClient:
             delay: Delay between API requests in seconds
             verbose: Enable verbose logging
             timeout: Timeout for individual HTTP requests in seconds
+            max_retries: Maximum retry attempts for failed requests (default: 3)
+            retry_base_delay: Base delay for exponential backoff (default: 2.0)
         """
         self.delay = delay
         self.verbose = verbose
         self.timeout = timeout
         self.last_request_time = 0
+        self.max_retries = max_retries
+        self.retry_base_delay = retry_base_delay
+        self.retry_stats = {
+            "total_retries": 0,
+            "successful_retries": 0,
+            "failed_after_retries": 0
+        }
 
     def _throttle(self):
         """Implement request throttling."""
@@ -42,6 +58,192 @@ class VscanAPIClient:
         if elapsed < self.delay:
             time.sleep(self.delay - elapsed)
         self.last_request_time = time.time()
+
+    def _is_retryable_error(self, error: Exception, status_code: Optional[int] = None) -> bool:
+        """
+        Determine if an error is retryable.
+
+        Args:
+            error: The exception that occurred
+            status_code: HTTP status code if available
+
+        Returns:
+            True if the error should be retried, False otherwise
+        """
+        error_str = str(error).lower()
+
+        # Timeout errors are retryable
+        if isinstance(error, urllib.error.URLError):
+            if isinstance(error.reason, TimeoutError):
+                return True
+            # Connection errors are retryable
+            if "connection" in str(error.reason).lower():
+                return True
+
+        # HTTP errors with specific status codes
+        if isinstance(error, urllib.error.HTTPError):
+            status_code = error.code
+
+        # Check status code (from HTTPError or explicit parameter)
+        if status_code:
+            # Rate limiting - retryable with backoff
+            if status_code == 429:
+                return True
+            # Server errors - retryable
+            if status_code in [502, 503, 504]:
+                return True
+            # Other errors - not retryable
+            # 404 (not found), 500 (internal error), 4xx (client errors)
+            return False
+
+        # Check error message patterns for retryable errors
+        retryable_patterns = [
+            "timeout",
+            "timed out",
+            "connection",
+            "rate limit",
+            "502",  # Bad Gateway
+            "503",  # Service Unavailable
+            "504",  # Gateway Timeout
+            "429",  # Too Many Requests
+        ]
+
+        for pattern in retryable_patterns:
+            if pattern in error_str:
+                return True
+
+        # Non-retryable error patterns
+        non_retryable_patterns = [
+            "not found",
+            "404",
+            "500",  # Internal Server Error (not transient)
+            "400",  # Bad Request
+            "401",  # Unauthorized
+            "403",  # Forbidden
+        ]
+
+        for pattern in non_retryable_patterns:
+            if pattern in error_str:
+                return False
+
+        # Default: not retryable (fail safe)
+        return False
+
+    def _calculate_backoff_delay(self, attempt: int, retry_after: Optional[int] = None) -> float:
+        """
+        Calculate delay before next retry attempt using exponential backoff with jitter.
+
+        Args:
+            attempt: Current retry attempt number (0-indexed)
+            retry_after: Retry-After header value in seconds (if available)
+
+        Returns:
+            Delay in seconds before next retry
+        """
+        import random
+
+        # If Retry-After header is present, respect it
+        if retry_after is not None:
+            return float(retry_after)
+
+        # Exponential backoff: base_delay * 2^attempt
+        # attempt 0: 2s, attempt 1: 4s, attempt 2: 8s
+        backoff = self.retry_base_delay * (2 ** attempt)
+
+        # Add jitter (0-1 second randomization)
+        jitter = random.uniform(0, 1)
+
+        return backoff + jitter
+
+    def _log_retry_attempt(self, attempt: int, max_attempts: int, error: str, delay: float):
+        """
+        Log retry attempt information (only in verbose mode).
+
+        Args:
+            attempt: Current retry attempt number (1-indexed for display)
+            max_attempts: Maximum number of retry attempts
+            error: Error message that triggered the retry
+            delay: Delay before next retry in seconds
+        """
+        if self.verbose:
+            from utils import log
+            log(f"  Retry {attempt}/{max_attempts} after error: {error}", "WARNING")
+            log(f"  Waiting {delay:.1f}s before retry...", "INFO")
+
+    def _make_request_with_retry(
+        self,
+        url: str,
+        method: str = "GET",
+        data: Optional[Dict[str, Any]] = None,
+        timeout: Optional[int] = None
+    ) -> Tuple[int, Dict[str, Any]]:
+        """
+        Make HTTP request with retry logic.
+
+        Wraps _make_request() with exponential backoff retry for transient errors.
+
+        Args:
+            url: Request URL
+            method: HTTP method (GET or POST)
+            data: Request payload (for POST)
+            timeout: Request timeout in seconds (None = use default)
+
+        Returns:
+            Tuple of (status_code, json_response)
+
+        Raises:
+            Exception: If request fails after all retries
+        """
+        last_error = None
+        retry_after = None
+
+        for attempt in range(self.max_retries + 1):  # +1 for initial attempt
+            try:
+                # Make the actual request
+                return self._make_request(url, method, data, timeout)
+
+            except Exception as e:
+                last_error = e
+
+                # Check if this is the last attempt
+                if attempt >= self.max_retries:
+                    self.retry_stats["failed_after_retries"] += 1
+                    raise
+
+                # Check if error is retryable
+                status_code = None
+                if isinstance(e, urllib.error.HTTPError):
+                    status_code = e.code
+                    # Try to extract Retry-After header
+                    retry_after_header = e.headers.get('Retry-After')
+                    if retry_after_header:
+                        try:
+                            retry_after = int(retry_after_header)
+                        except ValueError:
+                            retry_after = None
+
+                if not self._is_retryable_error(e, status_code):
+                    # Not retryable, raise immediately
+                    raise
+
+                # Calculate backoff delay
+                delay = self._calculate_backoff_delay(attempt, retry_after)
+
+                # Update stats
+                self.retry_stats["total_retries"] += 1
+
+                # Log retry attempt
+                self._log_retry_attempt(attempt + 1, self.max_retries, str(e), delay)
+
+                # Wait before retrying
+                time.sleep(delay)
+
+                # Reset retry_after for next attempt
+                retry_after = None
+
+        # If we somehow get here, mark as successful retry
+        self.retry_stats["successful_retries"] += 1
+        raise last_error  # This should never happen, but just in case
 
     def _make_request(
         self,
@@ -157,7 +359,7 @@ class VscanAPIClient:
         url = f"{self.BASE_URL}/analyze"
         payload = {"publisher": publisher, "name": name}
 
-        status_code, response = self._make_request(url, method="POST", data=payload)
+        status_code, response = self._make_request_with_retry(url, method="POST", data=payload)
 
         if status_code in (200, 202) and "analysisId" in response:
             return response["analysisId"]
@@ -180,7 +382,7 @@ class VscanAPIClient:
         self._throttle()
 
         url = f"{self.BASE_URL}/status/{analysis_id}"
-        status_code, response = self._make_request(url)
+        status_code, response = self._make_request_with_retry(url)
 
         if status_code == 200 and "status" in response:
             return response
@@ -203,7 +405,7 @@ class VscanAPIClient:
         self._throttle()
 
         url = f"{self.BASE_URL}/results/{analysis_id}"
-        status_code, response = self._make_request(url)
+        status_code, response = self._make_request_with_retry(url)
 
         if status_code == 200:
             return response
@@ -599,3 +801,15 @@ class VscanAPIClient:
             result["scan_status"] = "error"
 
         return result
+
+    def get_retry_stats(self) -> Dict[str, int]:
+        """
+        Get retry statistics.
+
+        Returns:
+            Dictionary with retry statistics:
+            - total_retries: Total number of retry attempts made
+            - successful_retries: Number of retries that eventually succeeded
+            - failed_after_retries: Number of requests that failed after all retries
+        """
+        return self.retry_stats.copy()

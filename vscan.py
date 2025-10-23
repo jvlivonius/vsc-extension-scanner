@@ -73,6 +73,21 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         help='Enable verbose output to stderr'
     )
 
+    # Retry-related arguments
+    parser.add_argument(
+        '--max-retries',
+        type=int,
+        default=3,
+        help='Maximum retry attempts for failed API requests (default: 3)'
+    )
+
+    parser.add_argument(
+        '--retry-delay',
+        type=float,
+        default=2.0,
+        help='Base delay for exponential backoff in seconds (default: 2.0)'
+    )
+
     # Cache-related arguments
     parser.add_argument(
         '--cache-dir',
@@ -226,7 +241,12 @@ def main():
     elif args.refresh_cache:
         log("Forcing cache refresh", "INFO")
 
-    api_client = VscanAPIClient(delay=args.delay, verbose=verbose)
+    api_client = VscanAPIClient(
+        delay=args.delay,
+        verbose=verbose,
+        max_retries=args.max_retries,
+        retry_base_delay=args.retry_delay
+    )
 
     scan_results = []
     vulnerabilities_found = 0
@@ -410,6 +430,15 @@ def main():
         if len(extensions) > 0:
             cache_hit_rate = (cached_results / len(extensions)) * 100
             log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO")
+
+    # Retry statistics
+    retry_stats = api_client.get_retry_stats()
+    if retry_stats['total_retries'] > 0:
+        log("", "INFO")
+        log("Retry Statistics:", "INFO")
+        log(f"  Total retry attempts: {retry_stats['total_retries']}", "INFO")
+        log(f"  Successful retries: {retry_stats['successful_retries']}", "INFO")
+        log(f"  Failed after retries: {retry_stats['failed_after_retries']}", "INFO" if retry_stats['failed_after_retries'] == 0 else "WARNING")
 
     log("", "INFO")
     log(f"Vulnerabilities found: {vulnerabilities_found}", "INFO" if vulnerabilities_found == 0 else "WARNING")

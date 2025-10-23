@@ -6,14 +6,22 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 4 Complete + Security/Code Quality Improvements (v2.1)
+**Current Status:** Phase 4 Complete + Retry Mechanism (v2.2)
 
-**Latest Updates (v2.1 - 2025-10-23):**
+**Latest Updates (v2.2 - 2025-10-23):**
+- ✅ Implemented intelligent retry mechanism for transient API errors
+- ✅ Exponential backoff with jitter (2s, 4s, 8s delays)
+- ✅ Retry-After header support for rate limiting compliance
+- ✅ Configurable retry attempts and delays (--max-retries, --retry-delay)
+- ✅ Retry statistics tracking and reporting
+- ✅ Verbose mode logging for retry attempts
+- ✅ Comprehensive documentation and test suite
+
+**Previous Updates (v2.1 - 2025-10-23):**
 - ✅ Refactored security functions to eliminate unused code
 - ✅ All error messages now sanitized to prevent information disclosure
 - ✅ Test files organized in dedicated `tests/` directory
 - ✅ Added `.gitignore` for Python artifacts and cache files
-- ✅ Improved code quality and maintainability
 
 See **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** for detailed progress tracking.
 See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APPLIED.md)** for security improvements.
@@ -56,13 +64,19 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 python3 tests/test_api.py          # API validation tests
 python3 tests/test_security.py     # Security vulnerability tests
 
-# Phase 2+: Run the tool (v2.1 implemented)
+# Phase 2+: Run the tool (v2.2 implemented)
 python vscan.py                          # Standard scan
 python vscan.py --detailed               # Detailed scan with full data
 python vscan.py --extensions-dir /path   # Custom directory
 python vscan.py --output results.json    # Save to file
 python vscan.py --verbose                # Detailed progress
 python vscan.py --delay 2.0              # Custom delay
+
+# Retry configuration (v2.2)
+python vscan.py --max-retries 5          # More aggressive retries
+python vscan.py --retry-delay 3.0        # Longer backoff delays
+python vscan.py --max-retries 0          # Disable retries (fail fast)
+python vscan.py --verbose                # See retry attempts in action
 
 # Cache management
 python vscan.py --cache-stats            # Show cache statistics
@@ -299,6 +313,8 @@ Average time per extension: 0.6s
 | `--output` | `-o` | path | Output file path (JSON) | stdout |
 | `--delay` | `-t` | float | Delay between requests (seconds) | 1.5 |
 | `--verbose` | `-v` | flag | Enable verbose output | False |
+| `--max-retries` | - | int | Maximum retry attempts for failed requests | 3 |
+| `--retry-delay` | - | float | Base delay for exponential backoff (seconds) | 2.0 |
 | `--cache-dir` | - | path | Cache directory path | `~/.vscan/` |
 | `--cache-max-age` | - | int | Max age of cached results (days) | 7 |
 | `--refresh-cache` | - | flag | Force refresh all cached results | False |
@@ -506,6 +522,7 @@ python3 test_api.py
 - **[VS Code Extension API](https://code.visualstudio.com/api)** - Extension API docs
 - **[docs/design/PRD.md](docs/design/PRD.md)** - Full product requirements
 - **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - API research findings
+- **[docs/features/RETRY_MECHANISM.md](docs/features/RETRY_MECHANISM.md)** - Retry mechanism documentation (v2.2)
 
 ---
 

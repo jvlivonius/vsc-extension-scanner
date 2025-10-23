@@ -2,9 +2,18 @@
 
 A standalone Python CLI tool that performs comprehensive security audits of installed VS Code extensions using the vscan.dev security analysis service.
 
-**Version:** 2.0.0 | **Status:** Production Ready ✅
+**Version:** 2.2.0 | **Status:** Production Ready ✅
 
 All phases complete - ready for production use. See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for development history.
+
+## What's New in v2.2
+
+- **🔄 Intelligent Retry Mechanism:** Automatic recovery from rate limiting, server errors, and network timeouts
+- **⏱️ Exponential Backoff:** Smart retry delays (2s, 4s, 8s) with randomized jitter
+- **🎯 Retry-After Support:** Respects vscan.dev rate limit headers
+- **📊 Retry Statistics:** Track retry attempts, successes, and failures
+- **⚙️ Configurable:** Control retry behavior with `--max-retries` and `--retry-delay`
+- **🔍 Transparent:** See retry attempts in verbose mode
 
 ## What's New in v2.0
 
@@ -41,6 +50,11 @@ python3 vscan.py --cache-stats             # View cache statistics
 python3 vscan.py --refresh-cache           # Force refresh all
 python3 vscan.py --clear-cache             # Clear cache
 
+# Retry configuration (resilience)
+python3 vscan.py --max-retries 5           # More aggressive retries
+python3 vscan.py --retry-delay 3.0         # Longer backoff delays
+python3 vscan.py --max-retries 0           # Disable retries (fail fast)
+
 # Advanced options
 python3 vscan.py --delay 2.0               # Custom delay between requests
 python3 vscan.py --cache-max-age 14        # 14-day cache expiry
@@ -53,6 +67,7 @@ python3 vscan.py --no-cache                # Disable caching
 ✅ **Auto-discovery** - Finds VS Code extensions on all platforms (macOS, Windows, Linux)
 ✅ **Complete security analysis** - Dependencies, risk factors, security score breakdowns
 ✅ **Publisher verification** - Verified status and reputation tracking
+✅ **Intelligent retry mechanism** - Automatic recovery from rate limits, server errors, timeouts
 ✅ **Intelligent caching** - 28x faster with SQLite-based cache
 ✅ **Progress indicators** - Real-time updates with visual symbols
 ✅ **Zero dependencies** - Uses only Python 3.8+ standard library

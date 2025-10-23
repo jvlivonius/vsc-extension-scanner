@@ -1,0 +1,585 @@
+# Retry Mechanism
+
+**Status:** ✅ Implemented in v2.2
+**Feature Type:** Reliability Enhancement
+**Impact:** Improved resilience against transient API errors
+
+---
+
+## Overview
+
+The retry mechanism automatically retries failed API requests to vscan.dev when transient errors occur (rate limiting, server errors, network timeouts). This significantly improves scan reliability and reduces manual intervention needed when temporary issues arise.
+
+### Key Benefits
+
+- **Resilience:** Automatic recovery from rate limiting (HTTP 429)
+- **Reliability:** Handles transient server errors (502, 503, 504)
+- **Robustness:** Recovers from network timeouts and connection issues
+- **Transparency:** Detailed retry statistics in verbose mode
+- **Configurability:** Adjustable retry attempts and backoff delays
+
+---
+
+## How It Works
+
+### Retry Flow
+
+```
+API Request Attempt
+      ↓
+  ┌───────┐
+  │ Error │
+  └───┬───┘
+      │
+      ├─→ Is error retryable? ──No──→ Fail immediately
+      │
+      Yes
+      │
+      ├─→ Max retries exceeded? ──Yes──→ Fail after retries
+      │
+      No
+      │
+      ├─→ Calculate backoff delay
+      │   (exponential + jitter or Retry-After header)
+      │
+      ├─→ Log retry attempt (verbose mode)
+      │
+      ├─→ Wait for delay
+      │
+      └─→ Retry request ───────────────→ Success or loop back
+```
+
+### Retryable Errors
+
+The following errors trigger automatic retries:
+
+| Error Type | HTTP Status | Description |
+|------------|-------------|-------------|
+| **Rate Limiting** | 429 | vscan.dev rate limit exceeded |
+| **Bad Gateway** | 502 | Temporary server proxy error |
+| **Service Unavailable** | 503 | Server temporarily unavailable |
+| **Gateway Timeout** | 504 | Server response timeout |
+| **Connection Errors** | N/A | Network connection failures |
+| **Timeout Errors** | N/A | Request timeout exceeded |
+
+### Non-Retryable Errors
+
+These errors fail immediately without retries:
+
+| Error Type | HTTP Status | Reason |
+|------------|-------------|--------|
+| **Not Found** | 404 | Extension doesn't exist |
+| **Internal Server Error** | 500 | Permanent server error |
+| **Client Errors** | 4xx (except 429) | Invalid request (won't succeed on retry) |
+
+### Backoff Strategy
+
+The retry mechanism uses **exponential backoff with jitter**:
+
+```
+Delay = base_delay * 2^attempt + random(0, 1)
+```
+
+**Default Configuration:**
+- Base delay: 2.0 seconds
+- Max retries: 3
+
+**Example Delays:**
+- Attempt 1: 2s + jitter (total: 2.0-3.0s)
+- Attempt 2: 4s + jitter (total: 4.0-5.0s)
+- Attempt 3: 8s + jitter (total: 8.0-9.0s)
+
+**Total maximum wait time:** ~14-17 seconds across all retries
+
+### Retry-After Header Support
+
+When vscan.dev returns a `Retry-After` header (common with 429 rate limiting), the retry mechanism:
+
+1. Extracts the header value (seconds to wait)
+2. Uses it instead of exponential backoff
+3. Respects the server's requested delay
+4. Ensures compliance with rate limiting
+
+---
+
+## Configuration
+
+### CLI Arguments
+
+```bash
+# Maximum retry attempts (default: 3)
+python vscan.py --max-retries <number>
+
+# Base delay for exponential backoff (default: 2.0)
+python vscan.py --retry-delay <seconds>
+
+# Disable retries completely
+python vscan.py --max-retries 0
+```
+
+### Examples
+
+**Aggressive retries (for flaky networks):**
+```bash
+python vscan.py --max-retries 5 --retry-delay 1.0
+```
+
+**Conservative retries (to avoid overwhelming server):**
+```bash
+python vscan.py --max-retries 2 --retry-delay 3.0
+```
+
+**No retries (fail fast):**
+```bash
+python vscan.py --max-retries 0
+```
+
+**See retry details:**
+```bash
+python vscan.py --verbose
+```
+
+---
+
+## Retry Statistics
+
+After each scan, retry statistics are displayed (when retries occurred):
+
+```
+Retry Statistics:
+  Total retry attempts: 5
+  Successful retries: 4
+  Failed after retries: 1
+```
+
+### Statistics Explanation
+
+| Metric | Description |
+|--------|-------------|
+| **Total retry attempts** | Sum of all retry attempts across all requests |
+| **Successful retries** | Requests that succeeded after retrying |
+| **Failed after retries** | Requests that failed even after max retries |
+
+### Interpreting Results
+
+**All retries successful:**
+```
+Retry Statistics:
+  Total retry attempts: 3
+  Successful retries: 3
+  Failed after retries: 0
+```
+✅ **Meaning:** Temporary issues resolved by retrying
+
+**Some failures after retries:**
+```
+Retry Statistics:
+  Total retry attempts: 9
+  Successful retries: 6
+  Failed after retries: 1
+```
+⚠️ **Meaning:** Persistent issues affecting some requests (check verbose logs)
+
+**No retries needed:**
+```
+(No retry statistics displayed)
+```
+✅ **Meaning:** All requests succeeded on first attempt
+
+---
+
+## Verbose Mode
+
+Enable verbose mode to see detailed retry information:
+
+```bash
+python vscan.py --verbose
+```
+
+### Example Output
+
+```
+[3/42] Scanning esbenp.prettier-vscode v10.1.0... 🔍
+  [WARNING] Retry 1/3 after error: vscan.dev server error (HTTP 503)
+  Waiting 2.3s before retry...
+  [WARNING] Retry 2/3 after error: Request timed out after 30s
+  Waiting 4.7s before retry...
+✓
+```
+
+**What you see:**
+- Retry attempt number (1/3, 2/3, etc.)
+- Error that triggered the retry
+- Calculated delay before next attempt
+- Final success/failure indicator
+
+---
+
+## Implementation Details
+
+### API Client Integration
+
+The retry logic is implemented in [vscan_api.py](../../vscan_api.py) with four components:
+
+#### 1. Configuration (Lines 30-31, 47-53)
+
+```python
+def __init__(
+    self,
+    delay: float = 1.5,
+    verbose: bool = False,
+    timeout: int = 30,
+    max_retries: int = 3,           # NEW
+    retry_base_delay: float = 2.0   # NEW
+):
+    self.max_retries = max_retries
+    self.retry_base_delay = retry_base_delay
+    self.retry_stats = {
+        "total_retries": 0,
+        "successful_retries": 0,
+        "failed_after_retries": 0
+    }
+```
+
+#### 2. Error Classification (Lines 62-105)
+
+```python
+def _is_retryable_error(self, error: Exception, status_code: Optional[int] = None) -> bool:
+    """Determine if error should be retried."""
+    # Retry on: 429, 502-504, timeouts, connection errors
+    # Don't retry: 404, 500, 4xx (except 429)
+```
+
+#### 3. Backoff Calculation (Lines 107-131)
+
+```python
+def _calculate_backoff_delay(self, attempt: int, retry_after: Optional[int] = None) -> float:
+    """Calculate delay with exponential backoff + jitter."""
+    if retry_after:
+        return float(retry_after)  # Respect Retry-After header
+
+    backoff = self.retry_base_delay * (2 ** attempt)
+    jitter = random.uniform(0, 1)
+    return backoff + jitter
+```
+
+#### 4. Retry Wrapper (Lines 148-221)
+
+```python
+def _make_request_with_retry(self, url, method="GET", data=None, timeout=None):
+    """Wrap _make_request() with retry logic."""
+    for attempt in range(self.max_retries + 1):
+        try:
+            return self._make_request(url, method, data, timeout)
+        except Exception as e:
+            # Handle retry logic, backoff, statistics
+```
+
+### Modified Methods
+
+All three API operations now use the retry wrapper:
+
+- `submit_analysis()` - Line 337
+- `check_status()` - Line 360
+- `get_results()` - Line 383
+
+**Change:** `self._make_request()` → `self._make_request_with_retry()`
+
+---
+
+## Performance Impact
+
+### Latency Analysis
+
+**Without errors (best case):**
+- No performance impact
+- Same latency as before
+
+**With retryable errors:**
+- Retry attempt 1: +2-3s
+- Retry attempt 2: +4-5s
+- Retry attempt 3: +8-9s
+- **Total worst case:** +14-17s per failed request
+
+**Scan duration impact:**
+- Depends on error frequency
+- Rate limiting: Minimal (Retry-After header respected)
+- Network issues: Higher (exponential backoff applied)
+
+### Memory Impact
+
+- Retry statistics: ~100 bytes
+- Negligible memory overhead
+
+---
+
+## Best Practices
+
+### When to Increase Retries
+
+✅ **Use more retries when:**
+- Scanning large extension sets (>100)
+- Network is unstable
+- vscan.dev has recent downtime reports
+
+```bash
+python vscan.py --max-retries 5 --retry-delay 2.5
+```
+
+### When to Decrease Retries
+
+✅ **Use fewer retries when:**
+- Testing/development (fail fast)
+- Time-constrained environments
+- Known server issues (won't resolve quickly)
+
+```bash
+python vscan.py --max-retries 1 --retry-delay 1.0
+```
+
+### When to Disable Retries
+
+✅ **Disable retries when:**
+- Debugging request issues
+- Testing error handling
+- CI/CD with strict timeouts
+
+```bash
+python vscan.py --max-retries 0
+```
+
+---
+
+## Troubleshooting
+
+### Problem: Too many retries
+
+**Symptom:**
+```
+Retry Statistics:
+  Total retry attempts: 50
+  Successful retries: 20
+  Failed after retries: 10
+```
+
+**Solutions:**
+1. Check vscan.dev status: https://vscan.dev/status
+2. Reduce concurrent scans (lower --delay)
+3. Scan in smaller batches
+4. Check network connectivity
+
+### Problem: Retries not working
+
+**Symptom:** Requests fail immediately without retrying
+
+**Diagnosis:**
+```bash
+python vscan.py --verbose --max-retries 3
+```
+
+**Check for:**
+- Error type (is it retryable?)
+- `--max-retries 0` accidentally set
+- Non-retryable errors (404, 500, etc.)
+
+### Problem: Slow scans
+
+**Symptom:** Scans take much longer than expected
+
+**Diagnosis:**
+```
+Retry Statistics:
+  Total retry attempts: 30
+  ...
+```
+
+**Solutions:**
+- Check if rate limiting is occurring
+- Increase --delay between requests
+- Reduce --max-retries if errors are persistent
+- Split scan into smaller batches
+
+---
+
+## Testing
+
+Comprehensive test suite in [tests/test_retry.py](../../tests/test_retry.py):
+
+### Test Cases
+
+1. **Successful Request (No Retries)**
+   - Verifies no retries when request succeeds
+   - Validates retry stats remain at zero
+
+2. **Single Retry Success**
+   - Simulates one failure, then success
+   - Verifies retry stats increment correctly
+
+3. **Multiple Retries Success**
+   - Simulates multiple failures before success
+   - Tests exponential backoff timing
+
+4. **Max Retries Exceeded**
+   - Verifies failure after max attempts
+   - Checks failed_after_retries stat
+
+5. **Non-Retryable Error**
+   - Tests immediate failure for 404, 500
+   - Ensures no retry attempts made
+
+6. **Rate Limiting (HTTP 429)**
+   - Verifies retry on rate limit
+   - Tests Retry-After header parsing
+
+7. **Server Errors (502-504)**
+   - Tests retry for each server error code
+   - Validates backoff behavior
+
+8. **Timeout Errors**
+   - Tests retry on connection timeout
+   - Validates timeout error detection
+
+9. **Retry-After Header Respect**
+   - Verifies header value used for delay
+   - Tests override of exponential backoff
+
+### Running Tests
+
+```bash
+# Run all retry tests
+python -m pytest tests/test_retry.py -v
+
+# Run specific test
+python -m pytest tests/test_retry.py::test_retry_on_rate_limit -v
+
+# Run with coverage
+python -m pytest tests/test_retry.py --cov=vscan_api --cov-report=html
+```
+
+---
+
+## Security Considerations
+
+### Attack Mitigation
+
+**Retry mechanism protects against:**
+- ✅ Temporary rate limiting (exponential backoff prevents hammering)
+- ✅ DoS recovery (automatic retry after server recovers)
+- ✅ Network jitter (timeout tolerance)
+
+**Retry mechanism does NOT protect against:**
+- ❌ Malicious server responses (validates JSON, enforces size limits)
+- ❌ Infinite retry loops (max_retries limit enforced)
+- ❌ Resource exhaustion (bounded retry budget)
+
+### Rate Limiting Compliance
+
+The retry mechanism is **respectful of vscan.dev rate limits**:
+
+1. **Retry-After header:** Always respected when present
+2. **Exponential backoff:** Reduces request frequency automatically
+3. **Per-extension budget:** Each extension has independent retry budget
+4. **Global throttling:** Standard delay still applies between requests
+
+---
+
+## API Reference
+
+### VscanAPIClient Methods
+
+#### `__init__(max_retries=3, retry_base_delay=2.0)`
+
+Initialize API client with retry configuration.
+
+**Parameters:**
+- `max_retries` (int): Maximum retry attempts (default: 3)
+- `retry_base_delay` (float): Base delay for exponential backoff (default: 2.0)
+
+#### `get_retry_stats() -> Dict[str, int]`
+
+Get current retry statistics.
+
+**Returns:**
+```python
+{
+    "total_retries": 10,           # Sum of all retry attempts
+    "successful_retries": 8,       # Retries that succeeded
+    "failed_after_retries": 2      # Requests that failed after max retries
+}
+```
+
+### Private Methods (Internal)
+
+#### `_is_retryable_error(error, status_code=None) -> bool`
+
+Determine if an error should trigger a retry.
+
+#### `_calculate_backoff_delay(attempt, retry_after=None) -> float`
+
+Calculate delay before next retry using exponential backoff + jitter.
+
+#### `_log_retry_attempt(attempt, max_attempts, error, delay)`
+
+Log retry information (verbose mode only).
+
+#### `_make_request_with_retry(url, method, data, timeout) -> Tuple[int, Dict]`
+
+Execute HTTP request with automatic retry logic.
+
+---
+
+## Version History
+
+### v2.2 (2025-10-23)
+- ✅ Initial implementation
+- ✅ Exponential backoff with jitter
+- ✅ Retry-After header support
+- ✅ Retry statistics tracking
+- ✅ Verbose mode logging
+- ✅ CLI arguments (--max-retries, --retry-delay)
+- ✅ Comprehensive test suite
+
+---
+
+## Related Documentation
+
+- [CLAUDE.md](../../CLAUDE.md) - Implementation guidance
+- [README.md](../../README.md) - Project overview
+- [PRD.md](../design/PRD.md) - Product requirements
+- [API Research](../research/API_RESEARCH.md) - vscan.dev API documentation
+
+---
+
+## FAQ
+
+### Q: Will retries slow down my scans?
+
+**A:** Only when errors occur. Normal scans have zero performance impact. When errors happen, retries add 2-17 seconds per failed request depending on retry count.
+
+### Q: Can I disable retries?
+
+**A:** Yes, use `--max-retries 0` to disable all retries.
+
+### Q: How do I see what's being retried?
+
+**A:** Use `--verbose` to see detailed retry logs for each failed request.
+
+### Q: Do retries respect vscan.dev rate limits?
+
+**A:** Yes, the `Retry-After` header is always respected when present, and exponential backoff reduces request frequency automatically.
+
+### Q: What happens if all retries fail?
+
+**A:** The request fails and is counted in "Failed after retries" statistics. The scan continues with remaining extensions.
+
+### Q: Do retries work with caching?
+
+**A:** Yes, retries apply to fresh API scans. Cached results return instantly with no retries needed.
+
+### Q: Can retry delays cause timeouts?
+
+**A:** No, retry delays are separate from request timeouts. The `--timeout` argument controls individual request timeouts.
+
+---
+
+**For questions or issues, see:** https://github.com/your-repo/vsc-extension-scanner/issues
