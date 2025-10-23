@@ -11,7 +11,7 @@ import platform
 from pathlib import Path
 from typing import List, Dict, Optional
 
-from utils import log, sanitize_string
+from utils import log, sanitize_string, sanitize_error_message
 
 # Maximum package.json size (1MB)
 MAX_PACKAGE_JSON_SIZE = 1024 * 1024
@@ -147,9 +147,13 @@ class ExtensionDiscovery:
                     raise Exception("package.json must be a JSON object")
 
         except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON in package.json: {e}")
+            # Sanitize JSON decode error message
+            sanitized_error = sanitize_error_message(str(e), context="JSON parsing error")
+            raise Exception(f"Invalid JSON in package.json: {sanitized_error}")
         except Exception as e:
-            raise Exception(f"Error reading package.json: {e}")
+            # Sanitize generic error message
+            sanitized_error = sanitize_error_message(str(e), context="file reading error")
+            raise Exception(f"Error reading package.json: {sanitized_error}")
 
         # Extract required fields
         name = package_data.get('name')

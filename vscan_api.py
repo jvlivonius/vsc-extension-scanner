@@ -12,6 +12,8 @@ import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional, Tuple
 
+from utils import sanitize_error_message
+
 
 class VscanAPIClient:
     """Client for vscan.dev API."""
@@ -21,6 +23,21 @@ class VscanAPIClient:
 
     # Maximum response size (10MB)
     MAX_RESPONSE_SIZE = 10 * 1024 * 1024
+
+    # Retryable HTTP status codes (transient errors)
+    RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
+
+    # Retryable error patterns in error messages (includes status codes as strings)
+    RETRYABLE_ERROR_PATTERNS = [
+        "timeout",
+        "timed out",
+        "connection",
+        "rate limit",
+        "429",  # Rate limit in message
+        "502",  # Bad Gateway in message
+        "503",  # Service Unavailable in message
+        "504",  # Gateway Timeout in message
+    ]
 
     def __init__(
         self,
@@ -61,7 +78,7 @@ class VscanAPIClient:
 
     def _is_retryable_error(self, error: Exception, status_code: Optional[int] = None) -> bool:
         """
-        Determine if an error is retryable.
+        Determine if an error is retryable based on status code or error type.
 
         Args:
             error: The exception that occurred
@@ -70,63 +87,30 @@ class VscanAPIClient:
         Returns:
             True if the error should be retried, False otherwise
         """
-        error_str = str(error).lower()
-
-        # Timeout errors are retryable
-        if isinstance(error, urllib.error.URLError):
-            if isinstance(error.reason, TimeoutError):
-                return True
-            # Connection errors are retryable
-            if "connection" in str(error.reason).lower():
-                return True
-
-        # HTTP errors with specific status codes
+        # Extract status code from HTTPError if present
         if isinstance(error, urllib.error.HTTPError):
             status_code = error.code
 
-        # Check status code (from HTTPError or explicit parameter)
-        if status_code:
-            # Rate limiting - retryable with backoff
-            if status_code == 429:
-                return True
-            # Server errors - retryable
-            if status_code in [502, 503, 504]:
-                return True
-            # Other errors - not retryable
-            # 404 (not found), 500 (internal error), 4xx (client errors)
+        # Check if status code is retryable (429, 502, 503, 504)
+        if status_code in self.RETRYABLE_STATUS_CODES:
+            return True
+
+        # Non-retryable status codes (explicit client/server errors)
+        if status_code in {400, 401, 403, 404, 500}:
             return False
 
-        # Check error message patterns for retryable errors
-        retryable_patterns = [
-            "timeout",
-            "timed out",
-            "connection",
-            "rate limit",
-            "502",  # Bad Gateway
-            "503",  # Service Unavailable
-            "504",  # Gateway Timeout
-            "429",  # Too Many Requests
-        ]
+        # Check for timeout errors
+        if isinstance(error, urllib.error.URLError):
+            if isinstance(error.reason, TimeoutError):
+                return True
 
-        for pattern in retryable_patterns:
+        # Check error message for retryable patterns
+        error_str = str(error).lower()
+        for pattern in self.RETRYABLE_ERROR_PATTERNS:
             if pattern in error_str:
                 return True
 
-        # Non-retryable error patterns
-        non_retryable_patterns = [
-            "not found",
-            "404",
-            "500",  # Internal Server Error (not transient)
-            "400",  # Bad Request
-            "401",  # Unauthorized
-            "403",  # Forbidden
-        ]
-
-        for pattern in non_retryable_patterns:
-            if pattern in error_str:
-                return False
-
-        # Default: not retryable (fail safe)
+        # Default: not retryable (fail-safe)
         return False
 
     def _calculate_backoff_delay(self, attempt: int, retry_after: Optional[int] = None) -> float:
@@ -320,7 +304,7 @@ class VscanAPIClient:
             try:
                 json_data = json.loads(raw_response)
             except json.JSONDecodeError:
-                json_data = {"error": raw_response}
+                json_data = {}
 
             if status_code == 429:
                 raise Exception("Rate limit exceeded. Please try again later.")
@@ -329,16 +313,23 @@ class VscanAPIClient:
             elif status_code >= 500:
                 raise Exception(f"vscan.dev server error (HTTP {status_code})")
             else:
-                raise Exception(f"HTTP error {status_code}: {json_data.get('error', 'Unknown error')}")
+                # Sanitize error message from API response
+                api_error = json_data.get('error', '')
+                sanitized_error = sanitize_error_message(api_error, context="API error") if api_error else "Unknown error"
+                raise Exception(f"HTTP error {status_code}: {sanitized_error}")
 
         except urllib.error.URLError as e:
             error_msg = str(e.reason) if hasattr(e, 'reason') else str(e)
             if "timed out" in error_msg.lower():
                 raise Exception(f"Request timed out after {timeout}s. The extension may take longer to analyze.")
-            raise Exception(f"Network error: {error_msg}")
+            # Sanitize network error message
+            sanitized_error = sanitize_error_message(error_msg, context="network error")
+            raise Exception(f"Network error: {sanitized_error}")
 
         except Exception as e:
-            raise Exception(f"Request failed: {e}")
+            # Sanitize generic error message
+            sanitized_error = sanitize_error_message(str(e), context="request error")
+            raise Exception(f"Request failed: {sanitized_error}")
 
     def submit_analysis(self, publisher: str, name: str) -> str:
         """
@@ -364,7 +355,10 @@ class VscanAPIClient:
         if status_code in (200, 202) and "analysisId" in response:
             return response["analysisId"]
         else:
-            raise Exception(f"Failed to submit analysis: {response.get('message', 'Unknown error')}")
+            # Sanitize error message from API response
+            api_message = response.get('message', '')
+            sanitized_msg = sanitize_error_message(api_message, context="submission error") if api_message else "Unknown error"
+            raise Exception(f"Failed to submit analysis: {sanitized_msg}")
 
     def check_status(self, analysis_id: str) -> Dict[str, Any]:
         """
@@ -387,7 +381,10 @@ class VscanAPIClient:
         if status_code == 200 and "status" in response:
             return response
         else:
-            raise Exception(f"Failed to check status: {response.get('message', 'Unknown error')}")
+            # Sanitize error message from API response
+            api_message = response.get('message', '')
+            sanitized_msg = sanitize_error_message(api_message, context="status check error") if api_message else "Unknown error"
+            raise Exception(f"Failed to check status: {sanitized_msg}")
 
     def get_results(self, analysis_id: str) -> Dict[str, Any]:
         """
@@ -410,7 +407,10 @@ class VscanAPIClient:
         if status_code == 200:
             return response
         else:
-            raise Exception(f"Failed to retrieve results: {response.get('message', 'Unknown error')}")
+            # Sanitize error message from API response
+            api_message = response.get('message', '')
+            sanitized_msg = sanitize_error_message(api_message, context="results retrieval error") if api_message else "Unknown error"
+            raise Exception(f"Failed to retrieve results: {sanitized_msg}")
 
     def poll_until_complete(
         self,

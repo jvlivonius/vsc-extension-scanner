@@ -29,6 +29,37 @@ from utils import log, setup_logging, validate_path, sanitize_string, show_error
 VERSION = "2.0.0"
 
 
+def load_config_file() -> dict:
+    """
+    Load configuration from ~/.vscan/config.json if it exists.
+
+    Returns:
+        dict: Configuration dictionary, or empty dict if file doesn't exist or is invalid
+    """
+    config_path = Path.home() / ".vscan" / "config.json"
+
+    if not config_path.exists():
+        return {}
+
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+
+        # Validate that config is a dictionary
+        if not isinstance(config, dict):
+            log("Warning: config.json must be a JSON object, ignoring", "WARNING")
+            return {}
+
+        return config
+
+    except json.JSONDecodeError as e:
+        log(f"Warning: Invalid JSON in config.json: {e}", "WARNING")
+        return {}
+    except Exception as e:
+        log(f"Warning: Could not read config.json: {e}", "WARNING")
+        return {}
+
+
 def bounded_int(min_val: int, max_val: int):
     """Create a validator for bounded integer values."""
     def validator(value):
@@ -68,12 +99,19 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                              Scan all extensions (JSON to stdout)
-  %(prog)s --output results.json       Save JSON results to file
-  %(prog)s --output report.html        Generate interactive HTML report
-  %(prog)s --verbose                   Show detailed progress
-  %(prog)s --delay 2.0                 Use 2 second delay between requests
-  %(prog)s --extensions-dir /path     Use custom extensions directory
+  %(prog)s                                      Scan all extensions (JSON to stdout)
+  %(prog)s --output results.json               Save JSON results to file
+  %(prog)s --output report.html                Generate interactive HTML report
+  %(prog)s --verbose                           Show detailed progress
+  %(prog)s --publisher microsoft               Only scan Microsoft extensions
+  %(prog)s --min-risk-level high               Only show high/critical risk extensions
+  %(prog)s --include-ids "ms-python.python"    Scan only specific extension
+  %(prog)s --exclude-ids "local.test"          Exclude specific extensions
+
+Configuration:
+  Settings can be saved in ~/.vscan/config.json (JSON format)
+  Example: {"delay": 2.0, "max_retries": 5, "exclude_ids": "local.test"}
+  Command-line arguments override config file settings
 
 For more information, see: https://github.com/your-repo/vsc-extension-scanner
         """
@@ -166,13 +204,94 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         help='Include detailed security analysis (dependencies, risk factors, score breakdown)'
     )
 
+    # Filtering arguments
+    parser.add_argument(
+        '--include-ids',
+        type=str,
+        default=None,
+        help='Comma-separated list of extension IDs to scan (e.g., "ms-python.python,esbenp.prettier-vscode")'
+    )
+
+    parser.add_argument(
+        '--exclude-ids',
+        type=str,
+        default=None,
+        help='Comma-separated list of extension IDs to exclude from scan'
+    )
+
+    parser.add_argument(
+        '--publisher',
+        type=str,
+        default=None,
+        help='Only scan extensions from this publisher'
+    )
+
+    parser.add_argument(
+        '--min-risk-level',
+        type=str,
+        choices=['low', 'medium', 'high', 'critical'],
+        default=None,
+        help='Only scan extensions with this minimum risk level or higher'
+    )
+
     parser.add_argument(
         '--version', '-V',
         action='version',
         version=f'%(prog)s {VERSION}'
     )
 
-    return parser.parse_args()
+    # Parse command line arguments first
+    args = parser.parse_args()
+
+    # Load configuration file and merge with defaults (CLI args take precedence)
+    config = load_config_file()
+
+    if config:
+        # Map config file keys to argument attributes
+        # Only apply config values if CLI argument is at default value
+        config_mappings = {
+            'delay': ('delay', 1.5),
+            'max_retries': ('max_retries', 3),
+            'retry_delay': ('retry_delay', 2.0),
+            'cache_max_age': ('cache_max_age', 7),
+            'cache_dir': ('cache_dir', None),
+            'output': ('output', None),
+            'extensions_dir': ('extensions_dir', None),
+            'exclude_ids': ('exclude_ids', None),
+            'publisher': ('publisher', None),
+            'detailed': ('detailed', False),
+        }
+
+        for config_key, (attr_name, default_value) in config_mappings.items():
+            if config_key in config:
+                current_value = getattr(args, attr_name)
+
+                # Only use config value if CLI arg is still at default
+                if current_value == default_value:
+                    config_value = config[config_key]
+
+                    # Validate config value types
+                    if config_key in ['delay', 'retry_delay']:
+                        try:
+                            config_value = float(config_value)
+                        except (ValueError, TypeError):
+                            log(f"Warning: Invalid value for '{config_key}' in config.json, using default", "WARNING")
+                            continue
+
+                    if config_key in ['max_retries', 'cache_max_age']:
+                        try:
+                            config_value = int(config_value)
+                        except (ValueError, TypeError):
+                            log(f"Warning: Invalid value for '{config_key}' in config.json, using default", "WARNING")
+                            continue
+
+                    if config_key == 'detailed' and not isinstance(config_value, bool):
+                        log(f"Warning: 'detailed' in config.json must be boolean, using default", "WARNING")
+                        continue
+
+                    setattr(args, attr_name, config_value)
+
+    return args
 
 
 def handle_cache_commands(args, cache_manager):
@@ -191,7 +310,7 @@ def handle_cache_commands(args, cache_manager):
             log("Error: Cannot show cache stats when --no-cache is specified", "ERROR")
             return 2
 
-        stats = cache_manager.get_cache_stats()
+        stats = cache_manager.get_cache_stats(max_age_days=args.cache_max_age)
         log("Cache Statistics", "INFO", force=True)
         log("=" * 60, "INFO", force=True)
         log(f"Database path: {stats['database_path']}", "INFO", force=True)
@@ -200,13 +319,28 @@ def handle_cache_commands(args, cache_manager):
         log("", "INFO", force=True)
 
         if stats['total_entries'] > 0:
+            # Cache age information
+            if stats.get('average_age_days') is not None:
+                log(f"Average cache age: {stats['average_age_days']} days", "INFO", force=True)
+
+            stale_count = stats.get('stale_entries', 0)
+            stale_threshold = stats.get('stale_threshold_days', args.cache_max_age)
+
+            if stale_count > 0:
+                stale_percent = round((stale_count / stats['total_entries']) * 100, 1)
+                log(f"Stale entries (>{stale_threshold} days): {stale_count} ({stale_percent}%)", "INFO", force=True)
+
+                # Suggest refresh if many entries are stale
+                if stale_percent >= 50:
+                    log("", "INFO", force=True)
+                    log("⚠️  Recommendation: Consider running with --refresh-cache to update stale entries", "WARNING", force=True)
+
+            log("", "INFO", force=True)
             log("Risk breakdown:", "INFO", force=True)
             for risk, count in stats['risk_breakdown'].items():
                 log(f"  {risk}: {count}", "INFO", force=True)
             log("", "INFO", force=True)
             log(f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}", "INFO", force=True)
-            log(f"Oldest entry: {stats['oldest_entry']}", "INFO", force=True)
-            log(f"Newest entry: {stats['newest_entry']}", "INFO", force=True)
 
         return 0
 
@@ -221,6 +355,53 @@ def handle_cache_commands(args, cache_manager):
 
     # No cache command specified
     return None
+
+
+def apply_pre_scan_filters(extensions, args):
+    """
+    Apply filters that can be applied before scanning.
+    Filters: --include-ids, --exclude-ids, --publisher
+
+    Args:
+        extensions: List of extension metadata dicts
+        args: Parsed command-line arguments
+
+    Returns:
+        Filtered list of extensions
+    """
+    filtered = extensions
+
+    # Parse include/exclude IDs if provided
+    include_ids = None
+    exclude_ids = None
+
+    if args.include_ids:
+        include_ids = set(id.strip() for id in args.include_ids.split(',') if id.strip())
+
+    if args.exclude_ids:
+        exclude_ids = set(id.strip() for id in args.exclude_ids.split(',') if id.strip())
+
+    # Apply filters with AND logic (all filters must match)
+    def matches_filters(ext):
+        ext_id = ext.get('id', '')
+        publisher = ext.get('publisher', '')
+
+        # Include IDs filter (if specified, extension MUST be in the list)
+        if include_ids and ext_id not in include_ids:
+            return False
+
+        # Exclude IDs filter (if specified, extension MUST NOT be in the list)
+        if exclude_ids and ext_id in exclude_ids:
+            return False
+
+        # Publisher filter (if specified, extension MUST match publisher)
+        if args.publisher and publisher.lower() != args.publisher.lower():
+            return False
+
+        return True
+
+    filtered = [ext for ext in filtered if matches_filters(ext)]
+    return filtered
 
 
 def discover_extensions(args):
@@ -245,6 +426,15 @@ def discover_extensions(args):
 
     extensions = discovery.discover_extensions()
     log(f"Discovered {len(extensions)} extensions", "SUCCESS")
+
+    # Apply pre-scan filters
+    original_count = len(extensions)
+    extensions = apply_pre_scan_filters(extensions, args)
+
+    if len(extensions) < original_count:
+        filtered_count = original_count - len(extensions)
+        log(f"Filtered out {filtered_count} extensions based on criteria", "INFO")
+        log(f"{len(extensions)} extensions selected for scanning", "SUCCESS")
 
     return extensions, extensions_dir
 
@@ -461,6 +651,45 @@ def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
         })
 
 
+def apply_post_scan_filters(scan_results, args):
+    """
+    Apply filters that require scan results.
+    Filters: --min-risk-level
+
+    Args:
+        scan_results: List of scan result dicts
+        args: Parsed command-line arguments
+
+    Returns:
+        Filtered list of scan results
+    """
+    if not args.min_risk_level:
+        return scan_results
+
+    # Define risk level hierarchy
+    risk_hierarchy = {
+        'low': 0,
+        'medium': 1,
+        'high': 2,
+        'critical': 3
+    }
+
+    min_level = risk_hierarchy.get(args.min_risk_level, 0)
+
+    def meets_risk_threshold(result):
+        risk_level = result.get('risk_level', 'low')
+        result_level = risk_hierarchy.get(risk_level, 0)
+        return result_level >= min_level
+
+    filtered = [result for result in scan_results if meets_risk_threshold(result)]
+
+    if len(filtered) < len(scan_results):
+        filtered_count = len(scan_results) - len(filtered)
+        log(f"Filtered out {filtered_count} extensions below '{args.min_risk_level}' risk level", "INFO")
+
+    return filtered
+
+
 def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data):
     """
     Generate and write output (JSON or HTML).
@@ -660,6 +889,9 @@ def main():
 
     # Step 2: Scan extensions
     scan_results, stats = scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp)
+
+    # Apply post-scan filters (risk level)
+    scan_results = apply_post_scan_filters(scan_results, args)
 
     # Step 3: Generate output
     scan_duration = time.time() - start_time

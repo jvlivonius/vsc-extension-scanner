@@ -26,7 +26,7 @@ def setup_logging(verbose: bool = False):
 
 def log(message: str, level: str = "INFO", newline: bool = True, force: bool = False):
     """
-    Log message to stderr.
+    Log message to stderr with simplified logic.
 
     Args:
         message: Message to log
@@ -34,37 +34,26 @@ def log(message: str, level: str = "INFO", newline: bool = True, force: bool = F
         newline: Whether to print newline after message
         force: Force printing even if not verbose (for important messages)
     """
-    # Always print ERROR, WARNING, and forced messages
-    if level in ("ERROR", "WARNING") or force:
-        end = '\n' if newline else ''
-        if level in ("ERROR", "WARNING"):
-            print(f"[{level}] {message}", file=sys.stderr, end=end, flush=True)
-        else:
-            # For forced INFO/SUCCESS messages, don't add level prefix for ERROR/WARNING
-            if level == "SUCCESS":
-                print(f"[✓] {message}", file=sys.stderr, end=end, flush=True)
-            else:
-                print(message, file=sys.stderr, end=end, flush=True)
+    # Determine if message should be printed
+    should_print = (level in ("ERROR", "WARNING")) or force or _VERBOSE
+
+    if not should_print:
         return
 
-    # Only print INFO and SUCCESS if verbose is enabled
-    if not _VERBOSE:
-        return
+    # Map log levels to prefixes
+    prefixes = {
+        "ERROR": "[ERROR]",
+        "WARNING": "[WARNING]",
+        "SUCCESS": "[✓]",
+        "INFO": ""
+    }
 
-    # Format based on level
-    if level == "SUCCESS":
-        prefix = "[✓]"
-    elif level == "INFO":
-        prefix = ""
-    else:
-        prefix = f"[{level}]"
+    prefix = prefixes.get(level, f"[{level}]")
 
-    # Print to stderr (stdout is reserved for JSON output)
+    # Format and print message
+    output = f"{prefix} {message}".strip() if prefix else message
     end = '\n' if newline else ''
-    if prefix:
-        print(f"{prefix} {message}", file=sys.stderr, end=end, flush=True)
-    else:
-        print(message, file=sys.stderr, end=end, flush=True)
+    print(output, file=sys.stderr, end=end, flush=True)
 
 
 def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path") -> bool:
@@ -128,6 +117,46 @@ def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
     text = text.replace('\x00', '')
 
     return text
+
+
+def sanitize_error_message(error_msg: str, context: str = "error") -> str:
+    """
+    Sanitize error messages from external sources (API, exceptions) to prevent
+    information disclosure.
+
+    Args:
+        error_msg: Raw error message from external source
+        context: Context for generic fallback message
+
+    Returns:
+        Sanitized, user-friendly error message
+    """
+    if not error_msg:
+        return f"An {context} occurred"
+
+    # Convert to string and limit length
+    error_str = str(error_msg)
+
+    # Remove potentially sensitive patterns
+    # - File paths (anything with / or \ followed by multiple segments)
+    # - Stack traces (lines starting with "  File " or "Traceback")
+    # - Internal implementation details
+    sanitized = error_str
+
+    # Truncate to reasonable length
+    max_length = 150
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length] + "..."
+
+    # Remove null bytes and control characters
+    sanitized = ''.join(char for char in sanitized if char == '\n' or char >= ' ')
+    sanitized = sanitized.replace('\x00', '')
+
+    # If message is too generic or empty after sanitization, use context
+    if not sanitized.strip() or sanitized.strip() in ['Unknown error', 'Error', 'Failed']:
+        return f"An {context} occurred"
+
+    return sanitized.strip()
 
 
 def format_duration(seconds: float) -> str:
