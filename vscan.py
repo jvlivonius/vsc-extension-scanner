@@ -223,7 +223,7 @@ def handle_cache_commands(args, cache_manager):
             log("Error: Cannot show cache stats when --no-cache is specified", "ERROR")
             return 2
 
-        stats = cache_manager.get_cache_stats()
+        stats = cache_manager.get_cache_stats(max_age_days=args.cache_max_age)
         log("Cache Statistics", "INFO", force=True)
         log("=" * 60, "INFO", force=True)
         log(f"Database path: {stats['database_path']}", "INFO", force=True)
@@ -232,13 +232,28 @@ def handle_cache_commands(args, cache_manager):
         log("", "INFO", force=True)
 
         if stats['total_entries'] > 0:
+            # Cache age information
+            if stats.get('average_age_days') is not None:
+                log(f"Average cache age: {stats['average_age_days']} days", "INFO", force=True)
+
+            stale_count = stats.get('stale_entries', 0)
+            stale_threshold = stats.get('stale_threshold_days', args.cache_max_age)
+
+            if stale_count > 0:
+                stale_percent = round((stale_count / stats['total_entries']) * 100, 1)
+                log(f"Stale entries (>{stale_threshold} days): {stale_count} ({stale_percent}%)", "INFO", force=True)
+
+                # Suggest refresh if many entries are stale
+                if stale_percent >= 50:
+                    log("", "INFO", force=True)
+                    log("⚠️  Recommendation: Consider running with --refresh-cache to update stale entries", "WARNING", force=True)
+
+            log("", "INFO", force=True)
             log("Risk breakdown:", "INFO", force=True)
             for risk, count in stats['risk_breakdown'].items():
                 log(f"  {risk}: {count}", "INFO", force=True)
             log("", "INFO", force=True)
             log(f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}", "INFO", force=True)
-            log(f"Oldest entry: {stats['oldest_entry']}", "INFO", force=True)
-            log(f"Newest entry: {stats['newest_entry']}", "INFO", force=True)
 
         return 0
 

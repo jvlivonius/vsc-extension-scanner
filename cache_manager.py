@@ -8,6 +8,7 @@ for unchanged extensions.
 
 import sqlite3
 import json
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
@@ -217,7 +218,13 @@ class CacheManager:
             cursor.execute("SELECT id, scan_result FROM scan_cache")
             rows = cursor.fetchall()
 
-            for row_id, scan_result_json in rows:
+            total_rows = len(rows)
+            if total_rows > 0:
+                print(f"Migrating cache schema (v1.0 → v2.0)...", file=__import__('sys').stderr)
+                print(f"Processing {total_rows} cached entries...", file=__import__('sys').stderr)
+
+            updated_count = 0
+            for idx, (row_id, scan_result_json) in enumerate(rows, 1):
                 try:
                     result = json.loads(scan_result_json)
 
@@ -241,9 +248,19 @@ class CacheManager:
                         WHERE id = ?
                     """, (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id))
 
+                    updated_count += 1
+
+                    # Show progress every 10 entries or at the end
+                    if idx % 10 == 0 or idx == total_rows:
+                        print(f"  Progress: {idx}/{total_rows} entries...", file=__import__('sys').stderr, end='\r')
+
                 except (json.JSONDecodeError, Exception):
                     # Skip rows that can't be parsed
                     continue
+
+            if total_rows > 0:
+                print()  # New line after progress
+                print(f"Migration complete: {updated_count}/{total_rows} entries updated", file=__import__('sys').stderr)
 
             # Update schema version
             cursor.execute(
@@ -252,7 +269,6 @@ class CacheManager:
             )
 
             conn.commit()
-            print(f"Successfully migrated cache from v1.0 to v2.0 ({len(rows)} entries)", file=__import__('sys').stderr)
 
         except sqlite3.Error as e:
             print(f"Cache migration error: {e}", file=__import__('sys').stderr)
@@ -454,9 +470,12 @@ class CacheManager:
         finally:
             conn.close()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self, max_age_days: int = 7) -> Dict[str, Any]:
         """
-        Get cache statistics.
+        Get cache statistics including age information.
+
+        Args:
+            max_age_days: Maximum age threshold for stale detection (default: 7)
 
         Returns:
             Dictionary with cache statistics
@@ -501,6 +520,26 @@ class CacheManager:
             newest_entry_row = cursor.fetchone()
             newest_entry = newest_entry_row[0] if newest_entry_row and newest_entry_row[0] else None
 
+            # Calculate average age of cache entries
+            now = time.time()
+            cursor.execute("SELECT scanned_at FROM scan_cache")
+            timestamps = [row[0] for row in cursor.fetchall() if row[0]]
+
+            avg_age_days = None
+            if timestamps:
+                ages = [(now - ts) / 86400 for ts in timestamps]  # Convert to days
+                avg_age_days = round(sum(ages) / len(ages), 1)
+
+            # Count stale entries (older than max_age_days)
+            max_age_seconds = max_age_days * 86400
+            cutoff_time = now - max_age_seconds
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM scan_cache
+                WHERE scanned_at < ?
+            """, (cutoff_time,))
+            stale_entries = cursor.fetchone()[0]
+
             # Database size
             db_size_bytes = self.cache_db.stat().st_size if self.cache_db.exists() else 0
             db_size_kb = db_size_bytes / 1024
@@ -511,6 +550,9 @@ class CacheManager:
                 'extensions_with_vulnerabilities': with_vulnerabilities,
                 'oldest_entry': oldest_entry,
                 'newest_entry': newest_entry,
+                'average_age_days': avg_age_days,
+                'stale_entries': stale_entries,
+                'stale_threshold_days': max_age_days,
                 'database_size_kb': round(db_size_kb, 2),
                 'database_path': str(self.cache_db)
             }
