@@ -40,6 +40,11 @@ class CacheManager:
 
         self.cache_db = self.cache_dir / "cache.db"
 
+        # Verify database integrity if it exists
+        if self.cache_db.exists():
+            if not self._verify_database_integrity():
+                self._handle_corrupted_database()
+
         # Check if migration is needed before init
         needs_migration = self._check_if_migration_needed()
 
@@ -68,6 +73,61 @@ class CacheManager:
             yield conn
         finally:
             conn.close()
+
+    def _verify_database_integrity(self) -> bool:
+        """
+        Verify database integrity using SQLite's built-in integrity check.
+
+        Returns:
+            True if database is intact, False if corrupted
+        """
+        try:
+            conn = sqlite3.connect(self.cache_db)
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA integrity_check")
+            result = cursor.fetchone()
+            conn.close()
+
+            # integrity_check returns "ok" if everything is fine
+            # or a list of errors if there are problems
+            if result and result[0] == "ok":
+                return True
+            else:
+                print(f"[WARNING] Cache database integrity check failed: {result}",
+                      file=__import__('sys').stderr)
+                return False
+
+        except sqlite3.Error as e:
+            print(f"[WARNING] Cache database integrity check error: {e}",
+                  file=__import__('sys').stderr)
+            return False
+
+    def _handle_corrupted_database(self):
+        """
+        Handle corrupted database by backing it up and creating a fresh one.
+        """
+        import sys
+        import shutil
+
+        print("[WARNING] Detected corrupted cache database", file=sys.stderr)
+
+        try:
+            # Create backup with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = self.cache_db.parent / f"cache.db.corrupted.{timestamp}"
+
+            print(f"[INFO] Backing up corrupted database to: {backup_path}", file=sys.stderr)
+            shutil.copy2(self.cache_db, backup_path)
+
+            # Remove corrupted database
+            print("[INFO] Removing corrupted database...", file=sys.stderr)
+            self.cache_db.unlink()
+
+            print("[INFO] Creating fresh cache database...", file=sys.stderr)
+
+        except (OSError, IOError) as e:
+            print(f"[ERROR] Failed to handle corrupted database: {e}", file=sys.stderr)
+            print("[INFO] Cache functionality may be impaired", file=sys.stderr)
 
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
