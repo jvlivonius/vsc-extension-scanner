@@ -1,0 +1,26 @@
+# Include documentation and metadata files
+include README.md
+include LICENSE
+include CLAUDE.md
+include pyproject.toml
+include setup.py
+
+# Include all documentation
+recursive-include docs *.md
+recursive-include docs *.txt
+
+# Exclude build artifacts
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.so
+
+# Exclude test and development files
+exclude tests/*
+exclude .gitignore
+exclude .git/*
+exclude node_modules/*
+exclude temp/*
+exclude results.json
+exclude *.json
