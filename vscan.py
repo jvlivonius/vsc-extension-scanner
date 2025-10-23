@@ -68,12 +68,14 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                              Scan all extensions (JSON to stdout)
-  %(prog)s --output results.json       Save JSON results to file
-  %(prog)s --output report.html        Generate interactive HTML report
-  %(prog)s --verbose                   Show detailed progress
-  %(prog)s --delay 2.0                 Use 2 second delay between requests
-  %(prog)s --extensions-dir /path     Use custom extensions directory
+  %(prog)s                                      Scan all extensions (JSON to stdout)
+  %(prog)s --output results.json               Save JSON results to file
+  %(prog)s --output report.html                Generate interactive HTML report
+  %(prog)s --verbose                           Show detailed progress
+  %(prog)s --publisher microsoft               Only scan Microsoft extensions
+  %(prog)s --min-risk-level high               Only show high/critical risk extensions
+  %(prog)s --include-ids "ms-python.python"    Scan only specific extension
+  %(prog)s --exclude-ids "local.test"          Exclude specific extensions
 
 For more information, see: https://github.com/your-repo/vsc-extension-scanner
         """
@@ -166,6 +168,36 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         help='Include detailed security analysis (dependencies, risk factors, score breakdown)'
     )
 
+    # Filtering arguments
+    parser.add_argument(
+        '--include-ids',
+        type=str,
+        default=None,
+        help='Comma-separated list of extension IDs to scan (e.g., "ms-python.python,esbenp.prettier-vscode")'
+    )
+
+    parser.add_argument(
+        '--exclude-ids',
+        type=str,
+        default=None,
+        help='Comma-separated list of extension IDs to exclude from scan'
+    )
+
+    parser.add_argument(
+        '--publisher',
+        type=str,
+        default=None,
+        help='Only scan extensions from this publisher'
+    )
+
+    parser.add_argument(
+        '--min-risk-level',
+        type=str,
+        choices=['low', 'medium', 'high', 'critical'],
+        default=None,
+        help='Only scan extensions with this minimum risk level or higher'
+    )
+
     parser.add_argument(
         '--version', '-V',
         action='version',
@@ -223,6 +255,53 @@ def handle_cache_commands(args, cache_manager):
     return None
 
 
+def apply_pre_scan_filters(extensions, args):
+    """
+    Apply filters that can be applied before scanning.
+    Filters: --include-ids, --exclude-ids, --publisher
+
+    Args:
+        extensions: List of extension metadata dicts
+        args: Parsed command-line arguments
+
+    Returns:
+        Filtered list of extensions
+    """
+    filtered = extensions
+
+    # Parse include/exclude IDs if provided
+    include_ids = None
+    exclude_ids = None
+
+    if args.include_ids:
+        include_ids = set(id.strip() for id in args.include_ids.split(',') if id.strip())
+
+    if args.exclude_ids:
+        exclude_ids = set(id.strip() for id in args.exclude_ids.split(',') if id.strip())
+
+    # Apply filters with AND logic (all filters must match)
+    def matches_filters(ext):
+        ext_id = ext.get('id', '')
+        publisher = ext.get('publisher', '')
+
+        # Include IDs filter (if specified, extension MUST be in the list)
+        if include_ids and ext_id not in include_ids:
+            return False
+
+        # Exclude IDs filter (if specified, extension MUST NOT be in the list)
+        if exclude_ids and ext_id in exclude_ids:
+            return False
+
+        # Publisher filter (if specified, extension MUST match publisher)
+        if args.publisher and publisher.lower() != args.publisher.lower():
+            return False
+
+        return True
+
+    filtered = [ext for ext in filtered if matches_filters(ext)]
+    return filtered
+
+
 def discover_extensions(args):
     """
     Discover installed VS Code extensions.
@@ -245,6 +324,15 @@ def discover_extensions(args):
 
     extensions = discovery.discover_extensions()
     log(f"Discovered {len(extensions)} extensions", "SUCCESS")
+
+    # Apply pre-scan filters
+    original_count = len(extensions)
+    extensions = apply_pre_scan_filters(extensions, args)
+
+    if len(extensions) < original_count:
+        filtered_count = original_count - len(extensions)
+        log(f"Filtered out {filtered_count} extensions based on criteria", "INFO")
+        log(f"{len(extensions)} extensions selected for scanning", "SUCCESS")
 
     return extensions, extensions_dir
 
@@ -461,6 +549,45 @@ def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
         })
 
 
+def apply_post_scan_filters(scan_results, args):
+    """
+    Apply filters that require scan results.
+    Filters: --min-risk-level
+
+    Args:
+        scan_results: List of scan result dicts
+        args: Parsed command-line arguments
+
+    Returns:
+        Filtered list of scan results
+    """
+    if not args.min_risk_level:
+        return scan_results
+
+    # Define risk level hierarchy
+    risk_hierarchy = {
+        'low': 0,
+        'medium': 1,
+        'high': 2,
+        'critical': 3
+    }
+
+    min_level = risk_hierarchy.get(args.min_risk_level, 0)
+
+    def meets_risk_threshold(result):
+        risk_level = result.get('risk_level', 'low')
+        result_level = risk_hierarchy.get(risk_level, 0)
+        return result_level >= min_level
+
+    filtered = [result for result in scan_results if meets_risk_threshold(result)]
+
+    if len(filtered) < len(scan_results):
+        filtered_count = len(scan_results) - len(filtered)
+        log(f"Filtered out {filtered_count} extensions below '{args.min_risk_level}' risk level", "INFO")
+
+    return filtered
+
+
 def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data):
     """
     Generate and write output (JSON or HTML).
@@ -660,6 +787,9 @@ def main():
 
     # Step 2: Scan extensions
     scan_results, stats = scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp)
+
+    # Apply post-scan filters (risk level)
+    scan_results = apply_post_scan_filters(scan_results, args)
 
     # Step 3: Generate output
     scan_duration = time.time() - start_time
