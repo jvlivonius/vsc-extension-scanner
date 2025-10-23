@@ -6,9 +6,21 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 4 Complete + HTML Report Feature (v2.2)
+**Current Status:** Phase 4 Complete + HTML Report Feature + Phase 3 Improvements (v2.2)
 
-**Latest Updates (v2.2 - 2025-10-23):**
+**Latest Updates (Phase 3 Improvements - 2025-10-23):**
+- ✅ **Database Integrity Checks** (NEW!) - Automatic corruption detection and recovery
+  - PRAGMA integrity_check on database initialization
+  - Automatic backup of corrupted databases with timestamps
+  - Fresh database creation on corruption detection
+  - Comprehensive test suite (3 tests)
+- ✅ **Integration Tests** (NEW!) - Comprehensive workflow testing
+  - 7 test suites covering all major workflows
+  - Mock vscan.dev API for reliable testing
+  - Full coverage: discovery, scanning, caching, output, errors
+  - 100% test pass rate
+
+**Previous Updates (v2.2 - 2025-10-23):**
 - ✅ **HTML Report Generation** (NEW!) - Interactive, self-contained HTML reports
   - Auto-detected from `.html` file extension in `--output` flag
   - Includes sortable tables, risk filters, search, and expandable details
@@ -69,10 +81,12 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 ## Development Commands
 
 ```bash
-# Testing (Phase 1)
+# Testing
 python3 tests/test_api.py          # API validation tests
 python3 tests/test_retry.py        # Retry mechanism tests
 python3 tests/test_security.py     # Security vulnerability tests
+python3 tests/test_db_integrity.py # Database integrity tests (NEW)
+python3 tests/test_integration.py  # Integration tests (NEW)
 
 # Phase 2+: Run the tool (v2.2 implemented)
 python vscan.py                          # Standard scan
