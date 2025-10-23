@@ -29,6 +29,38 @@ from utils import log, setup_logging, validate_path, sanitize_string
 VERSION = "2.0.0"
 
 
+def bounded_int(min_val: int, max_val: int):
+    """Create a validator for bounded integer values."""
+    def validator(value):
+        try:
+            ivalue = int(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"must be an integer, got '{value}'")
+
+        if ivalue < min_val or ivalue > max_val:
+            raise argparse.ArgumentTypeError(
+                f"must be between {min_val} and {max_val}, got {ivalue}"
+            )
+        return ivalue
+    return validator
+
+
+def bounded_float(min_val: float, max_val: float):
+    """Create a validator for bounded float values."""
+    def validator(value):
+        try:
+            fvalue = float(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"must be a number, got '{value}'")
+
+        if fvalue < min_val or fvalue > max_val:
+            raise argparse.ArgumentTypeError(
+                f"must be between {min_val} and {max_val}, got {fvalue}"
+            )
+        return fvalue
+    return validator
+
+
 def parse_arguments():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
@@ -63,9 +95,9 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
 
     parser.add_argument(
         '--delay', '-t',
-        type=float,
+        type=bounded_float(0.1, 30.0),
         default=1.5,
-        help='Delay between API requests in seconds (default: 1.5)'
+        help='Delay between API requests in seconds, 0.1-30.0 (default: 1.5)'
     )
 
     parser.add_argument(
@@ -77,16 +109,16 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
     # Retry-related arguments
     parser.add_argument(
         '--max-retries',
-        type=int,
+        type=bounded_int(0, 10),
         default=3,
-        help='Maximum retry attempts for failed API requests (default: 3)'
+        help='Maximum retry attempts for failed API requests, 0-10 (default: 3)'
     )
 
     parser.add_argument(
         '--retry-delay',
-        type=float,
+        type=bounded_float(0.1, 60.0),
         default=2.0,
-        help='Base delay for exponential backoff in seconds (default: 2.0)'
+        help='Base delay for exponential backoff in seconds, 0.1-60.0 (default: 2.0)'
     )
 
     # Cache-related arguments
@@ -99,9 +131,9 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
 
     parser.add_argument(
         '--cache-max-age',
-        type=int,
+        type=bounded_int(1, 365),
         default=7,
-        help='Maximum age of cached results in days (default: 7)'
+        help='Maximum age of cached results in days, 1-365 (default: 7)'
     )
 
     parser.add_argument(
