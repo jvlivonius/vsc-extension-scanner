@@ -12,6 +12,8 @@ import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional, Tuple
 
+from utils import sanitize_error_message
+
 
 class VscanAPIClient:
     """Client for vscan.dev API."""
@@ -320,7 +322,7 @@ class VscanAPIClient:
             try:
                 json_data = json.loads(raw_response)
             except json.JSONDecodeError:
-                json_data = {"error": raw_response}
+                json_data = {}
 
             if status_code == 429:
                 raise Exception("Rate limit exceeded. Please try again later.")
@@ -329,16 +331,23 @@ class VscanAPIClient:
             elif status_code >= 500:
                 raise Exception(f"vscan.dev server error (HTTP {status_code})")
             else:
-                raise Exception(f"HTTP error {status_code}: {json_data.get('error', 'Unknown error')}")
+                # Sanitize error message from API response
+                api_error = json_data.get('error', '')
+                sanitized_error = sanitize_error_message(api_error, context="API error") if api_error else "Unknown error"
+                raise Exception(f"HTTP error {status_code}: {sanitized_error}")
 
         except urllib.error.URLError as e:
             error_msg = str(e.reason) if hasattr(e, 'reason') else str(e)
             if "timed out" in error_msg.lower():
                 raise Exception(f"Request timed out after {timeout}s. The extension may take longer to analyze.")
-            raise Exception(f"Network error: {error_msg}")
+            # Sanitize network error message
+            sanitized_error = sanitize_error_message(error_msg, context="network error")
+            raise Exception(f"Network error: {sanitized_error}")
 
         except Exception as e:
-            raise Exception(f"Request failed: {e}")
+            # Sanitize generic error message
+            sanitized_error = sanitize_error_message(str(e), context="request error")
+            raise Exception(f"Request failed: {sanitized_error}")
 
     def submit_analysis(self, publisher: str, name: str) -> str:
         """
@@ -364,7 +373,10 @@ class VscanAPIClient:
         if status_code in (200, 202) and "analysisId" in response:
             return response["analysisId"]
         else:
-            raise Exception(f"Failed to submit analysis: {response.get('message', 'Unknown error')}")
+            # Sanitize error message from API response
+            api_message = response.get('message', '')
+            sanitized_msg = sanitize_error_message(api_message, context="submission error") if api_message else "Unknown error"
+            raise Exception(f"Failed to submit analysis: {sanitized_msg}")
 
     def check_status(self, analysis_id: str) -> Dict[str, Any]:
         """
@@ -387,7 +399,10 @@ class VscanAPIClient:
         if status_code == 200 and "status" in response:
             return response
         else:
-            raise Exception(f"Failed to check status: {response.get('message', 'Unknown error')}")
+            # Sanitize error message from API response
+            api_message = response.get('message', '')
+            sanitized_msg = sanitize_error_message(api_message, context="status check error") if api_message else "Unknown error"
+            raise Exception(f"Failed to check status: {sanitized_msg}")
 
     def get_results(self, analysis_id: str) -> Dict[str, Any]:
         """
@@ -410,7 +425,10 @@ class VscanAPIClient:
         if status_code == 200:
             return response
         else:
-            raise Exception(f"Failed to retrieve results: {response.get('message', 'Unknown error')}")
+            # Sanitize error message from API response
+            api_message = response.get('message', '')
+            sanitized_msg = sanitize_error_message(api_message, context="results retrieval error") if api_message else "Unknown error"
+            raise Exception(f"Failed to retrieve results: {sanitized_msg}")
 
     def poll_until_complete(
         self,

@@ -130,6 +130,46 @@ def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
     return text
 
 
+def sanitize_error_message(error_msg: str, context: str = "error") -> str:
+    """
+    Sanitize error messages from external sources (API, exceptions) to prevent
+    information disclosure.
+
+    Args:
+        error_msg: Raw error message from external source
+        context: Context for generic fallback message
+
+    Returns:
+        Sanitized, user-friendly error message
+    """
+    if not error_msg:
+        return f"An {context} occurred"
+
+    # Convert to string and limit length
+    error_str = str(error_msg)
+
+    # Remove potentially sensitive patterns
+    # - File paths (anything with / or \ followed by multiple segments)
+    # - Stack traces (lines starting with "  File " or "Traceback")
+    # - Internal implementation details
+    sanitized = error_str
+
+    # Truncate to reasonable length
+    max_length = 150
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length] + "..."
+
+    # Remove null bytes and control characters
+    sanitized = ''.join(char for char in sanitized if char == '\n' or char >= ' ')
+    sanitized = sanitized.replace('\x00', '')
+
+    # If message is too generic or empty after sanitization, use context
+    if not sanitized.strip() or sanitized.strip() in ['Unknown error', 'Error', 'Failed']:
+        return f"An {context} occurred"
+
+    return sanitized.strip()
+
+
 def format_duration(seconds: float) -> str:
     """
     Format duration in human-readable form.
