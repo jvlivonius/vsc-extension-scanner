@@ -170,6 +170,127 @@ def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
     return text[:max_length - len(suffix)] + suffix
 
 
+# Error help messages with recovery suggestions
+ERROR_HELP = {
+    "rate_limit": {
+        "message": "vscan.dev rate limit reached.",
+        "suggestions": [
+            "Wait a few minutes before trying again",
+            "Use --delay to slow down requests (e.g., --delay 3.0)",
+            "The service may be experiencing high traffic"
+        ]
+    },
+    "timeout": {
+        "message": "Request timed out.",
+        "suggestions": [
+            "Try --max-retries 5 for more retry attempts",
+            "Use --retry-delay 3.0 for longer backoff delays",
+            "The extension may be large and take longer to analyze",
+            "Check your internet connection"
+        ]
+    },
+    "not_found": {
+        "message": "Extension not found on vscan.dev.",
+        "suggestions": [
+            "The extension may be too new or not yet indexed",
+            "Verify the extension ID is correct",
+            "Try scanning again later"
+        ]
+    },
+    "network": {
+        "message": "Network error occurred.",
+        "suggestions": [
+            "Check your internet connection",
+            "Verify firewall settings allow HTTPS to vscan.dev",
+            "Try again in a few moments"
+        ]
+    },
+    "permission": {
+        "message": "Permission denied.",
+        "suggestions": [
+            "Check file/directory permissions",
+            "Ensure you have write access to the output location",
+            "Try running with appropriate permissions"
+        ]
+    },
+    "invalid_json": {
+        "message": "Invalid JSON in extension file.",
+        "suggestions": [
+            "The extension may be corrupted",
+            "Try reinstalling the extension",
+            "The package.json file may be malformed"
+        ]
+    },
+    "no_extensions": {
+        "message": "VS Code extensions directory not found.",
+        "suggestions": [
+            "Ensure VS Code is installed",
+            "Use --extensions-dir to specify custom location",
+            "Check that VS Code extensions are installed"
+        ]
+    }
+}
+
+
+def show_error_help(error_type: str, verbose: bool = False):
+    """
+    Display helpful error message with recovery suggestions.
+
+    Args:
+        error_type: Type of error (rate_limit, timeout, network, etc.)
+        verbose: Whether to show all suggestions
+    """
+    if error_type not in ERROR_HELP:
+        return
+
+    help_info = ERROR_HELP[error_type]
+    log("", "INFO", force=True)
+    log(f"💡 {help_info['message']}", "INFO", force=True)
+
+    if verbose or len(help_info['suggestions']) <= 2:
+        log("", "INFO", force=True)
+        log("Suggestions:", "INFO", force=True)
+        for suggestion in help_info['suggestions']:
+            log(f"  • {suggestion}", "INFO", force=True)
+    else:
+        # Show first 2 suggestions in non-verbose
+        log("", "INFO", force=True)
+        log("Suggestions:", "INFO", force=True)
+        for suggestion in help_info['suggestions'][:2]:
+            log(f"  • {suggestion}", "INFO", force=True)
+        log(f"  (Use --verbose for more suggestions)", "INFO", force=True)
+
+
+def get_error_type(error_message: str) -> str:
+    """
+    Determine error type from error message.
+
+    Args:
+        error_message: Error message string
+
+    Returns:
+        Error type string for ERROR_HELP lookup
+    """
+    error_lower = error_message.lower()
+
+    if "rate limit" in error_lower or "429" in error_message:
+        return "rate_limit"
+    elif "timed out" in error_lower or "timeout" in error_lower:
+        return "timeout"
+    elif "not found" in error_lower or "404" in error_message:
+        return "not_found"
+    elif "network" in error_lower or "connection" in error_lower:
+        return "network"
+    elif "permission" in error_lower or "denied" in error_lower:
+        return "permission"
+    elif "json" in error_lower:
+        return "invalid_json"
+    elif "directory not found" in error_lower:
+        return "no_extensions"
+    else:
+        return "unknown"
+
+
 def main():
     """Test the utils module."""
     setup_logging(verbose=True)

@@ -23,7 +23,7 @@ from extension_discovery import ExtensionDiscovery
 from vscan_api import VscanAPIClient
 from output_formatter import OutputFormatter
 from cache_manager import CacheManager
-from utils import log, setup_logging, validate_path, sanitize_string
+from utils import log, setup_logging, validate_path, sanitize_string, show_error_help, get_error_type
 
 
 VERSION = "2.0.0"
@@ -441,7 +441,15 @@ def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
 
     except Exception as e:
         stats['failed_scans'] += 1
-        _print_scan_progress(extension_id, version, progress_prefix, 'error', str(e), verbose)
+        error_msg = str(e)
+        _print_scan_progress(extension_id, version, progress_prefix, 'error', error_msg, verbose)
+
+        # Show error help for first few errors (avoid spam)
+        if stats['failed_scans'] <= 3:
+            error_type = get_error_type(error_msg)
+            if error_type != "unknown":
+                show_error_help(error_type, verbose)
+
         scan_results.append({
             'id': ext['id'],
             'name': ext['name'],
@@ -449,7 +457,7 @@ def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
             'version': ext['version'],
             'path': ext['path'],
             'scan_status': 'error',
-            'error': str(e)
+            'error': error_msg
         })
 
 
@@ -621,12 +629,16 @@ def main():
     try:
         extensions, extensions_dir = discover_extensions(args)
     except FileNotFoundError as e:
-        log(sanitize_string(str(e), max_length=200), "ERROR")
-        log("", "ERROR")
-        log("Please ensure VS Code is installed or specify a custom directory with --extensions-dir", "ERROR")
+        error_msg = sanitize_string(str(e), max_length=200)
+        log(error_msg, "ERROR")
+        error_type = get_error_type(error_msg)
+        show_error_help(error_type, verbose)
         return 2
     except Exception as e:
-        log(f"Error discovering extensions: {sanitize_string(str(e), max_length=200)}", "ERROR")
+        error_msg = sanitize_string(str(e), max_length=200)
+        log(f"Error discovering extensions: {error_msg}", "ERROR")
+        error_type = get_error_type(error_msg)
+        show_error_help(error_type, verbose)
         return 2
 
     # Handle empty extension list
@@ -661,9 +673,12 @@ def main():
     try:
         results = generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data)
     except Exception as e:
+        error_msg = sanitize_string(str(e), max_length=200)
         log(f"Error generating output: {type(e).__name__}", "ERROR")
         if verbose:
-            log(sanitize_string(f"Details: {str(e)}", max_length=200), "ERROR")
+            log(f"Details: {error_msg}", "ERROR")
+        error_type = get_error_type(error_msg)
+        show_error_help(error_type, verbose)
         return 2
 
     # Print summary
