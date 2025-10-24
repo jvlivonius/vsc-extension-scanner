@@ -628,6 +628,10 @@ class CacheManager:
                 deleted_count = cursor.rowcount
                 conn.commit()
 
+                # VACUUM only if thresholds exceeded
+                if self._should_vacuum(deleted_count=deleted_count):
+                    cursor.execute("VACUUM")
+
                 return deleted_count
 
         except sqlite3.Error as e:
@@ -675,6 +679,10 @@ class CacheManager:
 
                 deleted_count = cursor.rowcount
                 conn.commit()
+
+                # VACUUM only if thresholds exceeded
+                if self._should_vacuum(deleted_count=deleted_count):
+                    cursor.execute("VACUUM")
 
                 return deleted_count
 
@@ -786,6 +794,36 @@ class CacheManager:
                 'database_path': str(self.cache_db)
             }
 
+    def _should_vacuum(self, deleted_count: int = 0) -> bool:
+        """
+        Determine if VACUUM should be run based on thresholds.
+
+        Thresholds:
+        - Database size > 10MB
+        - Deleted count > 50 entries
+
+        Args:
+            deleted_count: Number of entries just deleted
+
+        Returns:
+            bool: True if VACUUM should be run
+        """
+        try:
+            # Check database file size
+            db_size_mb = self.cache_db.stat().st_size / (1024 * 1024)
+
+            if db_size_mb > 10.0:
+                return True
+
+            if deleted_count > 50:
+                return True
+
+            return False
+
+        except Exception:
+            # If we can't determine, default to True for safety
+            return True
+
     def clear_cache(self) -> int:
         """
         Clear all cache entries.
@@ -803,8 +841,9 @@ class CacheManager:
                 cursor.execute("DELETE FROM scan_cache")
                 conn.commit()
 
-                # VACUUM to reclaim disk space
-                cursor.execute("VACUUM")
+                # VACUUM only if thresholds exceeded
+                if self._should_vacuum(deleted_count=count):
+                    cursor.execute("VACUUM")
 
                 return count
 
