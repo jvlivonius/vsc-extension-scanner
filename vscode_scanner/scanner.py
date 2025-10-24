@@ -697,7 +697,7 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                 console.print(table)
 
             # Cache stats table
-            cache_stats = results.get('cache_stats')
+            cache_stats = results.get('summary', {}).get('cache_statistics')
             if cache_stats:
                 cache_table = create_cache_stats_table(cache_stats)
                 if cache_table:

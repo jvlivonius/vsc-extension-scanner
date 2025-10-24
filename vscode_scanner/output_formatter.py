@@ -102,10 +102,21 @@ class OutputFormatter:
 
         # Add cache statistics if provided
         if cache_stats:
+            from_cache = cache_stats.get("from_cache", 0)
+            fresh_scans = cache_stats.get("fresh_scans", 0)
+            total = from_cache + fresh_scans
+
+            # Calculate hit rate if not provided or use provided value
+            cache_hit_rate = cache_stats.get("cache_hit_rate")
+            if cache_hit_rate is None and total > 0:
+                cache_hit_rate = round((from_cache / total * 100), 1)
+            elif cache_hit_rate is None:
+                cache_hit_rate = 0.0
+
             summary["cache_statistics"] = {
-                "from_cache": cache_stats.get("from_cache", 0),
-                "fresh_scans": cache_stats.get("fresh_scans", 0),
-                "cache_hit_rate": cache_stats.get("cache_hit_rate", 0.0)
+                "from_cache": from_cache,
+                "fresh_scans": fresh_scans,
+                "cache_hit_rate": cache_hit_rate
             }
 
         return summary

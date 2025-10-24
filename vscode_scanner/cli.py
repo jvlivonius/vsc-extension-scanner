@@ -1140,7 +1140,11 @@ def report(
             scan_results=cached_results,
             scan_timestamp=datetime.now().isoformat(),
             scan_duration=0.0,
-            cache_stats={'from_cache': len(cached_results), 'fresh_scans': 0}
+            cache_stats={
+                'from_cache': len(cached_results),
+                'fresh_scans': 0,
+                'cache_hit_rate': 100.0  # All data from cache
+            }
         )
 
         # Generate output based on format

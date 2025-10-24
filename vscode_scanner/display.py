@@ -499,7 +499,6 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
         use_rich: Whether to use Rich formatting
     """
     summary = results.get('summary', {})
-    cache_stats = results.get('cache_stats', {})
 
     total = summary.get('total_extensions_scanned', 0)
     vulns = summary.get('vulnerabilities_found', 0)
@@ -516,12 +515,7 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
         else:
             content.append("✓ No vulnerabilities found\n", style="green")
 
-        # Cache stats
-        from_cache = cache_stats.get('from_cache', 0)
-        fresh = cache_stats.get('fresh_scans', 0)
-        hit_rate = cache_stats.get('cache_hit_rate', 0)
-
-        content.append(f"\n⚡ Cache hit rate: {hit_rate:.1f}%\n", style="cyan")
+        # Cache stats removed from summary - shown in dedicated Cache Statistics table below
 
         # Retry stats (if any retries occurred)
         if retry_stats:
