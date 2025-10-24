@@ -80,6 +80,27 @@ def run_scan(
     # Initialize cache manager
     cache_manager = CacheManager(cache_dir=cache_dir) if not no_cache else None
 
+    # Display any cache initialization messages (corrupted database warnings, etc.)
+    if cache_manager:
+        from .types import CacheWarning, CacheError, CacheInfo
+        init_messages = cache_manager.get_init_messages()
+        for msg in init_messages:
+            if isinstance(msg, CacheWarning):
+                if use_rich:
+                    display_warning(msg.message, use_rich=True)
+                else:
+                    log(f"WARNING: {msg.message}", "WARNING")
+            elif isinstance(msg, CacheError):
+                if use_rich:
+                    display_error(msg.message, use_rich=True)
+                else:
+                    log(f"ERROR: {msg.message}", "ERROR")
+            elif isinstance(msg, CacheInfo):
+                if use_rich:
+                    display_info(msg.message, use_rich=True)
+                else:
+                    log(f"INFO: {msg.message}", "INFO")
+
     # Print banner (plain mode only, Rich mode shows dashboard)
     if not use_rich and not quiet:
         log("VS Code Extension Scanner", "INFO")

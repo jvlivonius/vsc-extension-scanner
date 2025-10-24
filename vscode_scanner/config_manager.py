@@ -60,10 +60,10 @@ Implementation Notes:
 
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 import sys
 
-from .display import display_warning
+from .types import ConfigWarning
 from .constants import (
     DEFAULT_REQUEST_DELAY,
     DEFAULT_MAX_RETRIES,
@@ -176,15 +176,16 @@ def config_exists() -> bool:
     return get_config_path().exists()
 
 
-def load_config() -> Dict[str, Dict[str, Any]]:
+def load_config() -> Tuple[Dict[str, Dict[str, Any]], List[ConfigWarning]]:
     """
     Load configuration from ~/.vscanrc and merge with defaults.
 
     Returns:
-        Dictionary with configuration sections and values.
+        Tuple of (config dictionary, list of warnings)
         CLI arguments should override these values.
     """
     config_path = get_config_path()
+    warnings = []
 
     # Start with defaults
     result = {}
@@ -193,15 +194,18 @@ def load_config() -> Dict[str, Dict[str, Any]]:
 
     # If no config file, return defaults
     if not config_path.exists():
-        return result
+        return result, warnings
 
     # Load config file
     parser = ConfigParser()
     try:
         parser.read(config_path, encoding='utf-8')
     except Exception as e:
-        display_warning(f"Failed to read config file {config_path}: {e}")
-        return result
+        warnings.append(ConfigWarning(
+            message=f"Failed to read config file {config_path}: {e}",
+            context="load_config"
+        ))
+        return result, warnings
 
     # Check schema version for future migrations
     schema_version = 1  # Default to v1 if not specified
@@ -209,14 +213,17 @@ def load_config() -> Dict[str, Dict[str, Any]]:
         try:
             schema_version = parser.getint('_meta', 'schema_version', fallback=1)
         except ValueError:
-            display_warning(f"Invalid schema_version in config file, using v1")
+            warnings.append(ConfigWarning(
+                message="Invalid schema_version in config file, using v1",
+                context="load_config"
+            ))
 
     # Handle schema migrations if needed
     if schema_version != CONFIG_SCHEMA_VERSION:
-        display_warning(
-            f"Config schema version mismatch: found v{schema_version}, expected v{CONFIG_SCHEMA_VERSION}. "
-            f"Using compatibility mode."
-        )
+        warnings.append(ConfigWarning(
+            message=f"Config schema version mismatch: found v{schema_version}, expected v{CONFIG_SCHEMA_VERSION}. Using compatibility mode.",
+            context="load_config"
+        ))
         # Future: Add migration logic here when schema v2 is introduced
         # For now, we only have v1, so this is just a placeholder
 
@@ -236,10 +243,13 @@ def load_config() -> Dict[str, Dict[str, Any]]:
                 value = _parse_config_value(section, option, parser.get(section, option))
                 result[section][option] = value
             except ValueError as e:
-                display_warning(f"Invalid value for {section}.{option}: {e}")
+                warnings.append(ConfigWarning(
+                    message=f"Invalid value for {section}.{option}: {e}",
+                    context="load_config"
+                ))
                 # Keep default value on error
 
-    return result
+    return result, warnings
 
 
 def _parse_config_value(section: str, option: str, value_str: str) -> Any:

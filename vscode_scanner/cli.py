@@ -211,7 +211,8 @@ def scan(
     """
     # Load configuration file (config values serve as defaults, CLI args override)
     from .config_manager import load_config
-    config = load_config()
+    from .types import ConfigWarning
+    config, config_warnings = load_config()
 
     # Apply config values for parameters that are still at hardcoded defaults
     # Priority: hardcoded default < config file < CLI argument
@@ -262,6 +263,11 @@ def scan(
     extensions_dir_str = str(extensions_dir.resolve()) if extensions_dir else None
     output_str = str(output.resolve()) if output else None
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
+
+    # Display any config loading warnings
+    if config_warnings:
+        for warning in config_warnings:
+            typer.echo(f"Warning: {warning.message}", err=True)
 
     # Run the scan
     try:
@@ -440,6 +446,18 @@ def cache_stats(
 
     try:
         cache_manager = CacheManager(cache_dir=cache_dir_str)
+
+        # Display any cache initialization messages
+        from .types import CacheWarning, CacheError, CacheInfo
+        init_messages = cache_manager.get_init_messages()
+        for msg in init_messages:
+            if isinstance(msg, CacheWarning):
+                display_warning(msg.message, use_rich=use_rich)
+            elif isinstance(msg, CacheError):
+                display_error(msg.message, use_rich=use_rich)
+            elif isinstance(msg, CacheInfo):
+                display_info(msg.message, use_rich=use_rich)
+
         stats = cache_manager.get_cache_stats(max_age_days=cache_max_age)
 
         # Format stats once (shared logic)
@@ -514,6 +532,18 @@ def cache_clear(
                 raise typer.Exit(code=1)
 
         cache_manager = CacheManager(cache_dir=cache_dir_str)
+
+        # Display any cache initialization messages
+        from .types import CacheWarning, CacheError, CacheInfo
+        init_messages = cache_manager.get_init_messages()
+        for msg in init_messages:
+            if isinstance(msg, CacheWarning):
+                display_warning(msg.message, use_rich=use_rich)
+            elif isinstance(msg, CacheError):
+                display_error(msg.message, use_rich=use_rich)
+            elif isinstance(msg, CacheInfo):
+                display_info(msg.message, use_rich=use_rich)
+
         count = cache_manager.clear_cache()
 
         if use_rich:
@@ -635,7 +665,16 @@ def config_show(
             print("Run 'vscan config init' to create one.")
         raise typer.Exit(code=0)
 
-    config = load_config()
+    from .types import ConfigWarning
+    config, config_warnings = load_config()
+
+    # Display any config loading warnings
+    if config_warnings:
+        for warning in config_warnings:
+            if use_rich:
+                display_warning(warning.message, use_rich=True)
+            else:
+                print(f"Warning: {warning.message}")
 
     # Display configuration
     if use_rich:
@@ -831,8 +870,18 @@ def config_get(
     use_rich = should_use_rich(plain_flag=plain)
 
     try:
+        from .types import ConfigWarning
         section, option = parse_config_key(key)
-        config = load_config()
+        config, config_warnings = load_config()
+
+        # Display any config loading warnings
+        if config_warnings:
+            for warning in config_warnings:
+                if use_rich:
+                    display_warning(warning.message, use_rich=True)
+                else:
+                    print(f"Warning: {warning.message}")
+
         value = get_config_value(config, section, option)
         default_value = get_default_value(section, option)
 
@@ -1074,6 +1123,18 @@ def report(
 
         # Retrieve all cached results
         cache_manager = CacheManager(cache_dir=cache_dir_str)
+
+        # Display any cache initialization messages
+        from .types import CacheWarning, CacheError, CacheInfo
+        init_messages = cache_manager.get_init_messages()
+        for msg in init_messages:
+            if isinstance(msg, CacheWarning):
+                display_warning(msg.message, use_rich=use_rich)
+            elif isinstance(msg, CacheError):
+                display_error(msg.message, use_rich=use_rich)
+            elif isinstance(msg, CacheInfo):
+                display_info(msg.message, use_rich=use_rich)
+
         cached_results = cache_manager.get_all_cached_results(max_age_days=cache_max_age)
 
         if not cached_results:

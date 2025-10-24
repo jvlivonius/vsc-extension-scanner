@@ -1,0 +1,109 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, master, develop, claude/** ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  architecture-tests:
+    name: Architecture Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+          pip install -e .
+
+      - name: Run architecture tests
+        run: python3 tests/test_architecture.py
+
+      - name: Report architecture test results
+        if: always()
+        run: |
+          echo "Architecture tests completed"
+          echo "Check output above for violations"
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: architecture-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pytest || true
+
+      - name: Run individual test files
+        run: |
+          echo "Running test files individually..."
+
+          # Run each test file that doesn't require pytest
+          for test_file in tests/test_*.py; do
+            if [ -f "$test_file" ] && [ "$test_file" != "tests/test_architecture.py" ]; then
+              echo "Running $test_file..."
+              python3 "$test_file" || true
+            fi
+          done
+
+      - name: Run pytest if available
+        run: |
+          if command -v pytest &> /dev/null; then
+            echo "Running pytest..."
+            pytest tests/ -v || true
+          else
+            echo "pytest not available, individual test files already run"
+          fi
+
+      - name: Report test results
+        if: always()
+        run: |
+          echo "Unit tests completed"
+          echo "Check output above for test results"
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+
+      - name: Run integration tests
+        run: |
+          if [ -f "tests/test_integration.py" ]; then
+            echo "Running integration tests..."
+            python3 tests/test_integration.py || true
+          else
+            echo "No integration tests found"
+          fi

@@ -12,13 +12,13 @@ import json
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Union
 from datetime import datetime, timedelta
 
 from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message
 from ._version import SCHEMA_VERSION
 from .constants import DEFAULT_CACHE_MAX_AGE_DAYS, CACHE_REPORT_MAX_AGE_DAYS
-from .display import display_error, display_warning, display_info
+from .types import CacheWarning, CacheError, CacheInfo
 
 
 class CacheManager:
@@ -37,6 +37,9 @@ class CacheManager:
         self._batch_connection = None
         self._batch_cursor = None
         self._batch_count = 0
+
+        # Initialization messages (warnings, errors, info from setup)
+        self._init_messages = []
         if cache_dir:
             # Validate cache directory path (cross-platform)
             # Block parent directory traversal
@@ -59,7 +62,7 @@ class CacheManager:
         # Verify database integrity if it exists
         if self.cache_db.exists():
             if not self._verify_database_integrity():
-                self._handle_corrupted_database()
+                self._init_messages.extend(self._handle_corrupted_database())
 
         # Check if migration is needed before init
         needs_migration = self._check_if_migration_needed()
@@ -68,6 +71,26 @@ class CacheManager:
             self._migrate_v1_to_v2()
         else:
             self._init_database()
+
+    def get_init_messages(self) -> List[Union[CacheWarning, CacheError, CacheInfo]]:
+        """
+        Get initialization messages (warnings, errors, info) from cache setup.
+
+        Returns:
+            List of CacheWarning, CacheError, and CacheInfo objects from initialization
+
+        Example:
+            cache_mgr = CacheManager()
+            messages = cache_mgr.get_init_messages()
+            for msg in messages:
+                if isinstance(msg, CacheWarning):
+                    display_warning(msg.message)
+                elif isinstance(msg, CacheError):
+                    display_error(msg.message)
+                elif isinstance(msg, CacheInfo):
+                    display_info(msg.message)
+        """
+        return self._init_messages
 
     @contextmanager
     def _db_connection(self):
@@ -120,32 +143,57 @@ class CacheManager:
                   file=sys.stderr)
             return False
 
-    def _handle_corrupted_database(self):
+    def _handle_corrupted_database(self) -> List[Union[CacheWarning, CacheError, CacheInfo]]:
         """
         Handle corrupted database by backing it up and creating a fresh one.
+
+        Returns:
+            List of CacheWarning, CacheError, and CacheInfo objects describing the recovery process
         """
         import shutil
 
-        display_warning("Detected corrupted cache database")
+        messages = []
+        messages.append(CacheWarning(
+            message="Detected corrupted cache database",
+            context="database_integrity"
+        ))
 
         try:
             # Create backup with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = self.cache_db.parent / f"cache.db.corrupted.{timestamp}"
 
-            display_info(f"Backing up corrupted database to: {backup_path}")
+            messages.append(CacheInfo(
+                message=f"Backing up corrupted database to: {backup_path}",
+                context="database_backup"
+            ))
             shutil.copy2(self.cache_db, backup_path)
 
             # Remove corrupted database
-            display_info("Removing corrupted database...")
+            messages.append(CacheInfo(
+                message="Removing corrupted database...",
+                context="database_cleanup"
+            ))
             self.cache_db.unlink()
 
-            display_info("Creating fresh cache database...")
+            messages.append(CacheInfo(
+                message="Creating fresh cache database...",
+                context="database_recovery"
+            ))
 
         except (OSError, IOError) as e:
             sanitized_error = sanitize_error_message(str(e), context="database backup")
-            display_error(f"Failed to handle corrupted database: {sanitized_error}")
-            display_info("Cache functionality may be impaired")
+            messages.append(CacheError(
+                message=f"Failed to handle corrupted database: {sanitized_error}",
+                context="database_recovery",
+                recoverable=False
+            ))
+            messages.append(CacheInfo(
+                message="Cache functionality may be impaired",
+                context="database_recovery"
+            ))
+
+        return messages
 
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
@@ -669,7 +717,7 @@ class CacheManager:
             print(f"Cache cleanup error: {sanitized_error}")
             return 0
 
-    def cleanup_orphaned_entries(self, valid_extension_ids: List[str]) -> int:
+    def cleanup_orphaned_entries(self, valid_extension_ids: List[str]) -> Tuple[int, List[CacheWarning]]:
         """
         Remove cache entries for extensions that are no longer installed.
 
@@ -677,10 +725,12 @@ class CacheManager:
             valid_extension_ids: List of currently installed extension IDs
 
         Returns:
-            Number of entries removed
+            Tuple of (number of entries removed, list of warnings)
         """
+        warnings = []
+
         if not valid_extension_ids:
-            return 0
+            return 0, warnings
 
         try:
             # Import validation function
@@ -691,10 +741,13 @@ class CacheManager:
 
             if len(validated_ids) != len(valid_extension_ids):
                 filtered_count = len(valid_extension_ids) - len(validated_ids)
-                display_warning(f"Filtered out {filtered_count} invalid extension IDs")
+                warnings.append(CacheWarning(
+                    message=f"Filtered out {filtered_count} invalid extension IDs",
+                    context="cleanup_orphaned_entries"
+                ))
 
             if not validated_ids:
-                return 0
+                return 0, warnings
 
             with self._db_connection() as conn:
                 cursor = conn.cursor()
@@ -714,12 +767,12 @@ class CacheManager:
                 if self._should_vacuum(deleted_count=deleted_count):
                     cursor.execute("VACUUM")
 
-                return deleted_count
+                return deleted_count, warnings
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="orphan cleanup")
             print(f"Cache orphan cleanup error: {sanitized_error}")
-            return 0
+            return 0, warnings
 
     def get_cache_stats(self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS) -> Dict[str, Any]:
         """

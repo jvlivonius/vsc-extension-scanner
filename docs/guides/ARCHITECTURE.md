@@ -27,8 +27,8 @@ VS Code Extension Security Scanner uses a **Simple Layered Architecture** design
 
 ### Size & Complexity
 
-- **~8,400 lines** of Python code
-- **13 modules** organized in flat structure
+- **~9,800 lines** of Python code
+- **14 modules** organized in flat structure
 - **3 architectural layers** (Presentation, Application, Infrastructure)
 - **No sub-packages** (flat structure sufficient for this size)
 
@@ -227,16 +227,22 @@ Quick workflow:
 **Modules:**
 - `utils.py` - Helper functions (error sanitization, file operations)
 - `constants.py` - Shared constants and configuration defaults
+- `types.py` - Common data types and result objects (CacheWarning, CacheError, CacheInfo, ConfigWarning)
 
 **Characteristics:**
 - No dependencies on other application modules
 - Pure functions where possible
 - Cross-platform compatibility
+- Shared data types for layer separation
 
 **Key Functions:**
 - `sanitize_error_message()` - Security-safe error display
 - `safe_mkdir()`, `safe_touch()` - Cross-platform file operations
 - `get_error_help()` - Contextual error suggestions
+
+**Key Types:**
+- `CacheWarning`, `CacheError`, `CacheInfo` - Cache operation results
+- `ConfigWarning` - Configuration loading warnings
 
 ---
 
@@ -387,6 +393,8 @@ Infrastructure Layer:
 Shared Utilities:
   utils.py        → (standard library only)
   constants.py    → (standard library only)
+  types.py        → (standard library only)
+  _version.py     → (standard library only)
 ```
 
 ### Forbidden Dependencies
@@ -701,7 +709,7 @@ Retry Statistics:
 The architecture intentionally **avoids** these patterns to maintain simplicity:
 
 ❌ **Dependency Injection Frameworks**
-- Not needed for 13 modules
+- Not needed for 14 modules
 - Adds complexity without benefit
 - Manual dependency passing is clear
 
@@ -736,7 +744,7 @@ The architecture intentionally **avoids** these patterns to maintain simplicity:
 - Simple deployment
 
 ❌ **Sub-Packages**
-- Flat structure works well for 13 modules
+- Flat structure works well for 14 modules
 - Consider sub-packages only after 20+ modules
 - Current organization is clear
 
@@ -871,6 +879,7 @@ Infrastructure Layer:
 Shared Utilities:
   utils.py                 → (standard library only)
   constants.py             → (standard library only)
+  types.py                 → (standard library only)
   _version.py              → (standard library only)
 ```
 
@@ -878,7 +887,7 @@ Shared Utilities:
 
 **✅ Allowed:**
 - Presentation → Application → Infrastructure (downward flow only)
-- Any layer → utils.py, constants.py, _version.py (shared utilities)
+- Any layer → utils.py, constants.py, types.py, _version.py (shared utilities)
 - Infrastructure modules can import from other Infrastructure modules
 
 **❌ Forbidden:**
