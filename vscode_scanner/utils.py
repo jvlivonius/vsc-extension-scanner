@@ -235,6 +235,54 @@ def sanitize_error_message(error_msg: str, context: str = "error") -> str:
     return sanitized.strip()
 
 
+def validate_extension_id(ext_id: str) -> bool:
+    """
+    Validate extension ID format for SQL safety.
+
+    Valid format: publisher.name
+    - Both parts contain only alphanumeric, dots, hyphens, underscores
+    - Must have exactly one dot separator
+    - Both parts must be non-empty
+
+    Args:
+        ext_id: Extension ID to validate
+
+    Returns:
+        bool: True if valid format, False otherwise
+
+    Examples:
+        >>> validate_extension_id("ms-python.python")
+        True
+        >>> validate_extension_id("GitHub.copilot")
+        True
+        >>> validate_extension_id("'; DROP TABLE")
+        False
+        >>> validate_extension_id("../../../etc/passwd")
+        False
+    """
+    import re
+
+    if not ext_id or not isinstance(ext_id, str):
+        return False
+
+    # Pattern: publisher.name where both parts are alphanumeric + dots/hyphens/underscores
+    pattern = r'^[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$'
+
+    if not re.match(pattern, ext_id):
+        return False
+
+    # Ensure exactly one dot (publisher.name format)
+    parts = ext_id.split('.')
+    if len(parts) != 2:
+        return False
+
+    # Both parts must be non-empty
+    if not parts[0] or not parts[1]:
+        return False
+
+    return True
+
+
 def format_duration(seconds: float) -> str:
     """
     Format duration in human-readable form.

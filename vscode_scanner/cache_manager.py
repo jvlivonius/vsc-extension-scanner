@@ -648,16 +648,29 @@ class CacheManager:
             return 0
 
         try:
+            # Import validation function
+            from .utils import validate_extension_id
+
+            # Validate all extension IDs before database operation (SQL injection prevention)
+            validated_ids = [eid for eid in valid_extension_ids if validate_extension_id(eid)]
+
+            if len(validated_ids) != len(valid_extension_ids):
+                filtered_count = len(valid_extension_ids) - len(validated_ids)
+                print(f"Warning: Filtered out {filtered_count} invalid extension IDs", file=sys.stderr)
+
+            if not validated_ids:
+                return 0
+
             with self._db_connection() as conn:
                 cursor = conn.cursor()
 
                 # Create placeholders for SQL IN clause
-                placeholders = ','.join('?' * len(valid_extension_ids))
+                placeholders = ','.join('?' * len(validated_ids))
 
                 cursor.execute(f"""
                     DELETE FROM scan_cache
                     WHERE extension_id NOT IN ({placeholders})
-                """, valid_extension_ids)
+                """, validated_ids)
 
                 deleted_count = cursor.rowcount
                 conn.commit()

@@ -93,6 +93,7 @@ class SecurityTester:
         print("-" * 80)
         self.test_large_packagejson()
         self.test_malicious_json()
+        self.test_extension_id_validation()
 
         # Summary
         print("\n" + "=" * 80)
@@ -412,6 +413,58 @@ class SecurityTester:
         except Exception as e:
             print(f"   ✅ Malicious JSON rejected: {type(e).__name__}")
             self.tests_passed += 1
+
+
+    def test_extension_id_validation(self):
+        """Test extension ID validation against SQL injection."""
+        print("Test: Extension ID validation (SQL injection prevention)...")
+
+        from vscode_scanner.utils import validate_extension_id
+
+        # Valid extension IDs
+        valid_ids = [
+            "ms-python.python",
+            "GitHub.copilot",
+            "dbaeumer.vscode-eslint",
+            "esbenp.prettier-vscode",
+            "redhat.java"
+        ]
+
+        # Invalid/malicious extension IDs
+        invalid_ids = [
+            "'; DROP TABLE scan_cache; --",
+            "../../../etc/passwd",
+            "publisher' OR '1'='1",
+            "test.'; DELETE FROM scan_cache WHERE '1'='1",
+            "no-dot-separator",
+            ".only-dot",
+            "dot-only.",
+            "",
+            None,
+            "publisher..name",
+            "pub/lisher.name",
+            "pub\\lisher.name"
+        ]
+
+        all_passed = True
+
+        # Test valid IDs are accepted
+        for ext_id in valid_ids:
+            if not validate_extension_id(ext_id):
+                print(f"   ❌ FAIL: Valid ID rejected: {ext_id}")
+                all_passed = False
+
+        # Test invalid IDs are rejected
+        for ext_id in invalid_ids:
+            if validate_extension_id(ext_id):
+                print(f"   ❌ VULNERABILITY: Invalid ID accepted: {ext_id}")
+                all_passed = False
+
+        if all_passed:
+            print("   ✅ Extension ID validation working correctly")
+            self.tests_passed += 1
+        else:
+            self.tests_failed += 1
 
 
 def main():
