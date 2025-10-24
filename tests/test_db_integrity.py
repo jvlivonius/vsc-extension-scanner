@@ -12,7 +12,7 @@ from pathlib import Path
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from cache_manager import CacheManager
+from vscode_scanner.cache_manager import CacheManager
 
 
 def test_normal_database():

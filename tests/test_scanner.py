@@ -300,7 +300,7 @@ class TestProcessCachedResult(unittest.TestCase):
 
         scanner._process_cached_result(
             cached_result, ext, 'test.ext', '1.0.0',
-            '[1/1]', False, stats, scan_results, False
+            '[1/1]', stats, scan_results, False
         )
 
         # Verify result was added
@@ -330,7 +330,7 @@ class TestProcessCachedResult(unittest.TestCase):
 
         scanner._process_cached_result(
             cached_result, ext, 'test.ext', '1.0.0',
-            '[1/1]', False, stats, scan_results, False
+            '[1/1]', stats, scan_results, False
         )
 
         # Verify vulnerability was counted

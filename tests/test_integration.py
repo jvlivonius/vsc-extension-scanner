@@ -18,10 +18,10 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from extension_discovery import ExtensionDiscovery
-from vscan_api import VscanAPIClient
-from output_formatter import OutputFormatter
-from cache_manager import CacheManager
+from vscode_scanner.extension_discovery import ExtensionDiscovery
+from vscode_scanner.vscan_api import VscanAPIClient
+from vscode_scanner.output_formatter import OutputFormatter
+from vscode_scanner.cache_manager import CacheManager
 
 
 class MockVscanAPI:
@@ -149,14 +149,13 @@ def test_full_scan_workflow():
         assert mock_api.scan_count == 3, "Expected 3 API calls"
         print(f"✓ Scanned {len(results)} extensions")
 
-        # Test output formatting
+        # Test output formatting (all scans are now comprehensive/detailed)
         formatter = OutputFormatter()
         scan_timestamp = datetime.now().isoformat()
         output = formatter.format_output(
             results,
             scan_timestamp=scan_timestamp,
             scan_duration=10.5,
-            detailed=False,
             cache_stats={
                 "from_cache": 0,
                 "fresh_scans": 3,
@@ -164,7 +163,7 @@ def test_full_scan_workflow():
             }
         )
 
-        assert output["version"] == "2.0", "Expected version 2.0"
+        assert output["schema_version"] == "2.0", "Expected schema version 2.0"
         assert output["summary"]["total_extensions_scanned"] == 3
         assert len(output["extensions"]) == 3
         print("✓ Generated JSON output")
@@ -314,44 +313,25 @@ def test_output_modes():
     cache_stats = {"from_cache": 1, "fresh_scans": 0, "cache_hit_rate": 100.0}
     scan_timestamp = datetime.now().isoformat()
 
-    # Test standard mode
+    # All scans are now comprehensive/detailed (v3.0+)
     formatter = OutputFormatter()
-    output_standard = formatter.format_output(
+    output = formatter.format_output(
         results,
         scan_timestamp=scan_timestamp,
         scan_duration=5.0,
-        detailed=False,
         cache_stats=cache_stats
     )
 
-    assert output_standard["mode"] == "standard"
-    # Standard mode includes basic fields like description
-    assert "description" in output_standard["extensions"][0]
-    # But not detailed fields like keywords
-    assert "keywords" not in output_standard["extensions"][0]
-    assert "homepage_url" not in output_standard["extensions"][0]
-    print("✓ Standard mode excludes detailed-only fields")
+    assert output["output_mode"] == "detailed"
+    assert "description" in output["extensions"][0]
+    # All scans include comprehensive fields
+    assert "keywords" in output["extensions"][0]
+    assert "homepage_url" in output["extensions"][0]
+    print("✓ All scans now include comprehensive/detailed fields (v3.0+)")
 
-    # Test detailed mode
-    output_detailed = formatter.format_output(
-        results,
-        scan_timestamp=scan_timestamp,
-        scan_duration=5.0,
-        detailed=True,
-        cache_stats=cache_stats
-    )
-
-    assert output_detailed["mode"] == "detailed"
-    assert "description" in output_detailed["extensions"][0]
-    # Detailed mode includes extra fields
-    assert "keywords" in output_detailed["extensions"][0]
-    assert "homepage_url" in output_detailed["extensions"][0]
-    print("✓ Detailed mode includes all fields")
-
-    # Verify both are valid JSON
-    json.dumps(output_standard)
-    json.dumps(output_detailed)
-    print("✓ Both output modes produce valid JSON")
+    # Verify output is valid JSON
+    json.dumps(output)
+    print("✓ Output is valid JSON")
 
     print()
 

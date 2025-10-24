@@ -41,8 +41,8 @@ class TestCLICommands(unittest.TestCase):
         """Test --help flag."""
         result = self.runner.invoke(cli.app, ["--help"])
         self.assertIn("scan", result.stdout.lower())
-        self.assertIn("cache-stats", result.stdout.lower())
-        self.assertIn("cache-clear", result.stdout.lower())
+        self.assertIn("cache", result.stdout.lower())
+        self.assertIn("config", result.stdout.lower())
         self.assertEqual(result.exit_code, 0)
 
     def test_scan_help(self):
@@ -54,15 +54,15 @@ class TestCLICommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
 
     def test_cache_stats_help(self):
-        """Test cache-stats command help."""
-        result = self.runner.invoke(cli.app, ["cache-stats", "--help"])
+        """Test cache stats subcommand help."""
+        result = self.runner.invoke(cli.app, ["cache", "stats", "--help"])
         self.assertIn("cache", result.stdout.lower())
         self.assertEqual(result.exit_code, 0)
 
     def test_cache_clear_help(self):
-        """Test cache-clear command help."""
-        result = self.runner.invoke(cli.app, ["cache-clear", "--help"])
-        self.assertIn("clear", result.stdout.lower() or result.stdout.lower())
+        """Test cache clear subcommand help."""
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--help"])
+        self.assertIn("clear", result.stdout.lower())
         self.assertIn("force", result.stdout.lower())
         self.assertEqual(result.exit_code, 0)
 
@@ -128,18 +128,6 @@ class TestScanCommand(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("error", result.stdout.lower())
 
-    def test_scan_conflicting_quiet_verbose(self):
-        """Test scan with conflicting --quiet and --verbose."""
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--quiet",
-            "--verbose",
-            "--plain"
-        ])
-
-        self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("error", result.stdout.lower())
-
     def test_scan_conflicting_cache_options(self):
         """Test scan with conflicting cache options."""
         result = self.runner.invoke(cli.app, [
@@ -162,17 +150,17 @@ class TestCacheStatsCommand(unittest.TestCase):
         self.runner = CliRunner()
 
     def test_cache_stats_basic(self):
-        """Test basic cache-stats command structure."""
+        """Test basic cache stats subcommand structure."""
         # Test help works
-        result = self.runner.invoke(cli.app, ["cache-stats", "--help"])
+        result = self.runner.invoke(cli.app, ["cache", "stats", "--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cache", result.stdout.lower())
 
     def test_cache_stats_with_custom_age(self):
-        """Test cache-stats accepts custom max age parameter."""
+        """Test cache stats accepts custom max age parameter."""
         # Test that parameter is accepted
         result = self.runner.invoke(cli.app, [
-            "cache-stats",
+            "cache", "stats",
             "--cache-max-age", "14",
             "--help"
         ])
@@ -188,16 +176,16 @@ class TestCacheClearCommand(unittest.TestCase):
         self.runner = CliRunner()
 
     def test_cache_clear_help(self):
-        """Test cache-clear command help."""
-        result = self.runner.invoke(cli.app, ["cache-clear", "--help"])
+        """Test cache clear subcommand help."""
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("force", result.stdout.lower())
 
     def test_cache_clear_force_flag(self):
-        """Test cache-clear accepts --force flag."""
+        """Test cache clear accepts --force flag."""
         # Test that --force flag is accepted (with help to avoid actual clear)
         result = self.runner.invoke(cli.app, [
-            "cache-clear",
+            "cache", "clear",
             "--force",
             "--help"
         ])

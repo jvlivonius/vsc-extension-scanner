@@ -15,7 +15,7 @@ import urllib.error
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from vscan_api import VscanAPIClient
+from vscode_scanner.vscan_api import VscanAPIClient
 
 
 class TestRetryMechanism(unittest.TestCase):
