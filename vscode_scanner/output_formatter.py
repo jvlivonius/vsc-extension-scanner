@@ -222,6 +222,86 @@ class OutputFormatter:
 
         return extension
 
+    def format_csv(self, scan_results: List[Dict[str, Any]]) -> str:
+        """
+        Format scan results as CSV for spreadsheet analysis.
+
+        Args:
+            scan_results: List of extension scan results
+
+        Returns:
+            CSV string with headers and data rows
+        """
+        import csv
+        from io import StringIO
+
+        output = StringIO()
+        writer = csv.writer(output)
+
+        # Header row
+        writer.writerow([
+            'Extension ID',
+            'Name',
+            'Version',
+            'Publisher',
+            'Verified',
+            'Risk Level',
+            'Security Score',
+            'Vulnerabilities',
+            'Critical',
+            'High',
+            'Moderate',
+            'Low',
+            'Dependencies',
+            'Last Updated',
+            'vscan.dev URL'
+        ])
+
+        # Data rows
+        for result in scan_results:
+            security = result.get('security', {})
+            metadata = result.get('metadata', {})
+            publisher_info = result.get('publisher', {})
+            vulnerabilities = security.get('vulnerabilities', {})
+            dependencies = security.get('dependencies', {})
+
+            # Extract values with fallbacks
+            extension_id = result.get('id', '')
+            display_name = result.get('display_name', result.get('name', ''))
+            version = result.get('version', '')
+            publisher_name = publisher_info.get('name', publisher_info.get('id', ''))
+            verified = 'Yes' if publisher_info.get('verified', False) else 'No'
+            risk_level = security.get('risk_level', 'unknown')
+            security_score = security.get('score', '')
+            vuln_total = vulnerabilities.get('total', 0)
+            vuln_critical = vulnerabilities.get('critical', 0)
+            vuln_high = vulnerabilities.get('high', 0)
+            vuln_moderate = vulnerabilities.get('moderate', 0)
+            vuln_low = vulnerabilities.get('low', 0)
+            dep_count = dependencies.get('total_count', 0)
+            last_updated = metadata.get('last_updated', '')
+            vscan_url = result.get('vscan_url', '')
+
+            writer.writerow([
+                extension_id,
+                display_name,
+                version,
+                publisher_name,
+                verified,
+                risk_level,
+                security_score,
+                vuln_total,
+                vuln_critical,
+                vuln_high,
+                vuln_moderate,
+                vuln_low,
+                dep_count,
+                last_updated,
+                vscan_url
+            ])
+
+        return output.getvalue()
+
 
 def main():
     """Test the output formatter module."""

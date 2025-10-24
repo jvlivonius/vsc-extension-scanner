@@ -590,7 +590,7 @@ def _generate_output(
 
 
 def _write_output_file(output_path_str: str, results: Dict, is_html_output: bool, use_rich: bool):
-    """Write output to file (JSON or HTML)."""
+    """Write output to file (JSON, HTML, or CSV)."""
     # Validate output path
     if not validate_path(output_path_str, allow_absolute=True, path_type="output"):
         if use_rich:
@@ -603,8 +603,28 @@ def _write_output_file(output_path_str: str, results: Dict, is_html_output: bool
     # Create parent directories with restricted permissions (cross-platform)
     safe_mkdir(output_path.parent, mode=0o755)
 
-    # Generate HTML or JSON based on file extension
-    if is_html_output:
+    # Detect CSV format
+    is_csv_output = output_path.suffix.lower() == '.csv'
+
+    # Generate CSV, HTML, or JSON based on file extension
+    if is_csv_output:
+        # CSV output
+        if use_rich:
+            display_info("Generating CSV export...", use_rich=True)
+        else:
+            log("Generating CSV export...", "INFO")
+
+        formatter = OutputFormatter()
+        csv_content = formatter.format_csv(results.get('extensions', []))
+
+        with open(output_path, 'w', encoding='utf-8', newline='') as f:
+            f.write(csv_content)
+
+        if use_rich:
+            display_success(f"CSV export written to {sanitize_string(output_path_str, max_length=100)}", use_rich=True)
+        else:
+            log(f"CSV export written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
+    elif is_html_output:
         from .html_report_generator import HTMLReportGenerator
 
         if use_rich:

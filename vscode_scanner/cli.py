@@ -81,7 +81,7 @@ def scan(
     output: Optional[Path] = typer.Option(
         None,
         "--output", "-o",
-        help="Output file path (.json or .html)",
+        help="Output file path (.json, .html, or .csv)",
         rich_help_panel="Options"
     ),
 
@@ -201,6 +201,9 @@ def scan(
 
         [dim]# Generate HTML report[/dim]
         $ vscan scan --output report.html
+
+        [dim]# Export to CSV for spreadsheet analysis[/dim]
+        $ vscan scan --output results.csv
 
         [dim]# Use plain output for CI/CD pipelines[/dim]
         $ vscan scan --plain --output results.json
@@ -944,7 +947,7 @@ def _check_extensions_exist(extensions_dir: Optional[str] = None) -> Tuple[bool,
 def report(
     output: Path = typer.Argument(
         ...,
-        help="Output file path (.json or .html)",
+        help="Output file path (.json, .html, or .csv)",
         exists=False
     ),
     cache_dir: Optional[Path] = typer.Option(
