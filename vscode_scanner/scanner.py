@@ -685,9 +685,9 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         return
 
     if use_rich:
-        # Get retry stats if verbose mode enabled
+        # Get retry stats if available
         retry_stats = None
-        if verbose and 'api_client' in stats:
+        if 'api_client' in stats:
             retry_stats = stats['api_client'].get_retry_stats()
 
         # Use Rich formatted summary
