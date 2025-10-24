@@ -959,16 +959,8 @@ def cli_main():
     This is the primary entry point for v3.0+.
     """
     try:
-        from .cli import app, TYPER_AVAILABLE
-
-        if TYPER_AVAILABLE and app:
-            app()
-        else:
-            # Fallback to old main() if Typer not available
-            print("Warning: Typer not available, using legacy CLI")
-            print("Install with: pip install 'vscode-extension-scanner[cli]'")
-            exit_code = main()
-            sys.exit(exit_code)
+        from .cli import app
+        app()
     except ImportError:
         # Fallback if cli module has issues
         print("Warning: New CLI not available, using legacy CLI")

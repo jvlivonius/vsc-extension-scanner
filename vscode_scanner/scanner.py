@@ -25,7 +25,7 @@ from .display import (
     should_use_rich, create_scan_progress, create_results_table,
     create_cache_stats_table, create_filter_summary_table,
     ScanDashboard, display_summary, display_error, display_warning,
-    display_info, display_success, RICH_AVAILABLE
+    display_info, display_success
 )
 
 
@@ -134,7 +134,7 @@ def run_scan(
     # Show filter summary if filters were applied
     if use_rich and len(extensions) < original_count:
         filter_table = create_filter_summary_table(args, original_count, len(extensions))
-        if filter_table and RICH_AVAILABLE:
+        if filter_table:
             from rich.console import Console
             console = Console()
             console.print(filter_table)
@@ -360,7 +360,7 @@ def _scan_extensions(
         cache_manager.begin_batch()
 
     # Use Rich progress bar if available
-    if use_rich and RICH_AVAILABLE and not quiet:
+    if use_rich and not quiet:
         from rich.console import Console
         console = Console()
 
@@ -683,7 +683,7 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
             print(f"Scanned {total} extensions - No vulnerabilities found ✓")
         return
 
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         # Get retry stats if available
         retry_stats = None
         if 'api_client' in stats:

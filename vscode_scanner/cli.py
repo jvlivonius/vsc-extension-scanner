@@ -9,56 +9,45 @@ import sys
 from typing import Optional, Tuple
 from pathlib import Path
 
-try:
-    import typer
-    from rich.console import Console
-    TYPER_AVAILABLE = True
-except ImportError:
-    TYPER_AVAILABLE = False
+import typer
+from rich.console import Console
 
 from ._version import __version__
 from .scanner import run_scan
 from .cache_manager import CacheManager
 from .display import (
     should_use_rich, create_cache_stats_table,
-    display_error, display_success, display_info, display_warning,
-    RICH_AVAILABLE
+    display_error, display_success, display_info, display_warning
 )
 
 # Create Typer app
-if TYPER_AVAILABLE:
-    app = typer.Typer(
-        name="vscan",
-        help="🔍 VS Code Extension Security Scanner - Audit installed extensions using vscan.dev",
-        add_completion=False,
-        rich_markup_mode="rich" if RICH_AVAILABLE else None,
-        no_args_is_help=True
-    )
+app = typer.Typer(
+    name="vscan",
+    help="🔍 VS Code Extension Security Scanner - Audit installed extensions using vscan.dev",
+    add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True
+)
 
-    # Create cache subcommand group
-    cache_app = typer.Typer(
-        name="cache",
-        help="Manage scan result cache",
-        add_completion=False,
-        rich_markup_mode="rich" if RICH_AVAILABLE else None,
-        no_args_is_help=True
-    )
-    app.add_typer(cache_app, name="cache")
+# Create cache subcommand group
+cache_app = typer.Typer(
+    name="cache",
+    help="Manage scan result cache",
+    add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True
+)
+app.add_typer(cache_app, name="cache")
 
-    # Create config subcommand group
-    config_app = typer.Typer(
-        name="config",
-        help="Manage configuration file",
-        add_completion=False,
-        rich_markup_mode="rich" if RICH_AVAILABLE else None,
-        no_args_is_help=True
-    )
-    app.add_typer(config_app, name="config")
-else:
-    # Fallback if Typer is not available
-    app = None
-    cache_app = None
-    config_app = None
+# Create config subcommand group
+config_app = typer.Typer(
+    name="config",
+    help="Manage configuration file",
+    add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True
+)
+app.add_typer(config_app, name="config")
 
 
 def bounded_int_validator(value: int, min_val: int, max_val: int, name: str) -> int:
@@ -356,7 +345,7 @@ def cache_stats(
         cache_manager = CacheManager(cache_dir=cache_dir_str)
         stats = cache_manager.get_cache_stats(max_age_days=cache_max_age)
 
-        if use_rich and RICH_AVAILABLE:
+        if use_rich:
             console = Console()
 
             # Display cache statistics
@@ -618,7 +607,7 @@ def config_show(
     config = load_config()
 
     # Display configuration
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         from rich.console import Console
         from rich.table import Table
 
@@ -827,7 +816,7 @@ def config_get(
         else:
             value_str = str(value)
 
-        if use_rich and RICH_AVAILABLE:
+        if use_rich:
             from rich.console import Console
             console = Console()
             console.print(f"\n[cyan]{key}[/cyan] = [yellow]{value_str}[/yellow] [dim]({source})[/dim]\n")
@@ -1216,7 +1205,7 @@ def main(
     """
     if version:
         use_rich = should_use_rich(plain_flag=False)
-        if use_rich and RICH_AVAILABLE:
+        if use_rich:
             console = Console()
             console.print(f"[bold cyan]vscan[/bold cyan] version [green]{__version__}[/green]")
         else:
@@ -1229,16 +1218,5 @@ def main(
         raise typer.Exit(code=0)
 
 
-# Fallback for when Typer is not available
-def cli_fallback():
-    """Fallback CLI when Typer is not installed."""
-    print("Error: Typer is not installed.")
-    print("Install it with: pip install 'vscode-extension-scanner[cli]'")
-    sys.exit(2)
-
-
 if __name__ == "__main__":
-    if TYPER_AVAILABLE and app:
-        app()
-    else:
-        cli_fallback()
+    app()
