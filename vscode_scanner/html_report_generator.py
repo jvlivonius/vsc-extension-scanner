@@ -10,7 +10,7 @@ import html
 import json
 from typing import Dict, Any, List
 from datetime import datetime
-from vscode_scanner._version import __version__
+from ._version import __version__
 
 
 class HTMLReportGenerator:

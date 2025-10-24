@@ -7,7 +7,7 @@ Schema version 2.0 with reorganized structure.
 """
 
 from typing import List, Dict, Any
-from vscode_scanner._version import SCHEMA_VERSION
+from ._version import SCHEMA_VERSION
 
 
 class OutputFormatter:
