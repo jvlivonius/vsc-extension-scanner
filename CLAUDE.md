@@ -6,9 +6,31 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 4 Complete + HTML Report Feature + Phase 3 Improvements + Cross-Platform (v2.2.1)
+**Current Status:** Phase 5 Complete - CLI UX Enhancement (v3.0.0)
 
-**Latest Updates (Version Management - 2025-10-24):**
+**Latest Updates (CLI UX Enhancement - 2025-10-24):**
+- ✅ **Rich Terminal Formatting** - Beautiful, modern CLI output
+  - Live progress bars showing real-time scan status
+  - Rich formatted tables for results and statistics
+  - Color-coded risk levels and status indicators
+  - Graceful fallback to plain output when Rich unavailable
+- ✅ **Typer CLI Framework** - Modern command-line interface
+  - Organized subcommands: `scan`, `cache-stats`, `cache-clear`
+  - Help panels grouped by category (Basic, Output, Filtering, Advanced, Cache)
+  - Comprehensive examples in help text
+  - Parameter validation with clear error messages
+- ✅ **Refactored Architecture** - Clean separation of concerns
+  - `display.py` - Rich formatting components (24 tests passing)
+  - `scanner.py` - Core scan logic (15 tests passing)
+  - `cli.py` - Typer CLI framework (18 tests passing)
+  - Total: 57 new tests, all passing
+- ✅ **Backward Compatibility** - No breaking changes for programmatic usage
+  - Old `main()` function still available
+  - `--plain` flag provides v2.x style output
+  - Same exit codes (0=clean, 1=vulns, 2=error)
+  - JSON/HTML output formats unchanged (schema still 2.0)
+
+**Previous Updates (Version Management - 2025-10-24):**
 - ✅ **Centralized Version Management** - Single source of truth for version numbers
   - Created `vscode_scanner/_version.py` as single source of truth
   - All modules now import from `_version.py` (no hardcoded versions)
@@ -111,9 +133,10 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 ## Technology Stack
 
 - **Language:** Python 3.8+
-- **HTTP Library:** `urllib.request` (standard library, no external dependencies)
+- **HTTP Library:** `urllib.request` (standard library)
 - **Database:** SQLite3 (standard library, for caching)
-- **CLI Parsing:** `argparse` (standard library)
+- **CLI Framework:** Typer ≥0.9.0 (modern CLI with Rich support)
+- **Terminal Formatting:** Rich ≥13.0.0 (progress bars, tables, panels)
 - **Distribution:** Python package (pip installable)
 - **Output Format:** JSON and HTML (self-contained with embedded CSS/JS)
 
@@ -126,7 +149,10 @@ vsc-extension-scanner/
 ├── vscode_scanner/          # Main package (single source of truth)
 │   ├── __init__.py
 │   ├── _version.py         # Version management
-│   ├── vscan.py            # Main CLI
+│   ├── cli.py              # Typer CLI framework (NEW v3.0)
+│   ├── scanner.py          # Core scan logic (NEW v3.0)
+│   ├── display.py          # Rich formatting (NEW v3.0)
+│   ├── vscan.py            # Entry point wrapper
 │   ├── vscan_api.py        # API client
 │   ├── cache_manager.py    # Caching
 │   ├── extension_discovery.py
@@ -135,7 +161,11 @@ vsc-extension-scanner/
 │   └── utils.py
 ├── scripts/
 │   └── bump_version.py     # Version management tool
-├── tests/                  # Test files
+├── tests/                  # Test files (57 tests total)
+│   ├── test_display.py     # Display module tests (24 tests)
+│   ├── test_scanner.py     # Scanner module tests (15 tests)
+│   ├── test_cli.py         # CLI module tests (18 tests)
+│   └── ...                 # Legacy test files
 ├── docs/                   # Documentation
 ├── vscan                   # Convenience wrapper for development
 ├── setup.py                # Build configuration
@@ -152,46 +182,62 @@ vsc-extension-scanner/
 ## Development Commands
 
 ```bash
-# Testing
+# Testing (v3.0)
+python3 tests/test_display.py      # Display module tests (24 tests)
+python3 tests/test_scanner.py      # Scanner module tests (15 tests)
+python3 tests/test_cli.py          # CLI module tests (18 tests)
 python3 tests/test_api.py          # API validation tests
 python3 tests/test_retry.py        # Retry mechanism tests
 python3 tests/test_security.py     # Security vulnerability tests
-python3 tests/test_db_integrity.py # Database integrity tests (NEW)
-python3 tests/test_integration.py  # Integration tests (NEW)
+python3 tests/test_db_integrity.py # Database integrity tests
+python3 tests/test_integration.py  # Integration tests
 
-# Run the tool (Development - use python -m or ./vscan wrapper)
-python -m vscode_scanner.vscan                     # Standard scan
-./vscan                                             # Using convenience wrapper
-./vscan --detailed                                  # Detailed scan with full data
-./vscan --extensions-dir /path                      # Custom directory
-./vscan --output results.json                       # Save JSON to file
-./vscan --output report.html                        # Generate HTML report (auto-enables --detailed)
-./vscan --verbose                                   # Detailed progress
-./vscan --delay 2.0                                 # Custom delay
+# Run the tool (v3.0 CLI with subcommands)
+vscan                                         # Show help
+vscan scan                                    # Standard scan with Rich UI
+vscan scan --plain                            # Plain output (v2.x style)
+vscan scan --quiet                            # Minimal output
+vscan scan --verbose                          # Detailed progress
 
-# Filtering options (v2.3)
-./vscan --publisher microsoft                       # Only scan Microsoft extensions
-./vscan --min-risk-level high                       # Only show high/critical risk
-./vscan --include-ids "ms-python.python"            # Scan only specific extension
-./vscan --exclude-ids "local.test"                  # Exclude specific extensions
+# Scan options
+vscan scan --output results.json              # Save JSON to file
+vscan scan --output report.html               # Generate HTML report
+vscan scan --detailed                         # Include full security analysis
+vscan scan --extensions-dir /path             # Custom directory
 
-# Retry configuration (v2.2)
-./vscan --max-retries 5                             # More aggressive retries
-./vscan --retry-delay 3.0                           # Longer backoff delays
-./vscan --max-retries 0                             # Disable retries (fail fast)
-./vscan --verbose                                   # See retry attempts in action
+# Filtering options
+vscan scan --publisher microsoft              # Only scan Microsoft extensions
+vscan scan --min-risk-level high              # Only show high/critical risk
+vscan scan --include-ids "ms-python.python"   # Scan specific extensions
+vscan scan --exclude-ids "local.test"         # Exclude specific extensions
 
-# Cache management
-./vscan --cache-stats                    # Show cache statistics
-./vscan --clear-cache                    # Clear all cache
-./vscan --refresh-cache                  # Force refresh
-./vscan --no-cache                       # Disable cache
-./vscan --cache-max-age 14               # 14-day cache expiry
-./vscan --cache-dir /custom/path         # Custom cache location
+# Retry configuration
+vscan scan --max-retries 5                    # More aggressive retries
+vscan scan --retry-delay 3.0                  # Longer backoff delays
+vscan scan --max-retries 0                    # Disable retries (fail fast)
+
+# Cache options
+vscan scan --no-cache                         # Disable caching
+vscan scan --refresh-cache                    # Force refresh
+vscan scan --cache-max-age 14                 # 14-day cache expiry
+vscan scan --cache-dir /custom/path           # Custom cache location
+
+# Cache management commands (v3.0 subcommands)
+vscan cache-stats                             # Show cache statistics
+vscan cache-stats --cache-max-age 14          # Check for stale entries
+vscan cache-clear                             # Clear all cache (with confirmation)
+vscan cache-clear --force                     # Clear without confirmation
 
 # Help
-./vscan --help
-python -m vscode_scanner.vscan --help
+vscan --help                                  # Main help with subcommands
+vscan scan --help                             # Scan command help (organized panels)
+vscan cache-stats --help                      # Cache stats help
+vscan cache-clear --help                      # Cache clear help
+vscan --version                               # Show version
+
+# Development
+python -m vscode_scanner.vscan                # Run via Python module
+./vscan                                       # Convenience wrapper
 ```
 
 ## Architecture Overview
