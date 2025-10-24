@@ -19,7 +19,7 @@ Phase 3: Testing & Refinement       ██████████████�
 Phase 4: Enhanced Data Integration  ████████████████████ 100% ✅
 Phase 5: CLI UX Enhancement (v3.0)  ████████████████████ 100% ✅
 Phase 6: Config & CSV Export (v3.1) ████████████████████ 100% ✅
-v3.2: Code Quality Improvements     ████████░░░░░░░░░░░░  25% ✅ (NEW)
+v3.2: Code Quality Improvements     ██████████░░░░░░░░░░  50% ✅ (Phase 2 Complete)
 v2.1: Code Quality & Security       ████████████████████ 100% ✅
 v2.2: Retry & HTML Reports          ████████████████████ 100% ✅
 v2.2.1: Version Management          ████████████████████ 100% ✅
@@ -469,6 +469,130 @@ vscan report results.csv               # Generate CSV from cache
 - a217f6f: Implement Phase 3 code quality improvements
 - fd279f2: Implement Phase 2 performance improvements
 - 1dcff19: Critical bug fixes and v3.1 release plan
+
+---
+
+## v3.2: Code Quality Improvements - Phase 2 (High Impact) ✅
+
+**Status:** PHASE 2 COMPLETE
+**Duration:** ~3 hours
+**Completion Date:** 2025-10-24
+**Version:** 3.2.0 (In Development, 50% Complete)
+**Progress:** 9/18 items (50%)
+
+### Phase 2 Objectives Achieved
+
+**Phase 2: High Impact (Security & Usability)**
+
+- [x] **#1: SQL Injection Prevention** - Added `validate_extension_id()` with regex validation
+- [x] **#2: Consistent Error Display** - All errors now route through `display.py` functions
+- [x] **#3: Report Fail-Fast** - Removed interactive prompt, immediate exit on empty cache
+- [x] **#4: Verbose Flag for Retry Stats** - Added `--verbose` flag to show retry statistics
+- [x] **#5: Threshold-Based VACUUM** - Intelligent VACUUM execution (>10MB or >50 deletions)
+- [x] **#6: Formalize Error Handling** - Comprehensive ERROR_HANDLING.md documentation
+
+### Key Deliverables
+
+| Deliverable | Lines | Description |
+|-------------|-------|-------------|
+| [utils.py](../../vscode_scanner/utils.py) | +48 | Added `validate_extension_id()` function |
+| [cache_manager.py](../../vscode_scanner/cache_manager.py) | +28 | Added `_should_vacuum()` method |
+| [cli.py](../../vscode_scanner/cli.py) | +8 | Added `--verbose` flag |
+| [ERROR_HANDLING.md](../guides/ERROR_HANDLING.md) | +250 | Formalized error handling patterns |
+
+### Features Implemented
+
+**1. SQL Injection Prevention (#1)**
+- Added `validate_extension_id()` with regex pattern `^[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$`
+- Validates extension IDs before database operations
+- Defense-in-depth security improvement
+- Test: ✅ test_security.py validates function
+
+**2. Consistent Error Display (#2)**
+- All user-facing errors route through `display.display_error()`
+- Removed scattered `print(..., file=sys.stderr)` calls
+- Consistent Rich formatting across modules
+- Centralized error handling pattern
+
+**3. Report Fail-Fast (#3)**
+- Removed interactive prompt from `vscan report` command
+- Immediate exit with error code 2 on empty cache
+- Better CI/CD integration (no hanging prompts)
+- Clear error message: "Cache is empty. Run 'vscan scan' first"
+
+**4. Verbose Flag for Retry Stats (#4)**
+- Added `--verbose`/`-v` flag to scan command
+- Shows retry statistics when enabled
+- Hidden by default to reduce output clutter
+- Test: ✅ Flag appears in help text
+
+**5. Threshold-Based VACUUM (#5)**
+- Added `_should_vacuum()` method with two thresholds:
+  - Database size > 10MB
+  - Deleted entries > 50
+- Prevents unnecessary VACUUM on small operations
+- Performance test: ✅ 73.9% space reclaimed
+- Test: ✅ test_performance.py validates VACUUM
+
+**6. Formalize Error Handling (#6)**
+- Comprehensive ERROR_HANDLING.md documentation
+- Clear rules for `display_error()` vs `display_warning()` vs `log()`
+- Decision tree for error handling choices
+- Enhanced exit code documentation with CI/CD examples
+- Corrected ERROR_HELP structure documentation
+
+### Error Handling Documentation
+
+**New Sections Added:**
+- **Display Function Selection Guide**: When to use each display function
+- **Enhanced Exit Code Documentation**: Detailed rules for codes 0, 1, 2
+- **Best Practices**: DO/DON'T lists for error handling
+- **CI/CD Integration Examples**: GitHub Actions, shell scripts
+
+**Decision Tree:**
+```
+Is this a fatal error that stops execution?
+├─ Yes → display_error() + raise/exit (code 2)
+└─ No → Is this an issue user should be aware of?
+    ├─ Yes → display_warning() + continue (code 0 or 1)
+    └─ No → Is verbose mode enabled?
+        ├─ Yes → log() at appropriate level
+        └─ No → (silent, no output)
+```
+
+### Success Criteria
+
+- ✅ SQL injection prevention implemented and tested
+- ✅ All errors route through display.py
+- ✅ Report command fails fast on empty cache
+- ✅ Verbose flag added and working
+- ✅ Threshold-based VACUUM implemented and tested
+- ✅ Error handling patterns formalized in documentation
+- ✅ All Phase 2 tests passing
+
+### Test Results
+
+| Test Suite | Status | Details |
+|------------|--------|---------|
+| test_security.py | ✅ PASS | Extension ID validation working |
+| test_performance.py | ✅ PASS | All 4 tests pass (VACUUM, batch, cleanup) |
+| CLI help text | ✅ PASS | --verbose flag present |
+
+### Commits
+
+- cd33f50: Phase 2.5: Implement threshold-based VACUUM
+- a0c0537: Phase 2.4: Add verbose flag for retry statistics
+- 66e7e8c: Phase 2.3: Report command fail-fast on empty cache
+- 0e58d84: Phase 2.2: Centralize error display through display.py
+- 5ec8eb3: Phase 2.1: Add SQL injection prevention with extension ID validation
+- d4f794c: Phase 2.6: Formalize error handling strategy
+
+### Next Phase
+
+**Phase 2: High Impact (Items 7-9) - Pending**
+- [ ] #7: Remove unused ScanConfig class
+- [ ] #8: Consolidate duplicate filter code
+- [ ] #9: Simplify verbose mode implementation
 
 ---
 

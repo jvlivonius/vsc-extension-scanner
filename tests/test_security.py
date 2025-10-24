@@ -15,9 +15,9 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import modules to test
-from utils import validate_path, sanitize_string
-import extension_discovery
-import cache_manager
+from vscode_scanner.utils import validate_path, sanitize_string, validate_extension_id
+from vscode_scanner import extension_discovery
+from vscode_scanner import cache_manager
 
 
 class SecurityTester:
