@@ -1057,64 +1057,14 @@ def report(
                     print("⚠ Warning: No VS Code extensions found. Cannot generate report.")
                 raise typer.Exit(code=1)
             else:
-                # Extensions exist but cache is empty - offer to scan
+                # Extensions exist but cache is empty - fail fast
                 if use_rich:
-                    display_warning(
-                        f"Cache is empty but {extension_count} VS Code extensions are installed.",
-                        use_rich=True
-                    )
+                    display_error("Cache is empty. Run 'vscan scan' first to populate the cache.", use_rich=True)
+                    display_info(f"Found {extension_count} installed extensions ready to scan.", use_rich=True)
                 else:
-                    print(f"⚠ Warning: Cache is empty but {extension_count} VS Code extensions are installed.")
-
-                # Ask user if they want to scan first
-                should_scan = typer.confirm(
-                    "\nWould you like to scan extensions first to populate the cache?",
-                    default=True
-                )
-
-                if should_scan:
-                    # Run the scan
-                    if use_rich:
-                        display_info("Starting scan to populate cache...", use_rich=True)
-                    else:
-                        print("ℹ Starting scan to populate cache...")
-
-                    # Run scan with default settings
-                    scan_exit_code = run_scan(
-                        cache_dir=cache_dir_str,
-                        plain=plain,
-                        quiet=False
-                    )
-
-                    # Check if scan was successful
-                    if scan_exit_code == 2:
-                        if use_rich:
-                            display_error("Scan failed. Cannot generate report.", use_rich=True)
-                        else:
-                            print("✗ Error: Scan failed. Cannot generate report.")
-                        raise typer.Exit(code=2)
-
-                    # Retrieve cached results again after scan
-                    cached_results = cache_manager.get_all_cached_results(max_age_days=cache_max_age)
-
-                    if not cached_results:
-                        if use_rich:
-                            display_error("No data available after scan. Cannot generate report.", use_rich=True)
-                        else:
-                            print("✗ Error: No data available after scan. Cannot generate report.")
-                        raise typer.Exit(code=2)
-
-                    if use_rich:
-                        display_success("Scan complete. Generating report...", use_rich=True)
-                    else:
-                        print("✓ Scan complete. Generating report...")
-                else:
-                    # User declined to scan
-                    if use_rich:
-                        display_info("Operation cancelled. Run 'vscan scan' to populate the cache.", use_rich=True)
-                    else:
-                        print("ℹ Operation cancelled. Run 'vscan scan' to populate the cache.")
-                    raise typer.Exit(code=1)
+                    print(f"✗ Error: Cache is empty. Run 'vscan scan' first to populate the cache.")
+                    print(f"ℹ Found {extension_count} installed extensions ready to scan.")
+                raise typer.Exit(code=2)
 
         # Show cache statistics
         if use_rich:

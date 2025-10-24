@@ -209,6 +209,7 @@ vscan scan
 ```
 
 ### Generate Reports
+
 ```bash
 vscan scan --output report.html    # Interactive HTML report
 vscan scan --output results.json   # JSON format
@@ -216,33 +217,40 @@ vscan scan --output data.csv       # CSV format
 ```
 
 ### Configuration
+
 ```bash
 vscan config init                  # Create config file
 vscan config show                  # View current settings
 ```
 
 ### Cache Management
+
 ```bash
 vscan cache stats                  # View cache statistics
 vscan cache clear                  # Clear cache
 ```
 
 ### All Options
+
 See: `vscan --help` or `vscan scan --help`
 
 ## Troubleshooting
 
 **"vscan: command not found"**
+
 - Use full path: `python3 -m vscode_scanner.vscan --version`
 - Or add Python bin directory to PATH
 
 **"No module named 'vscode_scanner'"**
+
 - Reinstall: `pip install --force-reinstall vscode_extension_scanner-*.whl`
 
 **Permission denied**
+
 - Install with --user flag: `pip install --user vscode_extension_scanner-*.whl`
 
 ## Support
+
 Contact: [your-email@company.com]
 ```
 
@@ -250,97 +258,115 @@ Contact: [your-email@company.com]
 
 ## Updating to New Versions
 
-### When You Release v2.3.0:
+### For Package Maintainers
 
-1. **Update version** in these files:
-   - `pyproject.toml` (line 7)
-   - `setup.py` (line 16)
-   - `vscode_scanner/__init__.py` (line 7)
-   - `vscode_scanner/vscan.py` (VERSION constant)
+1. **Update version** in `vscode_scanner/_version.py`:
 
-2. **Rebuild**:
+   ```python
+   __version__ = "X.Y.Z"
+   ```
+
+   This is the single source of truth for version numbers.
+
+2. **Rebuild the wheel**:
+
    ```bash
    python3 -m build
    ```
 
 3. **Distribute new wheel**:
-   - New file: `vscode_extension_scanner-2.3.0-py3-none-any.whl`
-   - Email/share as before
+   - New file will be: `vscode_extension_scanner-X.Y.Z-py3-none-any.whl`
+   - Distribute via your preferred method (email, shared drive, etc.)
 
-4. **Users upgrade**:
-   ```bash
-   pip install --upgrade vscode_extension_scanner-2.3.0-py3-none-any.whl
-   ```
+### For End Users
 
----
+**Upgrade to new version**:
 
-## Installation Troubleshooting
-
-### Common Issues
-
-**Issue 1: "pip: command not found"**
-
-**Solution:**
 ```bash
-# Use Python module instead
-python3 -m pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
+pip install --upgrade vscode_extension_scanner-*.whl
+```
+
+**Check installed version**:
+
+```bash
+vscan --version
 ```
 
 ---
 
-**Issue 2: "vscan: command not found" after installation**
+## Common Installation Issues
+
+### Issue 1: "pip: command not found"
+
+**Solution:**
+
+```bash
+# Use Python module instead
+python3 -m pip install vscode_extension_scanner-*.whl
+```
+
+---
+
+### Issue 2: "vscan: command not found" after installation
 
 **Solution A (Temporary):**
+
 ```bash
 # Use Python module to run
-python3 -m vscode_scanner.vscan --help
+python3 -m vscode_scanner.vscan --version
 ```
 
 **Solution B (Permanent - macOS/Linux):**
+
 ```bash
-# Add to PATH in ~/.bashrc or ~/.zshrc
+# Add Python bin directory to PATH in ~/.bashrc or ~/.zshrc
 export PATH="$PATH:$HOME/Library/Python/3.9/bin"
+# Or for Homebrew Python:
+export PATH="$PATH:/usr/local/bin"
 ```
 
 **Solution C (Permanent - Windows):**
-```
-Add to PATH: %APPDATA%\Python\Python39\Scripts
-```
+
+Add to PATH environment variable: `%APPDATA%\Python\Python3X\Scripts`
 
 ---
 
-**Issue 3: "Permission denied" during installation**
+### Issue 3: "Permission denied" during installation
 
 **Solution:**
+
 ```bash
-# Install in user directory (no sudo needed)
-pip install --user vscode_extension_scanner-2.2.0-py3-none-any.whl
+# Install in user directory (no sudo/admin rights needed)
+pip install --user vscode_extension_scanner-*.whl
 ```
 
 ---
 
-**Issue 4: "ImportError: No module named 'vscode_scanner'"**
+### Issue 4: "ImportError: No module named 'vscode_scanner'"
 
 **Solution:**
+
 ```bash
-# Reinstall with force
-pip install --force-reinstall vscode_extension_scanner-2.2.0-py3-none-any.whl
+# Reinstall with force flag
+pip install --force-reinstall vscode_extension_scanner-*.whl
 ```
 
 ---
 
-**Issue 5: Wrong Python version**
+### Issue 5: Wrong Python version
 
 **Check version:**
+
 ```bash
 python3 --version
 # Must be 3.8 or higher
 ```
 
 **Solution:**
+
 ```bash
-# Use specific Python version
-python3.9 -m pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
+# Use specific Python version if multiple are installed
+python3.9 -m pip install vscode_extension_scanner-*.whl
 ```
 
 ---
@@ -348,26 +374,30 @@ python3.9 -m pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
 ## Verification After Installation
 
 ### Test 1: Command Available
+
 ```bash
 vscan --version
-# Should show: vscan 2.2.0
+# Should show version number
 ```
 
 ### Test 2: Help Works
+
 ```bash
 vscan --help
-# Should show all options
+# Should show main commands (scan, cache, config, report)
 ```
 
-### Test 3: Quick Scan
+### Test 3: Check Cache Stats
+
 ```bash
-vscan --cache-stats
-# Should auto-detect VS Code extensions and show stats
+vscan cache stats
+# Should show cache statistics
 ```
 
-### Test 4: Import Works
+### Test 4: Python Import Works
+
 ```bash
-python3 -c "from vscode_scanner import main; print('OK')"
+python3 -c "import vscode_scanner; print('OK')"
 # Should print: OK
 ```
 
@@ -378,17 +408,25 @@ python3 -c "from vscode_scanner import main; print('OK')"
 ### Option 1: Create Installation Script
 
 Create `install_vscan.sh`:
+
 ```bash
 #!/bin/bash
 set -e
 
-echo "Installing VS Code Extension Security Scanner v2.2.0..."
+echo "Installing VS Code Extension Security Scanner..."
 
 # Check Python version
-python3 --version || { echo "Python 3.8+ required"; exit 1; }
+python3 --version || { echo "Error: Python 3.8+ required"; exit 1; }
+
+# Find wheel file
+WHEEL=$(ls vscode_extension_scanner-*.whl 2>/dev/null | head -1)
+if [ -z "$WHEEL" ]; then
+    echo "Error: No wheel file found"
+    exit 1
+fi
 
 # Install wheel
-pip3 install --user vscode_extension_scanner-2.2.0-py3-none-any.whl
+pip3 install --user "$WHEEL"
 
 # Verify installation
 if command -v vscan &> /dev/null; then
@@ -396,7 +434,7 @@ if command -v vscan &> /dev/null; then
     vscan --version
 else
     echo "⚠ Installation complete, but 'vscan' command not in PATH"
-    echo "Use: python3 -m vscode_scanner.vscan --help"
+    echo "Use: python3 -m vscode_scanner.vscan --version"
 fi
 ```
 
@@ -407,6 +445,7 @@ Distribute: `install_vscan.sh` + `.whl` file
 ### Option 2: Create Uninstall Script
 
 Create `uninstall_vscan.sh`:
+
 ```bash
 #!/bin/bash
 pip3 uninstall -y vscode-extension-scanner
@@ -418,6 +457,7 @@ echo "VS Code Extension Security Scanner has been removed."
 ### Option 3: Version Check Script
 
 Create `check_vscan_version.sh`:
+
 ```bash
 #!/bin/bash
 if command -v vscan &> /dev/null; then
@@ -425,7 +465,7 @@ if command -v vscan &> /dev/null; then
     vscan --version
 else
     echo "Not installed. Install with:"
-    echo "  pip install vscode_extension_scanner-2.2.0-py3-none-any.whl"
+    echo "  pip install vscode_extension_scanner-*.whl"
 fi
 ```
 
