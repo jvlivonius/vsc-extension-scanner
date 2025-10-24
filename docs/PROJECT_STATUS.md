@@ -2,14 +2,14 @@
 
 **Project:** VS Code Extension Security Scanner
 **Last Updated:** 2025-10-24
-**Current Version:** v3.0.0 (Production Ready) ✅
+**Current Version:** v3.1.0 (Production Ready) ✅
 **Schema Version:** 2.0
 
 ---
 
 ## Overall Progress
 
-**Phase Completion:** 5 of 5 (100%) + Additional Enhancements (100%)
+**Phase Completion:** 6 of 6 (100%) + Additional Enhancements (100%)
 
 ```
 Phase 1: Research & Discovery       ████████████████████ 100% ✅
@@ -17,7 +17,8 @@ Phase 2: Core Implementation        ██████████████�
 Phase 2.5: Caching System           ████████████████████ 100% ✅
 Phase 3: Testing & Refinement       ████████████████████ 100% ✅
 Phase 4: Enhanced Data Integration  ████████████████████ 100% ✅
-Phase 5: CLI UX Enhancement         ████████████████████ 100% ✅ (NEW)
+Phase 5: CLI UX Enhancement (v3.0)  ████████████████████ 100% ✅
+Phase 6: Config & CSV Export (v3.1) ████████████████████ 100% ✅ (NEW)
 v2.1: Code Quality & Security       ████████████████████ 100% ✅
 v2.2: Retry & HTML Reports          ████████████████████ 100% ✅
 v2.2.1: Version Management          ████████████████████ 100% ✅
@@ -352,15 +353,126 @@ See [PHASE5_COMPLETION_SUMMARY.md](results/PHASE5_COMPLETION_SUMMARY.md) for det
 
 ---
 
+## Phase 6: Configuration & CSV Export (v3.1) ✅
+
+**Status:** COMPLETE
+**Duration:** ~4 hours
+**Completion Date:** 2025-10-24
+**Version:** 3.1.0
+
+### Objectives Achieved
+
+- [x] Implement configuration file support with ~/.vscanrc
+- [x] Create config_manager.py module with INI parsing
+- [x] Add config management commands (init, show, set, get, reset)
+- [x] Implement CSV export functionality
+- [x] Add CSV support to scan and report commands
+- [x] Optimize database performance with batch commits
+- [x] Create centralized constants module
+- [x] Improve config UX with unified table display
+- [x] Update all documentation for v3.1
+
+### Key Deliverables
+
+| Deliverable | Lines | Description |
+|-------------|-------|-------------|
+| [config_manager.py](../vscode_scanner/config_manager.py) | 420 | Configuration file management |
+| [constants.py](../vscode_scanner/constants.py) | 180 | Centralized constants |
+| [output_formatter.py](../vscode_scanner/output_formatter.py) | +78 | Added CSV export method |
+| [cli.py](../vscode_scanner/cli.py) | +450 | Added config commands & CSV support |
+| [test_performance.py](../tests/test_performance.py) | 250 | Performance benchmark tests |
+
+### Features Implemented
+
+**Configuration File Support:**
+- INI format config file at ~/.vscanrc
+- Three sections: scan, cache, output
+- Inline comment support with # syntax
+- Type validation (int, float, bool, string, choice, path)
+- Config values serve as defaults, CLI args override
+- Five management commands: init, show, set, get, reset
+
+**CSV Export:**
+- 15-column spreadsheet-compatible schema
+- Available via: `vscan scan --output results.csv`
+- Available via: `vscan report results.csv` (from cache)
+- Proper CSV escaping for commas, quotes, newlines
+- UTF-8 encoding with cross-platform newline handling
+- HTML report CSV export removed (CLI-only for consistency)
+
+**Performance Improvements:**
+- Batch commit optimization (87.6% faster database operations)
+- VACUUM after bulk deletes (73.9% space reclaimed)
+- Performance benchmark tests added
+
+**UX Improvements:**
+- Config show displays unified table with full keys (e.g., "scan.delay")
+- Clear usage examples in config output
+- Better indication of config vs default values
+
+### Configuration Example
+
+```ini
+# ~/.vscanrc
+[scan]
+delay = 1.5                     # Seconds between API requests
+max_retries = 3                 # Maximum HTTP retry attempts
+retry_delay = 2.0               # Base HTTP retry delay in seconds
+
+[cache]
+cache_max_age = 7               # Cache expiration in days
+
+[output]
+plain = false                   # Disable colors by default
+quiet = false                   # Minimal output by default
+```
+
+### CLI Changes (v3.0 → v3.1)
+
+**New Commands:**
+```bash
+vscan config init               # Create default config file
+vscan config show               # Display current configuration
+vscan config set scan.delay 2.0 # Set configuration value
+vscan config get scan.delay     # Get specific config value
+vscan config reset              # Delete config file
+```
+
+**New Output Format:**
+```bash
+vscan scan --output results.csv        # Export to CSV
+vscan report results.csv               # Generate CSV from cache
+```
+
+### Success Criteria
+
+- ✅ Configuration file loads and merges with CLI arguments
+- ✅ All config commands work correctly
+- ✅ CSV export produces valid spreadsheet files
+- ✅ Performance improvements meet targets (>50% faster)
+- ✅ Backward compatible (no breaking changes)
+- ✅ All existing tests still passing
+- ✅ Documentation updated
+
+### Commits
+
+- 63badce: Implement Phase 4 configuration file feature (v3.1)
+- ad50ae5: Implement Phase 5 CSV export feature (v3.1)
+- 9ac6b6b: Add CSV export support to report command
+- fdbbe51: Remove CSV export functionality from HTML reports
+- c1d76f9: Improve config show command to display full key format
+
+---
+
 ## Project Statistics
 
 | Metric | Value |
 |--------|-------|
-| **Current Version** | 3.0.0 |
-| **Total Files Created** | 38+ |
-| **Lines of Code** | 8,750+ (Python) |
-| **Lines of Documentation** | 9,900+ (Markdown) |
-| **Python Modules** | 12 (11 core + 1 test runner) |
+| **Current Version** | 3.1.0 |
+| **Total Files Created** | 40+ |
+| **Lines of Code** | 9,500+ (Python) |
+| **Lines of Documentation** | 11,000+ (Markdown) |
+| **Python Modules** | 14 (13 core + 1 test runner) |
 | **Extensions Tested** | 66 (real VS Code extensions) |
 | **API Endpoints Validated** | 3/3 (100%) |
 | **CLI Arguments** | 20+ |

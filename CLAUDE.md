@@ -6,9 +6,38 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 5 Complete - CLI UX Enhancement (v3.0.0)
+**Current Status:** Phase 6 Complete - v3.1 Documentation & Testing (v3.1.0)
 
-**Latest Updates (CLI UX Enhancement v3.0 - 2025-10-24):**
+**Latest Updates (v3.1 - Configuration & CSV Export - 2025-10-24):**
+- ✅ **Configuration File Support** - Persistent settings with ~/.vscanrc
+  - INI format configuration file with three sections (scan, cache, output)
+  - Five config management commands: init, show, set, get, reset
+  - Inline comment support with # syntax
+  - Type validation for all configuration values
+  - Config values serve as defaults, CLI arguments always override
+  - Single unified table display showing full keys (e.g., "scan.delay")
+- ✅ **CSV Export Feature** - Spreadsheet-compatible output format
+  - 15-column CSV schema for security analysis
+  - Available via: `vscan scan --output results.csv`
+  - Available via: `vscan report results.csv` (from cache, no API calls)
+  - Proper CSV escaping for commas, quotes, newlines
+  - UTF-8 encoding with cross-platform newline handling
+  - HTML report CSV export removed (CLI-only for consistency)
+- ✅ **Improved Config UX** - Clearer configuration display
+  - Single table instead of separate section tables
+  - Full key format (scan.delay) instead of just option names
+  - Helpful usage examples in output
+  - Clear indication of config vs default values
+- ✅ **Performance Improvements** - Database optimization
+  - Batch commit optimization (87.6% faster)
+  - VACUUM after bulk deletes (73.9% space reclaimed)
+  - Performance benchmark tests added
+- ✅ **Code Quality** - Refactoring and error handling
+  - Centralized constants module
+  - Improved error codes and messages
+  - Better exception handling patterns
+
+**Previous Updates (CLI UX Enhancement v3.0 - 2025-10-24):**
 - ✅ **Rich Terminal Formatting** - Beautiful, modern CLI output
   - Live progress bars showing real-time scan status
   - Rich formatted tables for results and statistics
@@ -142,7 +171,8 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 - **CLI Framework:** Typer ≥0.9.0 (modern CLI with Rich support)
 - **Terminal Formatting:** Rich ≥13.0.0 (progress bars, tables, panels)
 - **Distribution:** Python package (pip installable)
-- **Output Format:** JSON and HTML (self-contained with embedded CSS/JS)
+- **Output Format:** JSON, HTML (self-contained with embedded CSS/JS), and CSV
+- **Configuration:** INI format config file at ~/.vscanrc
 
 ## Project Structure
 
@@ -153,22 +183,25 @@ vsc-extension-scanner/
 ├── vscode_scanner/          # Main package (single source of truth)
 │   ├── __init__.py
 │   ├── _version.py         # Version management
-│   ├── cli.py              # Typer CLI framework (NEW v3.0)
-│   ├── scanner.py          # Core scan logic (NEW v3.0)
-│   ├── display.py          # Rich formatting (NEW v3.0)
+│   ├── cli.py              # Typer CLI framework (v3.0)
+│   ├── scanner.py          # Core scan logic (v3.0)
+│   ├── display.py          # Rich formatting (v3.0)
+│   ├── config_manager.py   # Configuration file support (NEW v3.1)
+│   ├── constants.py        # Centralized constants (NEW v3.1)
 │   ├── vscan.py            # Entry point wrapper
 │   ├── vscan_api.py        # API client
 │   ├── cache_manager.py    # Caching
 │   ├── extension_discovery.py
-│   ├── output_formatter.py
+│   ├── output_formatter.py # Includes CSV export (v3.1)
 │   ├── html_report_generator.py
 │   └── utils.py
 ├── scripts/
 │   └── bump_version.py     # Version management tool
-├── tests/                  # Test files (57 tests total)
+├── tests/                  # Test files (57+ tests total)
 │   ├── test_display.py     # Display module tests (24 tests)
 │   ├── test_scanner.py     # Scanner module tests (15 tests)
 │   ├── test_cli.py         # CLI module tests (18 tests)
+│   ├── test_performance.py # Performance tests (NEW v3.1)
 │   └── ...                 # Legacy test files
 ├── docs/                   # Documentation
 ├── vscan                   # Convenience wrapper for development
@@ -196,7 +229,7 @@ python3 tests/test_security.py     # Security vulnerability tests
 python3 tests/test_db_integrity.py # Database integrity tests
 python3 tests/test_integration.py  # Integration tests
 
-# Run the tool (v3.0 CLI with subcommands)
+# Run the tool (v3.1 CLI with subcommands)
 vscan                                         # Show help
 vscan scan                                    # Standard scan with Rich UI (always comprehensive)
 vscan scan --plain                            # Plain output (v2.x style)
@@ -205,6 +238,7 @@ vscan scan --quiet                            # Minimal single-line summary for 
 # Scan options
 vscan scan --output results.json              # Save JSON to file
 vscan scan --output report.html               # Generate HTML report
+vscan scan --output results.csv               # Export to CSV (NEW v3.1)
 vscan scan --extensions-dir /path             # Custom directory
 
 # Filtering options
@@ -230,9 +264,17 @@ vscan cache stats --cache-max-age 14          # Check for stale entries
 vscan cache clear                             # Clear all cache (with confirmation)
 vscan cache clear --force                     # Clear without confirmation
 
+# Configuration management commands (NEW v3.1)
+vscan config init                             # Create default ~/.vscanrc file
+vscan config show                             # Display current config (unified table)
+vscan config set scan.delay 2.0               # Set config value
+vscan config get scan.delay                   # Get specific config value
+vscan config reset                            # Delete config file (with confirmation)
+
 # Report generation from cache (no API calls)
 vscan report report.html                      # Generate HTML report from cache
 vscan report results.json                     # Generate JSON report from cache
+vscan report results.csv                      # Generate CSV report from cache (NEW v3.1)
 
 # Help
 vscan --help                                  # Main help with subcommands
@@ -240,6 +282,7 @@ vscan scan --help                             # Scan command help (simplified Op
 vscan cache --help                            # Cache command help
 vscan cache stats --help                      # Cache stats help
 vscan cache clear --help                      # Cache clear help
+vscan config --help                           # Config command help (NEW v3.1)
 vscan report --help                           # Report command help
 vscan --version                               # Show version
 
