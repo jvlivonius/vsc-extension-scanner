@@ -91,23 +91,23 @@ def run_scan(
     scan_timestamp = datetime.utcnow().isoformat() + 'Z'
 
     # Create args-like object for compatibility with existing functions
-    class ScanConfig:
-        pass
+    from types import SimpleNamespace
 
-    args = ScanConfig()
-    args.extensions_dir = extensions_dir
-    args.output = output
-    args.delay = delay
-    args.max_retries = max_retries
-    args.retry_delay = retry_delay
-    args.cache_dir = cache_dir
-    args.cache_max_age = cache_max_age
-    args.refresh_cache = refresh_cache
-    args.no_cache = no_cache
-    args.publisher = publisher
-    args.include_ids = include_ids
-    args.exclude_ids = exclude_ids
-    args.min_risk_level = min_risk_level
+    args = SimpleNamespace(
+        extensions_dir=extensions_dir,
+        output=output,
+        delay=delay,
+        max_retries=max_retries,
+        retry_delay=retry_delay,
+        cache_dir=cache_dir,
+        cache_max_age=cache_max_age,
+        refresh_cache=refresh_cache,
+        no_cache=no_cache,
+        publisher=publisher,
+        include_ids=include_ids,
+        exclude_ids=exclude_ids,
+        min_risk_level=min_risk_level
+    )
 
     # Step 1: Discover extensions
     try:
