@@ -189,9 +189,9 @@ def run_scan(
         error_msg = sanitize_string(str(e), max_length=200)
         if use_rich:
             display_error(f"Error generating output: {type(e).__name__}", use_rich=True)
+            display_error(f"Details: {error_msg}", use_rich=True)
         else:
             log(f"Error generating output: {type(e).__name__}", "ERROR")
-        if verbose:
             log(f"Details: {error_msg}", "ERROR")
         error_type = get_error_type(error_msg)
         show_error_help(error_type)

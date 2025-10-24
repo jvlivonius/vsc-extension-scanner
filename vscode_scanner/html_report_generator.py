@@ -620,7 +620,7 @@ class HTMLReportGenerator:
         """
 
     def _generate_pie_chart_svg(self, critical: int, high: int, medium: int, low: int) -> str:
-        """Generate SVG pie chart for risk distribution."""
+        """Generate bar chart for risk distribution."""
         total = critical + high + medium + low
         if total == 0:
             return '<div class="no-data">No data</div>'
@@ -631,31 +631,7 @@ class HTMLReportGenerator:
         medium_pct = (medium / total) * 100
         low_pct = (low / total) * 100
 
-        # Calculate angles
-        critical_angle = (critical / total) * 360
-        high_angle = (high / total) * 360
-        medium_angle = (medium / total) * 360
-        low_angle = (low / total) * 360
-
-        # SVG paths for pie segments
-        def get_pie_slice(start_angle, slice_angle, color):
-            if slice_angle == 0:
-                return ''
-            if slice_angle >= 360:
-                return f'<circle cx="50" cy="50" r="40" fill="{color}"/>'
-
-            start_rad = (start_angle - 90) * 3.14159 / 180
-            end_rad = (start_angle + slice_angle - 90) * 3.14159 / 180
-
-            x1 = 50 + 40 * abs(float(f"{start_rad:.10f}".replace('0.', '0.').split('.')[0][:1] + '.' + f"{start_rad:.10f}".replace('-', '').split('.')[1][:10]).__cos__() if hasattr(start_rad, '__cos__') else 0)
-            y1 = 50 + 40 * abs(float(f"{start_rad:.10f}".replace('0.', '0.').split('.')[0][:1] + '.' + f"{start_rad:.10f}".replace('-', '').split('.')[1][:10]).__sin__() if hasattr(start_rad, '__sin__') else 0)
-            x2 = 50 + 40 * abs(float(f"{end_rad:.10f}".replace('0.', '0.').split('.')[0][:1] + '.' + f"{end_rad:.10f}".replace('-', '').split('.')[1][:10]).__cos__() if hasattr(end_rad, '__cos__') else 0)
-            y2 = 50 + 40 * abs(float(f"{end_rad:.10f}".replace('0.', '0.').split('.')[0][:1] + '.' + f"{end_rad:.10f}".replace('-', '').split('.')[1][:10]).__sin__() if hasattr(end_rad, '__sin__') else 0)
-
-            # Simplified approach - use bar chart style instead
-            return ''
-
-        # Use simple bar chart instead of complex SVG pie
+        # Return simple bar chart (more readable than pie charts for this use case)
         return f"""
         <div class="simple-chart">
             <div class="chart-bar">

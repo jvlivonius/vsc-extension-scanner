@@ -6,6 +6,7 @@ Manages SQLite-based caching of scan results to improve performance
 for unchanged extensions.
 """
 
+import sys
 import sqlite3
 import json
 import time
@@ -14,7 +15,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 
-from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod
+from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message
 from ._version import SCHEMA_VERSION
 
 
@@ -102,20 +103,21 @@ class CacheManager:
             if result and result[0] == "ok":
                 return True
             else:
-                print(f"[WARNING] Cache database integrity check failed: {result}",
-                      file=__import__('sys').stderr)
+                sanitized_result = sanitize_error_message(str(result), context="integrity check")
+                print(f"[WARNING] Cache database integrity check failed: {sanitized_result}",
+                      file=sys.stderr)
                 return False
 
         except sqlite3.Error as e:
-            print(f"[WARNING] Cache database integrity check error: {e}",
-                  file=__import__('sys').stderr)
+            sanitized_error = sanitize_error_message(str(e), context="integrity check")
+            print(f"[WARNING] Cache database integrity check error: {sanitized_error}",
+                  file=sys.stderr)
             return False
 
     def _handle_corrupted_database(self):
         """
         Handle corrupted database by backing it up and creating a fresh one.
         """
-        import sys
         import shutil
 
         print("[WARNING] Detected corrupted cache database", file=sys.stderr)
@@ -135,7 +137,8 @@ class CacheManager:
             print("[INFO] Creating fresh cache database...", file=sys.stderr)
 
         except (OSError, IOError) as e:
-            print(f"[ERROR] Failed to handle corrupted database: {e}", file=sys.stderr)
+            sanitized_error = sanitize_error_message(str(e), context="database backup")
+            print(f"[ERROR] Failed to handle corrupted database: {sanitized_error}", file=sys.stderr)
             print("[INFO] Cache functionality may be impaired", file=sys.stderr)
 
     def _init_database(self):
@@ -152,10 +155,9 @@ class CacheManager:
             # Update permissions on existing database
             safe_chmod(self.cache_db, 0o600)
 
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
+        with self._db_connection() as conn:
+            cursor = conn.cursor()
 
-        try:
             # Create scan_cache table (v2 schema with additional fields)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS scan_cache (
@@ -215,159 +217,150 @@ class CacheManager:
             )
 
             conn.commit()
-        finally:
-            conn.close()
 
     def _check_if_migration_needed(self) -> bool:
         """Check if database exists and needs migration."""
         if not self.cache_db.exists():
             return False  # New database, no migration needed
 
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Check if scan_cache table exists
-            cursor.execute("""
-                SELECT name FROM sqlite_master
-                WHERE type='table' AND name='scan_cache'
-            """)
-            if not cursor.fetchone():
-                return False  # No table yet, fresh install
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            # Check if new columns exist
-            cursor.execute("PRAGMA table_info(scan_cache)")
-            columns = {row[1] for row in cursor.fetchall()}
+                # Check if scan_cache table exists
+                cursor.execute("""
+                    SELECT name FROM sqlite_master
+                    WHERE type='table' AND name='scan_cache'
+                """)
+                if not cursor.fetchone():
+                    return False  # No table yet, fresh install
 
-            # If security_score column doesn't exist, we need migration
-            return "security_score" not in columns
+                # Check if new columns exist
+                cursor.execute("PRAGMA table_info(scan_cache)")
+                columns = {row[1] for row in cursor.fetchall()}
+
+                # If security_score column doesn't exist, we need migration
+                return "security_score" not in columns
 
         except sqlite3.Error:
             return False
-        finally:
-            conn.close()
 
     def _get_schema_version(self) -> str:
         """Get current schema version from database."""
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            cursor.execute("SELECT value FROM metadata WHERE key = 'schema_version'")
-            row = cursor.fetchone()
-            return row[0] if row else "1.0"  # Default to 1.0 if not found
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM metadata WHERE key = 'schema_version'")
+                row = cursor.fetchone()
+                return row[0] if row else "1.0"  # Default to 1.0 if not found
         except sqlite3.Error:
             return "1.0"  # If table doesn't exist, assume v1
-        finally:
-            conn.close()
 
     def _migrate_v1_to_v2(self):
         """Migrate cache database from v1.0 to v2.0 schema."""
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Check if we need to migrate (check for missing columns)
-            cursor.execute("PRAGMA table_info(scan_cache)")
-            columns = {row[1] for row in cursor.fetchall()}
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            if "security_score" in columns:
-                # Already migrated
-                return
+                # Check if we need to migrate (check for missing columns)
+                cursor.execute("PRAGMA table_info(scan_cache)")
+                columns = {row[1] for row in cursor.fetchall()}
 
-            # Add new columns to existing table
-            cursor.execute("""
-                ALTER TABLE scan_cache
-                ADD COLUMN security_score INTEGER
-            """)
-            cursor.execute("""
-                ALTER TABLE scan_cache
-                ADD COLUMN dependencies_count INTEGER DEFAULT 0
-            """)
-            cursor.execute("""
-                ALTER TABLE scan_cache
-                ADD COLUMN publisher_verified BOOLEAN DEFAULT 0
-            """)
-            cursor.execute("""
-                ALTER TABLE scan_cache
-                ADD COLUMN has_risk_factors BOOLEAN DEFAULT 0
-            """)
+                if "security_score" in columns:
+                    # Already migrated
+                    return
 
-            # Create new indexes
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_security_score
-                ON scan_cache(security_score)
-            """)
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_vulnerabilities
-                ON scan_cache(vulnerabilities_count)
-            """)
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_publisher_verified
-                ON scan_cache(publisher_verified)
-            """)
+                # Add new columns to existing table
+                cursor.execute("""
+                    ALTER TABLE scan_cache
+                    ADD COLUMN security_score INTEGER
+                """)
+                cursor.execute("""
+                    ALTER TABLE scan_cache
+                    ADD COLUMN dependencies_count INTEGER DEFAULT 0
+                """)
+                cursor.execute("""
+                    ALTER TABLE scan_cache
+                    ADD COLUMN publisher_verified BOOLEAN DEFAULT 0
+                """)
+                cursor.execute("""
+                    ALTER TABLE scan_cache
+                    ADD COLUMN has_risk_factors BOOLEAN DEFAULT 0
+                """)
 
-            # Update existing rows with parsed data from scan_result JSON
-            cursor.execute("SELECT id, scan_result FROM scan_cache")
-            rows = cursor.fetchall()
+                # Create new indexes
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_security_score
+                    ON scan_cache(security_score)
+                """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_vulnerabilities
+                    ON scan_cache(vulnerabilities_count)
+                """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_publisher_verified
+                    ON scan_cache(publisher_verified)
+                """)
 
-            total_rows = len(rows)
-            if total_rows > 0:
-                print(f"Migrating cache schema (v1.0 → v2.0)...", file=__import__('sys').stderr)
-                print(f"Processing {total_rows} cached entries...", file=__import__('sys').stderr)
+                # Update existing rows with parsed data from scan_result JSON
+                cursor.execute("SELECT id, scan_result FROM scan_cache")
+                rows = cursor.fetchall()
 
-            updated_count = 0
-            for idx, (row_id, scan_result_json) in enumerate(rows, 1):
-                try:
-                    result = json.loads(scan_result_json)
+                total_rows = len(rows)
+                if total_rows > 0:
+                    print(f"Migrating cache schema (v1.0 → v2.0)...", file=sys.stderr)
+                    print(f"Processing {total_rows} cached entries...", file=sys.stderr)
 
-                    # Extract new fields from result
-                    security_score = result.get("security_score")
-                    dependencies = result.get("dependencies", {})
-                    dependencies_count = dependencies.get("total_count", 0)
-                    metadata = result.get("metadata", {})
-                    publisher = metadata.get("publisher", {})
-                    publisher_verified = 1 if publisher.get("verified") else 0
-                    risk_factors = result.get("risk_factors", [])
-                    has_risk_factors = 1 if len(risk_factors) > 0 else 0
+                updated_count = 0
+                for idx, (row_id, scan_result_json) in enumerate(rows, 1):
+                    try:
+                        result = json.loads(scan_result_json)
 
-                    # Update row
-                    cursor.execute("""
-                        UPDATE scan_cache
-                        SET security_score = ?,
-                            dependencies_count = ?,
-                            publisher_verified = ?,
-                            has_risk_factors = ?
-                        WHERE id = ?
-                    """, (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id))
+                        # Extract new fields from result
+                        security_score = result.get("security_score")
+                        dependencies = result.get("dependencies", {})
+                        dependencies_count = dependencies.get("total_count", 0)
+                        metadata = result.get("metadata", {})
+                        publisher = metadata.get("publisher", {})
+                        publisher_verified = 1 if publisher.get("verified") else 0
+                        risk_factors = result.get("risk_factors", [])
+                        has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
-                    updated_count += 1
+                        # Update row
+                        cursor.execute("""
+                            UPDATE scan_cache
+                            SET security_score = ?,
+                                dependencies_count = ?,
+                                publisher_verified = ?,
+                                has_risk_factors = ?
+                            WHERE id = ?
+                        """, (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id))
 
-                    # Show progress every 10 entries or at the end
-                    if idx % 10 == 0 or idx == total_rows:
-                        print(f"  Progress: {idx}/{total_rows} entries...", file=__import__('sys').stderr, end='\r')
+                        updated_count += 1
 
-                except (json.JSONDecodeError, Exception):
-                    # Skip rows that can't be parsed
-                    continue
+                        # Show progress every 10 entries or at the end
+                        if idx % 10 == 0 or idx == total_rows:
+                            print(f"  Progress: {idx}/{total_rows} entries...", file=sys.stderr, end='\r')
 
-            if total_rows > 0:
-                print()  # New line after progress
-                print(f"Migration complete: {updated_count}/{total_rows} entries updated", file=__import__('sys').stderr)
+                    except (json.JSONDecodeError, Exception):
+                        # Skip rows that can't be parsed
+                        continue
 
-            # Update schema version
-            cursor.execute(
-                "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                ("schema_version", "2.0")
-            )
+                if total_rows > 0:
+                    print()  # New line after progress
+                    print(f"Migration complete: {updated_count}/{total_rows} entries updated", file=sys.stderr)
 
-            conn.commit()
+                # Update schema version
+                cursor.execute(
+                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                    ("schema_version", "2.0")
+                )
+
+                conn.commit()
 
         except sqlite3.Error as e:
-            print(f"Cache migration error: {e}", file=__import__('sys').stderr)
-            conn.rollback()
-        finally:
-            conn.close()
+            sanitized_error = sanitize_error_message(str(e), context="cache migration")
+            print(f"Cache migration error: {sanitized_error}", file=sys.stderr)
 
     def get_cached_result(
         self,
@@ -418,7 +411,8 @@ class CacheManager:
 
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail - just return None (cache miss)
-            print(f"Cache read error: {e}", file=__import__('sys').stderr)
+            sanitized_error = sanitize_error_message(str(e), context="cache read")
+            print(f"Cache read error: {sanitized_error}", file=sys.stderr)
             return None
 
     def save_result(
@@ -485,7 +479,8 @@ class CacheManager:
 
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail the scan
-            print(f"Cache write error: {e}", file=__import__('sys').stderr)
+            sanitized_error = sanitize_error_message(str(e), context="cache write")
+            print(f"Cache write error: {sanitized_error}", file=sys.stderr)
 
     def cleanup_old_entries(self, max_age_days: int = 7) -> int:
         """
@@ -497,29 +492,27 @@ class CacheManager:
         Returns:
             Number of entries removed
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            cutoff = datetime.now() - timedelta(days=max_age_days)
-            cutoff_str = cutoff.isoformat()
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute("""
-                DELETE FROM scan_cache
-                WHERE scanned_at < ?
-            """, (cutoff_str,))
+                cutoff = datetime.now() - timedelta(days=max_age_days)
+                cutoff_str = cutoff.isoformat()
 
-            deleted_count = cursor.rowcount
-            conn.commit()
+                cursor.execute("""
+                    DELETE FROM scan_cache
+                    WHERE scanned_at < ?
+                """, (cutoff_str,))
 
-            return deleted_count
+                deleted_count = cursor.rowcount
+                conn.commit()
+
+                return deleted_count
 
         except sqlite3.Error as e:
-            print(f"Cache cleanup error: {e}", file=__import__('sys').stderr)
-            conn.rollback()
+            sanitized_error = sanitize_error_message(str(e), context="cache cleanup")
+            print(f"Cache cleanup error: {sanitized_error}", file=sys.stderr)
             return 0
-        finally:
-            conn.close()
 
     def cleanup_orphaned_entries(self, valid_extension_ids: List[str]) -> int:
         """
@@ -534,29 +527,27 @@ class CacheManager:
         if not valid_extension_ids:
             return 0
 
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Create placeholders for SQL IN clause
-            placeholders = ','.join('?' * len(valid_extension_ids))
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute(f"""
-                DELETE FROM scan_cache
-                WHERE extension_id NOT IN ({placeholders})
-            """, valid_extension_ids)
+                # Create placeholders for SQL IN clause
+                placeholders = ','.join('?' * len(valid_extension_ids))
 
-            deleted_count = cursor.rowcount
-            conn.commit()
+                cursor.execute(f"""
+                    DELETE FROM scan_cache
+                    WHERE extension_id NOT IN ({placeholders})
+                """, valid_extension_ids)
 
-            return deleted_count
+                deleted_count = cursor.rowcount
+                conn.commit()
+
+                return deleted_count
 
         except sqlite3.Error as e:
-            print(f"Cache orphan cleanup error: {e}", file=__import__('sys').stderr)
-            conn.rollback()
+            sanitized_error = sanitize_error_message(str(e), context="orphan cleanup")
+            print(f"Cache orphan cleanup error: {sanitized_error}", file=sys.stderr)
             return 0
-        finally:
-            conn.close()
 
     def get_cache_stats(self, max_age_days: int = 7) -> Dict[str, Any]:
         """
@@ -654,9 +645,10 @@ class CacheManager:
                 }
 
         except sqlite3.Error as e:
-            print(f"Cache stats error: {e}", file=__import__('sys').stderr)
+            sanitized_error = sanitize_error_message(str(e), context="cache stats")
+            print(f"Cache stats error: {sanitized_error}", file=sys.stderr)
             return {
-                'error': str(e),
+                'error': sanitized_error,
                 'database_path': str(self.cache_db)
             }
 
@@ -667,24 +659,22 @@ class CacheManager:
         Returns:
             Number of entries removed
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            cursor.execute("SELECT COUNT(*) FROM scan_cache")
-            count = cursor.fetchone()[0]
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute("DELETE FROM scan_cache")
-            conn.commit()
+                cursor.execute("SELECT COUNT(*) FROM scan_cache")
+                count = cursor.fetchone()[0]
 
-            return count
+                cursor.execute("DELETE FROM scan_cache")
+                conn.commit()
+
+                return count
 
         except sqlite3.Error as e:
-            print(f"Cache clear error: {e}", file=__import__('sys').stderr)
-            conn.rollback()
+            sanitized_error = sanitize_error_message(str(e), context="cache clear")
+            print(f"Cache clear error: {sanitized_error}", file=sys.stderr)
             return 0
-        finally:
-            conn.close()
 
     def get_all_cached_extensions(self) -> List[Dict[str, str]]:
         """
@@ -693,33 +683,32 @@ class CacheManager:
         Returns:
             List of dicts with extension_id, version, scanned_at
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            cursor.execute("""
-                SELECT extension_id, version, scanned_at, risk_level, vulnerabilities_count
-                FROM scan_cache
-                ORDER BY scanned_at DESC
-            """)
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            results = []
-            for row in cursor.fetchall():
-                results.append({
-                    'extension_id': row[0],
-                    'version': row[1],
-                    'scanned_at': row[2],
-                    'risk_level': row[3],
-                    'vulnerabilities_count': row[4]
-                })
+                cursor.execute("""
+                    SELECT extension_id, version, scanned_at, risk_level, vulnerabilities_count
+                    FROM scan_cache
+                    ORDER BY scanned_at DESC
+                """)
 
-            return results
+                results = []
+                for row in cursor.fetchall():
+                    results.append({
+                        'extension_id': row[0],
+                        'version': row[1],
+                        'scanned_at': row[2],
+                        'risk_level': row[3],
+                        'vulnerabilities_count': row[4]
+                    })
+
+                return results
 
         except sqlite3.Error as e:
-            print(f"Cache list error: {e}", file=__import__('sys').stderr)
+            sanitized_error = sanitize_error_message(str(e), context="cache list")
+            print(f"Cache list error: {sanitized_error}", file=sys.stderr)
             return []
-        finally:
-            conn.close()
 
     def get_all_cached_results(self, max_age_days: int = 365) -> List[Dict[str, Any]]:
         """
