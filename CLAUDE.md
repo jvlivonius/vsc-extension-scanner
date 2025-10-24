@@ -18,9 +18,26 @@ These documents define critical constraints and requirements that must be follow
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 6 Complete - v3.1 Documentation & Testing (v3.1.0)
+**Current Status:** v3.2 Code Quality Improvements (v3.2.0)
 
-**Latest Updates (v3.1 - Configuration & CSV Export - 2025-10-24):**
+**Latest Updates (v3.2 - Code Quality & Reliability - 2025-10-24):**
+- ✅ **Critical Bug Fix** - Database connection leak in batch mode
+  - Added `_cleanup_batch_on_error()` method for safe cleanup
+  - Prevents resource leaks and database lock issues
+  - Comprehensive test coverage added
+- ✅ **Defensive Programming** - Division by zero safeguard
+  - More robust cache hit rate calculation
+  - Prevents edge case errors during refactoring
+- ✅ **Code Simplification** - Partial Rich/Typer dependency cleanup
+  - Removed ~20 lines of conditional logic from display.py
+  - Removed RICH_AVAILABLE flag and checks
+  - Cleaner, more maintainable code
+- ✅ **Pythonic Refactoring** - SimpleNamespace instead of empty class
+  - Replaced ScanConfig empty class with Python's SimpleNamespace
+  - More idiomatic Python code
+  - Clearer intent
+
+**Previous Updates (v3.1 - Configuration & CSV Export - 2025-10-24):**
 - ✅ **Configuration File Support** - Persistent settings with ~/.vscanrc
   - INI format configuration file with three sections (scan, cache, output)
   - Five config management commands: init, show, set, get, reset

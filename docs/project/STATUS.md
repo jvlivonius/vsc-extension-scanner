@@ -2,7 +2,7 @@
 
 **Project:** VS Code Extension Security Scanner
 **Last Updated:** 2025-10-24
-**Current Version:** v3.1.0 (Production Ready) ✅
+**Current Version:** v3.2.0 (Production Ready) ✅
 **Schema Version:** 2.0
 
 ---
@@ -18,7 +18,8 @@ Phase 2.5: Caching System           ██████████████�
 Phase 3: Testing & Refinement       ████████████████████ 100% ✅
 Phase 4: Enhanced Data Integration  ████████████████████ 100% ✅
 Phase 5: CLI UX Enhancement (v3.0)  ████████████████████ 100% ✅
-Phase 6: Config & CSV Export (v3.1) ████████████████████ 100% ✅ (NEW)
+Phase 6: Config & CSV Export (v3.1) ████████████████████ 100% ✅
+v3.2: Code Quality Improvements     ████████░░░░░░░░░░░░  25% ✅ (NEW)
 v2.1: Code Quality & Security       ████████████████████ 100% ✅
 v2.2: Retry & HTML Reports          ████████████████████ 100% ✅
 v2.2.1: Version Management          ████████████████████ 100% ✅
@@ -471,11 +472,90 @@ vscan report results.csv               # Generate CSV from cache
 
 ---
 
+## v3.2: Code Quality Improvements ✅
+
+**Status:** PARTIAL COMPLETE (4 of 17 items)
+**Duration:** ~4 hours
+**Completion Date:** 2025-10-24
+**Version:** 3.2.0
+
+### Objectives Achieved
+
+- [x] Fix critical database connection leak in batch mode (Phase 1.1)
+- [x] Add division by zero safeguard (Phase 1.2)
+- [x] Partial: Simplify Rich/Typer dependencies - display.py completed (Phase 1.3)
+- [x] Replace ScanConfig with SimpleNamespace (Phase 3.1)
+- [ ] Remaining 13 items documented in ROADMAP for future work
+
+### Key Deliverables
+
+| Deliverable | Changes | Description |
+|-------------|---------|-------------|
+| [cache_manager.py](../../vscode_scanner/cache_manager.py) | +23 lines | Batch connection cleanup on error |
+| [scanner.py](../../vscode_scanner/scanner.py) | +7 lines | Try/except for cache errors, defensive division |
+| [display.py](../../vscode_scanner/display.py) | -20 lines | Removed RICH_AVAILABLE checks |
+| [test_performance.py](../../tests/test_performance.py) | +48 lines | Batch cleanup error test |
+
+### Features Implemented
+
+**Critical Bug Fix - Database Connection Leak:**
+- Added `_cleanup_batch_on_error()` method to safely clean up batch state
+- Updated `save_result_batch()` to call cleanup and re-raise on errors
+- Added TypeError to exception handling (json.dumps failures)
+- Wrapped cache_manager calls in scanner.py with try/except
+- Prevents resource leaks and database lock issues
+
+**Defensive Programming:**
+- Improved cache hit rate calculation to use `max(len(scan_results), 1)`
+- Prevents division by zero in edge cases
+- More robust during refactoring
+
+**Code Simplification:**
+- Removed ~20 lines of conditional Rich import logic from display.py
+- Removed RICH_AVAILABLE flag and all associated checks
+- Replaced ScanConfig empty class with Python's SimpleNamespace
+- Cleaner, more maintainable code
+
+### Success Criteria
+
+- ✅ Critical database leak fixed (prevents resource leaks)
+- ✅ Defensive coding improvements in place
+- ✅ ~20 lines of conditional logic removed
+- ✅ Code quality improvements applied
+- ✅ All performance tests passing (4/4)
+
+### Impact
+
+**Reliability:**
+- Prevents database connection leaks in error scenarios
+- More robust cache hit rate calculation
+- Better error handling throughout
+
+**Code Quality:**
+- Reduced code complexity by removing unnecessary abstractions
+- More Pythonic code (SimpleNamespace vs empty class)
+- Simpler imports and conditional logic
+
+**Maintainability:**
+- Clearer code intent (SimpleNamespace purpose-built for this)
+- Fewer edge cases to test
+- Easier to understand and modify
+
+### Future Work
+
+The ROADMAP v3.2 contains 13 additional improvements not yet implemented:
+- Phase 2: SQL injection prevention, consistent error display, report fail-fast, etc.
+- Phase 3: Additional code quality improvements
+
+These will be addressed in future releases based on priority and need.
+
+---
+
 ## Project Statistics
 
 | Metric | Value |
 |--------|-------|
-| **Current Version** | 3.1.0 |
+| **Current Version** | 3.2.0 |
 | **Total Files Created** | 40+ |
 | **Lines of Code** | 9,500+ (Python) |
 | **Lines of Documentation** | 11,000+ (Markdown) |
