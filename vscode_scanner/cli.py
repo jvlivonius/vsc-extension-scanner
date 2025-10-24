@@ -87,6 +87,12 @@ def scan(
         help="Disable colors and rich formatting (for CI/scripts)",
         rich_help_panel="Options"
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose", "-v",
+        help="Show detailed information including retry statistics",
+        rich_help_panel="Options"
+    ),
 
     # Filtering options
     publisher: Optional[str] = typer.Option(
@@ -274,7 +280,8 @@ def scan(
             exclude_ids=exclude_ids,
             min_risk_level=min_risk_level,
             plain=plain,
-            quiet=quiet
+            quiet=quiet,
+            verbose=verbose
         )
         raise typer.Exit(code=exit_code)
     except (typer.Exit, SystemExit):

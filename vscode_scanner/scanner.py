@@ -45,6 +45,7 @@ def run_scan(
     min_risk_level: Optional[str] = None,
     plain: bool = False,
     quiet: bool = False,
+    verbose: bool = False,
     **kwargs
 ) -> int:
     """
@@ -684,9 +685,9 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         return
 
     if use_rich:
-        # Get retry stats if available
+        # Get retry stats if verbose mode enabled
         retry_stats = None
-        if 'api_client' in stats:
+        if verbose and 'api_client' in stats:
             retry_stats = stats['api_client'].get_retry_stats()
 
         # Use Rich formatted summary
@@ -738,8 +739,8 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                 cache_hit_rate = (stats['cached_results'] / len(extensions)) * 100
                 log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
 
-        # Retry statistics
-        if 'api_client' in stats:
+        # Retry statistics (verbose mode only)
+        if verbose and 'api_client' in stats:
             retry_stats = stats['api_client'].get_retry_stats()
             http_retries = retry_stats.get('total_retries', 0)
             workflow_retries = retry_stats.get('total_workflow_retries', 0)
