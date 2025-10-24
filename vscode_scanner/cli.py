@@ -319,7 +319,17 @@ def cache_stats(
             # Display cache statistics
             console.print(f"[cyan]Database:[/cyan] {stats.get('database_path', 'N/A')}")
             console.print(f"[cyan]Total entries:[/cyan] {stats.get('total_entries', 0)}")
-            console.print(f"[cyan]Database size:[/cyan] {stats.get('database_size', 'N/A')}")
+
+            # Format database size
+            db_size_kb = stats.get('database_size_kb')
+            if db_size_kb is not None:
+                if db_size_kb < 1024:
+                    size_str = f"{db_size_kb:.2f} KB"
+                else:
+                    size_str = f"{db_size_kb / 1024:.2f} MB"
+            else:
+                size_str = "N/A"
+            console.print(f"[cyan]Database size:[/cyan] {size_str}")
 
             # Age distribution
             if 'age_distribution' in stats:
@@ -347,7 +357,17 @@ def cache_stats(
             print("=" * 60)
             print(f"Database: {stats.get('database_path', 'N/A')}")
             print(f"Total entries: {stats.get('total_entries', 0)}")
-            print(f"Database size: {stats.get('database_size', 'N/A')}")
+
+            # Format database size
+            db_size_kb = stats.get('database_size_kb')
+            if db_size_kb is not None:
+                if db_size_kb < 1024:
+                    size_str = f"{db_size_kb:.2f} KB"
+                else:
+                    size_str = f"{db_size_kb / 1024:.2f} MB"
+            else:
+                size_str = "N/A"
+            print(f"Database size: {size_str}")
 
             if 'age_distribution' in stats:
                 print()
