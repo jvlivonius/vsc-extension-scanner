@@ -777,7 +777,7 @@ def _write_output_file(output_path_str, results, is_html_output):
 
     # Generate HTML or JSON based on file extension
     if is_html_output:
-        from html_report_generator import HTMLReportGenerator
+        from .html_report_generator import HTMLReportGenerator
 
         log("Generating HTML report...", "INFO")
         html_gen = HTMLReportGenerator()
