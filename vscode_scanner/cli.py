@@ -316,13 +316,7 @@ def cache_stats(
         if use_rich and RICH_AVAILABLE:
             console = Console()
 
-            # Display cache stats table
-            table = create_cache_stats_table(stats)
-            if table:
-                console.print(table)
-
-            # Additional stats
-            console.print()
+            # Display cache statistics
             console.print(f"[cyan]Database:[/cyan] {stats.get('database_path', 'N/A')}")
             console.print(f"[cyan]Total entries:[/cyan] {stats.get('total_entries', 0)}")
             console.print(f"[cyan]Database size:[/cyan] {stats.get('database_size', 'N/A')}")
