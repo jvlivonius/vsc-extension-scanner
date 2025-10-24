@@ -621,20 +621,21 @@ def config_show(
     if use_rich and RICH_AVAILABLE:
         from rich.console import Console
         from rich.table import Table
-        from rich.panel import Panel
 
         console = Console()
         console.print(f"\n[bold]Configuration File:[/bold] {config_path}")
         console.print("[green]Status: Found ✓[/green]\n")
 
+        # Create single table with all options
+        table = Table(title="Configuration Options", show_header=True, header_style="bold cyan")
+        table.add_column("Key", style="cyan", no_wrap=True)
+        table.add_column("Value", style="yellow")
+        table.add_column("Source", style="dim")
+
+        # Iterate through all sections and options
         for section in ['scan', 'cache', 'output']:
             if section not in config:
                 continue
-
-            table = Table(title=f"[{section}]", show_header=True, header_style="bold cyan")
-            table.add_column("Option", style="cyan")
-            table.add_column("Value", style="yellow")
-            table.add_column("Source", style="dim")
 
             for option, value in config[section].items():
                 default_value = get_default_value(section, option)
@@ -649,21 +650,27 @@ def config_show(
                 else:
                     value_str = str(value)
 
-                table.add_row(option, value_str, source)
+                # Use full key format: section.option
+                full_key = f"{section}.{option}"
+                table.add_row(full_key, value_str, source)
 
-            console.print(table)
-            console.print()
-
+        console.print(table)
+        console.print()
+        console.print("[dim]Use 'vscan config set <key> <value>' to change settings (e.g., 'vscan config set scan.delay 2.0')[/dim]")
         console.print("[dim]CLI arguments always override config file values.[/dim]\n")
     else:
         print(f"\nConfiguration File: {config_path}")
         print("Status: Found ✓\n")
+        print("Configuration Options")
+        print("=" * 80)
+        print(f"{'Key':<30} {'Value':<25} {'Source':<15}")
+        print("-" * 80)
 
+        # Display all options in single table format
         for section in ['scan', 'cache', 'output']:
             if section not in config:
                 continue
 
-            print(f"[{section}]")
             for option, value in config[section].items():
                 default_value = get_default_value(section, option)
                 is_default = value == default_value
@@ -677,10 +684,14 @@ def config_show(
                 else:
                     value_str = str(value)
 
-                print(f"  {option} = {value_str:20} ({source})")
-            print()
+                # Use full key format: section.option
+                full_key = f"{section}.{option}"
+                print(f"{full_key:<30} {value_str:<25} {source:<15}")
 
-        print("CLI arguments always override config file values.\n")
+        print("=" * 80)
+        print("\nUse 'vscan config set <key> <value>' to change settings")
+        print("Example: vscan config set scan.delay 2.0")
+        print("\nCLI arguments always override config file values.\n")
 
     raise typer.Exit(code=0)
 
