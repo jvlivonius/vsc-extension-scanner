@@ -545,7 +545,7 @@ Execute HTTP request with automatic retry logic.
 
 - [CLAUDE.md](../../CLAUDE.md) - Implementation guidance
 - [README.md](../../README.md) - Project overview
-- [PRD.md](../design/PRD.md) - Product requirements
+- [PRD.md](../project/PRD.md) - Product requirements
 - [API Research](../research/API_RESEARCH.md) - vscan.dev API documentation
 
 ---

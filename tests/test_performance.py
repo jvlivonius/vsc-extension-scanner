@@ -251,6 +251,57 @@ class TestVACUUMEffect(unittest.TestCase):
         )
 
 
+class TestBatchErrorCleanup(unittest.TestCase):
+    """Test that batch connection is properly cleaned up on errors."""
+
+    def setUp(self):
+        """Create temporary cache directory for testing."""
+        self.test_cache_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test cache directory."""
+        if Path(self.test_cache_dir).exists():
+            shutil.rmtree(self.test_cache_dir)
+
+    def test_batch_cleanup_on_error(self):
+        """
+        Verify batch connection cleaned up on error.
+
+        Expected: After error in save_result_batch, connection should be None.
+        """
+        cache = CacheManager(cache_dir=self.test_cache_dir)
+        cache.begin_batch()
+
+        # Verify batch started
+        self.assertIsNotNone(cache._batch_connection)
+        self.assertIsNotNone(cache._batch_cursor)
+        self.assertEqual(cache._batch_count, 0)
+
+        # Trigger error with invalid data (non-serializable object)
+        invalid_result = {
+            'name': 'test',
+            'scan_status': 'success',
+            'invalid': object()  # This will cause json.dumps to fail
+        }
+
+        # Should raise exception and clean up
+        with self.assertRaises(Exception):
+            cache.save_result_batch("test.ext", "1.0", invalid_result)
+
+        # Verify cleanup occurred
+        self.assertIsNone(cache._batch_connection, "Batch connection should be None after error")
+        self.assertIsNone(cache._batch_cursor, "Batch cursor should be None after error")
+        self.assertEqual(cache._batch_count, 0, "Batch count should be reset to 0 after error")
+
+        print(f"\n{'='*60}")
+        print(f"Batch Error Cleanup Test")
+        print(f"{'='*60}")
+        print(f"✓ Batch connection properly cleaned up on error")
+        print(f"✓ Batch cursor reset to None")
+        print(f"✓ Batch count reset to 0")
+        print(f"{'='*60}\n")
+
+
 def run_all_benchmarks():
     """Run all performance benchmark tests."""
     print("\n" + "="*60)

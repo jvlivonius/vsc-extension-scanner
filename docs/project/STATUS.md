@@ -46,8 +46,8 @@ Cross-Platform Support              ██████████████�
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [API_RESEARCH.md](research/API_RESEARCH.md) | 255 | Complete API documentation |
-| [test_api.py](../test_api.py) | 350+ | Working validation script |
+| [API_REFERENCE.md](../guides/API_REFERENCE.md) | 255 | Complete API documentation |
+| [test_api.py](../../tests/test_api.py) | 350+ | Working validation script |
 | Test Results | - | 3 extensions validated |
 
 ### Test Results Summary
@@ -100,11 +100,11 @@ Cross-Platform Support              ██████████████�
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [vscan.py](../vscan.py) | 275 | Main CLI entry point |
-| [extension_discovery.py](../extension_discovery.py) | 180 | Extension discovery module |
-| [vscan_api.py](../vscan_api.py) | 320 | vscan.dev API client |
-| [output_formatter.py](../output_formatter.py) | 180 | JSON output formatter |
-| [utils.py](../utils.py) | 180 | Shared utilities |
+| [vscan.py](../../vscode_scanner/vscan.py) | 275 | Main CLI entry point |
+| [extension_discovery.py](../../vscode_scanner/extension_discovery.py) | 180 | Extension discovery module |
+| [vscan_api.py](../../vscode_scanner/vscan_api.py) | 320 | vscan.dev API client |
+| [output_formatter.py](../../vscode_scanner/output_formatter.py) | 180 | JSON output formatter |
+| [utils.py](../../vscode_scanner/utils.py) | 180 | Shared utilities |
 
 ### Test Results Summary
 
@@ -166,9 +166,9 @@ vscan.py                  # Main CLI entry point (240 lines)
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [cache_manager.py](../cache_manager.py) | 360 | SQLite caching implementation |
-| [vscan.py](../vscan.py) (updated) | 370 | Cache integration, 6 new CLI arguments |
-| [.gitignore](../.gitignore) (updated) | +6 | Cache file patterns |
+| [cache_manager.py](../../vscode_scanner/cache_manager.py) | 360 | SQLite caching implementation |
+| [vscan.py](../../vscode_scanner/vscan.py) (updated) | 370 | Cache integration, 6 new CLI arguments |
+| [.gitignore](../../.gitignore) (updated) | +6 | Cache file patterns |
 
 ### Features Implemented
 
@@ -224,10 +224,9 @@ vscan.py                  # Main CLI entry point (240 lines)
 
 | Deliverable | Description |
 |-------------|-------------|
-| [MACOS_TESTING.md](testing/MACOS_TESTING.md) | Comprehensive macOS testing plan |
-| [MACOS_TEST_RESULTS.md](testing/MACOS_TEST_RESULTS.md) | Detailed test results and findings |
-| [utils.py](../utils.py) (updated) | Added `force` parameter to log function |
-| [vscan.py](../vscan.py) (updated) | Fixed cache management command output |
+| [macos-testing.md](../archive/reviews/macos-testing.md) | Comprehensive macOS testing plan (archived) |
+| [utils.py](../../vscode_scanner/utils.py) (updated) | Added `force` parameter to log function |
+| [vscan.py](../../vscode_scanner/vscan.py) (updated) | Fixed cache management command output |
 
 ### Test Results Summary
 
@@ -258,7 +257,7 @@ vscan.py                  # Main CLI entry point (240 lines)
 - ✅ Documentation complete and accurate
 - ✅ Code is clean and maintainable
 
-See [MACOS_TEST_RESULTS.md](testing/MACOS_TEST_RESULTS.md) for detailed test results.
+See archived test results for detailed macOS testing documentation.
 
 ---
 
@@ -284,13 +283,12 @@ See [MACOS_TEST_RESULTS.md](testing/MACOS_TEST_RESULTS.md) for detailed test res
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [display.py](../vscode_scanner/display.py) | 600 | Rich formatting components |
-| [scanner.py](../vscode_scanner/scanner.py) | 1,000 | Refactored scan logic |
-| [cli.py](../vscode_scanner/cli.py) | 650 | Typer CLI framework |
-| [test_display.py](../tests/test_display.py) | 450 | Display module tests (24 tests) |
-| [test_scanner.py](../tests/test_scanner.py) | 400 | Scanner module tests (15 tests) |
-| [test_cli.py](../tests/test_cli.py) | 350 | CLI module tests (18 tests) |
-| [PHASE5_COMPLETION_SUMMARY.md](results/PHASE5_COMPLETION_SUMMARY.md) | 900 | Phase 5 completion summary |
+| [display.py](../../vscode_scanner/display.py) | 600 | Rich formatting components |
+| [scanner.py](../../vscode_scanner/scanner.py) | 1,000 | Refactored scan logic |
+| [cli.py](../../vscode_scanner/cli.py) | 650 | Typer CLI framework |
+| [test_display.py](../../tests/test_display.py) | 450 | Display module tests (24 tests) |
+| [test_scanner.py](../../tests/test_scanner.py) | 400 | Scanner module tests (15 tests) |
+| [test_cli.py](../../tests/test_cli.py) | 350 | CLI module tests (18 tests) |
 
 ### Features Implemented
 
@@ -349,7 +347,7 @@ vscan report report.html             # Generate reports from cache (NEW)
 - ✅ 57 new tests, all passing
 - ✅ Documentation updated
 
-See [PHASE5_COMPLETION_SUMMARY.md](results/PHASE5_COMPLETION_SUMMARY.md) for detailed implementation summary.
+See [../archive/releases/](../archive/releases/) for detailed phase summaries.
 
 ---
 
@@ -376,11 +374,11 @@ See [PHASE5_COMPLETION_SUMMARY.md](results/PHASE5_COMPLETION_SUMMARY.md) for det
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [config_manager.py](../vscode_scanner/config_manager.py) | 420 | Configuration file management |
-| [constants.py](../vscode_scanner/constants.py) | 180 | Centralized constants |
-| [output_formatter.py](../vscode_scanner/output_formatter.py) | +78 | Added CSV export method |
-| [cli.py](../vscode_scanner/cli.py) | +450 | Added config commands & CSV support |
-| [test_performance.py](../tests/test_performance.py) | 250 | Performance benchmark tests |
+| [config_manager.py](../../vscode_scanner/config_manager.py) | 420 | Configuration file management |
+| [constants.py](../../vscode_scanner/constants.py) | 180 | Centralized constants |
+| [output_formatter.py](../../vscode_scanner/output_formatter.py) | +78 | Added CSV export method |
+| [cli.py](../../vscode_scanner/cli.py) | +450 | Added config commands & CSV support |
+| [test_performance.py](../../tests/test_performance.py) | 250 | Performance benchmark tests |
 
 ### Features Implemented
 
@@ -454,13 +452,22 @@ vscan report results.csv               # Generate CSV from cache
 - ✅ All existing tests still passing
 - ✅ Documentation updated
 
-### Commits
+### Recent Fixes & Improvements
 
+**Post-Release Bug Fixes:**
+- **Cache Hit Rate Fix (9aa04b2):** Fixed calculation showing 0% across all outputs (JSON, HTML, CSV, console)
+- **Documentation Complete (6c3df6c):** Comprehensive Phase 6 documentation and testing completion
+
+**Core Implementation Commits:**
 - 63badce: Implement Phase 4 configuration file feature (v3.1)
 - ad50ae5: Implement Phase 5 CSV export feature (v3.1)
 - 9ac6b6b: Add CSV export support to report command
-- fdbbe51: Remove CSV export functionality from HTML reports
+- fdbbe51: Remove CSV export functionality from HTML reports (CLI-only consistency)
 - c1d76f9: Improve config show command to display full key format
+- 3655a1c: Implement workflow-level retry and Rich mode retry statistics
+- a217f6f: Implement Phase 3 code quality improvements
+- fd279f2: Implement Phase 2 performance improvements
+- 1dcff19: Critical bug fixes and v3.1 release plan
 
 ---
 
@@ -480,10 +487,10 @@ vscan report results.csv               # Generate CSV from cache
 | **Test Scenarios Executed** | 92+ |
 | **Test Success Rate** | 100% |
 | **Phases Complete** | 5/5 + 4 enhancements (100%) ✅ |
-| **Bugs Found & Fixed** | 5+ |
+| **Bugs Found & Fixed** | 10+ |
 | **Schema Version** | 2.0 |
 | **Output Mode** | Always comprehensive (detailed) |
-| **Output Formats** | 2 (JSON, HTML) |
+| **Output Formats** | 3 (JSON, HTML, CSV) |
 | **Platforms Supported** | 3 (macOS, Windows, Linux) |
 
 ---
@@ -497,16 +504,17 @@ vscan report results.csv               # Generate CSV from cache
 - **Phase 3:** Testing & Refinement - 2 hours ✅
 - **Phase 4:** Enhanced Data Integration - 2.5 hours ✅
 - **Phase 5:** CLI UX Enhancement - 7 hours ✅
+- **Phase 6:** Configuration & CSV Export - 4 hours ✅
 - **v2.1:** Code Quality & Security - 3 hours ✅
 - **v2.2:** Retry & HTML Reports - 5 hours ✅
 - **v2.2.1:** Version Management - 2 hours ✅
 - **Cross-Platform Support:** 2 hours ✅
 - **Phase 3 Improvements:** Database Integrity & Integration Tests - 8 hours ✅
 
-**Total Project Time:** 36 hours ✅
+**Total Project Time:** 40 hours ✅
 
 **Original Estimate:** 7-11 hours (Phases 1-3)
-**Actual Time:** 36 hours (all phases + enhancements)
+**Actual Time:** 40 hours (all phases + enhancements)
 **Status:** Production-ready with comprehensive features beyond original scope
 
 ---
@@ -544,13 +552,13 @@ vscan report results.csv               # Generate CSV from cache
 
 | Deliverable | Changes | Description |
 |-------------|---------|-------------|
-| [vscan_api.py](../vscan_api.py) | +254 lines | Complete data parsing with 4 new functions |
-| [cache_manager.py](../cache_manager.py) | +142 lines | Schema v2.0 with automatic v1→v2 migration |
-| [output_formatter.py](../output_formatter.py) | Rewritten (342 lines) | Dual-mode output formatting |
-| [vscan.py](../vscan.py) | +15 lines | Version 2.0.0, --detailed flag |
-| [PRD.md](design/PRD.md) | Updated | Version 2.0 features documented |
-| [ENHANCED_DATA_INTEGRATION_PLAN.md](design/ENHANCED_DATA_INTEGRATION_PLAN.md) | New | Complete implementation plan |
-| [PHASE4_COMPLETION_SUMMARY.md](PHASE4_COMPLETION_SUMMARY.md) | New | Phase 4 summary and migration guide |
+| [vscan_api.py](../../vscode_scanner/vscan_api.py) | +254 lines | Complete data parsing with 4 new functions |
+| [cache_manager.py](../../vscode_scanner/cache_manager.py) | +142 lines | Schema v2.0 with automatic v1→v2 migration |
+| [output_formatter.py](../../vscode_scanner/output_formatter.py) | Rewritten (342 lines) | Dual-mode output formatting |
+| [vscan.py](../../vscode_scanner/vscan.py) | +15 lines | Version 2.0.0, --detailed flag |
+| [PRD.md](PRD.md) | Updated | Version 3.1.0 features documented |
+| [ENHANCED_DATA_INTEGRATION_PLAN.md](../archive/reviews/enhanced-data-integration.md) | Archived | Complete implementation plan |
+| [PHASE4_COMPLETION_SUMMARY.md](../archive/releases/phase4-summary.md) | Archived | Phase 4 summary and migration guide |
 
 ### Features Implemented
 
@@ -609,11 +617,11 @@ vscan report results.csv               # Generate CSV from cache
 
 | Deliverable | Changes | Description |
 |-------------|---------|-------------|
-| [utils.py](../utils.py) | Refactored | Removed unused security functions |
-| [vscan_api.py](../vscan_api.py) | Updated | Sanitized error messages |
-| [tests/](../tests/) | New directory | Organized test files |
-| [.gitignore](../.gitignore) | Enhanced | Python artifacts and cache |
-| [SECURITY_FIXES_APPLIED.md](security/SECURITY_FIXES_APPLIED.md) | Updated | Documented all fixes |
+| [utils.py](../../vscode_scanner/utils.py) | Refactored | Removed unused security functions |
+| [vscan_api.py](../../vscode_scanner/vscan_api.py) | Updated | Sanitized error messages |
+| [tests/](../../tests/) | New directory | Organized test files |
+| [.gitignore](../../.gitignore) | Enhanced | Python artifacts and cache |
+| [SECURITY.md](../guides/SECURITY.md) | Updated | Documented all fixes and best practices |
 
 ### Features Implemented
 
@@ -658,12 +666,11 @@ vscan report results.csv               # Generate CSV from cache
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [vscan_api.py](../vscan_api.py) | +120 | Retry logic with exponential backoff |
-| [html_report_generator.py](../html_report_generator.py) | 2,300 | Complete HTML report generator |
-| [vscode_scanner/html_report_generator.py](../vscode_scanner/html_report_generator.py) | 2,300 | Package version |
-| [RETRY_MECHANISM.md](features/RETRY_MECHANISM.md) | 540 | Retry mechanism documentation |
-| [HTML_REPORT_SPECIFICATION.md](features/HTML_REPORT_SPECIFICATION.md) | 680 | HTML report specification |
-| [tests/test_retry.py](../tests/test_retry.py) | 280 | Comprehensive retry tests |
+| [vscan_api.py](../../vscode_scanner/vscan_api.py) | +120 | Retry logic with exponential backoff |
+| [html_report_generator.py](../../vscode_scanner/html_report_generator.py) | 2,300 | Complete HTML report generator |
+| [retry-mechanism.md](../specs/retry-mechanism.md) | 540 | Retry mechanism documentation |
+| [html-reports.md](../specs/html-reports.md) | 680 | HTML report specification |
+| [tests/test_retry.py](../../tests/test_retry.py) | 280 | Comprehensive retry tests |
 
 ### Features Implemented
 
@@ -726,30 +733,28 @@ vscan report results.csv               # Generate CSV from cache
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [vscode_scanner/_version.py](../vscode_scanner/_version.py) | 9 | Single source of truth |
-| [scripts/bump_version.py](../scripts/bump_version.py) | 180 | Version management script |
-| [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) | 280 | Version management guide |
-| [setup.py](../setup.py) | Updated | Dynamic version import |
-| [pyproject.toml](../pyproject.toml) | Updated | Dynamic versioning config |
+| [vscode_scanner/_version.py](../../vscode_scanner/_version.py) | 9 | Single source of truth |
+| [scripts/bump_version.py](../../scripts/bump_version.py) | 180 | Version management script |
+| [VERSION_MANAGEMENT.md](../contributing/VERSION_MANAGEMENT.md) | 280 | Version management guide |
+| [setup.py](../../setup.py) | Updated | Dynamic version import |
+| [pyproject.toml](../../pyproject.toml) | Updated | Dynamic versioning config |
 
 ### Files Updated (11 total)
 
 **Package Files:**
-- [vscode_scanner/__init__.py](../vscode_scanner/__init__.py)
-- [vscode_scanner/vscan.py](../vscode_scanner/vscan.py)
-- [vscode_scanner/output_formatter.py](../vscode_scanner/output_formatter.py)
-- [vscode_scanner/cache_manager.py](../vscode_scanner/cache_manager.py)
-- [vscode_scanner/html_report_generator.py](../vscode_scanner/html_report_generator.py)
+- [vscode_scanner/__init__.py](../../vscode_scanner/__init__.py)
+- [vscode_scanner/vscan.py](../../vscode_scanner/vscan.py)
+- [vscode_scanner/output_formatter.py](../../vscode_scanner/output_formatter.py)
+- [vscode_scanner/cache_manager.py](../../vscode_scanner/cache_manager.py)
+- [vscode_scanner/html_report_generator.py](../../vscode_scanner/html_report_generator.py)
 
 **Root Files:**
-- [vscan.py](../vscan.py) - Fixed from 2.0.0 → 2.2.1
-- [output_formatter.py](../output_formatter.py)
-- [cache_manager.py](../cache_manager.py)
-- [html_report_generator.py](../html_report_generator.py)
+- [vscan](../../vscan) - Development wrapper
+- Legacy root files (archived)
 
 **Build Configuration:**
-- [setup.py](../setup.py)
-- [pyproject.toml](../pyproject.toml)
+- [setup.py](../../setup.py)
+- [pyproject.toml](../../pyproject.toml)
 
 ### Features Implemented
 
@@ -802,10 +807,8 @@ vscan report results.csv               # Generate CSV from cache
 
 | Deliverable | Changes | Description |
 |-------------|---------|-------------|
-| [vscode_scanner/utils.py](../vscode_scanner/utils.py) | Updated | Cross-platform security checks |
-| [utils.py](../utils.py) | Updated | Cross-platform security checks |
-| [cache_manager.py](../cache_manager.py) | Updated | Safe permissions handling |
-| [vscode_scanner/cache_manager.py](../vscode_scanner/cache_manager.py) | Updated | Safe permissions handling |
+| [vscode_scanner/utils.py](../../vscode_scanner/utils.py) | Updated | Cross-platform security checks |
+| [vscode_scanner/cache_manager.py](../../vscode_scanner/cache_manager.py) | Updated | Safe permissions handling |
 
 ### Features Implemented
 
@@ -839,7 +842,7 @@ vscan report results.csv               # Generate CSV from cache
 
 ## Project Complete ✅
 
-**Status:** v3.0.0 - Production-ready for all platforms (macOS, Windows, Linux)
+**Status:** v3.1.0 - Production-ready for all platforms (macOS, Windows, Linux)
 
 ### Completed Actions
 
@@ -879,6 +882,14 @@ vscan report results.csv               # Generate CSV from cache
   - 57 new tests, all passing
   - Comprehensive refactoring (display, scanner, cli modules)
 
+✅ **Configuration & CSV Export** (v3.1.0)
+  - Configuration file support (~/.vscanrc)
+  - CSV export functionality (scan and report commands)
+  - Performance improvements (87.6% faster batch commits)
+  - Code quality enhancements (centralized constants)
+  - Improved config UX (unified table display)
+  - Bug fixes (cache hit rate calculation)
+
 ✅ **Quality Assurance**
   - Database integrity checks
   - Comprehensive integration tests
@@ -913,10 +924,10 @@ vscan report results.csv               # Generate CSV from cache
 
 | Deliverable | Lines | Description |
 |-------------|-------|-------------|
-| [test_db_integrity.py](../tests/test_db_integrity.py) | 175 | Database integrity tests |
-| [test_integration.py](../tests/test_integration.py) | 529 | Comprehensive integration tests |
-| [cache_manager.py](../cache_manager.py) | +60 | Integrity check implementation |
-| [PHASE3_REVIEW.md](../PHASE3_REVIEW.md) | 240 | Phase 3 completion summary |
+| [test_db_integrity.py](../../tests/test_db_integrity.py) | 175 | Database integrity tests |
+| [test_integration.py](../../tests/test_integration.py) | 529 | Comprehensive integration tests |
+| [cache_manager.py](../../vscode_scanner/cache_manager.py) | +60 | Integrity check implementation |
+| Phase 3 Review | Archived | Phase 3 completion summary |
 
 ### Implementation Highlights
 
@@ -960,29 +971,41 @@ vscan report results.csv               # Generate CSV from cache
 ## Commands Reference
 
 ```bash
-# Basic Usage (v3.0+)
-vscan scan                                # Scan with caching
+# Basic Usage (v3.1)
+vscan scan                                # Scan with caching and Rich UI
 vscan scan --output results.json          # Save JSON to file
 vscan scan --output report.html           # Generate HTML report
-vscan scan --detailed                     # Include detailed security data
-vscan scan --verbose                      # Detailed progress
+vscan scan --output results.csv           # Export to CSV (NEW v3.1)
 vscan --help                              # Show help
-vscan --version                           # Show version
+vscan --version                           # Show version (3.1.0)
 
 # Cache Management (v3.0+)
-vscan cache-stats                         # View cache statistics
-vscan cache-clear                         # Clear all cache
+vscan cache stats                         # View cache statistics
+vscan cache clear                         # Clear all cache (with confirmation)
+vscan cache clear --force                 # Clear without confirmation
 vscan scan --refresh-cache                # Force refresh
 vscan scan --no-cache                     # Disable cache
 vscan scan --cache-max-age 14             # 14-day cache
 vscan scan --cache-dir /custom/path       # Custom cache location
+
+# Configuration Management (NEW v3.1)
+vscan config init                         # Create default ~/.vscanrc file
+vscan config show                         # Display current configuration
+vscan config set scan.delay 2.0           # Set configuration value
+vscan config get scan.delay               # Get specific config value
+vscan config reset                        # Delete config file (with confirmation)
+
+# Report Generation from Cache (v3.0+)
+vscan report report.html                  # Generate HTML report from cache (no API calls)
+vscan report results.json                 # Generate JSON report from cache
+vscan report results.csv                  # Generate CSV report from cache (NEW v3.1)
 
 # Retry Configuration (v2.2+)
 vscan scan --max-retries 5                # More aggressive retries
 vscan scan --retry-delay 3.0              # Longer backoff delays
 vscan scan --max-retries 0                # Disable retries
 
-# Filtering Options (v2.3+)
+# Filtering Options
 vscan scan --publisher microsoft          # Only scan Microsoft extensions
 vscan scan --min-risk-level high          # Only show high/critical risk
 vscan scan --include-ids "ms-python.python" # Scan specific extension
@@ -992,14 +1015,14 @@ vscan scan --exclude-ids "local.test"     # Exclude specific extensions
 vscan scan --extensions-dir /path         # Custom directory
 vscan scan --delay 2.0                    # Custom API delay
 vscan scan --plain                        # Plain output (no Rich formatting)
-vscan scan --quiet                        # Minimal output
+vscan scan --quiet                        # Minimal single-line summary
 
-# Legacy Commands (v2.x - still supported)
-python vscan.py                           # Old entry point
+# Development
+python -m vscode_scanner.vscan            # Run via Python module
 ./vscan                                   # Development wrapper
 
 # Version Management (v2.2.1+)
-python scripts/bump_version.py 3.0.0     # Bump version
+python scripts/bump_version.py 3.1.0     # Bump version
 python scripts/bump_version.py --check   # Check consistency
 python scripts/bump_version.py --show    # Show versions
 
@@ -1009,63 +1032,55 @@ python3 tests/test_retry.py               # Retry mechanism tests
 python3 tests/test_security.py            # Security tests
 python3 tests/test_db_integrity.py        # Database integrity tests
 python3 tests/test_integration.py         # Integration tests
-python3 tests/test_display.py             # Display module tests (v3.0+)
-python3 tests/test_scanner.py             # Scanner module tests (v3.0+)
-python3 tests/test_cli.py                 # CLI module tests (v3.0+)
+python3 tests/test_display.py             # Display module tests (v3.0)
+python3 tests/test_scanner.py             # Scanner module tests (v3.0)
+python3 tests/test_cli.py                 # CLI module tests (v3.0)
+python3 tests/test_config.py              # Config module tests (v3.1)
+python3 tests/test_performance.py         # Performance benchmark tests (v3.1)
 
 # Package Installation
 pip install -e .                          # Install in development mode
 pip install .                             # Install package
+python -m build                           # Build distribution packages
 ```
 
 ---
 
 ## Documentation Index
 
-### Root Documentation
-- [README.md](../README.md) - Project overview and quick start
-- [CLAUDE.md](../CLAUDE.md) - Project guidance for Claude Code
-- [DISTRIBUTION.md](../DISTRIBUTION.md) - Distribution and packaging guide
+**Full Documentation:** See [docs/README.md](../README.md) for complete documentation index and navigation guide.
 
-### Design Documents
-- [PRD.md](design/PRD.md) - Product Requirements Document
-- [ENHANCED_DATA_INTEGRATION_PLAN.md](research/ENHANCED_DATA_INTEGRATION_PLAN.md) - Phase 4 plan
+### Quick Links
 
-### Phase Requirements
-- [PHASE1_REQUIREMENTS.md](phases/PHASE1_REQUIREMENTS.md) - Phase 1: Research & Discovery
-- [PHASE2_REQUIREMENTS.md](phases/PHASE2_REQUIREMENTS.md) - Phase 2: Core Implementation
-- [PHASE3_REQUIREMENTS.md](phases/PHASE3_REQUIREMENTS.md) - Phase 3: Testing & Refinement
-- [PHASE4_REQUIREMENTS.md](phases/PHASE4_REQUIREMENTS.md) - Phase 4: Enhanced Data Integration
+**For Developers:**
+- [../../README.md](../../README.md) - Project overview and quick start
+- [../../CLAUDE.md](../../CLAUDE.md) - Development guidance for Claude Code
+- [../guides/ARCHITECTURE.md](../guides/ARCHITECTURE.md) - System architecture and design principles
+- [../guides/SECURITY.md](../guides/SECURITY.md) - Security requirements and best practices
+- [../guides/ERROR_HANDLING.md](../guides/ERROR_HANDLING.md) - Error handling strategy
+- [../guides/TESTING.md](../guides/TESTING.md) - Testing guidelines
+- [../guides/API_REFERENCE.md](../guides/API_REFERENCE.md) - vscan.dev API documentation
+- [../guides/ERROR_CODES.md](../guides/ERROR_CODES.md) - Error code reference
 
-### Feature Documentation
-- [IMPROVEMENT_PLAN.md](features/IMPROVEMENT_PLAN.md) - Phase 3 improvements plan
-- [HTML_REPORT_SPECIFICATION.md](features/HTML_REPORT_SPECIFICATION.md) - HTML report feature (v2.2)
-- [RETRY_MECHANISM.md](features/RETRY_MECHANISM.md) - Retry mechanism (v2.2)
-- [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) - Version management guide (v2.2.1)
+**For Project Management:**
+- [STATUS.md](STATUS.md) - This file - current project status
+- [PRD.md](PRD.md) - Product Requirements Document (v3.1)
+- [ROADMAP.md](ROADMAP.md) - Version 3.2 improvement plan
 
-### Research Documents
-- [API_RESEARCH.md](research/API_RESEARCH.md) - vscan.dev API findings
+**For Contributors:**
+- [../contributing/TESTING_CHECKLIST.md](../contributing/TESTING_CHECKLIST.md) - Testing checklist
+- [../contributing/VERSION_MANAGEMENT.md](../contributing/VERSION_MANAGEMENT.md) - Version management guide
 
-### Testing Documents
-- [TESTING_CHECKLIST.md](testing/TESTING_CHECKLIST.md) - Phase 3 test plan
-- [MACOS_TESTING.md](testing/MACOS_TESTING.md) - macOS test plan
-- [MACOS_TEST_RESULTS.md](testing/MACOS_TEST_RESULTS.md) - macOS test results
+**Feature Specifications:**
+- [../specs/html-reports.md](../specs/html-reports.md) - HTML report feature (v2.2)
+- [../specs/retry-mechanism.md](../specs/retry-mechanism.md) - Retry mechanism (v2.2)
+- [../specs/cli-ux.md](../specs/cli-ux.md) - CLI UX enhancement (v3.0)
 
-### Results & Completion Summaries
-- [PHASE4_COMPLETION_SUMMARY.md](results/PHASE4_COMPLETION_SUMMARY.md) - Phase 4 summary
-- [IMPROVEMENT_PLAN-PHASE1_REVIEW.md](results/IMPROVEMENT_PLAN-PHASE1_REVIEW.md) - Phase 1 review
-- [IMPROVEMENT_PLAN-PHASE2_REVIEW.md](results/IMPROVEMENT_PLAN-PHASE2_REVIEW.md) - Phase 2 review
-- [IMPROVEMENT_PLAN-PHASE3_REVIEW.md](results/IMPROVEMENT_PLAN-PHASE3_REVIEW.md) - Phase 3 review
-
-### Security Documentation
-- [SECURITY_ANALYSIS.md](security/SECURITY_ANALYSIS.md) - Security analysis report
-- [SECURITY_FIXES_APPLIED.md](security/SECURITY_FIXES_APPLIED.md) - Applied security fixes
-- [SECURITY_QUICK_FIX_GUIDE.md](security/SECURITY_QUICK_FIX_GUIDE.md) - Quick fix guide
-
-### Project Management
-- [PROJECT_STATUS.md](PROJECT_STATUS.md) - This file
-- [README.md](README.md) - Documentation navigation hub
+**Historical Documentation:**
+- [../archive/phases/](../archive/phases/) - Completed phase requirements
+- [../archive/releases/](../archive/releases/) - Phase completion summaries
+- [../archive/reviews/](../archive/reviews/) - Historical reviews and analysis
 
 ---
 
-**Status:** v3.0.0 Production Ready - All Phases Complete + Enhancements ✅
+**Status:** v3.1.0 Production Ready - All Phases Complete + Enhancements ✅

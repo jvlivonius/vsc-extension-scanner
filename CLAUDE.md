@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code when working with code in this repository.
 
+## ⚠️ REQUIRED READING BEFORE CODE CHANGES
+
+**STOP!** Before making any code changes, you **MUST** read these three documents:
+
+1. **[docs/guides/ARCHITECTURE.md](docs/guides/ARCHITECTURE.md)** - System architecture, design principles, module responsibilities, and anti-patterns
+2. **[docs/guides/SECURITY.md](docs/guides/SECURITY.md)** - Security requirements, path validation, input sanitization, and threat model
+3. **[docs/project/PRD.md](docs/project/PRD.md)** - Product requirements, feature scope, and constraints
+
+These documents define critical constraints and requirements that must be followed. See the "Required Reading Documentation" section below for additional important documentation.
+
+---
+
 ## Project Overview
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
@@ -133,35 +145,74 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - ✅ Test files organized in dedicated `tests/` directory
 - ✅ Added `.gitignore` for Python artifacts and cache files
 
-See **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** for detailed progress tracking.
-See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APPLIED.md)** for security improvements.
+See **[docs/project/STATUS.md](docs/project/STATUS.md)** for detailed progress tracking.
+See **[docs/guides/SECURITY.md](docs/guides/SECURITY.md)** for security requirements and best practices.
 
-## Quick Reference Documentation
+## Required Reading Documentation
 
-### Core Documentation
+**IMPORTANT:** When working on this project, you MUST review these documents first to understand the architecture, requirements, and constraints.
+
+### 🔴 REQUIRED - Core Architecture & Requirements
+These documents define the system architecture, security requirements, and design constraints. Read these FIRST before making any code changes:
+
+1. **[docs/guides/ARCHITECTURE.md](docs/guides/ARCHITECTURE.md)** ⚠️ REQUIRED
+   - Simple Layered Architecture (Presentation, Application, Infrastructure)
+   - Design principles (KISS, Command-Query Separation, Fail Fast)
+   - Module responsibilities and dependency rules
+   - Anti-patterns to avoid
+
+2. **[docs/guides/SECURITY.md](docs/guides/SECURITY.md)** ⚠️ REQUIRED
+   - Security architecture and defense layers
+   - CRITICAL: Path validation requirements
+   - Input validation and sanitization rules
+   - Error handling and information disclosure prevention
+   - Threat model and attack vectors
+
+3. **[docs/project/PRD.md](docs/project/PRD.md)** ⚠️ REQUIRED
+   - Complete product requirements (v3.1)
+   - Feature scope and objectives
+   - Technical specifications
+   - Success criteria and constraints
+
+### 🟡 IMPORTANT - Development Guidelines
+Read these when making changes to specific areas:
+
+4. **[docs/guides/ERROR_HANDLING.md](docs/guides/ERROR_HANDLING.md)** - Error handling strategy
+   - ERROR_HELP system documentation
+   - Error classification and display flow
+   - Security-aware error messaging
+
+5. **[docs/guides/TESTING.md](docs/guides/TESTING.md)** - Testing guidelines
+   - Test organization and categories
+   - Writing tests (AAA pattern, fixtures)
+   - Test coverage goals (85% overall, 95% for security)
+
+6. **[docs/guides/API_REFERENCE.md](docs/guides/API_REFERENCE.md)** - vscan.dev API documentation
+   - API endpoints and request/response formats
+   - Implementation recommendations
+   - Edge cases and rate limiting
+
+### 🟢 Reference - Project Status & Planning
+
 - **[README.md](README.md)** - Project overview and quick start
-- **[docs/design/PRD.md](docs/design/PRD.md)** - Full product requirements
-- **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - Current project status
+- **[docs/project/STATUS.md](docs/project/STATUS.md)** - Current project status and progress
+- **[docs/project/ROADMAP.md](docs/project/ROADMAP.md)** - Version 3.2 improvement plan
+- **[docs/README.md](docs/README.md)** - Complete documentation index
 
-### Phase Requirements
-- **[docs/phases/PHASE1_REQUIREMENTS.md](docs/phases/PHASE1_REQUIREMENTS.md)** - Phase 1: Research & Discovery
-- **[docs/phases/PHASE2_REQUIREMENTS.md](docs/phases/PHASE2_REQUIREMENTS.md)** - Phase 2: Core Implementation
-- **[docs/phases/PHASE3_REQUIREMENTS.md](docs/phases/PHASE3_REQUIREMENTS.md)** - Phase 3: Testing & Refinement
-- **[docs/phases/PHASE4_REQUIREMENTS.md](docs/phases/PHASE4_REQUIREMENTS.md)** - Phase 4: Enhanced Data Integration
+### Feature Specifications
+- **[docs/specs/html-reports.md](docs/specs/html-reports.md)** - HTML report feature (v2.2)
+- **[docs/specs/retry-mechanism.md](docs/specs/retry-mechanism.md)** - Retry mechanism (v2.2)
+- **[docs/specs/cli-ux.md](docs/specs/cli-ux.md)** - CLI UX enhancement (v3.0)
 
-### Features
-- **[docs/features/IMPROVEMENT_PLAN.md](docs/features/IMPROVEMENT_PLAN.md)** - Phase 3 improvements plan
-- **[docs/features/HTML_REPORT_SPECIFICATION.md](docs/features/HTML_REPORT_SPECIFICATION.md)** - HTML report feature spec (v2.2)
-- **[docs/features/RETRY_MECHANISM.md](docs/features/RETRY_MECHANISM.md)** - Retry mechanism documentation (v2.2)
+### Contributor Resources
+- **[docs/contributing/TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md)** - Testing checklist
+- **[docs/contributing/VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md)** - Version management guide
+- **[docs/guides/ERROR_CODES.md](docs/guides/ERROR_CODES.md)** - Error code reference
 
-### Research & Testing
-- **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API documentation
-- **[docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)** - Testing checklist
-- **[docs/testing/MACOS_TESTING.md](docs/testing/MACOS_TESTING.md)** - macOS test plan
-
-### Results & Security
-- **[docs/results/](docs/results/)** - Phase completion summaries and test results
-- **[docs/security/](docs/security/)** - Security analysis and fixes
+### Historical Documentation (Archive)
+- **[docs/archive/phases/](docs/archive/phases/)** - Completed phase requirements
+- **[docs/archive/releases/](docs/archive/releases/)** - Phase completion summaries
+- **[docs/archive/reviews/](docs/archive/reviews/)** - Historical reviews and analysis
 
 ## Technology Stack
 
@@ -321,7 +372,7 @@ The vscan.dev API has been fully reverse-engineered and validated in Phase 1.
 - Poll status every 2 seconds
 - Maximum wait: 5 minutes per extension
 
-**Complete API documentation:** [docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)
+**Complete API documentation:** [docs/guides/API_REFERENCE.md](docs/guides/API_REFERENCE.md)
 
 ### Error Handling Strategy
 
@@ -570,17 +621,17 @@ The following features are explicitly **out of scope**:
 
 ### ✅ Phase 1: Research & Discovery (COMPLETE)
 
-**Requirements:** [docs/phases/PHASE1_REQUIREMENTS.md](docs/phases/PHASE1_REQUIREMENTS.md)
+**Requirements:** [docs/archive/phases/phase1-research.md](docs/archive/phases/phase1-research.md)
 
 - Reverse-engineer vscan.dev API endpoints
 - Document request/response format
 - Validate endpoint behavior with test extensions
 
-**Results:** [docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)
+**Results:** [docs/guides/API_REFERENCE.md](docs/guides/API_REFERENCE.md)
 
 ### ✅ Phase 2: Core Implementation (COMPLETE)
 
-**Requirements:** [docs/phases/PHASE2_REQUIREMENTS.md](docs/phases/PHASE2_REQUIREMENTS.md)
+**Requirements:** [docs/archive/phases/phase2-implementation.md](docs/archive/phases/phase2-implementation.md)
 
 **Module Structure:**
 
@@ -615,7 +666,7 @@ vscan.py                     # Main CLI entry point (370 lines)
 
 ### ✅ Phase 3: Testing & Refinement (COMPLETE)
 
-**Requirements:** [docs/phases/PHASE3_REQUIREMENTS.md](docs/phases/PHASE3_REQUIREMENTS.md)
+**Requirements:** [docs/archive/phases/phase3-testing.md](docs/archive/phases/phase3-testing.md)
 
 - Test caching system thoroughly
 - Test on macOS (focused platform)
@@ -623,11 +674,11 @@ vscan.py                     # Main CLI entry point (370 lines)
 - Test error scenarios (rate limiting)
 - Refine user experience (fixed cache-stats UX bug)
 
-**Results:** [docs/testing/MACOS_TEST_RESULTS.md](docs/testing/MACOS_TEST_RESULTS.md) | [docs/results/PHASE3_COMPLETION_SUMMARY.md](docs/results/PHASE3_COMPLETION_SUMMARY.md)
+**Results:** [docs/archive/releases/phase3-summary.md](docs/archive/releases/phase3-summary.md)
 
 ### ✅ Phase 4: Enhanced Data Integration (COMPLETE)
 
-**Requirements:** [docs/phases/PHASE4_REQUIREMENTS.md](docs/phases/PHASE4_REQUIREMENTS.md)
+**Requirements:** [docs/archive/phases/phase4-enhanced-data.md](docs/archive/phases/phase4-enhanced-data.md)
 
 **Implemented Features:**
 
@@ -640,7 +691,7 @@ vscan.py                     # Main CLI entry point (370 lines)
 ✅ Cache schema v2.0 with automatic v1→v2 migration
 ✅ Maintained performance (28x speedup with cache)
 
-**Results:** [docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md](docs/design/ENHANCED_DATA_INTEGRATION_PLAN.md) | [docs/results/PHASE4_COMPLETION_SUMMARY.md](docs/results/PHASE4_COMPLETION_SUMMARY.md)
+**Results:** [docs/archive/releases/phase4-summary.md](docs/archive/releases/phase4-summary.md)
 
 ## vscan.dev API Quick Reference
 
@@ -670,7 +721,7 @@ response["analysisModules"]["dependencies"]["vulnerabilities"]["summary"]
 # {"critical": 0, "high": 0, "moderate": 0, "low": 0, "total": 0}
 ```
 
-**Complete API documentation with examples:** [docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)
+**Complete API documentation with examples:** [docs/guides/API_REFERENCE.md](docs/guides/API_REFERENCE.md)
 
 ## Testing Strategy
 
@@ -693,7 +744,7 @@ response["analysisModules"]["dependencies"]["vulnerabilities"]["summary"]
 - Performance benchmarking
 - User acceptance testing
 
-**Full checklist:** [docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)
+**Full checklist:** [docs/contributing/TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md)
 
 ## Common Development Tasks
 
@@ -747,10 +798,25 @@ python3 -m pdb -m vscode_scanner.vscan scan
 
 - **[vscan.dev](https://vscan.dev)** - VS Code Extension Security Analyzer
 - **[VS Code Extension API](https://code.visualstudio.com/api)** - Extension API docs
-- **[docs/design/PRD.md](docs/design/PRD.md)** - Full product requirements
-- **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - API research findings
-- **[docs/features/RETRY_MECHANISM.md](docs/features/RETRY_MECHANISM.md)** - Retry mechanism documentation (v2.2)
+- **[docs/project/PRD.md](docs/project/PRD.md)** - Product requirements (v3.1)
+- **[docs/guides/API_REFERENCE.md](docs/guides/API_REFERENCE.md)** - API reference
+- **[docs/specs/retry-mechanism.md](docs/specs/retry-mechanism.md)** - Retry mechanism spec (v2.2)
 
 ---
 
-**For detailed requirements, implementation guidance, and test plans, see the documentation in the `docs/` directory.**
+## Documentation Structure
+
+The `docs/` directory is organized into:
+
+- **`docs/guides/`** - Timeless technical reference (REQUIRED reading for architecture, security, APIs)
+- **`docs/project/`** - Active project management (status, requirements, roadmap)
+- **`docs/specs/`** - Shipped feature specifications
+- **`docs/contributing/`** - Contributor guides and checklists
+- **`docs/archive/`** - Historical documentation (phases, releases, reviews)
+
+**⚠️ IMPORTANT:** Before making any code changes, you MUST review the REQUIRED documents in the "Required Reading Documentation" section above, especially:
+1. docs/guides/ARCHITECTURE.md (system design and constraints)
+2. docs/guides/SECURITY.md (security requirements and threat model)
+3. docs/project/PRD.md (product requirements and scope)
+
+**For complete documentation navigation, see [docs/README.md](docs/README.md)**

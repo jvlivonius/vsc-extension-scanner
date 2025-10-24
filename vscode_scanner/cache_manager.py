@@ -560,10 +560,26 @@ class CacheManager:
 
             self._batch_count += 1
 
-        except (sqlite3.Error, json.JSONDecodeError) as e:
-            # Log error but don't fail the scan
+        except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
+            # Log error and clean up batch connection
             sanitized_error = sanitize_error_message(str(e), context="batch cache write")
             print(f"Cache write error: {sanitized_error}", file=sys.stderr)
+            # Clean up batch connection on error
+            self._cleanup_batch_on_error()
+            raise  # Re-raise to ensure caller knows about failure
+
+    def _cleanup_batch_on_error(self):
+        """Clean up batch connection and cursor on error."""
+        if self._batch_connection:
+            try:
+                self._batch_connection.rollback()
+                self._batch_connection.close()
+            except Exception:
+                pass  # Best-effort cleanup
+            finally:
+                self._batch_connection = None
+                self._batch_cursor = None
+                self._batch_count = 0
 
     def commit_batch(self):
         """

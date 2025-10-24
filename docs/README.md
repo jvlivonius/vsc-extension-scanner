@@ -8,208 +8,242 @@ Complete documentation for the VS Code Extension Security Scanner project.
 |----------|---------|----------|
 | [../README.md](../README.md) | Project overview and quick start | All users |
 | [../CLAUDE.md](../CLAUDE.md) | Development guidance and specifications | Claude Code / Developers |
-| [PROJECT_STATUS.md](PROJECT_STATUS.md) | Current status and roadmap | All users |
+| [project/STATUS.md](project/STATUS.md) | Current status and roadmap | All users |
+| [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md) | System architecture and design principles | Developers / Architects |
+| [guides/SECURITY.md](guides/SECURITY.md) | Security requirements and best practices | Developers / Security |
+| [guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md) | Error handling strategy and patterns | Developers |
+| [guides/TESTING.md](guides/TESTING.md) | Testing guidelines and best practices | Contributors / QA |
 
 ## Documentation Structure
 
 ```
 docs/
-├── README.md                  # This file - documentation index
-├── PROJECT_STATUS.md          # Current project status and progress
-├── phases/                    # Phase-specific requirements
-│   ├── PHASE1_REQUIREMENTS.md # Research & Discovery
-│   ├── PHASE2_REQUIREMENTS.md # Core Implementation
-│   ├── PHASE3_REQUIREMENTS.md # Testing & Refinement
-│   └── PHASE4_REQUIREMENTS.md # Enhanced Data Integration
-├── design/                    # Design documents
-│   └── PRD.md                # Product Requirements Document
-├── features/                  # Feature specifications and improvement plans
-│   ├── IMPROVEMENT_PLAN.md   # Phase 3 improvements plan
-│   ├── HTML_REPORT_SPECIFICATION.md  # HTML report feature (v2.2)
-│   └── RETRY_MECHANISM.md    # Retry mechanism documentation (v2.2)
-├── research/                  # Research findings
-│   ├── API_RESEARCH.md       # vscan.dev API research
-│   └── ENHANCED_DATA_INTEGRATION_PLAN.md
-├── testing/                   # Test plans and results
-│   ├── TESTING_CHECKLIST.md  # Test checklist
-│   └── MACOS_TESTING.md      # macOS test plan
-├── results/                   # Phase completion summaries and reviews
-│   ├── PHASE3_COMPLETION_SUMMARY.md
-│   ├── PHASE4_COMPLETION_SUMMARY.md
-│   ├── IMPROVEMENT_PLAN-PHASE1_REVIEW.md  # Phase 1 review
-│   ├── IMPROVEMENT_PLAN-PHASE2_REVIEW.md  # Phase 2 review
-│   └── IMPROVEMENT_PLAN-PHASE3_REVIEW.md  # Phase 3 review
-└── security/                  # Security analysis
-    ├── SECURITY_ANALYSIS.md
-    ├── SECURITY_FIXES_APPLIED.md
-    └── SECURITY_QUICK_FIX_GUIDE.md
+├── README.md                      # This file - documentation index
+│
+├── guides/                        # Timeless developer reference
+│   ├── ARCHITECTURE.md            # System architecture and design principles
+│   ├── SECURITY.md                # Security requirements and best practices
+│   ├── ERROR_HANDLING.md          # Error handling strategy
+│   ├── ERROR_CODES.md             # Error code reference
+│   ├── TESTING.md                 # Testing guidelines
+│   └── API_REFERENCE.md           # vscan.dev API documentation
+│
+├── project/                       # Active project management
+│   ├── STATUS.md                  # Current project status and progress
+│   ├── PRD.md                     # Product Requirements Document
+│   └── ROADMAP.md                 # Version 3.2 improvement plan
+│
+├── specs/                         # Shipped feature specifications
+│   ├── html-reports.md            # HTML report feature (v2.2)
+│   ├── retry-mechanism.md         # Retry mechanism (v2.2)
+│   └── cli-ux.md                  # CLI UX enhancement (v3.0)
+│
+├── contributing/                  # Contributor guides
+│   ├── TESTING_CHECKLIST.md       # Testing checklist
+│   └── VERSION_MANAGEMENT.md      # Version management guide
+│
+└── archive/                       # Historical documentation
+    ├── phases/                    # Phase requirements (completed)
+    │   ├── phase1-research.md
+    │   ├── phase2-implementation.md
+    │   ├── phase3-testing.md
+    │   └── phase4-enhanced-data.md
+    ├── releases/                  # Release summaries
+    │   ├── phase3-summary.md
+    │   ├── phase4-summary.md
+    │   ├── v3.1-plan.md
+    │   └── v3.1-summary.md
+    └── reviews/                   # Historical reviews and analysis
+        ├── improvement-plan.md
+        ├── improvement-phase1.md
+        ├── improvement-phase2.md
+        ├── improvement-phase3.md
+        ├── security-analysis.md
+        ├── security-fixes.md
+        └── security-quick-fix.md
 ```
 
-## By Category
+---
 
-### 📋 Planning & Requirements
+## Developer Guides
 
-- **[design/PRD.md](design/PRD.md)** - Complete product requirements
-  - Scope and objectives
-  - User stories
-  - Technical specifications
-  - Success criteria
-  - Phase milestones with references
+### Core Architecture
 
-- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Project tracking
-  - Phase completion status
-  - Test results
-  - Timeline and estimates
-  - Risk assessment
-  - Next actions
+**[guides/ARCHITECTURE.md](guides/ARCHITECTURE.md)** - System architecture documentation
+- Simple Layered Architecture (3 layers: Presentation, Application, Infrastructure)
+- Design principles (KISS, Command-Query Separation, Fail Fast)
+- Module responsibilities for all 13 modules
+- Dependency rules and enforcement
+- Data flow diagrams
+- Anti-patterns to avoid
 
-### 🎯 Phase Requirements
+**[guides/SECURITY.md](guides/SECURITY.md)** - Security requirements and best practices
+- Security architecture and defense layers
+- Path validation requirements (CRITICAL)
+- Input validation requirements (HIGH)
+- Access control and file permissions
+- Error handling and sanitization
+- Threat model and attack vectors
+- Security testing requirements
+- Compliance status (CWE, OWASP)
 
-- **[phases/PHASE1_REQUIREMENTS.md](phases/PHASE1_REQUIREMENTS.md)** - Research & Discovery
-  - API endpoint discovery
-  - Request/response documentation
-  - Proof of concept development
-  - Validation testing
+**[guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md)** - Error handling strategy
+- ERROR_HELP system documentation (7 error types)
+- Error classification and display flow
+- Comprehensive error suggestions
+- Security-aware error messaging
+- Implementation guide for new errors
 
-- **[phases/PHASE2_REQUIREMENTS.md](phases/PHASE2_REQUIREMENTS.md)** - Core Implementation
-  - Extension discovery module
-  - vscan.dev API integration
-  - Output formatting
-  - Caching system
-  - CLI interface
+**[guides/TESTING.md](guides/TESTING.md)** - Testing guidelines
+- Test organization and categories (6 types)
+- Writing tests (AAA pattern, fixtures, parameterization)
+- Mocking guidelines
+- Test coverage goals (85% overall, 95% for security modules)
+- CI/CD integration
+- Architecture enforcement tests
 
-- **[phases/PHASE3_REQUIREMENTS.md](phases/PHASE3_REQUIREMENTS.md)** - Testing & Refinement
-  - Caching system testing
-  - Platform testing (macOS)
-  - Extension set testing
-  - Error scenario testing
-  - Performance validation
+**[guides/API_REFERENCE.md](guides/API_REFERENCE.md)** - vscan.dev API documentation
+- API endpoints (analyze, status, results)
+- Request/response formats
+- Test results from 3 extensions
+- Implementation recommendations
+- Edge cases and unknowns
 
-- **[phases/PHASE4_REQUIREMENTS.md](phases/PHASE4_REQUIREMENTS.md)** - Enhanced Data Integration
-  - Complete data capture
-  - Dual output modes
-  - Publisher verification
-  - Dependency analysis
-  - Security score breakdown
+**[guides/ERROR_CODES.md](guides/ERROR_CODES.md)** - Error code reference
+- Error code format and ranges (E100-E399)
+- Module-specific error codes (API, Cache, Discovery)
+- Documented errors with causes and solutions
+- Troubleshooting guide
 
-### 🔬 Research & Technical
+---
 
-- **[research/API_RESEARCH.md](research/API_RESEARCH.md)** - vscan.dev API documentation
-  - API endpoints (analyze, status, results)
-  - Request/response formats
-  - Test results from 3 extensions
-  - Implementation recommendations
-  - Edge cases and unknowns
+## Project Management
 
-- **[research/ENHANCED_DATA_INTEGRATION_PLAN.md](research/ENHANCED_DATA_INTEGRATION_PLAN.md)** - Phase 4 implementation plan
-  - Data field mapping
-  - Schema design
-  - Migration strategy
+**[project/STATUS.md](project/STATUS.md)** - Current project status
+- Phase completion status (Phases 1-6 complete)
+- Current version: v3.1.0
+- Test results summary
+- Timeline and milestones
+- Risk assessment
+- Next actions
 
-### ✨ Features & Improvements
+**[project/PRD.md](project/PRD.md)** - Product Requirements Document
+- Complete product requirements
+- Scope and objectives
+- User stories
+- Technical specifications
+- Success criteria
+- Phase milestones with references
 
-- **[features/IMPROVEMENT_PLAN.md](features/IMPROVEMENT_PLAN.md)** - Phase 3 improvements plan
-  - Database integrity checks
-  - Integration testing suite
-  - Improvement tracking
+**[project/ROADMAP.md](project/ROADMAP.md)** - Version 3.2 improvement plan
+- 18 specific recommendations prioritized by impact
+- Security improvements (SQL injection, connection leaks, rate limiting)
+- Usability enhancements (error display, UX consistency)
+- Performance optimizations (cache, VACUUM, backoff)
+- Implementation roadmap (Phase 1-3)
 
-- **[features/HTML_REPORT_SPECIFICATION.md](features/HTML_REPORT_SPECIFICATION.md)** - HTML report feature (v2.2)
-  - Interactive HTML reports
-  - Data visualizations
-  - Self-contained design
-  - Print-optimized layout
+---
 
-- **[features/RETRY_MECHANISM.md](features/RETRY_MECHANISM.md)** - Retry mechanism (v2.2)
-  - Exponential backoff with jitter
-  - Retry-After header support
-  - Configurable retry behavior
-  - Statistics tracking
+## Feature Specifications
 
-### 🧪 Testing & Quality
+**[specs/html-reports.md](specs/html-reports.md)** - HTML report feature (v2.2)
+- Interactive HTML reports with sortable tables
+- Data visualizations (pie charts, gauges, bar charts)
+- Self-contained design (embedded CSS/JS)
+- Print-optimized layout
+- Auto-detection from `.html` file extension
 
-- **[testing/TESTING_CHECKLIST.md](testing/TESTING_CHECKLIST.md)** - Test plan
-  - API behavior tests
-  - Extension discovery tests
-  - Caching system tests
-  - Error handling tests
-  - Performance tests
-  - Security tests
+**[specs/retry-mechanism.md](specs/retry-mechanism.md)** - Retry mechanism (v2.2)
+- Exponential backoff with jitter (2s, 4s, 8s delays)
+- Retry-After header support for rate limiting
+- Configurable retry attempts and delays
+- Statistics tracking and reporting
 
-- **[testing/MACOS_TESTING.md](testing/MACOS_TESTING.md)** - macOS test plan
-  - Test environment setup
-  - Test scenarios
-  - Expected results
+**[specs/cli-ux.md](specs/cli-ux.md)** - CLI UX enhancement (v3.0)
+- Rich terminal formatting (progress bars, tables, panels)
+- Typer CLI framework with subcommands
+- Simplified help panels
+- Graceful fallback to plain output
 
-- **[results/MACOS_TEST_RESULTS.md](results/MACOS_TEST_RESULTS.md)** - macOS test results
-  - Actual test outcomes
-  - Performance benchmarks
-  - Issues found and resolved
+---
 
-### 📊 Results & Reviews
+## Contributing
 
-- **[results/PHASE3_COMPLETION_SUMMARY.md](results/PHASE3_COMPLETION_SUMMARY.md)** - Phase 3 summary
-  - Testing achievements
-  - Performance metrics
-  - Bug fixes
+**[contributing/TESTING_CHECKLIST.md](contributing/TESTING_CHECKLIST.md)** - Testing checklist
+- API behavior tests
+- Extension discovery tests
+- Caching system tests
+- Error handling tests
+- Performance tests
+- Security tests
 
-- **[results/PHASE4_COMPLETION_SUMMARY.md](results/PHASE4_COMPLETION_SUMMARY.md)** - Phase 4 summary
-  - New features
-  - Enhanced data integration
-  - Sample outputs
+**[contributing/VERSION_MANAGEMENT.md](contributing/VERSION_MANAGEMENT.md)** - Version management guide
+- Centralized version system (_version.py)
+- How to bump versions (semantic versioning)
+- Validation and troubleshooting
+- Version history
 
-- **[results/IMPROVEMENT_PLAN-PHASE1_REVIEW.md](results/IMPROVEMENT_PLAN-PHASE1_REVIEW.md)** - Phase 1 review
-  - Database integrity check implementation
-  - Test results and validation
+---
 
-- **[results/IMPROVEMENT_PLAN-PHASE2_REVIEW.md](results/IMPROVEMENT_PLAN-PHASE2_REVIEW.md)** - Phase 2 review
-  - Integration testing implementation
-  - Comprehensive workflow coverage
+## By Role
 
-- **[results/IMPROVEMENT_PLAN-PHASE3_REVIEW.md](results/IMPROVEMENT_PLAN-PHASE3_REVIEW.md)** - Phase 3 review
-  - Cross-platform compatibility
-  - Final improvements and fixes
+### For Developers
 
-### 🔒 Security
+**Start Here:**
+1. [../README.md](../README.md) - Project overview
+2. [../CLAUDE.md](../CLAUDE.md) - Development guidance
+3. [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md) - System architecture
+4. [guides/SECURITY.md](guides/SECURITY.md) - Security requirements
+5. [guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md) - Error handling patterns
+6. [guides/TESTING.md](guides/TESTING.md) - Testing best practices
+7. [project/ROADMAP.md](project/ROADMAP.md) - Version 3.2 improvements
+8. [guides/API_REFERENCE.md](guides/API_REFERENCE.md) - API details
 
-- **[security/SECURITY_ANALYSIS.md](security/SECURITY_ANALYSIS.md)** - Security vulnerability analysis
-  - Identified vulnerabilities
-  - Severity ratings
-  - Risk assessments
+### For Project Managers
 
-- **[results/SECURITY_FIXES_APPLIED.md](results/SECURITY_FIXES_APPLIED.md)** - Applied security fixes
-  - Remediation details
-  - Code changes
+**Start Here:**
+1. [project/STATUS.md](project/STATUS.md) - Current progress
+2. [project/PRD.md](project/PRD.md) - Requirements and scope
+3. [project/ROADMAP.md](project/ROADMAP.md) - Version 3.2 plans
+4. [archive/releases/](archive/releases/) - Phase completion summaries
+5. [../README.md](../README.md) - Project summary
 
-- **[security/SECURITY_QUICK_FIX_GUIDE.md](security/SECURITY_QUICK_FIX_GUIDE.md)** - Quick fix guide
-  - Step-by-step fixes
-  - Validation steps
+### For Contributors
 
-## By Development Phase
+**Start Here:**
+1. [../README.md](../README.md) - Project overview
+2. [contributing/TESTING_CHECKLIST.md](contributing/TESTING_CHECKLIST.md) - Test plan
+3. [guides/TESTING.md](guides/TESTING.md) - Testing guidelines
+4. [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md) - Code architecture
+5. [project/PRD.md](project/PRD.md) - Requirements to verify
+
+### For Security Reviewers
+
+**Start Here:**
+1. [guides/SECURITY.md](guides/SECURITY.md) - Security requirements and status
+2. [archive/reviews/security-analysis.md](archive/reviews/security-analysis.md) - Historical vulnerability analysis
+3. [archive/reviews/security-fixes.md](archive/reviews/security-fixes.md) - Applied fixes
+4. [guides/TESTING.md](guides/TESTING.md) - Security testing strategy
+
+---
+
+## Development History
 
 ### Phase 1: Research & Discovery ✅ COMPLETE
 
-**Requirements:** [phases/PHASE1_REQUIREMENTS.md](phases/PHASE1_REQUIREMENTS.md)
-
-**Primary Documents:**
-- [research/API_RESEARCH.md](research/API_RESEARCH.md) - API validation results
-- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Phase 1 summary
+**Requirements:** [archive/phases/phase1-research.md](archive/phases/phase1-research.md)
 
 **What Was Achieved:**
 - Reverse-engineered vscan.dev API
 - Validated 3 endpoints with real extensions
 - 100% test success rate
-- Documented all findings
+- Documented all findings → [guides/API_REFERENCE.md](guides/API_REFERENCE.md)
 
 ### Phase 2: Core Implementation ✅ COMPLETE
 
-**Requirements:** [phases/PHASE2_REQUIREMENTS.md](phases/PHASE2_REQUIREMENTS.md)
-
-**Primary Documents:**
-- [../CLAUDE.md](../CLAUDE.md) - Implementation guidance
-- [design/PRD.md](design/PRD.md) - Requirements reference
+**Requirements:** [archive/phases/phase2-implementation.md](archive/phases/phase2-implementation.md)
 
 **What Was Achieved:**
-
 - All 6 core modules implemented (1,590 LOC)
 - Extension discovery for all platforms
 - Complete API integration
@@ -218,15 +252,11 @@ docs/
 
 ### Phase 3: Testing & Refinement ✅ COMPLETE
 
-**Requirements:** [phases/PHASE3_REQUIREMENTS.md](phases/PHASE3_REQUIREMENTS.md)
+**Requirements:** [archive/phases/phase3-testing.md](archive/phases/phase3-testing.md)
 
-**Primary Documents:**
-- [testing/TESTING_CHECKLIST.md](testing/TESTING_CHECKLIST.md) - Complete test plan
-- [results/MACOS_TEST_RESULTS.md](results/MACOS_TEST_RESULTS.md) - Test results
-- [results/PHASE3_COMPLETION_SUMMARY.md](results/PHASE3_COMPLETION_SUMMARY.md) - Summary
+**Summary:** [archive/releases/phase3-summary.md](archive/releases/phase3-summary.md)
 
 **What Was Achieved:**
-
 - Comprehensive caching system testing
 - macOS testing (100% pass rate)
 - Tested with 3, 66, and 100+ extensions
@@ -235,11 +265,9 @@ docs/
 
 ### Phase 4: Enhanced Data Integration ✅ COMPLETE
 
-**Requirements:** [phases/PHASE4_REQUIREMENTS.md](phases/PHASE4_REQUIREMENTS.md)
+**Requirements:** [archive/phases/phase4-enhanced-data.md](archive/phases/phase4-enhanced-data.md)
 
-**Primary Documents:**
-- [research/ENHANCED_DATA_INTEGRATION_PLAN.md](research/ENHANCED_DATA_INTEGRATION_PLAN.md) - Implementation plan
-- [results/PHASE4_COMPLETION_SUMMARY.md](results/PHASE4_COMPLETION_SUMMARY.md) - Summary
+**Summary:** [archive/releases/phase4-summary.md](archive/releases/phase4-summary.md)
 
 **What Was Achieved:**
 - Complete vscan.dev data capture
@@ -250,147 +278,98 @@ docs/
 - Cache schema v2.0
 - Version 2.0 release
 
-## By Role
+### Phase 5: CLI UX Enhancement ✅ COMPLETE (v3.0)
 
-### For Developers
+**Specification:** [specs/cli-ux.md](specs/cli-ux.md)
 
-**Start Here:**
+**What Was Achieved:**
+- Rich terminal formatting with live progress
+- Typer CLI framework with subcommands
+- Simplified options and help
+- 57 new tests, all passing
 
-1. [../README.md](../README.md) - Project overview
-2. [../CLAUDE.md](../CLAUDE.md) - Development guidance
-3. [phases/](phases/) - Phase-specific requirements
-4. [research/API_RESEARCH.md](research/API_RESEARCH.md) - API details
-5. [design/PRD.md](design/PRD.md) - Requirements
+### Phase 6: Configuration & CSV Export ✅ COMPLETE (v3.1)
 
-### For Project Managers
+**Summary:** [archive/releases/v3.1-summary.md](archive/releases/v3.1-summary.md)
 
-**Start Here:**
+**What Was Achieved:**
+- Configuration file support (~/.vscanrc)
+- CSV export feature
+- Performance improvements (87.6% faster batch commits)
+- Code quality improvements
 
-1. [PROJECT_STATUS.md](PROJECT_STATUS.md) - Current progress
-2. [design/PRD.md](design/PRD.md) - Requirements and scope
-3. [results/](results/) - Phase completion summaries
-4. [../README.md](../README.md) - Project summary
-
-### For Testers
-
-**Start Here:**
-
-1. [testing/TESTING_CHECKLIST.md](testing/TESTING_CHECKLIST.md) - Test plan
-2. [results/MACOS_TEST_RESULTS.md](results/MACOS_TEST_RESULTS.md) - Test results
-3. [research/API_RESEARCH.md](research/API_RESEARCH.md) - Expected behavior
-4. [design/PRD.md](design/PRD.md) - Requirements to verify
-
-### For Security Analysts
-
-**Start Here:**
-
-1. [security/SECURITY_ANALYSIS.md](security/SECURITY_ANALYSIS.md) - Vulnerability analysis
-2. [results/SECURITY_FIXES_APPLIED.md](results/SECURITY_FIXES_APPLIED.md) - Applied fixes
-3. [results/SECURITY_QUICK_FIX_GUIDE.md](results/SECURITY_QUICK_FIX_GUIDE.md) - Fix guide
-
-## Document Relationships
-
-```mermaid
-graph TD
-    README[README.md] --> CLAUDE[CLAUDE.md]
-    README --> STATUS[PROJECT_STATUS.md]
-
-    CLAUDE --> PRD[design/PRD.md]
-    CLAUDE --> PHASES[phases/]
-    CLAUDE --> API[research/API_RESEARCH.md]
-
-    PRD --> PHASES
-    PHASES --> P1[PHASE1_REQUIREMENTS.md]
-    PHASES --> P2[PHASE2_REQUIREMENTS.md]
-    PHASES --> P3[PHASE3_REQUIREMENTS.md]
-    PHASES --> P4[PHASE4_REQUIREMENTS.md]
-
-    P1 --> API
-    P2 --> DESIGN[research/ENHANCED_DATA_INTEGRATION_PLAN.md]
-    P3 --> TESTS[testing/]
-    P4 --> DESIGN
-
-    TESTS --> RESULTS[results/]
-
-    STATUS --> PHASES
-    STATUS --> RESULTS
-```
+---
 
 ## Statistics
 
 | Metric | Value |
 |--------|-------|
-| **Total Documentation** | ~8,000+ lines |
-| **Number of Documents** | 22 files |
+| **Total Documentation** | ~20,000+ lines |
+| **Number of Documents** | 32+ files |
+| **Core Guide Docs** | 6 (Architecture, Security, Error Handling, Testing, API Reference, Error Codes) |
+| **Contributing Guides** | 2 (Testing Checklist, Version Management) |
+| **Feature Specifications** | 3 (HTML Reports, Retry Mechanism, CLI UX) |
 | **API Endpoints Documented** | 3 |
-| **Test Cases Defined** | 100+ |
-| **Test Suites** | 5 (API, Retry, Security, DB Integrity, Integration) |
-| **Phases Documented** | 4 (all complete) |
-| **Modules Implemented** | 6 |
-| **Feature Specifications** | 3 (HTML Reports, Retry Mechanism, Improvements) |
+| **Test Suites** | 13+ (Display, Scanner, CLI, API, Cache, Config, Security, Performance, Integration, etc.) |
+| **Phases Completed** | 6 (all complete) |
+| **Modules Implemented** | 13 |
+| **V3.2 Planned Improvements** | 18 prioritized recommendations |
+| **Security Vulnerabilities Fixed** | 82% reduction (15 → 2 remaining) |
+
+---
 
 ## Recent Updates
 
-- **2025-10-24** - Cross-platform compatibility improvements
-  - Fixed critical import statement for Windows compatibility
-  - Implemented cross-platform path security utilities
-  - Added safe file permission handling (Windows/Unix)
-  - Explicit UTF-8 encoding for all file operations
-  - Moved IMPROVEMENT_PLAN.md to docs/features/
-  - Moved phase review files to docs/results/
-  - All tests passing (35/35 functional tests)
-
-- **2025-10-23** - Reorganized documentation structure v2.0
-  - Created phase-specific requirement files (PHASE1-4)
-  - Moved security documentation to docs/security/
-  - Created docs/results/ for completion summaries
-  - Updated all cross-references in PRD and CLAUDE.md
+- **2025-10-24** - Documentation Restructure
+  - Created 3-tier organization: Active (guides/, project/, specs/) + Archive + Contributing
+  - Consolidated security docs into single [guides/SECURITY.md](guides/SECURITY.md)
+  - Renamed files to lowercase-hyphenated naming convention
+  - Clear separation of concerns: timeless guides vs. project management vs. historical archive
   - Improved navigation and discoverability
 
-- **2025-10-22** - Phase 4 completion (v2.0 release)
-  - Enhanced data integration complete
-  - Dual output modes implemented
-  - Cache schema upgraded to v2.0
+- **2025-10-24** - Comprehensive Architecture Documentation (v2.0)
+  - Created [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md) - Simple Layered Architecture
+  - Created [guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md) - ERROR_HELP system
+  - Created [guides/TESTING.md](guides/TESTING.md) - Testing guidelines
+  - Created [project/ROADMAP.md](project/ROADMAP.md) - 18 prioritized improvements
+  - Formalized architectural principles: KISS, Command-Query Separation, Fail Fast
 
-- **2025-10-22** - Phase 3 completion
-  - macOS testing complete (100% pass rate)
-  - Performance validated (28x cache speedup)
-  - UX refinements applied
+- **2025-10-24** - Cross-platform Compatibility
+  - Fixed Windows import issues
+  - Implemented cross-platform path security
+  - Safe file permission handling (Windows/Unix)
+  - All tests passing (35/35 functional tests)
 
-- **2025-10-22** - Initial documentation structure
-  - Created logical folder hierarchy
-  - Established documentation standards
+---
 
 ## Contributing to Documentation
 
-When updating documentation:
+### Folder Structure
 
-1. **Use proper folder structure:**
-   - `phases/` - Phase requirements
-   - `design/` - Design documents
-   - `research/` - Research findings
-   - `testing/` - Test plans and results
-   - `results/` - Phase summaries
-   - `security/` - Security analysis
+- **guides/** - Timeless technical reference (architecture, security, APIs)
+- **project/** - Active project management (status, requirements, roadmap)
+- **specs/** - Shipped feature specifications
+- **contributing/** - Contributor guides and checklists
+- **archive/** - Historical documentation (phases, releases, reviews)
 
-2. **Keep phase requirements separate** - Each phase has its own detailed file
+### Guidelines
 
-3. **Update cross-references** - When moving files, update links in:
-   - CLAUDE.md
-   - PRD.md
-   - This index (README.md)
+1. **Guides are timeless** - Focus on principles, not specific bugs or versions
+2. **Project docs are current** - Reflect active status and plans
+3. **Specs document shipped features** - Implementation details for released features
+4. **Archive is historical** - Phase requirements, old reviews, past summaries
+5. **Use lowercase-hyphenated naming** - For new files: `my-new-document.md`
+6. **Update cross-references** - When moving files, update links in CLAUDE.md, README.md
+7. **Keep this index current** - Update navigation when adding files
 
-4. **Keep summaries in results/** - Phase completion summaries go in results/
-
-5. **Link related content** - Use relative paths for cross-references
-
-6. **Update this index** - Keep navigation current
+---
 
 ## Questions?
 
 - **Implementation questions?** See [../CLAUDE.md](../CLAUDE.md)
-- **Requirements questions?** See [design/PRD.md](design/PRD.md)
-- **Phase-specific questions?** See [phases/](phases/)
-- **API questions?** See [research/API_RESEARCH.md](research/API_RESEARCH.md)
-- **Testing questions?** See [testing/TESTING_CHECKLIST.md](testing/TESTING_CHECKLIST.md)
-- **Security questions?** See [security/](security/)
+- **Architecture questions?** See [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md)
+- **Security questions?** See [guides/SECURITY.md](guides/SECURITY.md)
+- **Requirements questions?** See [project/PRD.md](project/PRD.md)
+- **API questions?** See [guides/API_REFERENCE.md](guides/API_REFERENCE.md)
+- **Testing questions?** See [guides/TESTING.md](guides/TESTING.md) or [contributing/TESTING_CHECKLIST.md](contributing/TESTING_CHECKLIST.md)
+- **Project status?** See [project/STATUS.md](project/STATUS.md)

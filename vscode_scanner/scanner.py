@@ -488,7 +488,12 @@ def _scan_extension_fresh(
 
     # Cache the result if cache is enabled (using batch mode)
     if cache_manager and result.get('scan_status') == 'success':
-        cache_manager.save_result_batch(extension_id, version, result)
+        try:
+            cache_manager.save_result_batch(extension_id, version, result)
+        except Exception:
+            # Cache errors should not fail the scan
+            # Error already logged by cache_manager
+            pass
 
     scan_results.append(result)
 

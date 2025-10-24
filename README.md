@@ -1,454 +1,634 @@
 # VS Code Extension Security Scanner
 
-A standalone Python CLI tool that performs comprehensive security audits of installed VS Code extensions using the vscan.dev security analysis service.
+**Know what's running in your editor. Stay secure.**
 
-**Version:** 3.1.0 | **Status:** Production Ready ✅
+A command-line tool that scans your installed VS Code extensions for security vulnerabilities, suspicious permissions, and risky dependencies. Get instant insights into the security posture of your development environment.
 
-## What's New in v3.1
+**Version:** 3.1.0 | **Status:** Production Ready
 
-- **⚙️ Configuration File Support:** Persistent settings with `~/.vscanrc` (INI format)
-- **📋 Config Management Commands:** `vscan config` subcommands (`init`, `show`, `set`, `get`, `reset`)
-- **📊 CSV Export:** Spreadsheet-compatible output format for security analysis
-- **📈 Performance Improvements:** 87.6% faster database operations, 73.9% space reclaimed
-- **🎯 Improved Config UX:** Single unified table showing full keys (e.g., "scan.delay")
-- **🔧 Better Error Handling:** Centralized constants and improved error codes
+---
 
-## What's New in v3.0
+## Why Use This Tool?
 
-- **🎨 Modern CLI with Rich & Typer:** Beautiful terminal UI with tables, progress bars, and colors
-- **📊 Interactive Results Tables:** Sortable tables with risk indicators, security scores, and publisher verification
-- **⚡ Smart Cache Commands:** Organized `vscan cache` subcommands (`stats`, `clear`)
-- **🎯 Always Comprehensive:** All scans include complete security data (no more modes)
-- **🔇 Minimal Quiet Mode:** `--quiet` shows single-line summaries perfect for CI/CD
-- **🗂️ Generate Reports from Cache:** New `vscan report` command for instant report generation
-- **🎛️ Filtering Options:** Filter by publisher, extension IDs, risk levels
-- **⚙️ Refined Refresh:** `--refresh-cache` only refreshes scanned extensions, not entire cache
+VS Code extensions have broad access to your code, files, and development environment. A malicious or vulnerable extension could:
 
-## What's New in v2.2
+- Access your source code and secrets
+- Modify files without your knowledge
+- Send data to external servers
+- Introduce vulnerable dependencies
 
-- **📊 HTML Report Generation:** Interactive, self-contained HTML reports with sortable tables, charts, and expandable details
-- **🎨 Data Visualizations:** Pie charts for risk distribution, gauges for security scores, bar charts for vulnerabilities
-- **🔍 Advanced Filtering:** Search extensions, filter by risk level, toggle column visibility
-- **🖨️ Print-Optimized:** Professional reports ready for documentation and sharing
-- **🔄 Intelligent Retry Mechanism:** Automatic recovery from rate limiting, server errors, and network timeouts
-- **⏱️ Exponential Backoff:** Smart retry delays (2s, 4s, 8s) with randomized jitter
-- **🎯 Retry-After Support:** Respects vscan.dev rate limit headers
-- **📈 Retry Statistics:** Track retry attempts, successes, and failures
-- **⚙️ Configurable:** Control retry behavior with `--max-retries` and `--retry-delay`
+**This tool helps you:**
 
-## What This Tool Does
+- Identify high-risk extensions before they cause problems
+- Audit your entire extension collection in minutes
+- Track security issues across your development team
+- Make informed decisions about which extensions to trust
 
-1. **Auto-discovers** installed VS Code extensions on your system
-2. **Queries** vscan.dev for comprehensive security analysis
-3. **Analyzes** dependencies, permissions, and security score components
-4. **Reports** security scores, risk levels, vulnerabilities, and risk factors
-5. **Outputs** results in JSON, interactive HTML, or CSV format
-6. **Configures** persistent settings via `~/.vscanrc` configuration file
-
-## Quick Start
-
-```bash
-# Standard scan with Rich UI
-vscan scan
-
-# Minimal output for CI/CD pipelines
-vscan scan --quiet
-
-# Generate interactive HTML report
-vscan scan --output report.html
-
-# Save comprehensive JSON to file
-vscan scan --output results.json
-
-# Export to CSV for spreadsheet analysis (NEW v3.1)
-vscan scan --output results.csv
-
-# Plain output (no colors, for scripts)
-vscan scan --plain
-
-# Filter by publisher
-vscan scan --publisher microsoft
-
-# Filter by risk level
-vscan scan --min-risk-level high
-
-# Scan specific extensions only
-vscan scan --include-ids "ms-python.python,esbenp.prettier-vscode"
-
-# Exclude specific extensions
-vscan scan --exclude-ids "local.test-extension"
-
-# Cache management
-vscan cache stats                  # View cache statistics
-vscan cache clear                  # Clear all cache
-vscan scan --refresh-cache         # Force refresh scanned extensions
-vscan scan --no-cache              # Disable caching
-vscan scan --cache-max-age 14      # 14-day cache expiry
-
-# Generate reports from cache (no API calls)
-vscan report report.html           # HTML report from cache
-vscan report results.json          # JSON report from cache
-vscan report results.csv           # CSV report from cache (NEW v3.1)
-
-# Configuration management (NEW v3.1)
-vscan config init                  # Create ~/.vscanrc config file
-vscan config show                  # Display current configuration
-vscan config set scan.delay 2.0    # Set configuration value
-vscan config get scan.delay        # Get specific config value
-vscan config reset                 # Delete config file
-
-# Retry configuration (resilience)
-vscan scan --max-retries 5         # More aggressive retries
-vscan scan --retry-delay 3.0       # Longer backoff delays
-vscan scan --max-retries 0         # Disable retries (fail fast)
-
-# Advanced options
-vscan scan --delay 2.0             # Custom delay between requests
-vscan scan --extensions-dir /path  # Custom extensions directory
-```
-
-## Features
-
-✅ **Modern CLI with Rich UI** - Beautiful tables, progress bars, and colors (automatic in terminals)
-✅ **Multiple output formats** - JSON, interactive HTML, and CSV for spreadsheet analysis
-✅ **Configuration file support** - Persistent settings with `~/.vscanrc` (v3.1)
-✅ **Config management commands** - Easy configuration with `vscan config` subcommands (v3.1)
-✅ **Comprehensive analysis** - All scans include dependencies, risk factors, security score breakdowns
-✅ **Auto-discovery** - Finds VS Code extensions on all platforms (macOS, Windows, Linux)
-✅ **Publisher verification** - Verified status and reputation tracking
-✅ **Intelligent retry mechanism** - Automatic recovery from rate limits, server errors, timeouts
-✅ **Smart caching** - 50x faster with SQLite-based cache
-✅ **Filtering options** - By publisher, extension IDs, or risk level
-✅ **Cache-only reports** - Generate reports instantly from cache without API calls
-✅ **Progress indicators** - Real-time updates with visual symbols
-✅ **CI/CD friendly** - Quiet mode, plain output, proper exit codes
-
-## Output Formats
-
-### Rich Terminal Output (default)
-
-When running in a terminal, vscan displays:
-
-- **📊 Interactive Results Table:** Sortable table showing extensions with risk indicators
-- **✓ Verified Publishers:** Green checkmarks for verified publishers
-- **🎨 Color-coded Risks:** CRIT (red), HIGH (red), MED (yellow), LOW (green)
-- **⚡ Cache Indicators:** Shows which results came from cache vs fresh scans
-- **📈 Statistics:** Summary with scan duration, cache hit rate, vulnerabilities found
-
-### Quiet Mode (`--quiet`)
-
-Perfect for CI/CD scripts:
-
-```bash
-$ vscan scan --quiet
-Scanned 66 extensions - Found 5 vulnerabilities
-```
-
-Single line output with essential information. Exit codes:
-- `0` = No vulnerabilities found
-- `1` = Vulnerabilities found
-- `2` = Scan failed
-
-### Plain Output (`--plain`)
-
-For scripts and log files:
-
-```bash
-$ vscan scan --plain
-Step 1: Discovering VS Code extensions...
-[✓] Found VS Code extensions directory
-[✓] Discovered 66 extensions
-
-Step 2: Scanning extensions for vulnerabilities...
-[1/66] ms-python.python v2024.10.0... ⚡ Cached
-[2/66] esbenp.prettier-vscode v10.1.0... 🔍 ✓
-...
-
-[✓] Scan Complete!
-Total extensions scanned: 66
-Vulnerabilities found: 5
-```
-
-### HTML Reports (`--output report.html`)
-
-Interactive, self-contained HTML reports with:
-
-- **Sortable overview table** - Click column headers to sort by any field
-- **Risk-based filtering** - Filter extensions by high/medium/low risk
-- **Search functionality** - Find extensions by name or publisher
-- **Data visualizations** - Pie charts, security gauges, bar charts
-- **Expandable details** - Click rows to see complete security analysis
-- **Print-optimized** - Professional formatting for documentation
-- **No external dependencies** - All CSS/JS embedded, works offline
-
-Perfect for sharing with teams, documentation, or visual analysis.
-
-### CSV Export (`--output results.csv`) ✨ New in v3.1
-
-Spreadsheet-compatible format for analysis and reporting:
-
-- **15-column schema** - Extension ID, Name, Version, Publisher, Verified, Risk Level, Security Score, Vulnerabilities (Total, Critical, High, Moderate, Low), Dependencies, Last Updated, vscan.dev URL
-- **Proper CSV escaping** - Handles commas, quotes, and newlines correctly
-- **UTF-8 encoding** - Supports international characters
-- **Works with all spreadsheet tools** - Excel, Google Sheets, LibreOffice, etc.
-
-Perfect for data analysis, dashboards, or importing into other tools.
-
-### JSON Output (`--output results.json`)
-
-Comprehensive output with all available security data:
-
-- Complete dependency lists with risk assessments
-- Security score breakdowns by module
-- Individual risk factors with descriptions
-- Publisher reputation and install counts
-- Extension metadata (keywords, URLs, ratings)
-- Vulnerability details by severity
-
-## Example JSON Output
-
-```json
-{
-  "schema_version": "2.0",
-  "output_mode": "detailed",
-  "summary": {
-    "total_extensions_scanned": 42,
-    "vulnerabilities_found": 0,
-    "scan_timestamp": "2025-10-24T14:30:00Z",
-    "scan_duration_seconds": 28.5
-  },
-  "cache_stats": {
-    "from_cache": 35,
-    "fresh_scans": 7,
-    "cache_hit_rate": 83.3
-  },
-  "extensions": [
-    {
-      "id": "ms-python.python",
-      "name": "python",
-      "display_name": "Python",
-      "version": "2024.10.0",
-      "publisher": {
-        "id": "ms-python",
-        "name": "Microsoft",
-        "verified": true,
-        "domain": "microsoft.com"
-      },
-      "security": {
-        "score": 82,
-        "risk_level": "high",
-        "vulnerabilities": {
-          "total": 0,
-          "critical": 0,
-          "high": 0,
-          "moderate": 0,
-          "low": 0
-        },
-        "risk_factors": [
-          {
-            "type": "network_access",
-            "severity": "medium",
-            "description": "Extension makes network requests"
-          }
-        ],
-        "dependencies": {
-          "total_count": 45,
-          "with_vulnerabilities": 0,
-          "list": [...]
-        }
-      },
-      "vscan_url": "https://vscan.dev/extension/ms-python.python",
-      "scan_status": "success"
-    }
-  ]
-}
-```
+---
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.8 or higher
-- pip (Python package installer)
-
-### Install from PyPI
+**Requirements:** Python 3.8 or higher
 
 ```bash
+# Install from PyPI (recommended)
 pip install vscode-extension-scanner
+
+# Verify installation
+vscan --version
 ```
 
-### Install from Source
+<details>
+<summary>Install from source (for developers)</summary>
 
 ```bash
 git clone https://github.com/username/vsc-extension-scanner.git
 cd vsc-extension-scanner
 pip install -e .
 ```
+</details>
 
-### Development Setup
+---
+
+## Quick Start
+
+**Most common commands:**
 
 ```bash
-# Install with CLI dependencies (Rich, Typer)
-pip install -e ".[cli]"
+# Scan all your extensions (beautiful terminal output)
+vscan scan
 
-# Run from source
-python -m vscode_scanner.vscan scan
+# Save results as an interactive HTML report
+vscan scan --output report.html
+
+# Minimal output for CI/CD pipelines
+vscan scan --quiet
 ```
 
-## Usage Examples
+That's it! The tool will automatically find your VS Code extensions and analyze them.
+
+---
+
+## What Gets Analyzed?
+
+For each extension, you'll see:
+
+- **Security Score** (0-100) - Overall security rating
+- **Risk Level** - Critical, High, Medium, or Low
+- **Vulnerabilities** - Known security issues in the extension or its dependencies
+- **Publisher Verification** - Whether the publisher is verified
+- **Risk Factors** - Network access, file system permissions, etc.
+- **Dependencies** - Third-party packages and their security status
+
+---
+
+## Common Use Cases
+
+### 1. Personal Security Audit
+
+Scan all your extensions to identify potential risks:
+
+```bash
+# Get a comprehensive view of all your extensions
+vscan scan
+
+# Focus on high-risk extensions only
+vscan scan --min-risk-level high
+
+# Save a report you can review later
+vscan scan --output security-audit.html
+```
+
+### 2. Team Security Review
+
+Share security findings with your team:
+
+```bash
+# Generate a shareable HTML report
+vscan scan --output team-report.html
+
+# Export to CSV for tracking in spreadsheets
+vscan scan --output security-tracking.csv
+
+# Filter by publisher to audit specific vendors
+vscan scan --publisher microsoft --output ms-extensions.html
+```
+
+### 3. CI/CD Integration
+
+Add security checks to your build pipeline:
+
+```bash
+# Fail the build if high-risk extensions are found
+vscan scan --quiet --min-risk-level high
+if [ $? -eq 1 ]; then
+  echo "High-risk extensions detected!"
+  exit 1
+fi
+
+# Generate reports as build artifacts
+vscan scan --output ci-report.html --plain
+```
+
+### 4. Regular Security Monitoring
+
+Set up periodic scans with cached results:
+
+```bash
+# Quick daily check (uses cache, instant results)
+vscan scan
+
+# Weekly deep scan (refresh all data)
+vscan scan --refresh-cache --output weekly-report.html
+
+# View trends with cache statistics
+vscan cache stats
+```
+
+---
+
+## Output Formats
+
+Choose the format that works best for you:
+
+### Terminal Output (Default)
+
+Beautiful, color-coded tables displayed right in your terminal:
+
+```bash
+vscan scan
+```
+
+Features:
+- Color-coded risk levels (red for critical/high, yellow for medium, green for low)
+- Verified publisher checkmarks
+- Real-time progress bars
+- Cache indicators showing fresh vs. cached results
+- Summary statistics
+
+### HTML Reports
+
+Interactive reports you can share and explore:
+
+```bash
+vscan scan --output report.html
+```
+
+Features:
+- Sortable tables (click any column header)
+- Search and filter extensions
+- Data visualizations (pie charts, gauges, bar charts)
+- Expandable rows with detailed security analysis
+- Print-ready formatting
+- Works offline (no external dependencies)
+
+Perfect for: Team reviews, documentation, presentations
+
+### CSV Export
+
+Spreadsheet-compatible format for data analysis:
+
+```bash
+vscan scan --output results.csv
+```
+
+Features:
+- 15 columns of security data
+- Works with Excel, Google Sheets, LibreOffice
+- Easy integration with other tools
+- Track changes over time
+
+Perfect for: Dashboards, tracking, data analysis
+
+### JSON Output
+
+Complete data for programmatic use:
+
+```bash
+vscan scan --output results.json
+```
+
+Features:
+- All available security details
+- Dependency lists
+- Risk factor breakdowns
+- Publisher information
+- Machine-readable format
+
+Perfect for: Automation, custom tools, data processing
+
+### Quiet Mode
+
+Minimal single-line output for scripts:
+
+```bash
+vscan scan --quiet
+```
+
+Output: `Scanned 66 extensions - Found 5 vulnerabilities`
+
+Perfect for: CI/CD, monitoring scripts, automated alerts
+
+---
+
+## Key Features
+
+**Easy to Use**
+- Auto-detects your VS Code extensions (macOS, Windows, Linux)
+- No configuration required to get started
+- Clear, actionable results
+
+**Fast & Efficient**
+- Smart caching makes repeated scans 50x faster
+- Typical cache hit rate: 70-90%
+- Respectful of API rate limits
+
+**Comprehensive Analysis**
+- Security scores and risk levels
+- Vulnerability detection in dependencies
+- Publisher verification status
+- Permission and access analysis
+
+**Flexible Output**
+- Terminal (with colors and tables)
+- HTML (interactive reports)
+- CSV (spreadsheet compatible)
+- JSON (programmatic access)
+
+**CI/CD Ready**
+- Quiet mode for minimal output
+- Exit codes for pass/fail checks
+- Plain text for logs
+- Fast execution with caching
+
+**Configurable**
+- Save preferences in `~/.vscanrc`
+- Override with command-line flags
+- Filter by publisher, risk level, or specific extensions
+- Control retry behavior and delays
+
+---
+
+## All Commands
 
 ### Basic Scanning
 
 ```bash
-# Scan all installed extensions
+# Scan all extensions
 vscan scan
 
-# Save results to JSON file
-vscan scan --output results.json
+# Save to file (format detected from extension)
+vscan scan --output report.html    # HTML report
+vscan scan --output results.json   # JSON data
+vscan scan --output results.csv    # CSV spreadsheet
 
-# Generate HTML report
-vscan scan --output report.html
+# Control output style
+vscan scan --quiet                 # Minimal single-line output
+vscan scan --plain                 # No colors (for logs)
 ```
 
 ### Filtering
 
 ```bash
-# Scan only Microsoft extensions
+# Filter by publisher
 vscan scan --publisher microsoft
 
-# Scan only high-risk extensions
-vscan scan --min-risk-level high
+# Filter by risk level
+vscan scan --min-risk-level high   # Only show high/critical
 
 # Scan specific extensions
 vscan scan --include-ids "ms-python.python,GitHub.copilot"
 
-# Exclude test extensions
-vscan scan --exclude-ids "local.test"
+# Exclude extensions
+vscan scan --exclude-ids "local.test-extension"
 ```
 
 ### Caching
 
 ```bash
-# View cache statistics
+# View cache information
 vscan cache stats
 
-# Clear all cached data
-vscan cache clear
+# Clear cache
+vscan cache clear                  # With confirmation prompt
+vscan cache clear --force          # Skip confirmation
 
-# Force refresh (ignore cache for scanned extensions)
-vscan scan --refresh-cache
-
-# Disable cache entirely
-vscan scan --no-cache
-
-# Custom cache age threshold
-vscan scan --cache-max-age 30
+# Control cache behavior during scan
+vscan scan --refresh-cache         # Update scanned extensions
+vscan scan --no-cache              # Disable cache entirely
+vscan scan --cache-max-age 30      # Custom expiry (days)
 ```
 
-### Report Generation
+### Reports from Cache
+
+Generate reports instantly from cached data without making API calls:
 
 ```bash
-# Generate HTML report from cache (instant, no API calls)
-vscan report security-report.html
-
-# Generate JSON report from cache
-vscan report cache-dump.json
-
-# Control cache age for reports
-vscan report report.html --cache-max-age 7
+vscan report security-report.html  # HTML report
+vscan report data-export.json      # JSON export
+vscan report analysis.csv          # CSV export
 ```
 
-### CI/CD Integration
+### Configuration
+
+Save your preferences so you don't have to repeat them:
 
 ```bash
-# Minimal output for scripts
-vscan scan --quiet
+# Create config file with defaults
+vscan config init
 
-# Exit code handling
-vscan scan --quiet
-if [ $? -eq 1 ]; then
-  echo "Vulnerabilities found!"
-  exit 1
-fi
+# View current settings
+vscan config show
 
-# Plain output for logs
-vscan scan --plain --output results.json
+# Set a preference
+vscan config set scan.delay 2.0
+vscan config set cache.max_age 14
+vscan config set output.quiet true
 
-# Combine with filtering
-vscan scan --quiet --min-risk-level high
+# Get a specific setting
+vscan config get scan.delay
+
+# Remove config file
+vscan config reset
 ```
+
+### Advanced Options
+
+```bash
+# Custom VS Code extensions directory
+vscan scan --extensions-dir /custom/path
+
+# Adjust API request timing
+vscan scan --delay 2.0             # Delay between requests (seconds)
+
+# Control retry behavior
+vscan scan --max-retries 5         # More retry attempts
+vscan scan --retry-delay 3.0       # Longer retry delays
+vscan scan --max-retries 0         # Disable retries
+
+# Custom cache location
+vscan scan --cache-dir /custom/cache/path
+```
+
+### Help
+
+```bash
+# General help
+vscan --help
+
+# Command-specific help
+vscan scan --help
+vscan cache --help
+vscan config --help
+vscan report --help
+
+# Version information
+vscan --version
+```
+
+---
+
+## Configuration File
+
+Save your preferred settings in `~/.vscanrc`:
+
+```ini
+[scan]
+delay = 2.0
+max_retries = 3
+retry_delay = 2.0
+
+[cache]
+max_age = 14
+
+[output]
+quiet = false
+plain = false
+```
+
+Create a default config file:
+```bash
+vscan config init
+```
+
+**Note:** Command-line arguments always override config file settings.
+
+---
 
 ## Exit Codes
 
-- **0** - Scan completed successfully, no vulnerabilities found
-- **1** - Scan completed successfully, vulnerabilities found
-- **2** - Scan failed (error occurred)
+The tool returns standard exit codes for easy integration with scripts:
 
-## Performance
+- **0** - Success, no vulnerabilities found
+- **1** - Success, but vulnerabilities were found
+- **2** - Scan failed due to an error
 
-- **First scan:** ~1.5 seconds per extension (respects API rate limits)
-- **Cached results:** ~instant (50x faster)
-- **Memory usage:** < 100MB RAM
-- **Cache hit rate:** Typically 70-90% on repeated scans
+Example usage:
+```bash
+vscan scan --quiet
+if [ $? -eq 1 ]; then
+  echo "Security issues detected!"
+  exit 1
+fi
+```
+
+---
 
 ## Troubleshooting
 
-### Rate Limiting
+### "No extensions found"
 
-vscan automatically handles rate limiting with intelligent retry:
-
+Make sure VS Code is installed and you have extensions installed:
 ```bash
-# Increase retry attempts
-vscan scan --max-retries 5
+# Check if VS Code extensions directory exists
+ls ~/.vscode/extensions/
 
+# Specify custom directory if needed
+vscan scan --extensions-dir /path/to/extensions
+```
+
+### Slow scans
+
+Use caching to speed up repeated scans:
+```bash
+# First scan will be slower (API calls)
+vscan scan
+
+# Subsequent scans use cache (50x faster)
+vscan scan
+
+# Extend cache age to reduce API calls
+vscan config set cache.max_age 30
+```
+
+### Rate limiting errors
+
+The tool handles rate limiting automatically, but you can adjust:
+```bash
 # Increase delay between requests
 vscan scan --delay 2.0
 
-# Adjust retry backoff
+# Increase retry attempts
+vscan scan --max-retries 5
+
+# Increase retry delay
 vscan scan --retry-delay 3.0
 ```
 
-### Slow Scans
+### No colors in terminal
 
+Colors are automatically disabled in non-interactive environments. To force plain output:
 ```bash
-# Use cached results (much faster)
-vscan scan  # Uses 7-day cache by default
-
-# Extend cache age
-vscan scan --cache-max-age 30
-
-# Generate reports from cache without scanning
-vscan report report.html
-```
-
-### No Color/Formatting
-
-```bash
-# Force plain output
 vscan scan --plain
-
-# Check environment
-echo $TERM  # Should not be "dumb"
-echo $NO_COLOR  # Should be empty
 ```
+
+### Cache issues
+
+Clear the cache if you're seeing stale or incorrect data:
+```bash
+vscan cache clear --force
+```
+
+---
+
+## What's New
+
+<details>
+<summary>Version 3.1.0 - Configuration & CSV Export</summary>
+
+- Configuration file support with `~/.vscanrc`
+- Config management commands (`init`, `show`, `set`, `get`, `reset`)
+- CSV export format for spreadsheet analysis
+- Performance improvements (87.6% faster database operations)
+- Better error handling and user experience
+</details>
+
+<details>
+<summary>Version 3.0.0 - Modern CLI Overhaul</summary>
+
+- Beautiful terminal UI with Rich library
+- Organized subcommands (scan, cache, report, config)
+- Always comprehensive scans (no more modes)
+- Improved filtering options
+- Cache-based report generation
+- Refined cache refresh behavior
+</details>
+
+<details>
+<summary>Version 2.2.0 - HTML Reports & Retry Mechanism</summary>
+
+- Interactive HTML reports with charts and tables
+- Intelligent retry mechanism for API resilience
+- Exponential backoff with jitter
+- Retry statistics tracking
+</details>
+
+---
+
+## Technical Details
+
+### How It Works
+
+1. **Discovery** - Automatically locates your VS Code extensions directory
+2. **Analysis** - Queries vscan.dev API for security analysis of each extension
+3. **Caching** - Stores results in SQLite database for fast repeated scans
+4. **Reporting** - Formats results in your preferred output format
+
+### Performance
+
+- **First scan:** ~1.5 seconds per extension (API rate limiting)
+- **Cached scans:** Instant (50x faster)
+- **Memory usage:** < 100MB RAM
+- **Typical cache hit rate:** 70-90%
+
+### Security Data Sources
+
+All security analysis is provided by [vscan.dev](https://vscan.dev), which analyzes:
+- Extension source code and permissions
+- Third-party dependencies and known vulnerabilities
+- Publisher reputation and verification status
+- Network access patterns
+- File system permissions
+
+### Privacy
+
+- No data is collected by this tool
+- All analysis is performed by vscan.dev
+- Cache is stored locally on your machine
+- No credentials or secrets are transmitted
+
+### Platform Support
+
+- macOS
+- Windows
+- Linux
+
+The tool automatically detects your platform and finds the VS Code extensions directory.
+
+---
+
+## FAQ
+
+**Q: Is this tool official from Microsoft or VS Code?**
+A: No, this is an independent security tool that uses the vscan.dev API.
+
+**Q: Will this slow down my VS Code?**
+A: No, this is a standalone CLI tool that doesn't affect VS Code performance.
+
+**Q: Does it modify my extensions?**
+A: No, this tool is read-only. It only analyzes extensions, never modifies them.
+
+**Q: How often should I scan?**
+A: Weekly scans are recommended. Use caching for daily checks without API overhead.
+
+**Q: Can I use this in my company's security workflow?**
+A: Yes! The tool supports CI/CD integration, JSON output, and CSV export for compliance tracking.
+
+**Q: What does a "high risk" rating mean?**
+A: It indicates potential security concerns like network access, elevated permissions, or vulnerable dependencies. Review the details to assess actual risk.
+
+**Q: Are verified publishers always safe?**
+A: Verification confirms identity but doesn't guarantee security. Always review the security analysis.
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Here's how you can help:
+
+- Report bugs or request features via [GitHub Issues](https://github.com/username/vsc-extension-scanner/issues)
+- Submit pull requests for improvements
+- Share your experience and use cases
+- Help improve documentation
+
+For development setup, see the [CONTRIBUTING.md](CONTRIBUTING.md) guide.
+
+---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - See [LICENSE](LICENSE) file for details.
+
+---
 
 ## Acknowledgments
 
-- **vscan.dev** - Security analysis API
-- **Rich** - Beautiful terminal formatting
-- **Typer** - Modern CLI framework
-- VS Code Extension community
+This tool is made possible by:
+
+- [vscan.dev](https://vscan.dev) - Security analysis API
+- [Rich](https://github.com/Textualize/rich) - Beautiful terminal formatting
+- [Typer](https://github.com/tiangolo/typer) - Modern CLI framework
+- The VS Code extension community
+
+---
 
 ## Links
 
+- **GitHub:** [vsc-extension-scanner](https://github.com/username/vsc-extension-scanner)
 - **Documentation:** [docs/](docs/)
-- **Issues:** [GitHub Issues](https://github.com/username/vsc-extension-scanner/issues)
+- **Issues & Support:** [GitHub Issues](https://github.com/username/vsc-extension-scanner/issues)
 - **vscan.dev:** [https://vscan.dev](https://vscan.dev)
+
+---
+
+**Made with care for the developer community. Stay secure!**
