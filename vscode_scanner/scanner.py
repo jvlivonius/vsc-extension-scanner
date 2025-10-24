@@ -651,7 +651,7 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
             from rich.console import Console
             console = Console()
 
-            table = create_results_table(scan_results, show_all=False)
+            table = create_results_table(scan_results, show_all=True)
             if table:
                 console.print()
                 console.print(table)
