@@ -739,8 +739,8 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                 cache_hit_rate = (stats['cached_results'] / len(extensions)) * 100
                 log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
 
-        # Retry statistics (verbose mode only)
-        if verbose and 'api_client' in stats:
+        # Retry statistics (only shown if retries occurred)
+        if 'api_client' in stats:
             retry_stats = stats['api_client'].get_retry_stats()
             http_retries = retry_stats.get('total_retries', 0)
             workflow_retries = retry_stats.get('total_workflow_retries', 0)
