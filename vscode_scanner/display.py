@@ -143,13 +143,35 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     table = Table(title="Scan Results", show_header=True, header_style="bold cyan")
 
     table.add_column("Extension", style="white", no_wrap=False, max_width=40)
+    table.add_column("Publisher", style="white", no_wrap=False, max_width=20)
     table.add_column("Risk", justify="center", width=8)
     table.add_column("Score", justify="right", width=7)
     table.add_column("Vulns", justify="right", width=6)
 
+    # Define risk hierarchy for sorting (higher number = higher priority)
+    risk_hierarchy = {
+        'critical': 3,
+        'high': 2,
+        'medium': 1,
+        'low': 0,
+        'unknown': -1
+    }
+
+    # Sort results by risk level (descending) then by vulnerability count (descending)
+    def sort_key(result):
+        security = result.get('security', {})
+        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
+        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
+        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+
+        risk_priority = risk_hierarchy.get(risk_level, -1)
+        return (-risk_priority, -vuln_count)  # Negative for descending order
+
+    sorted_results = sorted(scan_results, key=sort_key)
+
     # Limit results if show_all is False
-    results_to_show = scan_results if show_all else scan_results[:10]
-    remaining_count = len(scan_results) - len(results_to_show)
+    results_to_show = sorted_results if show_all else sorted_results[:10]
+    remaining_count = len(sorted_results) - len(results_to_show)
 
     for result in results_to_show:
         # Get security data (handle both flat and nested structures)
@@ -177,9 +199,37 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
         # Format security score
         score_display = f"{score}/100" if score else "N/A"
 
+        # Get publisher information (handle both nested and flat structures)
+        metadata = result.get('metadata', {})
+        publisher_info = metadata.get('publisher', {})
+
+        # Extract publisher name (handle dict or string)
+        publisher_name = publisher_info.get('name') if isinstance(publisher_info, dict) else None
+        if not publisher_name:
+            # Fallback to top-level publisher field
+            pub_field = result.get('publisher', 'Unknown')
+            if isinstance(pub_field, dict):
+                publisher_name = pub_field.get('name', 'Unknown')
+            else:
+                publisher_name = pub_field if pub_field else 'Unknown'
+
+        # Get verification status (check metadata first, then top-level publisher)
+        is_verified = publisher_info.get('verified', False) if isinstance(publisher_info, dict) else False
+        if not is_verified:
+            pub_field = result.get('publisher', {})
+            if isinstance(pub_field, dict):
+                is_verified = pub_field.get('verified', False)
+
+        # Format publisher display with verification indicator
+        if is_verified:
+            publisher_display = f"[green]✓[/green] {publisher_name}"
+        else:
+            publisher_display = publisher_name
+
         # Add row with color based on risk
         table.add_row(
             ext_display,
+            publisher_display,
             risk_display,
             score_display,
             str(vuln_count)
@@ -189,9 +239,10 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     if remaining_count > 0:
         table.add_row(
             f"... ({remaining_count} more)",
-            "",
-            "",
-            "",
+            "",  # Publisher column
+            "",  # Risk column
+            "",  # Score column
+            "",  # Vulns column
             style="dim"
         )
 

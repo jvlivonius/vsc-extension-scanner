@@ -381,6 +381,9 @@ def cache_stats(
 
         raise typer.Exit(code=0)
 
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2)
@@ -448,6 +451,9 @@ def cache_clear(
 
         raise typer.Exit(code=0)
 
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
     except Exception as e:
         if use_rich:
             display_error(f"Error clearing cache: {e}", use_rich=True)
