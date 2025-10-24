@@ -352,6 +352,11 @@ def _scan_extensions(
         'api_client': api_client
     }
 
+    # Begin batch commit for cache operations
+    BATCH_SIZE = 10
+    if cache_manager:
+        cache_manager.begin_batch()
+
     # Use Rich progress bar if available
     if use_rich and RICH_AVAILABLE and not quiet:
         from rich.console import Console
@@ -368,6 +373,11 @@ def _scan_extensions(
                         api_client, stats, scan_results, use_rich
                     )
                     progress.update(task, advance=1)
+
+                    # Commit batch every BATCH_SIZE fresh scans
+                    if cache_manager and stats['fresh_scans'] % BATCH_SIZE == 0:
+                        cache_manager.commit_batch()
+                        cache_manager.begin_batch()
     else:
         # Plain output
         for idx, ext in enumerate(extensions, 1):
@@ -375,6 +385,15 @@ def _scan_extensions(
                 ext, idx, len(extensions), cache_manager, args,
                 api_client, stats, scan_results, use_rich
             )
+
+            # Commit batch every BATCH_SIZE fresh scans
+            if cache_manager and stats['fresh_scans'] % BATCH_SIZE == 0:
+                cache_manager.commit_batch()
+                cache_manager.begin_batch()
+
+    # Commit any remaining results
+    if cache_manager:
+        cache_manager.commit_batch()
 
     if not quiet and not use_rich:
         log("", "INFO")
@@ -467,9 +486,9 @@ def _scan_extension_fresh(
     # Merge with discovery metadata
     result = {**ext, **result}
 
-    # Cache the result if cache is enabled
+    # Cache the result if cache is enabled (using batch mode)
     if cache_manager and result.get('scan_status') == 'success':
-        cache_manager.save_result(extension_id, version, result)
+        cache_manager.save_result_batch(extension_id, version, result)
 
     scan_results.append(result)
 

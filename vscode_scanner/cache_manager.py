@@ -31,6 +31,10 @@ class CacheManager:
         Args:
             cache_dir: Directory to store cache database. Defaults to ~/.vscan/
         """
+        # Batch commit support
+        self._batch_connection = None
+        self._batch_cursor = None
+        self._batch_count = 0
         if cache_dir:
             # Validate cache directory path (cross-platform)
             # Block parent directory traversal
@@ -482,6 +486,105 @@ class CacheManager:
             sanitized_error = sanitize_error_message(str(e), context="cache write")
             print(f"Cache write error: {sanitized_error}", file=sys.stderr)
 
+    def begin_batch(self):
+        """
+        Begin a batch transaction for multiple save operations.
+        This keeps the database connection open and defers commits.
+        """
+        if self._batch_connection is not None:
+            # Batch already in progress
+            return
+
+        self._batch_connection = sqlite3.connect(self.cache_db)
+        self._batch_cursor = self._batch_connection.cursor()
+        self._batch_count = 0
+
+    def save_result_batch(self, extension_id: str, version: str, result: Dict[str, Any]):
+        """
+        Save scan result to cache without committing (batch mode).
+        Must call begin_batch() first.
+
+        Args:
+            extension_id: Extension ID (e.g., "ms-python.python")
+            version: Extension version
+            result: Scan result dictionary to cache
+        """
+        # Don't cache failed scans
+        if result.get('scan_status') != 'success':
+            return
+
+        if self._batch_connection is None:
+            # Fallback to regular save if batch not started
+            self.save_result(extension_id, version, result)
+            return
+
+        try:
+            # Remove cache metadata before storing
+            result_to_store = result.copy()
+            result_to_store.pop('_cache_hit', None)
+            result_to_store.pop('_cached_at', None)
+
+            scan_result_json = json.dumps(result_to_store)
+            scanned_at = datetime.now().isoformat()
+
+            # Extract indexed fields for v2 schema
+            risk_level = result_to_store.get('risk_level')
+            security_score = result_to_store.get('security_score')
+
+            # Vulnerabilities
+            vulnerabilities = result_to_store.get('vulnerabilities', {})
+            vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
+
+            # Dependencies
+            dependencies = result_to_store.get('dependencies', {})
+            dependencies_count = dependencies.get('total_count', 0)
+
+            # Publisher verification
+            metadata = result_to_store.get('metadata', {})
+            publisher = metadata.get('publisher', {})
+            publisher_verified = 1 if publisher.get('verified') else 0
+
+            # Risk factors
+            risk_factors = result_to_store.get('risk_factors', [])
+            has_risk_factors = 1 if len(risk_factors) > 0 else 0
+
+            # Insert or replace
+            self._batch_cursor.execute("""
+                INSERT OR REPLACE INTO scan_cache
+                (extension_id, version, scan_result, scanned_at, risk_level, security_score,
+                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
+                  vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+
+            self._batch_count += 1
+
+        except (sqlite3.Error, json.JSONDecodeError) as e:
+            # Log error but don't fail the scan
+            sanitized_error = sanitize_error_message(str(e), context="batch cache write")
+            print(f"Cache write error: {sanitized_error}", file=sys.stderr)
+
+    def commit_batch(self):
+        """
+        Commit the current batch transaction and close the connection.
+        """
+        if self._batch_connection is None:
+            return
+
+        try:
+            self._batch_connection.commit()
+        except sqlite3.Error as e:
+            sanitized_error = sanitize_error_message(str(e), context="batch commit")
+            print(f"Batch commit error: {sanitized_error}", file=sys.stderr)
+            self._batch_connection.rollback()
+        finally:
+            self._batch_connection.close()
+            self._batch_connection = None
+            self._batch_cursor = None
+            count = self._batch_count
+            self._batch_count = 0
+            return count
+
     def cleanup_old_entries(self, max_age_days: int = 7) -> int:
         """
         Remove cache entries older than max_age_days.
@@ -668,6 +771,9 @@ class CacheManager:
 
                 cursor.execute("DELETE FROM scan_cache")
                 conn.commit()
+
+                # VACUUM to reclaim disk space
+                cursor.execute("VACUUM")
 
                 return count
 
