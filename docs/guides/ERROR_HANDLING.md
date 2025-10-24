@@ -1,8 +1,39 @@
 # Error Handling Strategy
 
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Last Updated:** 2025-10-24
-**Status:** Current Implementation + Planned Enhancements
+**Status:** Formalized (Phase 2.6 - v3.2 Development)
+**Formalized In:** Phase 2.6 of ROADMAP v3.2
+
+---
+
+## Summary of Formalization (Phase 2.6)
+
+This document was comprehensively updated in Phase 2.6 to formalize the error handling patterns already in use throughout the codebase. Key additions include:
+
+**1. Display Function Selection Guide (NEW)**
+   - Clear rules for when to use `display_error()`, `display_warning()`, and `log()`
+   - Real-world examples from the codebase
+   - Decision tree for error handling choices
+   - Best practices and anti-patterns
+
+**2. Enhanced Exit Code Documentation**
+   - Detailed rules for exit codes 0, 1, and 2
+   - CI/CD integration examples (GitHub Actions, shell scripts)
+   - Best practices for exit code usage
+   - Clear examples of when to use each code
+
+**3. Corrected ERROR_HELP Structure**
+   - Updated documentation to match actual implementation
+   - Structure uses dict with "message" and "suggestions" keys
+   - Consistent examples throughout
+
+**4. Centralized Error Display Pattern**
+   - All user-facing errors route through `display.py`
+   - No scattered `print(..., file=sys.stderr)` calls
+   - Consistent formatting across the application
+
+This formalization ensures all contributors understand the established patterns and maintains consistency across the codebase.
 
 ---
 
@@ -12,10 +43,11 @@
 2. [Error Handling Architecture](#error-handling-architecture)
 3. [ERROR_HELP System](#error_help-system)
 4. [Error Display Flow](#error-display-flow)
-5. [Error Types](#error-types)
-6. [Implementation Guide](#implementation-guide)
-7. [Planned Enhancements](#planned-enhancements)
-8. [Testing Strategy](#testing-strategy)
+5. [Display Function Selection Guide](#display-function-selection-guide) **← NEW**
+6. [Error Types](#error-types)
+7. [Implementation Guide](#implementation-guide)
+8. [Planned Enhancements](#planned-enhancements)
+9. [Testing Strategy](#testing-strategy)
 
 ---
 
@@ -106,11 +138,14 @@ The `ERROR_HELP` dictionary (in `utils.py`) provides comprehensive, actionable g
 
 ```python
 ERROR_HELP = {
-    "error_type": [
-        "Suggestion 1",
-        "Suggestion 2",
-        "Suggestion 3 (optional command example)",
-    ],
+    "error_type": {
+        "message": "Brief description of what happened",
+        "suggestions": [
+            "Suggestion 1",
+            "Suggestion 2",
+            "Suggestion 3 (optional command example)",
+        ]
+    },
     # ...
 }
 ```
@@ -124,15 +159,16 @@ ERROR_HELP = {
 - "rate limit" in error message
 - vscan.dev throttling
 
-**Suggestions:**
+**Structure:**
 ```python
-"rate_limit": [
-    "The vscan.dev API has rate limits to prevent abuse",
-    "Wait a few minutes before scanning again",
-    "Use --delay to increase time between requests: vscan scan --delay 3.0",
-    "Use --max-retries to try more times: vscan scan --max-retries 5",
-    "Enable caching to reduce API calls: vscan scan (caching is on by default)",
-]
+"rate_limit": {
+    "message": "vscan.dev rate limit reached.",
+    "suggestions": [
+        "Wait a few minutes before trying again",
+        "Use --delay to slow down requests (e.g., --delay 3.0)",
+        "The service may be experiencing high traffic"
+    ]
+}
 ```
 
 **Why This Helps:**
@@ -393,6 +429,133 @@ def display_error(
 
 ---
 
+## Display Function Selection Guide
+
+### When to Use display_error()
+
+**Purpose:** Fatal errors that prevent the operation from completing
+
+**Use when:**
+- Operation cannot continue (exit code 2)
+- User action is blocked
+- Data corruption or invalid state detected
+- Configuration errors that prevent execution
+- Invalid user input that stops the command
+
+**Examples from codebase:**
+```python
+# Cache clearing failure
+display_error(f"Error clearing cache: {e}", use_rich=True)
+raise typer.Exit(2)
+
+# Invalid output path
+display_error("Invalid output path", use_rich=True)
+raise ValueError("Invalid output path")
+
+# Cache database corruption
+display_error(f"Failed to handle corrupted database: {sanitized_error}")
+display_info("Cache functionality may be impaired")
+```
+
+**Characteristics:**
+- Always followed by program termination or exception
+- Requires user intervention to fix
+- Blocks the requested operation
+- Exit code: 2 (failure)
+
+### When to Use display_warning()
+
+**Purpose:** Non-fatal issues that allow operation to continue
+
+**Use when:**
+- Operation can proceed with degraded functionality
+- Optional features are unavailable
+- Data quality issues that don't block execution
+- Missing optional configuration
+- Informational issues that user should know about
+
+**Examples from codebase:**
+```python
+# Config file not found (can use defaults)
+display_warning(f"No configuration file found at {config_path}", use_rich=True)
+display_info("Run 'vscan config init' to create one", use_rich=True)
+# Continue execution with defaults...
+
+# Invalid extension IDs filtered out
+display_warning(f"Filtered out {filtered_count} invalid extension IDs")
+# Continue scanning remaining valid extensions...
+
+# No extensions match filters
+display_warning("No extensions match the specified filters:", use_rich=True)
+# Still return success (exit 0), just nothing to report
+```
+
+**Characteristics:**
+- Program continues execution after warning
+- User awareness is helpful but not critical
+- Graceful degradation or fallback behavior
+- Exit code: 0 or 1 (depending on scan results)
+
+### When to Use log()
+
+**Purpose:** Internal logging for debugging and verbose output
+
+**Use when:**
+- Verbose mode is enabled (`--verbose`)
+- Debugging information needed for troubleshooting
+- Progress updates for long operations
+- Internal state changes
+- Performance metrics
+
+**Examples from codebase:**
+```python
+# Verbose logging in utils.py
+log(message, level="INFO")  # Only prints if _VERBOSE is True
+
+# Error logging with sanitization
+error_msg = sanitize_string(str(e), max_length=200)
+log(f"Error discovering extensions: {error_msg}", "ERROR")
+```
+
+**Characteristics:**
+- Respects global verbosity flag
+- Not visible in normal operation
+- Technical details for developers/debugging
+- Can be safely ignored by end users
+- Controlled by `setup_logging(verbose=True/False)`
+
+### Decision Tree
+
+```
+Is this a fatal error that stops execution?
+├─ Yes → display_error() + raise/exit
+└─ No → Is this an issue user should be aware of?
+    ├─ Yes → display_warning() + continue
+    └─ No → Is verbose mode enabled?
+        ├─ Yes → log() at appropriate level
+        └─ No → (silent, no output)
+```
+
+### Best Practices
+
+**DO ✅**
+- Use display_error() for all blocking errors
+- Use display_warning() for recoverable issues
+- Use log() for verbose/debug information
+- Sanitize all error messages before display
+- Provide actionable suggestions with errors
+- Route all display through display.py functions
+
+**DON'T ❌**
+- Don't use log() for user-facing errors
+- Don't use display_error() for warnings
+- Don't mix print() with display functions
+- Don't show stack traces in display_error()
+- Don't display sensitive info in any function
+- Don't skip sanitization of external data
+
+---
+
 ## Error Types
 
 ### By HTTP Status Code
@@ -417,11 +580,98 @@ def display_error(
 
 ### Exit Codes
 
-| Code | Meaning | When to Use |
-|------|---------|-------------|
-| 0 | Success, no vulnerabilities | Scan completed, all extensions clean |
-| 1 | Success, vulnerabilities found | Scan completed, issues detected |
-| 2 | Failure | Scan failed due to errors |
+**Exit Code Convention:** vscan uses three exit codes following Unix conventions
+
+| Code | Meaning | When to Use | Examples |
+|------|---------|-------------|----------|
+| 0 | Success, no issues | Operation completed successfully, no vulnerabilities found | All scans succeeded, no vulnerabilities detected |
+| 1 | Success with findings | Operation completed successfully, vulnerabilities found | Scan completed, found high-risk extensions |
+| 2 | Failure | Operation failed due to errors | Network error, invalid config, permission denied |
+
+#### Detailed Exit Code Rules
+
+**Exit Code 0 (Success, Clean):**
+```python
+# Scan completed, no vulnerabilities found
+if vulnerabilities_found == 0 and scan_completed:
+    raise typer.Exit(0)
+
+# Cache stats displayed successfully
+# Config shown successfully
+# Report generated without issues
+```
+
+**Exit Code 1 (Success, Issues Found):**
+```python
+# Scan completed, found vulnerabilities
+if vulnerabilities_found > 0 and scan_completed:
+    raise typer.Exit(1)
+
+# Useful for CI/CD pipelines to detect issues
+# Operation succeeded, but user should take action
+```
+
+**Exit Code 2 (Failure):**
+```python
+# Fatal error - scan could not complete
+display_error("Network error: Could not connect to vscan.dev")
+raise typer.Exit(2)
+
+# Invalid user input
+display_error("Invalid output path")
+raise typer.Exit(2)
+
+# Missing required resources
+display_error("Cache is empty. Run 'vscan scan' first")
+raise typer.Exit(2)
+
+# Configuration error
+display_error(f"Invalid configuration: {error}")
+raise typer.Exit(2)
+```
+
+#### CI/CD Integration Examples
+
+**GitHub Actions:**
+```yaml
+- name: Scan extensions
+  run: vscan scan
+  # Exit 0: Pass (no vulnerabilities)
+  # Exit 1: Fail (vulnerabilities found) ← Fails the build
+  # Exit 2: Error (scan failed) ← Fails the build
+```
+
+**Shell Scripts:**
+```bash
+vscan scan
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "✓ No vulnerabilities found"
+elif [ $EXIT_CODE -eq 1 ]; then
+    echo "⚠ Vulnerabilities detected!"
+    exit 1  # Fail the build
+elif [ $EXIT_CODE -eq 2 ]; then
+    echo "✗ Scan failed"
+    exit 2  # Fail the build
+fi
+```
+
+#### Exit Code Best Practices
+
+**DO ✅**
+- Use exit code 0 for successful scans with no findings
+- Use exit code 1 for successful scans with findings
+- Use exit code 2 for all operational failures
+- Always exit with one of these three codes
+- Document exit codes in command help text
+
+**DON'T ❌**
+- Don't use exit codes outside 0-2 range
+- Don't exit 0 when scan failed (misleading success)
+- Don't exit 2 for successful scans with findings
+- Don't use random or undocumented exit codes
+- Don't exit without displaying error context
 
 ---
 
