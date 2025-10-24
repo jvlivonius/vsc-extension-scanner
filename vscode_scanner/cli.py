@@ -521,7 +521,7 @@ def report(
 
     # Validate output path
     try:
-        validate_path(output_str, allow_overwrite=True)
+        validate_path(output_str, allow_absolute=True, path_type="output file")
         # Create parent directory if needed
         output_parent = Path(output_str).parent
         safe_mkdir(output_parent)
@@ -573,18 +573,21 @@ def report(
             print(f"ℹ Found {len(cached_results)} cached extensions")
 
         # Format output (always use detailed mode)
-        formatter = OutputFormatter(detailed=True)
-        formatted_results = formatter.format_scan_results(
+        from datetime import datetime
+        formatter = OutputFormatter()
+        formatted_results = formatter.format_output(
             scan_results=cached_results,
-            cache_stats={'from_cache': len(cached_results), 'fresh_scans': 0},
-            scan_duration=0.0
+            scan_timestamp=datetime.now().isoformat(),
+            scan_duration=0.0,
+            detailed=True,
+            cache_stats={'from_cache': len(cached_results), 'fresh_scans': 0}
         )
 
         # Generate output based on format
         if output_format == '.html':
             # Generate HTML report
             html_generator = HTMLReportGenerator()
-            html_content = html_generator.generate_html_report(formatted_results)
+            html_content = html_generator.generate_report(formatted_results)
 
             with open(output_str, 'w', encoding='utf-8') as f:
                 f.write(html_content)
