@@ -1,0 +1,71 @@
+# Architecture Module Classifications
+# Update this file when adding/removing modules
+#
+# This file defines the layered architecture for the VS Code Extension Scanner.
+# Each module must be classified into one of the four layers.
+#
+# Schema version for future compatibility
+schema_version: 1
+last_updated: "2025-10-24"
+
+# Module classifications by layer
+layers:
+  presentation:
+    description: "User interaction and output formatting"
+    purpose: "Handle CLI commands, display formatting, and output generation"
+    modules:
+      - cli
+      - display
+      - output_formatter
+      - html_report_generator
+
+  application:
+    description: "Business logic and orchestration"
+    purpose: "Coordinate workflows, manage configuration, orchestrate scans"
+    modules:
+      - scanner
+      - vscan
+      - config_manager
+
+  infrastructure:
+    description: "External services (APIs, databases, filesystems)"
+    purpose: "Interact with vscan.dev API, manage cache database, discover extensions"
+    modules:
+      - vscan_api
+      - cache_manager
+      - extension_discovery
+
+  shared:
+    description: "Cross-layer utilities (standard library only)"
+    purpose: "Provide reusable functions and constants without layer dependencies"
+    modules:
+      - utils
+      - constants
+      - _version
+
+# Architecture rules for automated enforcement
+rules:
+  # Infrastructure layer must not import from these layers
+  infrastructure_forbidden_imports:
+    - presentation
+    - application
+
+  # Shared modules must not import from any application layer
+  shared_forbidden_imports:
+    - presentation
+    - application
+    - infrastructure
+
+  # Pure presentation modules (stricter rules)
+  pure_presentation_modules:
+    - display
+    - output_formatter
+
+# Expected module count (for documentation sync validation)
+expected_module_count: 13  # Will become 14 when types.py is added in Phase 4.1
+
+# Documentation references
+documentation:
+  architecture: "docs/guides/ARCHITECTURE.md"
+  testing: "docs/guides/TESTING.md"
+  roadmap: "docs/project/ROADMAP.md"

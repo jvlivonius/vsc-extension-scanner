@@ -1360,6 +1360,531 @@ FORBIDDEN:
 
 ### Implementation Tasks
 
+#### Task 4.0: Test Infrastructure (CRITICAL - PRE-REQUISITE)
+
+**Priority:** CRITICAL (BLOCKER for all other Phase 4 tasks)
+
+**Problem:** Architecture tests don't exist, cannot validate Phase 4 fixes objectively
+
+**Discovery:** Test Gap Analysis (`docs/project/PHASE_4_TEST_GAP_ANALYSIS.md`) revealed that:
+- No architecture tests exist (violates TESTING.md requirements)
+- Cannot validate fixes for Tasks 4.1 and 4.2 without automated tests
+- Original task order had dependencies backwards (tests were Task 4.3, after code changes)
+
+**Solution: Create Test Infrastructure First**
+
+**Deliverables:**
+
+1. **Create `tests/test_architecture.py`** (REQUIRED):
+
+```python
+#!/usr/bin/env python3
+"""
+Architecture validation tests.
+
+Ensures Simple Layered Architecture compliance:
+- Presentation Layer: cli, display, output_formatter, html_report_generator
+- Application Layer: scanner, vscan, config_manager
+- Infrastructure Layer: vscan_api, cache_manager, extension_discovery
+- Shared: utils, constants, _version
+"""
+
+# Implementation from ROADMAP Task 4.3 specification
+# 5 required test functions:
+# - test_infrastructure_layer_isolation()
+# - test_no_circular_dependencies()
+# - test_presentation_layer_dependencies()
+# - test_module_count_accuracy()
+# - test_shared_modules_have_no_app_dependencies()
+```
+
+**Full specification:** See ROADMAP Task 4.3 (now moved to Phase 4.0)
+
+2. **Create `tests/conftest.py`** (OPTIONAL):
+
+```python
+"""Shared test fixtures for all test modules."""
+
+import pytest
+import tempfile
+from pathlib import Path
+
+@pytest.fixture
+def temp_cache_dir():
+    """Provide temporary cache directory for tests."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+@pytest.fixture
+def mock_vscan_api():
+    """Mock vscan.dev API responses."""
+    # Implementation here
+
+@pytest.fixture
+def sample_extensions_dir():
+    """Provide directory with sample extensions."""
+    return Path(__file__).parent / "fixtures" / "sample_extensions"
+```
+
+**Testing Strategy:**
+
+```bash
+# Step 1: Create tests
+# Step 2: Run tests - EXPECT FAILURES (document current violations)
+python3 tests/test_architecture.py
+
+# Expected failures:
+# - cache_manager.py imports display (Infrastructure → Presentation violation)
+# - config_manager.py imports display (Application → Presentation coupling)
+# - Module count mismatch (14 vs documented 13)
+
+# Step 3: Document baseline violations
+# Step 4: Use tests to validate Tasks 4.1 and 4.2 fixes
+```
+
+**Files to Create:**
+- `tests/test_architecture.py` (NEW - ~250 lines)
+- `tests/conftest.py` (OPTIONAL - ~50 lines)
+
+**Impact:**
+- ✅ Unblocks Tasks 4.1 and 4.2 (provides validation)
+- ✅ Enables CI/CD integration (Task 4.5)
+- ✅ Prevents future architectural violations
+- ✅ Complies with TESTING.md requirements
+
+**Success Criteria:**
+- [ ] test_architecture.py exists with all 5 required tests
+- [ ] Tests run and detect current violations
+- [ ] Baseline violations documented
+- [ ] Ready to validate fixes in Tasks 4.1 and 4.2
+
+**Estimated Effort:** 2-3 hours
+
+**Priority Justification:**
+- BLOCKS all other Phase 4 tasks
+- Cannot validate fixes without tests
+- Architectural violations could worsen without detection
+- Required by TESTING.md (should have existed already)
+
+---
+
+#### Task 4.0b: Test Maintainability Improvements (OPTIONAL - RECOMMENDED)
+
+**Priority:** MEDIUM (Optional but recommended before Phase 4.1)
+
+**Problem:** Phase 4.0 test infrastructure is functional but has maintainability issues discovered during code review:
+- High complexity (all 5 test methods are 40-60 lines each)
+- Excessive code duplication (28 string concatenation occurrences)
+- Hardcoded module classifications (easy to forget updates)
+- Nested functions hard to test independently
+
+**Discovery:** Post-implementation review identified opportunities for improvement to ensure long-term sustainability (see `docs/project/PHASE_4_MAINTAINABILITY_REVIEW.md`)
+
+**Decision Point:** These improvements are **optional** - tests work correctly now. However, investing 4-6 hours in maintainability improvements will pay for itself in reduced maintenance burden as the codebase grows.
+
+**Solution: Refactor Tests for Long-Term Maintainability**
+
+---
+
+##### **Phase 4.0b-A: Quick Wins (1-2 hours)**
+
+Immediate improvements with minimal effort and high impact.
+
+**1. Extract Error Message Builder**
+
+Replace 28 string concatenations with reusable helper:
+
+```python
+def _build_error_message(self,
+                        violations: List[Dict],
+                        header: str,
+                        fix_suggestions: List[str]) -> str:
+    """
+    Build formatted error message from violations.
+
+    Reduces code duplication and improves maintainability.
+    """
+    lines = [f"\n\n❌ {header}:\n\n"]
+
+    for v in violations:
+        lines.append(f"  {v['module']}.py ({v['layer']} layer)\n")
+        lines.append(f"    Illegally imports: {', '.join(v['illegal_imports'])}\n")
+        lines.append(f"    Reason: {v['reason']}\n\n")
+
+    lines.extend(fix_suggestions)
+
+    return ''.join(lines)  # Single join instead of 28 concatenations
+```
+
+**Usage:**
+```python
+# OLD (10+ lines repeated in each test)
+error_msg = "\n\n❌ VIOLATIONS DETECTED:\n\n"
+for v in violations:
+    error_msg += f"  {v['module']}.py\n"
+    error_msg += f"    Imports: {', '.join(v['illegal_imports'])}\n"
+error_msg += "Fix: ..."
+
+# NEW (3 lines, reusable)
+error_msg = self._build_error_message(
+    violations,
+    "VIOLATIONS DETECTED",
+    ["Fix: Infrastructure modules should return data to callers."]
+)
+```
+
+**2. Extract Module Checking Pattern**
+
+Eliminate duplicated iteration pattern:
+
+```python
+def _check_modules_for_violations(self,
+                                  modules: List[str],
+                                  check_func: Callable) -> List[Dict]:
+    """
+    Generic module checking pattern - reduces duplication.
+
+    Args:
+        modules: List of module names to check
+        check_func: Function that takes (module_name, imports) and returns violation dict or None
+
+    Returns:
+        List of violation dicts
+    """
+    violations = []
+    for module_name in modules:
+        file_path = VSCODE_SCANNER_DIR / f'{module_name}.py'
+        if not file_path.exists():
+            continue
+
+        imports = get_imports_from_file(file_path)
+        violation = check_func(module_name, imports)
+        if violation:
+            violations.append(violation)
+
+    return violations
+```
+
+**3. Fix String Concatenation Anti-pattern**
+
+Convert all error message building to use list + join pattern (more Pythonic and efficient).
+
+**4. Remove autouse from reset_environment**
+
+Only apply environment reset when explicitly needed:
+
+```python
+# In conftest.py
+@pytest.fixture  # Remove autouse=True
+def clean_environment():
+    """Reset environment variables - use only when needed."""
+    import os
+    original_env = dict(os.environ)
+
+    yield
+
+    os.environ.clear()
+    os.environ.update(original_env)
+```
+
+**Files Modified:**
+- `tests/test_architecture.py` (~50 lines changed)
+- `tests/conftest.py` (~5 lines changed)
+
+**Impact:**
+- ✅ 30% complexity reduction in test methods
+- ✅ Eliminates code duplication
+- ✅ Faster test execution (no unnecessary environment resets)
+- ✅ More Pythonic code
+
+**Estimated Effort:** 1-2 hours
+
+---
+
+##### **Phase 4.0b-B: Structural Improvements (2-3 hours)**
+
+Architectural improvements for long-term maintainability.
+
+**1. Create Architecture Configuration File**
+
+Move hardcoded module classifications to external config file.
+
+**Create `tests/architecture_config.yaml`:**
+
+```yaml
+# Architecture Module Classifications
+# Update this file when adding/removing modules
+
+schema_version: 1
+last_updated: "2025-10-24"
+
+layers:
+  presentation:
+    description: "User interaction and output formatting"
+    modules:
+      - cli
+      - display
+      - output_formatter
+      - html_report_generator
+
+  application:
+    description: "Business logic and orchestration"
+    modules:
+      - scanner
+      - vscan
+      - config_manager
+
+  infrastructure:
+    description: "External services (APIs, databases, filesystems)"
+    modules:
+      - vscan_api
+      - cache_manager
+      - extension_discovery
+
+  shared:
+    description: "Cross-layer utilities (standard library only)"
+    modules:
+      - utils
+      - constants
+      - _version
+
+# Architecture rules (for validation)
+rules:
+  infrastructure_forbidden_imports:
+    - presentation
+    - application
+
+  shared_forbidden_imports:
+    - presentation
+    - application
+    - infrastructure
+
+  pure_presentation_modules:
+    - display
+    - output_formatter
+```
+
+**2. Load Configuration in Tests**
+
+```python
+import yaml
+
+def load_architecture_config() -> Dict:
+    """Load module classifications from config file."""
+    config_path = Path(__file__).parent / 'architecture_config.yaml'
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    # Validate schema version
+    if config.get('schema_version') != 1:
+        raise ValueError(f"Unsupported config schema: {config.get('schema_version')}")
+
+    return config
+
+# At module level (replaces hardcoded lists)
+_config = load_architecture_config()
+PRESENTATION_MODULES = _config['layers']['presentation']['modules']
+APPLICATION_MODULES = _config['layers']['application']['modules']
+INFRASTRUCTURE_MODULES = _config['layers']['infrastructure']['modules']
+SHARED_MODULES = _config['layers']['shared']['modules']
+```
+
+**Benefits:**
+- Self-documenting (includes layer descriptions)
+- Easy to update (single file, not code)
+- Can validate completeness
+- Version controlled
+- Can store rules alongside data
+
+**3. Extract Nested find_cycle Function**
+
+Move nested DFS function to class method for independent testing:
+
+```python
+def _find_cycle(self,
+               node: str,
+               visited: Set[str],
+               rec_stack: Set[str],
+               path: List[str],
+               graph: Dict[str, Set[str]]) -> Optional[List[str]]:
+    """
+    Find cycle in dependency graph using DFS.
+
+    Can now be unit tested independently.
+
+    Returns:
+        List of nodes forming cycle, or None if no cycle found
+    """
+    visited.add(node)
+    rec_stack.add(node)
+    path.append(node)
+
+    for neighbor in graph.get(node, set()):
+        if neighbor not in visited:
+            cycle = self._find_cycle(neighbor, visited, rec_stack, path, graph)
+            if cycle:
+                return cycle
+        elif neighbor in rec_stack:
+            cycle_start = path.index(neighbor)
+            return path[cycle_start:] + [neighbor]
+
+    path.pop()
+    rec_stack.remove(node)
+    return None
+```
+
+**4. Split get_imports_from_file into Smaller Functions**
+
+Separate parsing from extraction:
+
+```python
+def get_imports_from_file(file_path: Path) -> Set[str]:
+    """Extract local imports - orchestrates parsing and extraction."""
+    tree = _parse_file(file_path)
+    if not tree:
+        return set()
+    return _extract_local_imports(tree)
+
+def _parse_file(file_path: Path) -> Optional[ast.AST]:
+    """Parse Python file with error handling."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return ast.parse(f.read(), filename=str(file_path))
+    except (SyntaxError, UnicodeDecodeError) as e:
+        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
+        return None
+
+def _extract_local_imports(tree: ast.AST) -> Set[str]:
+    """Extract vscode_scanner imports from AST."""
+    # ... implementation (focused, testable)
+```
+
+**Files Created:**
+- `tests/architecture_config.yaml` (NEW - ~60 lines)
+
+**Files Modified:**
+- `tests/test_architecture.py` (~100 lines changed)
+
+**Impact:**
+- ✅ 50% complexity reduction (test methods <20 lines)
+- ✅ Self-documenting configuration
+- ✅ Functions independently testable
+- ✅ Easier to add new modules
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+##### **Phase 4.0b-C: Data Management (1 hour)**
+
+Move test data to external files for easier maintenance.
+
+**1. Create Sample Extension Data File**
+
+**Create `tests/fixtures/sample_extension_data.json`:**
+
+```json
+{
+  "name": "test-extension",
+  "display_name": "Test Extension",
+  "id": "test-publisher.test-extension",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "test-publisher",
+    "name": "Test Publisher",
+    "verified": true,
+    "domain": "example.com",
+    "reputation": 100
+  },
+  "security": {
+    "score": 85,
+    "risk_level": "low",
+    "vulnerabilities": {
+      "total": 0,
+      "critical": 0,
+      "high": 0,
+      "moderate": 0,
+      "low": 0
+    },
+    "risk_factors": [],
+    "dependencies": {
+      "total_count": 5,
+      "with_vulnerabilities": 0,
+      "list": []
+    }
+  },
+  "metadata": {
+    "description": "A test extension for unit tests",
+    "install_count": 1000,
+    "rating": 4.5,
+    "rating_count": 100,
+    "keywords": ["test", "example"],
+    "repository_url": "https://github.com/test/test-extension",
+    "homepage_url": "https://github.com/test/test-extension",
+    "last_updated": "2025-10-24"
+  },
+  "vscan_url": "https://vscan.dev/extension/test-publisher.test-extension",
+  "scan_status": "success"
+}
+```
+
+**2. Simplify Fixture**
+
+Reduce from 53 lines to 5 lines:
+
+```python
+@pytest.fixture
+def mock_extension_data() -> dict:
+    """Load sample extension data from JSON file."""
+    fixture_file = Path(__file__).parent / 'fixtures' / 'sample_extension_data.json'
+    with open(fixture_file) as f:
+        return json.load(f)
+```
+
+**Files Created:**
+- `tests/fixtures/sample_extension_data.json` (NEW)
+
+**Files Modified:**
+- `tests/conftest.py` (~50 line reduction)
+
+**Impact:**
+- ✅ 90% reduction in fixture size
+- ✅ Easier to update test data
+- ✅ Can create multiple data variants
+- ✅ More realistic (actual data format)
+
+**Estimated Effort:** 1 hour
+
+---
+
+##### **Phase 4.0b Summary**
+
+**Total Effort:** 4-6 hours (optional)
+
+**Measurable Improvements:**
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Avg function length | 40 lines | 15 lines | 62% reduction |
+| Test methods >30 lines | 5/5 (100%) | 0/5 (0%) | 100% improvement |
+| String concatenations | 28 | 0 | 100% elimination |
+| Module classification | Hardcoded | Config file | Self-documenting |
+| Test data location | Embedded | External JSON | 90% size reduction |
+| **Maintainability Grade** | **B** | **A-** | **One letter grade** |
+
+**Decision Guidance:**
+
+- **Do Phase 4.0b-A** (Quick Wins) - High ROI, low effort, immediate impact
+- **Consider Phase 4.0b-B** (Structural) - Best for long-term maintenance
+- **Optional Phase 4.0b-C** (Data Management) - Nice to have, low priority
+
+**When to Do:**
+- **Before Phase 4.1:** Best practice, clean foundation
+- **After Phase 4.5:** Alternative timing, defer to Phase 5
+- **Never:** Accept technical debt (not recommended)
+
+---
+
 #### Task 4.1: Fix cache_manager.py Layer Violation (HIGH PRIORITY)
 
 **Problem:** `cache_manager.py` (Infrastructure) imports `display.py` (Presentation)
@@ -1924,24 +2449,51 @@ jobs:
 
 ### Implementation Plan
 
-**Phase 4.1: Critical Fixes (Week 1)**
-1. Create `types.py` with result types
-2. Refactor `cache_manager.py` to remove display imports
-3. Update callers in `scanner.py` and `cli.py`
-4. Refactor `config_manager.py` to return warnings
-5. **Test thoroughly** - ensure no regressions
+**⚠️ UPDATED PLAN (2025-10-24):**
 
-**Phase 4.2: Testing & Validation (Week 1-2)**
-6. Create `tests/test_architecture.py`
-7. Run tests - **expect failures initially**
-8. Fix any remaining violations discovered by tests
-9. Ensure all architecture tests pass
+Test Gap Analysis revealed Task 4.3 (Architecture Tests) must come FIRST as Phase 4.0.
 
-**Phase 4.3: Documentation & Automation (Week 2)**
-10. Update `ARCHITECTURE.md` with accurate counts
-11. Document types.py in module list
-12. Add architecture testing section
-13. Set up CI/CD validation (optional)
+**Phase 4.0: Test Infrastructure (Week 1 - Day 1 morning)**
+1. Create `tests/test_architecture.py` with 5 required tests
+2. Create `tests/conftest.py` with shared fixtures
+3. Run tests - **expect failures** (document baseline violations)
+4. Verify tests detect known violations:
+   - cache_manager.py → display.py
+   - config_manager.py → display.py
+   - Module count mismatch (14 vs 13)
+
+**Phase 4.0b: Test Maintainability (Week 1 - Day 1 afternoon) [OPTIONAL]**
+5. Phase 4.0b-A: Quick wins (1-2 hours)
+   - Extract error message builder helper
+   - Extract module checking pattern
+   - Fix string concatenation anti-pattern
+   - Remove autouse from reset_environment
+6. Phase 4.0b-B: Structural improvements (2-3 hours) [OPTIONAL]
+   - Create architecture_config.yaml
+   - Extract nested functions
+   - Split complex functions
+7. Phase 4.0b-C: Data management (1 hour) [OPTIONAL]
+   - Move test data to JSON files
+   - Simplify fixtures
+
+**Phase 4.1: Critical Fixes (Week 1 - Days 2-3)**
+8. Create `types.py` with result types (CacheWarning, CacheError)
+9. Refactor `cache_manager.py` to remove display imports
+10. Update callers in `scanner.py` and `cli.py`
+11. Refactor `config_manager.py` to return warnings
+12. **Test thoroughly** - run architecture tests to verify fixes
+
+**Phase 4.2: Validation & Documentation (Week 1 - Day 4)**
+13. Verify all architecture tests now pass
+14. Fix any remaining violations discovered by tests
+15. Update `ARCHITECTURE.md` with accurate counts
+16. Document types.py in module list
+17. Add architecture testing section to docs
+
+**Phase 4.3: CI/CD Integration (Week 1 - Day 5 or Week 2)**
+18. Set up CI/CD validation (optional)
+19. Add architecture tests to test suite
+20. Document testing process in README
 
 ---
 
@@ -1967,6 +2519,14 @@ jobs:
 - Architecture tests run on every commit/PR
 - Violations block merges
 - Team awareness of architectural rules
+
+✅ **Test maintainability improved (Optional - Phase 4.0b):**
+- Test methods reduced to <20 lines (from 40-60 lines)
+- Module classifications in config file (not hardcoded)
+- No code duplication (helper functions extracted)
+- All functions testable independently
+- Test data in external files (JSON)
+- **Maintainability Grade:** A- (from B)
 
 ---
 
@@ -2039,28 +2599,59 @@ If issues are discovered after merging:
 
 ### Estimated Total Effort
 
+**⚠️ CRITICAL UPDATE (2025-10-24):**
+
+Test Gap Analysis (see `docs/project/PHASE_4_TEST_GAP_ANALYSIS.md`) revealed that Task 4.3 (Architecture Tests) must be completed FIRST as a pre-requisite. Original sequence had dependencies backwards.
+
+**Updated Task Sequence:**
+
 | Task | Priority | Effort | Dependencies |
 |------|----------|--------|--------------|
-| 4.1: Fix cache_manager | HIGH | 3-4 hours | None |
-| 4.2: Fix config_manager | MEDIUM | 1-2 hours | 4.1 (types.py) |
-| 4.3: Architecture tests | HIGH | 2-3 hours | 4.1, 4.2 complete |
+| **4.0: Test Infrastructure** | **CRITICAL** | **2-3 hours** | **None (BLOCKER)** |
+| **4.0b: Test Maintainability** | **MEDIUM (Optional)** | **4-6 hours** | **4.0 complete** |
+| 4.1: Fix cache_manager | HIGH | 3-4 hours | 4.0 complete |
+| 4.2: Fix config_manager | MEDIUM | 1-2 hours | 4.0, 4.1 complete |
+| 4.3: Verify with architecture tests | HIGH | 1 hour | 4.0, 4.1, 4.2 complete |
 | 4.4: Update docs | MEDIUM | 1 hour | 4.3 complete |
 | 4.5: CI/CD setup | LOW | 0.5-1 hour | 4.3 complete |
 
-**Total:** 7.5-11 hours (~1.5-2 days)
+**Core Phase 4 Total:** 10-14 hours (~2 days)
+**With Optional 4.0b:** 14-20 hours (~2.5-3 days)
+
+**Note:** Phase 4.0b is optional. Tests work correctly without it, but maintainability improvements will pay for themselves in reduced long-term maintenance burden.
+
+**Phase 4.0 Details (Pre-requisite):**
+- Create `tests/test_architecture.py` (implements 5 required tests)
+- Create `tests/conftest.py` (shared fixtures)
+- Run tests to document baseline violations
+- Provides objective validation for Tasks 4.1 and 4.2
+
+**Phase 4.0b Details (Optional Improvements):**
+- Phase 4.0b-A: Quick wins (1-2 hours) - Immediate 30% complexity reduction
+- Phase 4.0b-B: Structural improvements (2-3 hours) - Long-term maintainability
+- Phase 4.0b-C: Data management (1 hour) - External test data files
+- See `docs/project/PHASE_4_MAINTAINABILITY_REVIEW.md` for detailed analysis
 
 ---
 
 ### References
 
+**Architecture & Design:**
 - **ARCHITECTURE.md** - Layering rules and design principles
 - **SECURITY.md** - Security implications of architectural changes
+
+**Testing Documentation:**
 - **TESTING.md** - Testing strategy and guidelines
+- **PHASE_4_TEST_GAP_ANALYSIS.md** - Test coverage analysis and Phase 4 blockers
+- **PHASE_4_MAINTAINABILITY_REVIEW.md** - Test maintainability analysis (NEW)
+- **PHASE_4_BASELINE_VIOLATIONS.md** - Baseline architectural violations
+
+**Requirements:**
 - **PRD.md** - Product requirements context
 
 ---
 
-**Phase 4 Status:** Planning
+**Phase 4 Status:** Planning (Updated 2025-10-24)
 **Target Release:** v3.3.0
 **Priority:** HIGH - Architectural violations undermine maintainability
 **Approval Required:** Yes - touches core infrastructure

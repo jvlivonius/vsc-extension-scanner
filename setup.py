@@ -8,11 +8,17 @@ Modern builds use pyproject.toml instead.
 
 from setuptools import setup, find_packages
 import os
-import sys
+import re
 
-# Add the package to path to import version
-sys.path.insert(0, os.path.dirname(__file__))
-from vscode_scanner._version import __version__
+# Read version without importing the package (avoids dependency issues during build)
+version_file = os.path.join(os.path.dirname(__file__), "vscode_scanner", "_version.py")
+with open(version_file, "r", encoding="utf-8") as f:
+    version_content = f.read()
+    version_match = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', version_content, re.MULTILINE)
+    if version_match:
+        __version__ = version_match.group(1)
+    else:
+        raise RuntimeError("Unable to find version string in _version.py")
 
 # Read README for long description
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -49,6 +55,12 @@ setup(
         "rich>=13.0.0,<14.0.0",
         "typer>=0.9.0,<1.0.0",
     ],
+    extras_require={
+        "test": [
+            "pyyaml>=6.0.0,<7.0.0",  # For architecture tests configuration
+            "pytest>=7.0.0",  # Test framework
+        ],
+    },
     entry_points={
         "console_scripts": [
             "vscan=vscode_scanner.vscan:cli_main",
