@@ -39,7 +39,6 @@ def run_scan(
     cache_max_age: int = 7,
     refresh_cache: bool = False,
     no_cache: bool = False,
-    detailed: bool = False,
     publisher: Optional[str] = None,
     include_ids: Optional[str] = None,
     exclude_ids: Optional[str] = None,
@@ -62,7 +61,6 @@ def run_scan(
         cache_max_age: Maximum cache age in days
         refresh_cache: Force refresh all cached results
         no_cache: Disable caching
-        detailed: Include detailed security analysis
         publisher: Filter by publisher name
         include_ids: Comma-separated extension IDs to include
         exclude_ids: Comma-separated extension IDs to exclude
@@ -108,7 +106,6 @@ def run_scan(
     args.cache_max_age = cache_max_age
     args.refresh_cache = refresh_cache
     args.no_cache = no_cache
-    args.detailed = detailed
     args.publisher = publisher
     args.include_ids = include_ids
     args.exclude_ids = exclude_ids
@@ -566,8 +563,8 @@ def _generate_output(
     # Detect output format
     is_html_output = args.output and args.output.endswith('.html')
 
-    # For HTML output, always use detailed mode
-    use_detailed = args.detailed or is_html_output
+    # Always use detailed mode
+    use_detailed = True
 
     formatter = OutputFormatter()
     results = formatter.format_output(

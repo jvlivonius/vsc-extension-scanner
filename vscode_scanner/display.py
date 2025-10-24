@@ -49,7 +49,7 @@ COLORS = {
 # Risk level emojis and labels
 RISK_DISPLAY = {
     'critical': ('🔴', 'CRIT'),
-    'high': ('🔴', 'HI'),
+    'high': ('🔴', 'HIGH'),
     'medium': ('🟡', 'MED'),
     'low': ('🟢', 'LOW'),
     'unknown': ('⚪', '???')
@@ -142,9 +142,10 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
 
     table = Table(title="Scan Results", show_header=True, header_style="bold cyan")
 
-    table.add_column("Extension", style="white", no_wrap=False, max_width=40)
+    table.add_column("Extension", style="white", no_wrap=False, max_width=35)
+    table.add_column("Version", style="cyan", no_wrap=True, width=12)
     table.add_column("Publisher", style="white", no_wrap=False, max_width=20)
-    table.add_column("Risk", justify="center", width=8)
+    table.add_column("Risk", justify="center", width=9)
     table.add_column("Score", justify="right", width=7)
     table.add_column("Vulns", justify="right", width=6)
 
@@ -188,13 +189,9 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
         # Get vulnerability count
         vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
 
-        # Format extension name with version
+        # Format extension name and version separately
         ext_name = result.get('display_name') or result.get('name', 'Unknown')
-        ext_version = result.get('version', '')
-        if ext_version:
-            ext_display = f"{ext_name} v{ext_version}"
-        else:
-            ext_display = ext_name
+        ext_version = result.get('version', 'N/A')
 
         # Format security score
         score_display = f"{score}/100" if score else "N/A"
@@ -222,13 +219,14 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
 
         # Format publisher display with verification indicator
         if is_verified:
-            publisher_display = f"[green]✓[/green] {publisher_name}"
+            publisher_display = f"{publisher_name} [green]✓[/green]"
         else:
             publisher_display = publisher_name
 
         # Add row with color based on risk
         table.add_row(
-            ext_display,
+            ext_name,
+            ext_version,
             publisher_display,
             risk_display,
             score_display,
@@ -239,6 +237,7 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     if remaining_count > 0:
         table.add_row(
             f"... ({remaining_count} more)",
+            "",  # Version column
             "",  # Publisher column
             "",  # Risk column
             "",  # Score column

@@ -720,3 +720,43 @@ class CacheManager:
             return []
         finally:
             conn.close()
+
+    def get_all_cached_results(self, max_age_days: int = 365) -> List[Dict[str, Any]]:
+        """
+        Get all cached scan results with full data.
+
+        Used by the report command to generate reports from cache only.
+
+        Args:
+            max_age_days: Maximum age of cached results in days (default: 365)
+
+        Returns:
+            List of full scan result dicts
+        """
+        try:
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
+
+                # Calculate cutoff timestamp
+                cutoff = datetime.now() - timedelta(days=max_age_days)
+                cutoff_str = cutoff.isoformat()
+
+                cursor.execute("""
+                    SELECT scan_result, scanned_at
+                    FROM scan_cache
+                    WHERE scanned_at >= ?
+                    ORDER BY scanned_at DESC
+                """, (cutoff_str,))
+
+                results = []
+                for row in cursor.fetchall():
+                    scan_result_json, scanned_at = row
+                    result = json.loads(scan_result_json)
+                    result['_cached_at'] = scanned_at
+                    results.append(result)
+
+                return results
+
+        except sqlite3.Error as e:
+            log(f"Database error retrieving all cached results: {e}", "ERROR")
+            return []

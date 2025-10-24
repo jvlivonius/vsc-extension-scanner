@@ -62,12 +62,6 @@ def scan(
         help="Output file path (.json or .html)",
         rich_help_panel="Output Options"
     ),
-    detailed: bool = typer.Option(
-        False,
-        "--detailed",
-        help="Include detailed security analysis (dependencies, risk factors, score breakdown)",
-        rich_help_panel="Output Options"
-    ),
 
     # Display options
     verbose: bool = typer.Option(
@@ -186,11 +180,11 @@ def scan(
         [dim]# Scan all extensions with default settings[/dim]
         $ vscan scan
 
-        [dim]# Filter by publisher and show detailed output[/dim]
+        [dim]# Filter by publisher and show progress[/dim]
         $ vscan scan --publisher microsoft --verbose
 
-        [dim]# Generate HTML report with detailed analysis[/dim]
-        $ vscan scan --output report.html --detailed
+        [dim]# Generate HTML report[/dim]
+        $ vscan scan --output report.html
 
         [dim]# Use plain output for CI/CD pipelines[/dim]
         $ vscan scan --plain --output results.json
@@ -240,7 +234,6 @@ def scan(
             cache_max_age=cache_max_age,
             refresh_cache=refresh_cache,
             no_cache=no_cache,
-            detailed=detailed,
             publisher=publisher,
             include_ids=include_ids,
             exclude_ids=exclude_ids,
@@ -459,6 +452,168 @@ def cache_clear(
             display_error(f"Error clearing cache: {e}", use_rich=True)
         else:
             print(f"Error clearing cache: {e}")
+        raise typer.Exit(code=2)
+
+
+@app.command("report")
+def report(
+    output: Path = typer.Argument(
+        ...,
+        help="Output file path (.json or .html)",
+        exists=False
+    ),
+    cache_dir: Optional[Path] = typer.Option(
+        None,
+        "--cache-dir",
+        help="Custom cache directory path (default: ~/.vscan/)"
+    ),
+    cache_max_age: int = typer.Option(
+        365,
+        "--cache-max-age",
+        min=1,
+        max=365,
+        help="Maximum age of cached data to include (days)"
+    ),
+    plain: bool = typer.Option(
+        False,
+        "--plain",
+        help="Disable colors and rich formatting"
+    ),
+):
+    """
+    Generate a report from cached scan results without performing new scans.
+
+    This command creates JSON or HTML reports using only data that is already
+    cached from previous scans. No API calls are made, so this is very fast.
+    The output format is determined by the file extension (.json or .html).
+
+    [bold yellow]Note:[/bold yellow] Only cached data is used. Run 'vscan scan' first
+    to populate the cache with scan results.
+
+    [bold cyan]Examples:[/bold cyan]
+
+        [dim]# Generate HTML report from cached data[/dim]
+        $ vscan report security-report.html
+
+        [dim]# Generate JSON report from last 30 days of cached data[/dim]
+        $ vscan report report.json --cache-max-age 30
+
+        [dim]# Generate report from custom cache directory[/dim]
+        $ vscan report report.html --cache-dir /custom/path
+    """
+    from .cache_manager import CacheManager
+    from .output_formatter import OutputFormatter
+    from .html_report_generator import HTMLReportGenerator
+    from .utils import validate_path, safe_mkdir
+
+    use_rich = should_use_rich(plain_flag=plain)
+
+    try:
+        # Validate parameter
+        cache_max_age = bounded_int_validator(cache_max_age, 1, 365, "cache-max-age")
+    except typer.BadParameter as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=2)
+
+    # Convert paths to strings
+    cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
+    output_str = str(output.resolve())
+
+    # Validate output path
+    try:
+        validate_path(output_str, allow_overwrite=True)
+        # Create parent directory if needed
+        output_parent = Path(output_str).parent
+        safe_mkdir(output_parent)
+    except (ValueError, PermissionError) as e:
+        if use_rich:
+            display_error(f"Invalid output path: {e}", use_rich=True)
+        else:
+            print(f"Error: Invalid output path: {e}")
+        raise typer.Exit(code=2)
+
+    # Determine output format from extension
+    output_path = Path(output_str)
+    output_format = output_path.suffix.lower()
+
+    if output_format not in ['.json', '.html']:
+        if use_rich:
+            display_error("Output file must have .json or .html extension", use_rich=True)
+        else:
+            print("Error: Output file must have .json or .html extension")
+        raise typer.Exit(code=2)
+
+    try:
+        # Notify user that we're using cache only
+        if use_rich:
+            display_info("Generating report from cached data only (no new scans will be performed)", use_rich=True)
+        else:
+            print("ℹ Generating report from cached data only (no new scans will be performed)")
+
+        # Retrieve all cached results
+        cache_manager = CacheManager(cache_dir=cache_dir_str)
+        cached_results = cache_manager.get_all_cached_results(max_age_days=cache_max_age)
+
+        if not cached_results:
+            if use_rich:
+                display_warning(
+                    f"No cached data found (max age: {cache_max_age} days). "
+                    "Run 'vscan scan' first to populate the cache.",
+                    use_rich=True
+                )
+            else:
+                print(f"⚠ Warning: No cached data found (max age: {cache_max_age} days). "
+                      "Run 'vscan scan' first to populate the cache.")
+            raise typer.Exit(code=1)
+
+        # Show cache statistics
+        if use_rich:
+            display_info(f"Found {len(cached_results)} cached extensions", use_rich=True)
+        else:
+            print(f"ℹ Found {len(cached_results)} cached extensions")
+
+        # Format output (always use detailed mode)
+        formatter = OutputFormatter(detailed=True)
+        formatted_results = formatter.format_scan_results(
+            scan_results=cached_results,
+            cache_stats={'from_cache': len(cached_results), 'fresh_scans': 0},
+            scan_duration=0.0
+        )
+
+        # Generate output based on format
+        if output_format == '.html':
+            # Generate HTML report
+            html_generator = HTMLReportGenerator()
+            html_content = html_generator.generate_html_report(formatted_results)
+
+            with open(output_str, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+
+            if use_rich:
+                display_success(f"HTML report generated: {output_str}", use_rich=True)
+            else:
+                print(f"✓ HTML report generated: {output_str}")
+
+        else:  # JSON
+            import json
+            with open(output_str, 'w', encoding='utf-8') as f:
+                json.dump(formatted_results, f, indent=2, ensure_ascii=False)
+
+            if use_rich:
+                display_success(f"JSON report generated: {output_str}", use_rich=True)
+            else:
+                print(f"✓ JSON report generated: {output_str}")
+
+        raise typer.Exit(code=0)
+
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
+    except Exception as e:
+        if use_rich:
+            display_error(f"Error generating report: {e}", use_rich=True)
+        else:
+            print(f"Error generating report: {e}")
         raise typer.Exit(code=2)
 
 
