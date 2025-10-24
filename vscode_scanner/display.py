@@ -10,25 +10,21 @@ import os
 from typing import Dict, List, Optional
 from datetime import datetime
 
-try:
-    from rich.progress import (
-        Progress,
-        SpinnerColumn,
-        TextColumn,
-        BarColumn,
-        TaskProgressColumn,
-        TimeRemainingColumn,
-        TimeElapsedColumn
-    )
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.console import Console
-    from rich.live import Live
-    from rich.text import Text
-    from rich.layout import Layout
-    RICH_AVAILABLE = True
-except ImportError:
-    RICH_AVAILABLE = False
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    TimeRemainingColumn,
+    TimeElapsedColumn
+)
+from rich.table import Table
+from rich.panel import Panel
+from rich.console import Console
+from rich.live import Live
+from rich.text import Text
+from rich.layout import Layout
 
 
 # Color scheme
@@ -66,9 +62,6 @@ def should_use_rich(plain_flag: bool = False) -> bool:
     Returns:
         bool: True if Rich should be used, False for plain output
     """
-    if not RICH_AVAILABLE:
-        return False
-
     if plain_flag:
         return False
 
@@ -99,8 +92,6 @@ def create_scan_progress() -> Optional[Progress]:
     Returns:
         Progress instance or None if Rich not available
     """
-    if not RICH_AVAILABLE:
-        return None
 
     return Progress(
         SpinnerColumn(),
@@ -124,8 +115,6 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     Returns:
         Table instance or None if Rich not available
     """
-    if not RICH_AVAILABLE:
-        return None
 
     table = Table(title="Scan Results", show_header=True, header_style="bold cyan")
 
@@ -245,8 +234,6 @@ def create_cache_stats_table(stats: Dict) -> Optional[Table]:
     Returns:
         Table instance or None if Rich not available
     """
-    if not RICH_AVAILABLE:
-        return None
 
     table = Table(show_header=True, header_style="bold cyan", title="Cache Statistics")
 
@@ -283,8 +270,6 @@ def create_retry_stats_table(retry_stats: Dict) -> Optional[Table]:
     Returns:
         Table instance or None if Rich not available or no retries occurred
     """
-    if not RICH_AVAILABLE:
-        return None
 
     # Check if any retries occurred
     http_retries = retry_stats.get('total_retries', 0)
@@ -358,8 +343,6 @@ def create_filter_summary_table(args, original_count: int, filtered_count: int) 
     Returns:
         Table instance or None if Rich not available
     """
-    if not RICH_AVAILABLE:
-        return None
 
     active_filters = []
 
@@ -437,8 +420,6 @@ class ScanDashboard:
         Returns:
             Panel: Rich Panel with dashboard content
         """
-        if not RICH_AVAILABLE:
-            return None
 
         content = Text()
 
@@ -503,7 +484,7 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
     total = summary.get('total_extensions_scanned', 0)
     vulns = summary.get('vulnerabilities_found', 0)
 
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         console = Console()
 
         # Create summary panel
@@ -563,7 +544,7 @@ def display_error(message: str, use_rich: bool = True) -> None:
         message: Error message
         use_rich: Whether to use Rich formatting
     """
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         console = Console()
         console.print(f"[bold red]✗ Error:[/bold red] {message}")
     else:
@@ -578,7 +559,7 @@ def display_warning(message: str, use_rich: bool = True) -> None:
         message: Warning message
         use_rich: Whether to use Rich formatting
     """
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         console = Console()
         console.print(f"[bold yellow]⚠ Warning:[/bold yellow] {message}")
     else:
@@ -593,7 +574,7 @@ def display_info(message: str, use_rich: bool = True) -> None:
         message: Info message
         use_rich: Whether to use Rich formatting
     """
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         console = Console()
         console.print(f"[cyan]ℹ[/cyan] {message}")
     else:
@@ -608,7 +589,7 @@ def display_success(message: str, use_rich: bool = True) -> None:
         message: Success message
         use_rich: Whether to use Rich formatting
     """
-    if use_rich and RICH_AVAILABLE:
+    if use_rich:
         console = Console()
         console.print(f"[bold green]✓[/bold green] {message}")
     else:
