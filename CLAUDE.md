@@ -114,8 +114,40 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 - **HTTP Library:** `urllib.request` (standard library, no external dependencies)
 - **Database:** SQLite3 (standard library, for caching)
 - **CLI Parsing:** `argparse` (standard library)
-- **Distribution:** Standalone `.py` script (no installation required)
+- **Distribution:** Python package (pip installable)
 - **Output Format:** JSON and HTML (self-contained with embedded CSS/JS)
+
+## Project Structure
+
+**Single Source Architecture** - All code exists in `vscode_scanner/` package only:
+
+```
+vsc-extension-scanner/
+├── vscode_scanner/          # Main package (single source of truth)
+│   ├── __init__.py
+│   ├── _version.py         # Version management
+│   ├── vscan.py            # Main CLI
+│   ├── vscan_api.py        # API client
+│   ├── cache_manager.py    # Caching
+│   ├── extension_discovery.py
+│   ├── output_formatter.py
+│   ├── html_report_generator.py
+│   └── utils.py
+├── scripts/
+│   └── bump_version.py     # Version management tool
+├── tests/                  # Test files
+├── docs/                   # Documentation
+├── vscan                   # Convenience wrapper for development
+├── setup.py                # Build configuration
+├── pyproject.toml          # Modern Python packaging
+└── MANIFEST.in             # Distribution rules
+```
+
+**Development Workflow:**
+- Edit files in `vscode_scanner/` directory (single source)
+- Run locally: `./vscan` or `python -m vscode_scanner.vscan`
+- Build distribution: `python -m build`
+- No duplicate files, no synchronization issues
 
 ## Development Commands
 
@@ -127,31 +159,39 @@ python3 tests/test_security.py     # Security vulnerability tests
 python3 tests/test_db_integrity.py # Database integrity tests (NEW)
 python3 tests/test_integration.py  # Integration tests (NEW)
 
-# Phase 2+: Run the tool (v2.2 implemented)
-python vscan.py                          # Standard scan
-python vscan.py --detailed               # Detailed scan with full data
-python vscan.py --extensions-dir /path   # Custom directory
-python vscan.py --output results.json    # Save JSON to file
-python vscan.py --output report.html     # Generate HTML report (auto-enables --detailed)
-python vscan.py --verbose                # Detailed progress
-python vscan.py --delay 2.0              # Custom delay
+# Run the tool (Development - use python -m or ./vscan wrapper)
+python -m vscode_scanner.vscan                     # Standard scan
+./vscan                                             # Using convenience wrapper
+./vscan --detailed                                  # Detailed scan with full data
+./vscan --extensions-dir /path                      # Custom directory
+./vscan --output results.json                       # Save JSON to file
+./vscan --output report.html                        # Generate HTML report (auto-enables --detailed)
+./vscan --verbose                                   # Detailed progress
+./vscan --delay 2.0                                 # Custom delay
+
+# Filtering options (v2.3)
+./vscan --publisher microsoft                       # Only scan Microsoft extensions
+./vscan --min-risk-level high                       # Only show high/critical risk
+./vscan --include-ids "ms-python.python"            # Scan only specific extension
+./vscan --exclude-ids "local.test"                  # Exclude specific extensions
 
 # Retry configuration (v2.2)
-python vscan.py --max-retries 5          # More aggressive retries
-python vscan.py --retry-delay 3.0        # Longer backoff delays
-python vscan.py --max-retries 0          # Disable retries (fail fast)
-python vscan.py --verbose                # See retry attempts in action
+./vscan --max-retries 5                             # More aggressive retries
+./vscan --retry-delay 3.0                           # Longer backoff delays
+./vscan --max-retries 0                             # Disable retries (fail fast)
+./vscan --verbose                                   # See retry attempts in action
 
 # Cache management
-python vscan.py --cache-stats            # Show cache statistics
-python vscan.py --clear-cache            # Clear all cache
-python vscan.py --refresh-cache          # Force refresh
-python vscan.py --no-cache               # Disable cache
-python vscan.py --cache-max-age 14       # 14-day cache expiry
-python vscan.py --cache-dir /custom/path # Custom cache location
+./vscan --cache-stats                    # Show cache statistics
+./vscan --clear-cache                    # Clear all cache
+./vscan --refresh-cache                  # Force refresh
+./vscan --no-cache                       # Disable cache
+./vscan --cache-max-age 14               # 14-day cache expiry
+./vscan --cache-dir /custom/path         # Custom cache location
 
 # Help
-python vscan.py --help
+./vscan --help
+python -m vscode_scanner.vscan --help
 ```
 
 ## Architecture Overview
