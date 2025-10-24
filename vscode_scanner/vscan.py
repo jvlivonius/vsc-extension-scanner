@@ -952,16 +952,29 @@ def main():
     return calculate_exit_code(stats['vulnerabilities_found'])
 
 
-if __name__ == "__main__":
+def cli_main():
+    """
+    New CLI entry point using Typer framework.
+
+    This is the primary entry point for v3.0+.
+    """
     try:
+        from .cli import app, TYPER_AVAILABLE
+
+        if TYPER_AVAILABLE and app:
+            app()
+        else:
+            # Fallback to old main() if Typer not available
+            print("Warning: Typer not available, using legacy CLI")
+            print("Install with: pip install 'vscode-extension-scanner[cli]'")
+            exit_code = main()
+            sys.exit(exit_code)
+    except ImportError:
+        # Fallback if cli module has issues
+        print("Warning: New CLI not available, using legacy CLI")
         exit_code = main()
         sys.exit(exit_code)
-    except KeyboardInterrupt:
-        log("\n\nScan interrupted by user", "WARNING")
-        sys.exit(2)
-    except Exception as e:
-        log(f"\n\nUnexpected error: {e}", "ERROR")
-        import traceback
-        if '--verbose' in sys.argv or '-v' in sys.argv:
-            traceback.print_exc()
-        sys.exit(2)
+
+
+if __name__ == "__main__":
+    cli_main()

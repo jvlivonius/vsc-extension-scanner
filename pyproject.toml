@@ -41,7 +41,7 @@ Repository = "https://github.com/jvlivonius/vsc-extension-scanner"
 Issues = "https://github.com/jvlivonius/vsc-extension-scanner/issues"
 
 [project.scripts]
-vscan = "vscode_scanner.vscan:main"
+vscan = "vscode_scanner.vscan:cli_main"
 
 [tool.setuptools]
 packages = ["vscode_scanner"]

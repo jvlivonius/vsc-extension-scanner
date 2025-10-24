@@ -51,7 +51,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "vscan=vscode_scanner.vscan:main",
+            "vscan=vscode_scanner.vscan:cli_main",
         ],
     },
     keywords="vscode security scanner extensions audit vscan",
