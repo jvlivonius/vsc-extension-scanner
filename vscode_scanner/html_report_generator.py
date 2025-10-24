@@ -167,10 +167,6 @@ class HTMLReportGenerator:
 
                 <button onclick="clearFilters()" class="btn-secondary">Clear Filters</button>
 
-                <button onclick="exportToCSV()" class="btn-secondary" title="Export visible results to CSV">
-                    📊 Export to CSV
-                </button>
-
                 <button onclick="toggleColumnDropdown()" class="btn-icon" title="Show/Hide Columns">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
@@ -2146,92 +2142,6 @@ class HTMLReportGenerator:
                     }
                 }
             });
-        }
-
-        // Export visible results to CSV
-        function exportToCSV() {
-            // Get all visible extension rows (respects current filters)
-            const rows = document.querySelectorAll('.extension-row');
-            const visibleRows = Array.from(rows).filter(row => {
-                const style = window.getComputedStyle(row);
-                return style.display !== 'none';
-            });
-
-            // Build CSV content
-            let csv = 'Extension ID,Name,Version,Publisher,Verified,Risk Level,Security Score,Vulnerabilities,Critical,High,Moderate,Low,Dependencies,Last Updated,vscan.dev URL\\n';
-
-            visibleRows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-
-                // Extract data from row attributes and cells
-                const extId = row.dataset.extensionId || '';
-                const name = row.dataset.name || '';
-                const version = cells[1]?.textContent.trim() || '';
-                const publisherName = row.dataset.publisherName || '';
-                const verified = row.dataset.verified === 'true' ? 'Yes' : 'No';
-                const riskLevel = row.dataset.risk || 'unknown';
-
-                // Extract security score from gauge
-                const scoreElement = cells[5]?.querySelector('.gauge-label');
-                const score = scoreElement ? scoreElement.textContent.trim() : '';
-
-                // Extract vulnerability counts (format: "Total: X (C:X H:X M:X L:X)")
-                const vulnText = cells[6]?.textContent.trim() || '';
-                const vulnMatch = vulnText.match(/Total:\\s*(\\d+)\\s*\\(C:(\\d+)\\s*H:(\\d+)\\s*M:(\\d+)\\s*L:(\\d+)\\)/);
-                const vulnTotal = vulnMatch ? vulnMatch[1] : '0';
-                const vulnCritical = vulnMatch ? vulnMatch[2] : '0';
-                const vulnHigh = vulnMatch ? vulnMatch[3] : '0';
-                const vulnModerate = vulnMatch ? vulnMatch[4] : '0';
-                const vulnLow = vulnMatch ? vulnMatch[5] : '0';
-
-                // Extract dependency count
-                const depText = cells[7]?.textContent.trim() || '';
-                const depMatch = depText.match(/^(\\d+)/);
-                const depCount = depMatch ? depMatch[1] : '0';
-
-                // Extract last updated
-                const lastUpdated = cells[8]?.textContent.trim() || '';
-
-                // Construct vscan.dev URL
-                const vscanUrl = extId ? \`https://vscan.dev/extension/\${extId}\` : '';
-
-                // Escape values for CSV (handle commas and quotes)
-                const escapeCSV = (str) => {
-                    if (str.includes(',') || str.includes('"') || str.includes('\\n')) {
-                        return '"' + str.replace(/"/g, '""') + '"';
-                    }
-                    return str;
-                };
-
-                csv += [
-                    escapeCSV(extId),
-                    escapeCSV(name),
-                    escapeCSV(version),
-                    escapeCSV(publisherName),
-                    verified,
-                    riskLevel,
-                    score,
-                    vulnTotal,
-                    vulnCritical,
-                    vulnHigh,
-                    vulnModerate,
-                    vulnLow,
-                    depCount,
-                    escapeCSV(lastUpdated),
-                    escapeCSV(vscanUrl)
-                ].join(',') + '\\n';
-            });
-
-            // Create download link
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'vscan-results.csv';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
         }
 
         // Initial sort by risk level (high to low)
