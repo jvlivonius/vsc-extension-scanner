@@ -477,11 +477,11 @@ def _scan_extension_fresh(
     if not use_rich:
         log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO")
 
-    # Scan via API
+    # Scan via API with workflow-level retry
     publisher = ext.get('publisher', '')
     name = ext.get('name', '')
 
-    result = api_client.scan_extension(publisher, name)
+    result = api_client.scan_extension_with_retry(publisher, name)
 
     # Merge with discovery metadata
     result = {**ext, **result}
@@ -657,8 +657,13 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         return
 
     if use_rich and RICH_AVAILABLE:
+        # Get retry stats if available
+        retry_stats = None
+        if 'api_client' in stats:
+            retry_stats = stats['api_client'].get_retry_stats()
+
         # Use Rich formatted summary
-        display_summary(results, scan_duration, use_rich=True)
+        display_summary(results, scan_duration, retry_stats=retry_stats, use_rich=True)
 
         # Show results table
         scan_results = results.get('extensions', [])
@@ -678,6 +683,14 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                 if cache_table:
                     console.print()
                     console.print(cache_table)
+
+            # Retry stats table (new)
+            if retry_stats:
+                from .display import create_retry_stats_table
+                retry_table = create_retry_stats_table(retry_stats)
+                if retry_table:
+                    console.print()
+                    console.print(retry_table)
     else:
         # Plain output
         log("", "INFO", force=True)
@@ -701,13 +714,28 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         # Retry statistics
         if 'api_client' in stats:
             retry_stats = stats['api_client'].get_retry_stats()
-            if retry_stats['total_retries'] > 0:
+            http_retries = retry_stats.get('total_retries', 0)
+            workflow_retries = retry_stats.get('total_workflow_retries', 0)
+
+            if http_retries > 0 or workflow_retries > 0:
                 log("", "INFO")
                 log("Retry Statistics:", "INFO")
-                log(f"  Total retry attempts: {retry_stats['total_retries']}", "INFO")
-                log(f"  Successful retries: {retry_stats['successful_retries']}", "INFO")
-                log(f"  Failed after retries: {retry_stats['failed_after_retries']}",
-                    "INFO" if retry_stats['failed_after_retries'] == 0 else "WARNING")
+
+                # HTTP-level retries
+                if http_retries > 0:
+                    log(f"  HTTP retry attempts: {http_retries}", "INFO")
+                    log(f"    Successful: {retry_stats.get('successful_retries', 0)}", "INFO")
+                    failed_http = retry_stats.get('failed_after_retries', 0)
+                    if failed_http > 0:
+                        log(f"    Failed: {failed_http}", "WARNING")
+
+                # Workflow-level retries
+                if workflow_retries > 0:
+                    log(f"  Workflow retry attempts: {workflow_retries}", "INFO")
+                    log(f"    Successful: {retry_stats.get('successful_workflow_retries', 0)}", "INFO")
+                    failed_workflow = retry_stats.get('failed_after_workflow_retries', 0)
+                    if failed_workflow > 0:
+                        log(f"    Failed (need manual rescan): {failed_workflow}", "WARNING")
 
         log("", "INFO", force=True)
         log(f"Vulnerabilities found: {stats['vulnerabilities_found']}",

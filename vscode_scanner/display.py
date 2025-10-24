@@ -267,6 +267,85 @@ def create_cache_stats_table(stats: Dict) -> Optional[Table]:
     return table
 
 
+def create_retry_stats_table(retry_stats: Dict) -> Optional[Table]:
+    """
+    Create a Rich table for retry statistics.
+
+    Args:
+        retry_stats: Retry statistics dictionary with keys:
+                    - total_retries: HTTP-level retries
+                    - successful_retries: HTTP-level successful retries
+                    - failed_after_retries: Failed after all HTTP retries
+                    - total_workflow_retries: Workflow-level retries (optional)
+                    - successful_workflow_retries: Successful workflow retries (optional)
+                    - failed_after_workflow_retries: Failed after workflow retries (optional)
+
+    Returns:
+        Table instance or None if Rich not available or no retries occurred
+    """
+    if not RICH_AVAILABLE:
+        return None
+
+    # Check if any retries occurred
+    http_retries = retry_stats.get('total_retries', 0)
+    workflow_retries = retry_stats.get('total_workflow_retries', 0)
+
+    if http_retries == 0 and workflow_retries == 0:
+        return None  # Don't show table if no retries
+
+    table = Table(show_header=True, header_style="bold cyan", title="Retry Statistics")
+
+    table.add_column("Metric", style="white", no_wrap=True)
+    table.add_column("Count", justify="right")
+    table.add_column("Details", style="dim")
+
+    # HTTP-level retries
+    if http_retries > 0:
+        successful_http = retry_stats.get('successful_retries', 0)
+        failed_http = retry_stats.get('failed_after_retries', 0)
+
+        # Calculate success rate for color coding
+        success_rate = (successful_http / http_retries * 100) if http_retries > 0 else 0
+        count_style = "green" if success_rate >= 80 else "yellow" if success_rate >= 50 else "red"
+
+        table.add_row(
+            "HTTP Retries",
+            f"[{count_style}]{http_retries}[/{count_style}]",
+            f"✓ {successful_http} succeeded"
+        )
+
+        if failed_http > 0:
+            table.add_row(
+                "Failed (HTTP)",
+                f"[red]{failed_http}[/red]",
+                "✗ After all retries"
+            )
+
+    # Workflow-level retries
+    if workflow_retries > 0:
+        successful_workflow = retry_stats.get('successful_workflow_retries', 0)
+        failed_workflow = retry_stats.get('failed_after_workflow_retries', 0)
+
+        # Calculate success rate for color coding
+        success_rate = (successful_workflow / workflow_retries * 100) if workflow_retries > 0 else 0
+        count_style = "green" if success_rate >= 80 else "yellow" if success_rate >= 50 else "red"
+
+        table.add_row(
+            "Workflow Retries",
+            f"[{count_style}]{workflow_retries}[/{count_style}]",
+            f"✓ {successful_workflow} recovered"
+        )
+
+        if failed_workflow > 0:
+            table.add_row(
+                "Failed (Workflow)",
+                f"[red]{failed_workflow}[/red]",
+                "✗ Need manual rescan"
+            )
+
+    return table
+
+
 def create_filter_summary_table(args, original_count: int, filtered_count: int) -> Optional[Table]:
     """
     Create a table showing active filters and their effect.
@@ -409,13 +488,14 @@ class ScanDashboard:
         return Panel(content, title="VS Code Security Scan", border_style="blue", expand=False)
 
 
-def display_summary(results: Dict, duration: float, use_rich: bool = True) -> None:
+def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] = None, use_rich: bool = True) -> None:
     """
     Display final scan summary.
 
     Args:
         results: Scan results dictionary
         duration: Scan duration in seconds
+        retry_stats: Optional retry statistics dictionary
         use_rich: Whether to use Rich formatting
     """
     summary = results.get('summary', {})
@@ -442,6 +522,21 @@ def display_summary(results: Dict, duration: float, use_rich: bool = True) -> No
         hit_rate = cache_stats.get('cache_hit_rate', 0)
 
         content.append(f"\n⚡ Cache hit rate: {hit_rate:.1f}%\n", style="cyan")
+
+        # Retry stats (if any retries occurred)
+        if retry_stats:
+            http_retries = retry_stats.get('total_retries', 0)
+            workflow_retries = retry_stats.get('total_workflow_retries', 0)
+            successful_http = retry_stats.get('successful_retries', 0)
+            successful_workflow = retry_stats.get('successful_workflow_retries', 0)
+            failed = retry_stats.get('failed_after_retries', 0) + retry_stats.get('failed_after_workflow_retries', 0)
+
+            if http_retries > 0 or workflow_retries > 0:
+                total_successful = successful_http + successful_workflow
+                if failed > 0:
+                    content.append(f"🔄 Retries: {total_successful} successful, {failed} failed\n", style="yellow")
+                else:
+                    content.append(f"🔄 Retries: {total_successful} successful\n", style="green")
 
         # Duration
         duration_min = int(duration // 60)

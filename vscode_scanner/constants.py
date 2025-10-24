@@ -23,13 +23,18 @@ MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB maximum response size
 # Retry Settings
 # =============================================================================
 
-DEFAULT_MAX_RETRIES = 3  # Maximum retry attempts
+# HTTP-level retry settings (retries individual API calls)
+DEFAULT_MAX_RETRIES = 3  # Maximum retry attempts for HTTP requests
 DEFAULT_RETRY_BASE_DELAY = 2.0  # Base delay for exponential backoff (seconds)
+
+# Workflow-level retry settings (retries entire scan workflow)
+DEFAULT_WORKFLOW_MAX_RETRIES = 2  # Maximum retry attempts for scan workflow
+DEFAULT_WORKFLOW_RETRY_DELAY = 5.0  # Base delay between workflow retries (seconds)
 
 # HTTP status codes that should trigger a retry (transient errors)
 RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
 
-# Error message patterns that indicate retryable errors
+# Error message patterns that indicate retryable errors (HTTP level)
 RETRYABLE_ERROR_PATTERNS = [
     "timeout",
     "timed out",
@@ -39,6 +44,18 @@ RETRYABLE_ERROR_PATTERNS = [
     "502",  # Bad Gateway in message
     "503",  # Service Unavailable in message
     "504",  # Gateway Timeout in message
+]
+
+# Error patterns that indicate workflow-level retry should be attempted
+WORKFLOW_RETRYABLE_ERROR_PATTERNS = [
+    "rate limit exceeded",
+    "server error (http 503)",
+    "server error (http 502)",
+    "gateway timeout",
+    "timeout after",  # Request timeout
+    "analysis timeout",  # Polling timeout
+    "service unavailable",
+    "bad gateway",
 ]
 
 # =============================================================================

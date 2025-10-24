@@ -21,8 +21,11 @@ from .constants import (
     MAX_RESPONSE_SIZE_BYTES,
     DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_BASE_DELAY,
+    DEFAULT_WORKFLOW_MAX_RETRIES,
+    DEFAULT_WORKFLOW_RETRY_DELAY,
     RETRYABLE_STATUS_CODES,
-    RETRYABLE_ERROR_PATTERNS
+    RETRYABLE_ERROR_PATTERNS,
+    WORKFLOW_RETRYABLE_ERROR_PATTERNS
 )
 
 
@@ -38,7 +41,9 @@ class VscanAPIClient:
         verbose: bool = False,
         timeout: int = API_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
-        retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY
+        retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
+        max_workflow_retries: int = DEFAULT_WORKFLOW_MAX_RETRIES,
+        workflow_retry_delay: float = DEFAULT_WORKFLOW_RETRY_DELAY
     ):
         """
         Initialize API client.
@@ -47,8 +52,10 @@ class VscanAPIClient:
             delay: Delay between API requests in seconds (default: from constants)
             verbose: Enable verbose logging
             timeout: Timeout for individual HTTP requests in seconds (default: from constants)
-            max_retries: Maximum retry attempts for failed requests (default: from constants)
+            max_retries: Maximum retry attempts for failed HTTP requests (default: from constants)
             retry_base_delay: Base delay for exponential backoff (default: from constants)
+            max_workflow_retries: Maximum retry attempts for scan workflow (default: from constants)
+            workflow_retry_delay: Base delay between workflow retries (default: from constants)
         """
         self.delay = delay
         self.verbose = verbose
@@ -56,10 +63,18 @@ class VscanAPIClient:
         self.last_request_time = 0
         self.max_retries = max_retries
         self.retry_base_delay = retry_base_delay
+        self.max_workflow_retries = max_workflow_retries
+        self.workflow_retry_delay = workflow_retry_delay
+
+        # HTTP-level retry statistics
         self.retry_stats = {
             "total_retries": 0,
             "successful_retries": 0,
-            "failed_after_retries": 0
+            "failed_after_retries": 0,
+            # Workflow-level retry statistics
+            "total_workflow_retries": 0,
+            "successful_workflow_retries": 0,
+            "failed_after_workflow_retries": 0
         }
 
     def _throttle(self):
@@ -805,8 +820,105 @@ class VscanAPIClient:
 
         Returns:
             Dictionary with retry statistics:
-            - total_retries: Total number of retry attempts made
-            - successful_retries: Number of retries that eventually succeeded
-            - failed_after_retries: Number of requests that failed after all retries
+            - total_retries: Total number of HTTP retry attempts made
+            - successful_retries: Number of HTTP retries that eventually succeeded
+            - failed_after_retries: Number of requests that failed after all HTTP retries
+            - total_workflow_retries: Total number of workflow retry attempts made
+            - successful_workflow_retries: Number of workflow retries that eventually succeeded
+            - failed_after_workflow_retries: Number of scans that failed after all workflow retries
         """
         return self.retry_stats.copy()
+
+    def _is_workflow_retryable_error(self, error_message: str) -> bool:
+        """
+        Determine if an error should trigger a workflow-level retry.
+
+        Workflow retries are for entire scan workflows that fail due to transient issues.
+        These are different from HTTP-level retries which retry individual API calls.
+
+        Args:
+            error_message: The error message from scan_extension()
+
+        Returns:
+            True if the error indicates a transient issue that should be retried at workflow level
+        """
+        if not error_message:
+            return False
+
+        error_lower = error_message.lower()
+
+        # Check for workflow-retryable error patterns
+        for pattern in WORKFLOW_RETRYABLE_ERROR_PATTERNS:
+            if pattern in error_lower:
+                return True
+
+        return False
+
+    def scan_extension_with_retry(
+        self,
+        publisher: str,
+        name: str,
+        progress_callback: Optional[callable] = None,
+        store_raw_response: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Scan extension with workflow-level retry for transient errors.
+
+        This wraps scan_extension() and retries the entire workflow if it fails
+        due to transient errors like rate limiting, timeouts, or server errors.
+
+        Args:
+            publisher: Extension publisher
+            name: Extension name
+            progress_callback: Optional callback(progress, message) for progress updates
+            store_raw_response: Whether to store the raw API response (default: False)
+
+        Returns:
+            Scan result dict with complete parsed data
+        """
+        last_result = None
+
+        for attempt in range(self.max_workflow_retries + 1):  # +1 for initial attempt
+            # Call the regular scan_extension method
+            result = self.scan_extension(publisher, name, progress_callback, store_raw_response)
+
+            # If scan succeeded, return immediately
+            if result['scan_status'] == 'success':
+                # If this was a retry (attempt > 0), increment successful retry counter
+                if attempt > 0:
+                    self.retry_stats['successful_workflow_retries'] += 1
+                return result
+
+            # Scan failed - check if we should retry
+            last_result = result
+            error_message = result.get('error', '')
+
+            # Check if this is the last attempt
+            if attempt >= self.max_workflow_retries:
+                # All retries exhausted
+                self.retry_stats['failed_after_workflow_retries'] += 1
+                return result
+
+            # Check if error is workflow-retryable
+            if not self._is_workflow_retryable_error(error_message):
+                # Non-retryable error, fail immediately without retrying
+                return result
+
+            # This is a retryable error - increment counter and wait before retry
+            self.retry_stats['total_workflow_retries'] += 1
+
+            # Calculate backoff delay (exponential: 5s, 10s for default config)
+            delay = self.workflow_retry_delay * (2 ** attempt)
+
+            # Log retry attempt if verbose
+            if self.verbose:
+                from .utils import log
+                log(f"  Workflow retry {attempt + 1}/{self.max_workflow_retries} "
+                    f"after error: {error_message[:100]}", "WARNING")
+                log(f"  Waiting {delay:.1f}s before workflow retry...", "INFO")
+
+            # Wait before retrying
+            time.sleep(delay)
+
+        # This should never be reached, but return last result just in case
+        return last_result
