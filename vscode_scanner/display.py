@@ -152,13 +152,18 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     remaining_count = len(scan_results) - len(results_to_show)
 
     for result in results_to_show:
-        # Get risk level and format
-        risk_level = result.get('risk_level', 'unknown').lower()
+        # Get security data (handle both flat and nested structures)
+        # OutputFormatter nests data in 'security' dict, but raw results are flat
+        security = result.get('security', {})
+        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
+        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
+        score = security.get('score') or result.get('security_score', 0)
+
+        # Format risk level
         emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY['unknown'])
         risk_display = f"{emoji} {label}"
 
         # Get vulnerability count
-        vulns = result.get('vulnerabilities', {})
         vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
 
         # Format extension name with version
@@ -169,8 +174,7 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
         else:
             ext_display = ext_name
 
-        # Security score
-        score = result.get('security_score', 0)
+        # Format security score
         score_display = f"{score}/100" if score else "N/A"
 
         # Add row with color based on risk

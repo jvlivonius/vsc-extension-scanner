@@ -249,6 +249,9 @@ def scan(
             quiet=quiet
         )
         raise typer.Exit(code=exit_code)
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally (they're expected exit mechanisms)
+        raise
     except KeyboardInterrupt:
         typer.echo("\n\nScan interrupted by user", err=True)
         raise typer.Exit(code=2)
