@@ -563,15 +563,12 @@ def _generate_output(
     # Detect output format
     is_html_output = args.output and args.output.endswith('.html')
 
-    # Always use detailed mode
-    use_detailed = True
-
+    # Format output with all available data
     formatter = OutputFormatter()
     results = formatter.format_output(
         scan_results,
         scan_timestamp,
         scan_duration,
-        detailed=use_detailed,
         cache_stats=cache_stats_data if not args.no_cache else None
     )
 

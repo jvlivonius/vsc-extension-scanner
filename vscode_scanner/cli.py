@@ -572,14 +572,13 @@ def report(
         else:
             print(f"ℹ Found {len(cached_results)} cached extensions")
 
-        # Format output (always use detailed mode)
+        # Format output with all available data
         from datetime import datetime
         formatter = OutputFormatter()
         formatted_results = formatter.format_output(
             scan_results=cached_results,
             scan_timestamp=datetime.now().isoformat(),
             scan_duration=0.0,
-            detailed=True,
             cache_stats={'from_cache': len(cached_results), 'fresh_scans': 0}
         )
 

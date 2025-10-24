@@ -2,7 +2,7 @@
 """
 Output Formatter Module
 
-Formats scan results into JSON output with support for standard and detailed modes.
+Formats scan results into comprehensive JSON output.
 Schema version 2.0 with reorganized structure.
 """
 
@@ -11,7 +11,7 @@ from ._version import SCHEMA_VERSION
 
 
 class OutputFormatter:
-    """Formats scan results into standardized JSON output with mode selection."""
+    """Formats scan results into standardized JSON output with comprehensive data."""
 
     SCHEMA_VERSION = SCHEMA_VERSION
 
@@ -20,35 +20,30 @@ class OutputFormatter:
         scan_results: List[Dict[str, Any]],
         scan_timestamp: str,
         scan_duration: float,
-        detailed: bool = False,
         cache_stats: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
-        Format scan results into JSON output.
+        Format scan results into comprehensive JSON output.
 
         Args:
             scan_results: List of extension scan results
             scan_timestamp: ISO 8601 timestamp of scan start
             scan_duration: Scan duration in seconds
-            detailed: Enable detailed output mode
             cache_stats: Optional cache statistics
 
         Returns:
-            Formatted output dictionary
+            Formatted output dictionary with all available data
         """
         # Build summary
         summary = self._format_summary(scan_results, scan_timestamp, scan_duration, cache_stats)
 
-        # Format extensions based on mode
-        if detailed:
-            extensions = [self._format_extension_detailed(result) for result in scan_results]
-        else:
-            extensions = [self._format_extension_standard(result) for result in scan_results]
+        # Format extensions with all available data
+        extensions = [self._format_extension(result) for result in scan_results]
 
         # Build output
         output = {
             "schema_version": self.SCHEMA_VERSION,
-            "output_mode": "detailed" if detailed else "standard",
+            "output_mode": "detailed",
             "summary": summary,
             "extensions": extensions
         }
@@ -115,15 +110,15 @@ class OutputFormatter:
 
         return summary
 
-    def _format_extension_standard(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_extension(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Format extension for standard output mode (enhanced but concise).
+        Format extension with comprehensive data.
 
         Args:
             result: Extension scan result
 
         Returns:
-            Formatted extension dict
+            Formatted extension dict with all available data
         """
         # Extract metadata
         metadata = result.get('metadata', {})
@@ -131,6 +126,7 @@ class OutputFormatter:
         publisher_info = metadata.get('publisher', {})
         statistics = metadata.get('statistics', {})
 
+        # Build base extension structure
         extension = {
             "id": result.get('id') or f"{result.get('publisher')}.{result.get('name')}",
             "name": result.get('name', 'Unknown'),
@@ -149,7 +145,8 @@ class OutputFormatter:
             "statistics": {
                 "installs": statistics.get('installs'),
                 "rating": statistics.get('rating'),
-                "rating_count": statistics.get('rating_count')
+                "rating_count": statistics.get('rating_count'),
+                "updates": statistics.get('updates')
             },
             "scan_status": result.get('scan_status', 'error'),
             "scan_timestamp": result.get('analysis_timestamp')
@@ -157,9 +154,19 @@ class OutputFormatter:
 
         # Add success-specific fields
         if result.get('scan_status') == 'success':
+            security = result.get('security', {})
             dependencies = result.get('dependencies', {})
             risk_factors = result.get('risk_factors', [])
 
+            # Add extended metadata
+            extension["homepage_url"] = metadata.get('homepage_url')
+            extension["support_url"] = metadata.get('support_url')
+            extension["privacy_policy_url"] = metadata.get('privacy_policy_url')
+            extension["keywords"] = metadata.get('keywords', [])
+            extension["categories"] = metadata.get('categories', [])
+            extension["author_name"] = metadata.get('author_name')
+
+            # Add comprehensive security section
             extension["security"] = {
                 "score": result.get('security_score'),
                 "risk_level": result.get('risk_level'),
@@ -172,10 +179,28 @@ class OutputFormatter:
                     "info": 0
                 }),
                 "risk_factors_count": len(risk_factors),
+                "risk_factors": risk_factors,
                 "dependencies_count": dependencies.get('total_count', 0),
-                "dependencies_with_vulnerabilities": dependencies.get('with_vulnerabilities', 0)
+                "dependencies_with_vulnerabilities": dependencies.get('with_vulnerabilities', 0),
+                "score_contributions": security.get('score_contributions', {}),
+                "module_risk_levels": security.get('module_risk_levels', {}),
+                "security_notes": security.get('security_notes', []),
+                "dependencies": {
+                    "total_count": dependencies.get('total_count', 0),
+                    "runtime_count": dependencies.get('runtime_count', 0),
+                    "dev_count": dependencies.get('dev_count', 0),
+                    "with_vulnerabilities": dependencies.get('with_vulnerabilities', 0),
+                    "high_risk_count": dependencies.get('high_risk_count', 0),
+                    "medium_risk_count": dependencies.get('medium_risk_count', 0),
+                    "low_risk_count": dependencies.get('low_risk_count', 0),
+                    "vulnerabilities": dependencies.get('vulnerabilities', {}),
+                    "list": dependencies.get('list', [])
+                }
             }
+
             extension["vscan_url"] = result.get('vscan_url')
+            extension["has_errors"] = result.get('has_errors', False)
+            extension["raw_analysis_id"] = result.get('analysis_id')
         else:
             # Add error information
             extension["error"] = result.get('error', 'Unknown error')
@@ -194,65 +219,6 @@ class OutputFormatter:
                 "dependencies_count": 0,
                 "dependencies_with_vulnerabilities": 0
             }
-
-        return extension
-
-    def _format_extension_detailed(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Format extension for detailed output mode (comprehensive).
-
-        Args:
-            result: Extension scan result
-
-        Returns:
-            Formatted extension dict with all available data
-        """
-        # Start with standard format
-        extension = self._format_extension_standard(result)
-
-        # Add detailed fields if scan was successful
-        if result.get('scan_status') == 'success':
-            metadata = result.get('metadata', {})
-            security = result.get('security', {})
-            dependencies = result.get('dependencies', {})
-            risk_factors = result.get('risk_factors', [])
-
-            # Add extended metadata
-            extension["homepage_url"] = metadata.get('homepage_url')
-            extension["support_url"] = metadata.get('support_url')
-            extension["privacy_policy_url"] = metadata.get('privacy_policy_url')
-            extension["keywords"] = metadata.get('keywords', [])
-            extension["categories"] = metadata.get('categories', [])
-            extension["author_name"] = metadata.get('author_name')
-
-            # Update statistics with full data
-            statistics = metadata.get('statistics', {})
-            extension["statistics"]["updates"] = statistics.get('updates')
-
-            # Add detailed security section
-            extension["security"]["score_contributions"] = security.get('score_contributions', {})
-            extension["security"]["module_risk_levels"] = security.get('module_risk_levels', {})
-            extension["security"]["security_notes"] = security.get('security_notes', [])
-
-            # Add risk factors
-            extension["security"]["risk_factors"] = risk_factors
-
-            # Add detailed dependencies
-            extension["security"]["dependencies"] = {
-                "total_count": dependencies.get('total_count', 0),
-                "runtime_count": dependencies.get('runtime_count', 0),
-                "dev_count": dependencies.get('dev_count', 0),
-                "with_vulnerabilities": dependencies.get('with_vulnerabilities', 0),
-                "high_risk_count": dependencies.get('high_risk_count', 0),
-                "medium_risk_count": dependencies.get('medium_risk_count', 0),
-                "low_risk_count": dependencies.get('low_risk_count', 0),
-                "vulnerabilities": dependencies.get('vulnerabilities', {}),
-                "list": dependencies.get('list', [])
-            }
-
-            # Add analysis metadata
-            extension["has_errors"] = result.get('has_errors', False)
-            extension["raw_analysis_id"] = result.get('analysis_id')
 
         return extension
 
@@ -329,14 +295,10 @@ def main():
         "cache_hit_rate": 100.0
     }
 
-    # Test standard mode
-    print("=== STANDARD MODE ===")
-    output_standard = formatter.format_output(test_results, timestamp, duration, detailed=False, cache_stats=cache_stats)
-    print(json.dumps(output_standard, indent=2))
-
-    print("\n\n=== DETAILED MODE ===")
-    output_detailed = formatter.format_output(test_results, timestamp, duration, detailed=True, cache_stats=cache_stats)
-    print(json.dumps(output_detailed, indent=2))
+    # Test output formatter
+    print("=== FORMATTED OUTPUT ===")
+    output = formatter.format_output(test_results, timestamp, duration, cache_stats=cache_stats)
+    print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":
