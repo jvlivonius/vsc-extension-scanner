@@ -476,25 +476,31 @@ fi
 ### What's Included in the Wheel
 
 ```
-vscode_extension_scanner-2.2.0-py3-none-any.whl contains:
+vscode_extension_scanner-{VERSION}-py3-none-any.whl contains:
 
 vscode_scanner/
 ├── __init__.py              # Package initialization
+├── _version.py              # Version management
 ├── vscan.py                 # Main CLI entry point
+├── cli.py                   # Typer CLI framework
+├── scanner.py               # Core scan logic
+├── display.py               # Rich formatting
 ├── vscan_api.py             # vscan.dev API client
 ├── cache_manager.py         # SQLite caching system
+├── config_manager.py        # Configuration file support
+├── constants.py             # Centralized constants
 ├── extension_discovery.py   # Extension detection
-├── output_formatter.py      # JSON output generation
+├── output_formatter.py      # JSON/CSV output generation
 ├── html_report_generator.py # HTML report generation
 └── utils.py                 # Shared utilities
 
 Plus:
 - LICENSE (MIT)
 - README.md
-- Full documentation (docs/)
+- Package metadata
 ```
 
-**Total size:** 44 KB (uncompressed: ~150 KB)
+**Typical size:** Under 100 KB compressed
 
 ---
 
@@ -510,12 +516,26 @@ Plus:
 
 ### Package Integrity
 
-**Verify wheel integrity (optional):**
-```bash
-# Generate checksum when building
-sha256sum vscode_extension_scanner-2.2.0-py3-none-any.whl > checksum.txt
+**Generate checksum when building (optional):**
 
-# Users verify before installing
+```bash
+# macOS
+shasum -a 256 vscode_extension_scanner-*.whl > checksum.txt
+
+# Linux
+sha256sum vscode_extension_scanner-*.whl > checksum.txt
+
+# Windows (PowerShell)
+Get-FileHash vscode_extension_scanner-*.whl -Algorithm SHA256 > checksum.txt
+```
+
+**Users verify before installing:**
+
+```bash
+# macOS
+shasum -a 256 -c checksum.txt
+
+# Linux
 sha256sum -c checksum.txt
 ```
 
@@ -532,18 +552,21 @@ sha256sum -c checksum.txt
 ### Q: Do users need internet access?
 
 **A:**
-- **Installation**: No (offline install from wheel file)
-- **Usage**: Yes (vscan needs internet to query vscan.dev API)
+
+- **Installation**: Yes (to download dependencies: Rich and Typer from PyPI)
+- **Usage**: Yes (to query vscan.dev API for security analysis)
+- **Offline mode**: Cache can be used for repeated scans without API calls
 
 ---
 
 ### Q: Can multiple versions be installed?
 
 **A:** No, pip will replace the previous version. To run different versions, use virtual environments:
+
 ```bash
 python3 -m venv vscan-env
-source vscan-env/bin/activate
-pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
+source vscan-env/bin/activate  # On Windows: vscan-env\Scripts\activate
+pip install vscode_extension_scanner-*.whl
 ```
 
 ---
@@ -551,6 +574,7 @@ pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
 ### Q: How do users uninstall?
 
 **A:**
+
 ```bash
 pip uninstall vscode-extension-scanner
 ```
@@ -560,7 +584,8 @@ pip uninstall vscode-extension-scanner
 ### Q: Does it work on all operating systems?
 
 **A:** Yes! The wheel is `py3-none-any` which means:
-- ✅ **py3**: Python 3.x compatible
+
+- ✅ **py3**: Python 3.x compatible (3.8+)
 - ✅ **none**: No C extensions (pure Python)
 - ✅ **any**: Any operating system (macOS, Windows, Linux)
 
@@ -568,15 +593,16 @@ pip uninstall vscode-extension-scanner
 
 ### Q: Can I publish this to PyPI later?
 
-**A:** Yes! If you decide to make it public later:
+**A:** Yes! If you decide to make it public:
+
 ```bash
 # Install twine
 pip install twine
 
-# Upload to PyPI
-twine upload dist/vscode_extension_scanner-2.2.0-py3-none-any.whl
+# Upload to PyPI (requires PyPI account)
+twine upload dist/vscode_extension_scanner-*.whl
 
-# Users install via
+# Users can then install via
 pip install vscode-extension-scanner
 ```
 
@@ -587,17 +613,21 @@ pip install vscode-extension-scanner
 ### For Maintainers
 
 **Rebuild wheel:**
+
 ```bash
 python3 -m build
 ```
 
 **Test wheel locally:**
+
 ```bash
-pip install dist/vscode_extension_scanner-2.2.0-py3-none-any.whl --force-reinstall
+pip install dist/vscode_extension_scanner-*.whl --force-reinstall
+vscan --version
 vscan --help
 ```
 
 **Clean build artifacts:**
+
 ```bash
 rm -rf build/ dist/ *.egg-info
 ```
@@ -607,14 +637,20 @@ rm -rf build/ dist/ *.egg-info
 ### For Users
 
 **Get help:**
+
 ```bash
 vscan --help
+vscan scan --help
+vscan cache --help
+vscan config --help
 ```
 
 **Report issues:**
+
 Contact: [your-email@company.com]
 
 **Documentation:**
+
 See README.md included in distribution
 
 ---
@@ -622,35 +658,35 @@ See README.md included in distribution
 ## Quick Reference Card (Print & Share)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│   VS Code Extension Security Scanner v2.2.0            │
-├─────────────────────────────────────────────────────────┤
-│ INSTALL:                                                │
-│   pip install vscode_extension_scanner-2.2.0-py3-none-any.whl │
-│                                                         │
-│ RUN:                                                    │
-│   vscan                    # Standard scan              │
-│   vscan --detailed         # Detailed report           │
-│   vscan --output scan.json # Save to file              │
-│   vscan --verbose          # Show progress             │
-│                                                         │
-│ HELP:                                                   │
-│   vscan --help             # All options                │
-│                                                         │
-│ UNINSTALL:                                              │
-│   pip uninstall vscode-extension-scanner               │
-│                                                         │
-│ REQUIREMENTS:                                           │
-│   Python 3.8+                                          │
-│   Internet access (for vscan.dev API)                  │
-│                                                         │
-│ SUPPORT:                                                │
-│   [your-email@company.com]                             │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│   VS Code Extension Security Scanner                    │
+├──────────────────────────────────────────────────────────┤
+│ INSTALL:                                                 │
+│   pip install vscode_extension_scanner-*.whl            │
+│                                                          │
+│ RUN:                                                     │
+│   vscan scan                    # Standard scan          │
+│   vscan scan --output report.html  # HTML report        │
+│   vscan scan --output data.csv     # CSV export         │
+│   vscan cache stats             # Cache statistics      │
+│   vscan config show             # View configuration    │
+│                                                          │
+│ HELP:                                                    │
+│   vscan --help                  # Main help             │
+│   vscan scan --help             # Scan options          │
+│                                                          │
+│ UNINSTALL:                                               │
+│   pip uninstall vscode-extension-scanner                │
+│                                                          │
+│ REQUIREMENTS:                                            │
+│   Python 3.8+                                           │
+│   Internet access (for dependencies and API)            │
+│                                                          │
+│ SUPPORT:                                                 │
+│   [your-email@company.com]                              │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-**Last Updated:** 2025-10-23
-**Maintainer:** Joerg von Livonius
 **License:** MIT
