@@ -59,7 +59,7 @@ def run_scan(
         retry_delay: Base delay for exponential backoff
         cache_dir: Custom cache directory
         cache_max_age: Maximum cache age in days
-        refresh_cache: Force refresh all cached results
+        refresh_cache: Force refresh of scanned extensions (ignore cache for filtered extensions)
         no_cache: Disable caching
         publisher: Filter by publisher name
         include_ids: Comma-separated extension IDs to include
@@ -339,7 +339,7 @@ def _scan_extensions(
         elif args.no_cache:
             log("Cache disabled", "INFO")
         elif args.refresh_cache:
-            log("Forcing cache refresh", "INFO")
+            log("Forcing cache refresh for scanned extensions", "INFO")
 
     api_client = VscanAPIClient(
         delay=args.delay,
@@ -478,7 +478,7 @@ def _scan_extension_fresh(
 
     # Cache the result if cache is enabled
     if cache_manager and result.get('scan_status') == 'success':
-        cache_manager.cache_result(extension_id, version, result)
+        cache_manager.save_result(extension_id, version, result)
 
     scan_results.append(result)
 

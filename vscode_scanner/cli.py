@@ -34,9 +34,20 @@ if TYPER_AVAILABLE:
         rich_markup_mode="rich" if RICH_AVAILABLE else None,
         no_args_is_help=True
     )
+
+    # Create cache subcommand group
+    cache_app = typer.Typer(
+        name="cache",
+        help="Manage scan result cache",
+        add_completion=False,
+        rich_markup_mode="rich" if RICH_AVAILABLE else None,
+        no_args_is_help=True
+    )
+    app.add_typer(cache_app, name="cache")
 else:
     # Fallback if Typer is not available
     app = None
+    cache_app = None
 
 
 def bounded_int_validator(value: int, min_val: int, max_val: int, name: str) -> int:
@@ -60,7 +71,7 @@ def scan(
         None,
         "--output", "-o",
         help="Output file path (.json or .html)",
-        rich_help_panel="Output Options"
+        rich_help_panel="Options"
     ),
 
     # Display options
@@ -68,19 +79,19 @@ def scan(
         False,
         "--verbose", "-v",
         help="Show detailed progress and debugging information",
-        rich_help_panel="Basic Options"
+        rich_help_panel="Options"
     ),
     quiet: bool = typer.Option(
         False,
         "--quiet", "-q",
         help="Minimal output (only show final summary)",
-        rich_help_panel="Basic Options"
+        rich_help_panel="Options"
     ),
     plain: bool = typer.Option(
         False,
         "--plain",
         help="Disable colors and rich formatting (for CI/scripts)",
-        rich_help_panel="Basic Options"
+        rich_help_panel="Options"
     ),
 
     # Filtering options
@@ -151,7 +162,7 @@ def scan(
     refresh_cache: bool = typer.Option(
         False,
         "--refresh-cache",
-        help="Force refresh of all cached results (ignore existing cache)",
+        help="Force refresh of scanned extensions (ignore cached results for filtered extensions)",
         rich_help_panel="Cache Options"
     ),
     cache_dir: Optional[Path] = typer.Option(
@@ -256,7 +267,7 @@ def scan(
         raise typer.Exit(code=2)
 
 
-@app.command("cache-stats")
+@cache_app.command("stats")
 def cache_stats(
     cache_dir: Optional[Path] = typer.Option(
         None,
@@ -289,13 +300,13 @@ def cache_stats(
     [bold cyan]Examples:[/bold cyan]
 
         [dim]# Show cache statistics with default settings[/dim]
-        $ vscan cache-stats
+        $ vscan cache stats
 
         [dim]# Check for stale entries older than 14 days[/dim]
-        $ vscan cache-stats --cache-max-age 14
+        $ vscan cache stats --cache-max-age 14
 
         [dim]# Show stats with plain output (no colors)[/dim]
-        $ vscan cache-stats --plain
+        $ vscan cache stats --plain
     """
     try:
         # Validate parameter
@@ -382,7 +393,7 @@ def cache_stats(
         raise typer.Exit(code=2)
 
 
-@app.command("cache-clear")
+@cache_app.command("clear")
 def cache_clear(
     cache_dir: Optional[Path] = typer.Option(
         None,
@@ -412,13 +423,13 @@ def cache_clear(
     [bold cyan]Examples:[/bold cyan]
 
         [dim]# Clear cache with confirmation prompt[/dim]
-        $ vscan cache-clear
+        $ vscan cache clear
 
         [dim]# Clear cache without confirmation[/dim]
-        $ vscan cache-clear --force
+        $ vscan cache clear --force
 
         [dim]# Clear custom cache directory[/dim]
-        $ vscan cache-clear --cache-dir /custom/path
+        $ vscan cache clear --cache-dir /custom/path
     """
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
     use_rich = should_use_rich(plain_flag=plain)
