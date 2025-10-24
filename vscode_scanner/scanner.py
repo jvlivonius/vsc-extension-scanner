@@ -32,7 +32,6 @@ def run_scan(
     extensions_dir: Optional[str] = None,
     output: Optional[str] = None,
     delay: float = 1.5,
-    verbose: bool = False,
     max_retries: int = 3,
     retry_delay: float = 2.0,
     cache_dir: Optional[str] = None,
@@ -54,7 +53,6 @@ def run_scan(
         extensions_dir: Custom VS Code extensions directory
         output: Output file path (.json or .html)
         delay: Delay between API requests
-        verbose: Show detailed progress
         max_retries: Maximum retry attempts
         retry_delay: Base delay for exponential backoff
         cache_dir: Custom cache directory
@@ -66,13 +64,13 @@ def run_scan(
         exclude_ids: Comma-separated extension IDs to exclude
         min_risk_level: Minimum risk level filter
         plain: Disable Rich formatting
-        quiet: Minimal output
+        quiet: Minimal output (single-line summary only)
 
     Returns:
         Exit code (0=clean, 1=vulnerabilities, 2=error)
     """
     # Setup logging
-    setup_logging(verbose)
+    setup_logging(False)  # No verbose logging needed
 
     # Determine if we should use Rich output
     use_rich = should_use_rich(plain_flag=plain) and not quiet
@@ -99,7 +97,6 @@ def run_scan(
     args.extensions_dir = extensions_dir
     args.output = output
     args.delay = delay
-    args.verbose = verbose
     args.max_retries = max_retries
     args.retry_delay = retry_delay
     args.cache_dir = cache_dir
@@ -121,7 +118,7 @@ def run_scan(
         else:
             log(error_msg, "ERROR")
         error_type = get_error_type(error_msg)
-        show_error_help(error_type, verbose)
+        show_error_help(error_type)
         return 2
     except Exception as e:
         error_msg = sanitize_string(str(e), max_length=200)
@@ -130,7 +127,7 @@ def run_scan(
         else:
             log(f"Error discovering extensions: {error_msg}", "ERROR")
         error_type = get_error_type(error_msg)
-        show_error_help(error_type, verbose)
+        show_error_help(error_type)
         return 2
 
     # Show filter summary if filters were applied
@@ -171,7 +168,7 @@ def run_scan(
 
     # Step 2: Scan extensions
     scan_results, stats = _scan_extensions(
-        extensions, args, cache_manager, verbose, scan_timestamp, use_rich, quiet
+        extensions, args, cache_manager, scan_timestamp, use_rich, quiet
     )
 
     # Apply post-scan filters (risk level)
@@ -197,12 +194,11 @@ def run_scan(
         if verbose:
             log(f"Details: {error_msg}", "ERROR")
         error_type = get_error_type(error_msg)
-        show_error_help(error_type, verbose)
+        show_error_help(error_type)
         return 2
 
-    # Print summary
-    if not quiet:
-        _print_summary(extensions, stats, scan_duration, use_rich, results)
+    # Print summary (always show, but minimal in quiet mode)
+    _print_summary(extensions, stats, scan_duration, use_rich, results, quiet)
 
     # Calculate and return exit code
     return _calculate_exit_code(stats['vulnerabilities_found'])
@@ -310,7 +306,6 @@ def _scan_extensions(
     extensions: List[Dict],
     args,
     cache_manager: Optional[CacheManager],
-    verbose: bool,
     scan_timestamp: str,
     use_rich: bool,
     quiet: bool
@@ -322,7 +317,6 @@ def _scan_extensions(
         extensions: List of extension metadata dicts
         args: Scan configuration
         cache_manager: CacheManager instance or None
-        verbose: Verbose logging flag
         scan_timestamp: ISO timestamp of scan start
         use_rich: Whether to use Rich formatting
         quiet: Minimal output mode
@@ -343,7 +337,7 @@ def _scan_extensions(
 
     api_client = VscanAPIClient(
         delay=args.delay,
-        verbose=verbose,
+        verbose=False,  # No verbose logging
         max_retries=args.max_retries,
         retry_base_delay=args.retry_delay
     )
@@ -363,7 +357,7 @@ def _scan_extensions(
         from rich.console import Console
         console = Console()
 
-        progress = create_scan_progress(verbose=verbose)
+        progress = create_scan_progress()
         if progress:
             with progress:
                 task = progress.add_task("Scanning extensions...", total=len(extensions))
@@ -371,7 +365,7 @@ def _scan_extensions(
                 for idx, ext in enumerate(extensions, 1):
                     _scan_single_extension(
                         ext, idx, len(extensions), cache_manager, args,
-                        api_client, verbose, stats, scan_results, use_rich
+                        api_client, stats, scan_results, use_rich
                     )
                     progress.update(task, advance=1)
     else:
@@ -379,7 +373,7 @@ def _scan_extensions(
         for idx, ext in enumerate(extensions, 1):
             _scan_single_extension(
                 ext, idx, len(extensions), cache_manager, args,
-                api_client, verbose, stats, scan_results, use_rich
+                api_client, stats, scan_results, use_rich
             )
 
     if not quiet and not use_rich:
@@ -395,7 +389,6 @@ def _scan_single_extension(
     cache_manager: Optional[CacheManager],
     args,
     api_client: VscanAPIClient,
-    verbose: bool,
     stats: Dict,
     scan_results: List[Dict],
     use_rich: bool
@@ -417,11 +410,11 @@ def _scan_single_extension(
     if cached_result:
         # Use cached result
         _process_cached_result(cached_result, ext, extension_id, version,
-                               progress_prefix, verbose, stats, scan_results, use_rich)
+                               progress_prefix, stats, scan_results, use_rich)
     else:
         # Scan fresh from API
         _scan_extension_fresh(ext, extension_id, version, progress_prefix,
-                             api_client, cache_manager, verbose, stats, scan_results, use_rich)
+                             api_client, cache_manager, stats, scan_results, use_rich)
 
 
 def _process_cached_result(
@@ -430,13 +423,12 @@ def _process_cached_result(
     extension_id: str,
     version: str,
     progress_prefix: str,
-    verbose: bool,
     stats: Dict,
     scan_results: List[Dict],
     use_rich: bool
 ):
     """Process a cached scan result."""
-    if verbose and not use_rich:
+    if not use_rich:
         log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO")
 
     # Merge with discovery metadata
@@ -458,13 +450,12 @@ def _scan_extension_fresh(
     progress_prefix: str,
     api_client: VscanAPIClient,
     cache_manager: Optional[CacheManager],
-    verbose: bool,
     stats: Dict,
     scan_results: List[Dict],
     use_rich: bool
 ):
     """Scan an extension fresh from the API."""
-    if verbose and not use_rich:
+    if not use_rich:
         log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO")
 
     # Scan via API
@@ -624,7 +615,7 @@ def _write_output_file(output_path_str: str, results: Dict, is_html_output: bool
             log(f"Results written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
 
 
-def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, use_rich: bool, results: Dict):
+def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, use_rich: bool, results: Dict, quiet: bool = False):
     """
     Print scan summary statistics.
 
@@ -634,7 +625,18 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         scan_duration: Total scan duration in seconds
         use_rich: Whether to use Rich formatting
         results: Full results dict for Rich display
+        quiet: Show minimal single-line summary only
     """
+    # Quiet mode: show minimal single-line summary
+    if quiet:
+        total = len(extensions)
+        vulns = stats['vulnerabilities_found']
+        if vulns > 0:
+            print(f"Scanned {total} extensions - Found {vulns} vulnerabilities")
+        else:
+            print(f"Scanned {total} extensions - No vulnerabilities found ✓")
+        return
+
     if use_rich and RICH_AVAILABLE:
         # Use Rich formatted summary
         display_summary(results, scan_duration, use_rich=True)

@@ -75,16 +75,10 @@ def scan(
     ),
 
     # Display options
-    verbose: bool = typer.Option(
-        False,
-        "--verbose", "-v",
-        help="Show detailed progress and debugging information",
-        rich_help_panel="Options"
-    ),
     quiet: bool = typer.Option(
         False,
         "--quiet", "-q",
-        help="Minimal output (only show final summary)",
+        help="Minimal output (only show single-line summary)",
         rich_help_panel="Options"
     ),
     plain: bool = typer.Option(
@@ -191,14 +185,17 @@ def scan(
         [dim]# Scan all extensions with default settings[/dim]
         $ vscan scan
 
-        [dim]# Filter by publisher and show progress[/dim]
-        $ vscan scan --publisher microsoft --verbose
+        [dim]# Filter by publisher[/dim]
+        $ vscan scan --publisher microsoft
 
         [dim]# Generate HTML report[/dim]
         $ vscan scan --output report.html
 
         [dim]# Use plain output for CI/CD pipelines[/dim]
         $ vscan scan --plain --output results.json
+
+        [dim]# Minimal output for scripting[/dim]
+        $ vscan scan --quiet
 
         [dim]# Scan specific extensions only[/dim]
         $ vscan scan --include-ids "ms-python.python,esbenp.prettier-vscode"
@@ -219,10 +216,6 @@ def scan(
         raise typer.Exit(code=2)
 
     # Validate conflicting options
-    if quiet and verbose:
-        typer.echo("Error: --quiet and --verbose cannot be used together", err=True)
-        raise typer.Exit(code=2)
-
     if no_cache and refresh_cache:
         typer.echo("Error: --no-cache and --refresh-cache cannot be used together", err=True)
         raise typer.Exit(code=2)
@@ -238,7 +231,6 @@ def scan(
             extensions_dir=extensions_dir_str,
             output=output_str,
             delay=delay,
-            verbose=verbose,
             max_retries=max_retries,
             retry_delay=retry_delay,
             cache_dir=cache_dir_str,
@@ -261,9 +253,8 @@ def scan(
         raise typer.Exit(code=2)
     except Exception as e:
         typer.echo(f"\n\nUnexpected error: {e}", err=True)
-        if verbose:
-            import traceback
-            traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         raise typer.Exit(code=2)
 
 

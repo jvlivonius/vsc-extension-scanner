@@ -400,13 +400,12 @@ ERROR_HELP = {
 }
 
 
-def show_error_help(error_type: str, verbose: bool = False):
+def show_error_help(error_type: str):
     """
     Display helpful error message with recovery suggestions.
 
     Args:
         error_type: Type of error (rate_limit, timeout, network, etc.)
-        verbose: Whether to show all suggestions
     """
     if error_type not in ERROR_HELP:
         return
@@ -415,18 +414,11 @@ def show_error_help(error_type: str, verbose: bool = False):
     log("", "INFO", force=True)
     log(f"💡 {help_info['message']}", "INFO", force=True)
 
-    if verbose or len(help_info['suggestions']) <= 2:
-        log("", "INFO", force=True)
-        log("Suggestions:", "INFO", force=True)
-        for suggestion in help_info['suggestions']:
-            log(f"  • {suggestion}", "INFO", force=True)
-    else:
-        # Show first 2 suggestions in non-verbose
-        log("", "INFO", force=True)
-        log("Suggestions:", "INFO", force=True)
-        for suggestion in help_info['suggestions'][:2]:
-            log(f"  • {suggestion}", "INFO", force=True)
-        log(f"  (Use --verbose for more suggestions)", "INFO", force=True)
+    # Show all suggestions
+    log("", "INFO", force=True)
+    log("Suggestions:", "INFO", force=True)
+    for suggestion in help_info['suggestions']:
+        log(f"  • {suggestion}", "INFO", force=True)
 
 
 def get_error_type(error_message: str) -> str:

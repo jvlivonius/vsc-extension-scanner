@@ -92,12 +92,9 @@ def should_use_rich(plain_flag: bool = False) -> bool:
     return True
 
 
-def create_scan_progress(verbose: bool = False) -> Optional[Progress]:
+def create_scan_progress() -> Optional[Progress]:
     """
     Create a Rich Progress bar for scanning operations.
-
-    Args:
-        verbose: Whether to show detailed progress
 
     Returns:
         Progress instance or None if Rich not available
@@ -105,25 +102,15 @@ def create_scan_progress(verbose: bool = False) -> Optional[Progress]:
     if not RICH_AVAILABLE:
         return None
 
-    if verbose:
-        return Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            TimeRemainingColumn(),
-            expand=True
-        )
-    else:
-        return Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            expand=True
-        )
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        expand=True
+    )
 
 
 def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Optional[Table]:
