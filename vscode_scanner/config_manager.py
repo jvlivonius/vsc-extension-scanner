@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 import sys
 
+from .display import display_warning
 from .constants import (
     DEFAULT_REQUEST_DELAY,
     DEFAULT_MAX_RETRIES,
@@ -140,7 +141,7 @@ def load_config() -> Dict[str, Dict[str, Any]]:
     try:
         parser.read(config_path, encoding='utf-8')
     except Exception as e:
-        print(f"Warning: Failed to read config file {config_path}: {e}", file=sys.stderr)
+        display_warning(f"Failed to read config file {config_path}: {e}")
         return result
 
     # Merge config file values with defaults
@@ -156,7 +157,7 @@ def load_config() -> Dict[str, Dict[str, Any]]:
                 value = _parse_config_value(section, option, parser.get(section, option))
                 result[section][option] = value
             except ValueError as e:
-                print(f"Warning: Invalid value for {section}.{option}: {e}", file=sys.stderr)
+                display_warning(f"Invalid value for {section}.{option}: {e}")
                 # Keep default value on error
 
     return result

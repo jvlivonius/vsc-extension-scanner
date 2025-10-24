@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message
 from ._version import SCHEMA_VERSION
 from .constants import DEFAULT_CACHE_MAX_AGE_DAYS, CACHE_REPORT_MAX_AGE_DAYS
+from .display import display_error, display_warning, display_info
 
 
 class CacheManager:
@@ -125,26 +126,26 @@ class CacheManager:
         """
         import shutil
 
-        print("[WARNING] Detected corrupted cache database", file=sys.stderr)
+        display_warning("Detected corrupted cache database")
 
         try:
             # Create backup with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = self.cache_db.parent / f"cache.db.corrupted.{timestamp}"
 
-            print(f"[INFO] Backing up corrupted database to: {backup_path}", file=sys.stderr)
+            display_info(f"Backing up corrupted database to: {backup_path}")
             shutil.copy2(self.cache_db, backup_path)
 
             # Remove corrupted database
-            print("[INFO] Removing corrupted database...", file=sys.stderr)
+            display_info("Removing corrupted database...")
             self.cache_db.unlink()
 
-            print("[INFO] Creating fresh cache database...", file=sys.stderr)
+            display_info("Creating fresh cache database...")
 
         except (OSError, IOError) as e:
             sanitized_error = sanitize_error_message(str(e), context="database backup")
-            print(f"[ERROR] Failed to handle corrupted database: {sanitized_error}", file=sys.stderr)
-            print("[INFO] Cache functionality may be impaired", file=sys.stderr)
+            display_error(f"Failed to handle corrupted database: {sanitized_error}")
+            display_info("Cache functionality may be impaired")
 
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
@@ -313,8 +314,8 @@ class CacheManager:
 
                 total_rows = len(rows)
                 if total_rows > 0:
-                    print(f"Migrating cache schema (v1.0 → v2.0)...", file=sys.stderr)
-                    print(f"Processing {total_rows} cached entries...", file=sys.stderr)
+                    print(f"Migrating cache schema (v1.0 → v2.0)...")
+                    print(f"Processing {total_rows} cached entries...")
 
                 updated_count = 0
                 for idx, (row_id, scan_result_json) in enumerate(rows, 1):
@@ -353,7 +354,7 @@ class CacheManager:
 
                 if total_rows > 0:
                     print()  # New line after progress
-                    print(f"Migration complete: {updated_count}/{total_rows} entries updated", file=sys.stderr)
+                    print(f"Migration complete: {updated_count}/{total_rows} entries updated")
 
                 # Update schema version
                 cursor.execute(
@@ -365,7 +366,7 @@ class CacheManager:
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="cache migration")
-            print(f"Cache migration error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache migration error: {sanitized_error}")
 
     def get_cached_result(
         self,
@@ -417,7 +418,7 @@ class CacheManager:
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail - just return None (cache miss)
             sanitized_error = sanitize_error_message(str(e), context="cache read")
-            print(f"Cache read error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache read error: {sanitized_error}")
             return None
 
     def save_result(
@@ -485,7 +486,7 @@ class CacheManager:
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail the scan
             sanitized_error = sanitize_error_message(str(e), context="cache write")
-            print(f"Cache write error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache write error: {sanitized_error}")
 
     def begin_batch(self):
         """
@@ -563,7 +564,7 @@ class CacheManager:
         except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
             # Log error and clean up batch connection
             sanitized_error = sanitize_error_message(str(e), context="batch cache write")
-            print(f"Cache write error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache write error: {sanitized_error}")
             # Clean up batch connection on error
             self._cleanup_batch_on_error()
             raise  # Re-raise to ensure caller knows about failure
@@ -592,7 +593,7 @@ class CacheManager:
             self._batch_connection.commit()
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="batch commit")
-            print(f"Batch commit error: {sanitized_error}", file=sys.stderr)
+            print(f"Batch commit error: {sanitized_error}")
             self._batch_connection.rollback()
         finally:
             self._batch_connection.close()
@@ -631,7 +632,7 @@ class CacheManager:
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="cache cleanup")
-            print(f"Cache cleanup error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache cleanup error: {sanitized_error}")
             return 0
 
     def cleanup_orphaned_entries(self, valid_extension_ids: List[str]) -> int:
@@ -656,7 +657,7 @@ class CacheManager:
 
             if len(validated_ids) != len(valid_extension_ids):
                 filtered_count = len(valid_extension_ids) - len(validated_ids)
-                print(f"Warning: Filtered out {filtered_count} invalid extension IDs", file=sys.stderr)
+                display_warning(f"Filtered out {filtered_count} invalid extension IDs")
 
             if not validated_ids:
                 return 0
@@ -679,7 +680,7 @@ class CacheManager:
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="orphan cleanup")
-            print(f"Cache orphan cleanup error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache orphan cleanup error: {sanitized_error}")
             return 0
 
     def get_cache_stats(self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS) -> Dict[str, Any]:
@@ -779,7 +780,7 @@ class CacheManager:
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="cache stats")
-            print(f"Cache stats error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache stats error: {sanitized_error}")
             return {
                 'error': sanitized_error,
                 'database_path': str(self.cache_db)
@@ -809,7 +810,7 @@ class CacheManager:
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="cache clear")
-            print(f"Cache clear error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache clear error: {sanitized_error}")
             return 0
 
     def get_all_cached_extensions(self) -> List[Dict[str, str]]:
@@ -843,7 +844,7 @@ class CacheManager:
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="cache list")
-            print(f"Cache list error: {sanitized_error}", file=sys.stderr)
+            print(f"Cache list error: {sanitized_error}")
             return []
 
     def get_all_cached_results(self, max_age_days: int = CACHE_REPORT_MAX_AGE_DAYS) -> List[Dict[str, Any]]:

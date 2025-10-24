@@ -1,66 +1,71 @@
 # Distribution Guide for VS Code Extension Security Scanner
 
-**Version:** 2.2.0
 **Package Name:** `vscode-extension-scanner`
-**Distribution Method:** Private wheel file via email/shared drive
+**Distribution Method:** Python wheel file (`.whl`)
 
 ---
 
 ## Quick Start for Distribution
 
-### For Package Maintainer (You)
+### For Package Maintainers
 
-**Build the distribution wheel (one-time, or when releasing new version):**
+**Build the distribution wheel:**
 
 ```bash
 # 1. Navigate to project directory
 cd /path/to/vsc-extension-scanner
 
-# 2. Build wheel (requires 'build' package)
+# 2. Install build tools (if needed)
 python3 -m pip install build
+
+# 3. Build wheel from source
 python3 -m build
 
-# 3. Find the wheel file
+# 4. Find the wheel file in dist/ directory
 ls -lh dist/
-# You'll see: vscode_extension_scanner-2.2.0-py3-none-any.whl (44KB)
+# Output: vscode_extension_scanner-{VERSION}-py3-none-any.whl
 ```
+
+**Note:** The version number in the wheel filename is automatically derived from `vscode_scanner/_version.py`.
 
 **Distribute the wheel file:**
 
-- **Email**: Attach `dist/vscode_extension_scanner-2.2.0-py3-none-any.whl` to email
+- **Email**: Attach the `.whl` file from the `dist/` directory
 - **Shared Drive**: Upload to Google Drive, Dropbox, OneDrive, network share
 - **Chat**: Share in Slack, Teams, or other messaging platform
 - **Wiki/Intranet**: Upload to company documentation site
 
 ---
 
-### For End Users (Your Colleagues)
+### For End Users
 
 **Installation (One Command):**
 
 ```bash
-pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
+pip install vscode_extension_scanner-*.whl
 ```
 
 **If pip is not in PATH:**
 ```bash
-python3 -m pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
+python3 -m pip install vscode_extension_scanner-*.whl
 ```
 
 **Usage:**
 
 ```bash
-# Check installation
+# Check installation and version
+vscan --version
+
+# Get help
 vscan --help
 
-# Run standard scan
-vscan
+# Run a scan
+vscan scan
 
-# Detailed scan with output to file
-vscan --detailed --output results.json
-
-# See all options
-vscan --help
+# Generate reports
+vscan scan --output report.html
+vscan scan --output results.json
+vscan scan --output data.csv
 ```
 
 ---
@@ -72,7 +77,7 @@ vscan --help
 **For installation, users need:**
 - ✅ Python 3.8 or higher (check with `python3 --version`)
 - ✅ pip (usually comes with Python)
-- ✅ No other dependencies! (uses stdlib only)
+- ✅ Internet access (for installation of dependencies: Rich and Typer)
 
 **To check if Python is installed:**
 ```bash
@@ -81,7 +86,8 @@ python3 --version
 ```
 
 **If Python is not installed:**
-- **macOS**: Comes pre-installed, or install via Homebrew: `brew install python3`
+
+- **macOS**: Pre-installed on recent versions, or install via Homebrew: `brew install python3`
 - **Windows**: Download from [python.org](https://www.python.org/downloads/)
 - **Linux**: Use package manager: `sudo apt install python3` or `sudo yum install python3`
 
@@ -94,25 +100,26 @@ python3 --version
 **Steps:**
 
 1. **Attach wheel file** to email
-   - File: `vscode_extension_scanner-2.2.0-py3-none-any.whl`
-   - Size: Only 44KB (well below attachment limits)
+   - File: `vscode_extension_scanner-{VERSION}-py3-none-any.whl`
+   - Size: Small (typically under 100KB, well below attachment limits)
 
 2. **Include installation instructions** in email body:
    ```
    Hi team,
 
-   Attached is the VS Code Extension Security Scanner v2.2.0.
+   Attached is the VS Code Extension Security Scanner.
 
    To install:
    1. Save the attached .whl file
    2. Open terminal/command prompt
-   3. Run: pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
-   4. Test: vscan --help
+   3. Run: pip install vscode_extension_scanner-*.whl
+   4. Test: vscan --version
 
    To scan your extensions:
-   - vscan                  # Standard scan
-   - vscan --detailed       # Detailed scan
-   - vscan --output results.json --verbose
+   - vscan scan                        # Standard scan with Rich UI
+   - vscan scan --output report.html   # HTML report
+   - vscan scan --output results.json  # JSON export
+   - vscan scan --output data.csv      # CSV export
 
    Full documentation: [link to README if available]
 
@@ -132,31 +139,34 @@ python3 --version
    Shared-Drive/
    └── tools/
        └── vscode-security-scanner/
-           ├── vscode_extension_scanner-2.2.0-py3-none-any.whl
+           ├── vscode_extension_scanner-{VERSION}-py3-none-any.whl
            ├── INSTALL.txt
            └── README.md (optional)
    ```
 
 2. Create `INSTALL.txt`:
    ```
-   VS Code Extension Security Scanner v2.2.0
-   ==========================================
+   VS Code Extension Security Scanner
+   ==================================
 
    Installation:
-   1. Download: vscode_extension_scanner-2.2.0-py3-none-any.whl
-   2. Install: pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
-   3. Run: vscan --help
+   1. Download the .whl file from this directory
+   2. Install: pip install vscode_extension_scanner-*.whl
+   3. Verify: vscan --version
 
    Requirements:
    - Python 3.8+
    - pip (included with Python)
+   - Internet access (for dependencies)
 
    Usage Examples:
-   - vscan                              # Scan all extensions
-   - vscan --detailed                   # Detailed security report
-   - vscan --output results.json        # Save to file
-   - vscan --verbose                    # Show progress
-   - vscan --max-retries 5              # More aggressive retries
+   - vscan scan                         # Standard scan with Rich UI
+   - vscan scan --output report.html    # Generate HTML report
+   - vscan scan --output results.json   # Export to JSON
+   - vscan scan --output data.csv       # Export to CSV
+   - vscan scan --quiet                 # Minimal output for CI/CD
+   - vscan cache stats                  # View cache statistics
+   - vscan config show                  # View configuration
 
    Support: [your-email@company.com]
    ```
@@ -178,44 +188,59 @@ Scans your installed VS Code extensions for security vulnerabilities using vscan
 ## Installation
 
 ### Step 1: Download
-[Download vscode_extension_scanner-2.2.0-py3-none-any.whl](link-to-file)
+[Download the latest wheel file](link-to-file)
 
 ### Step 2: Install
 ```bash
-pip install vscode_extension_scanner-2.2.0-py3-none-any.whl
+pip install vscode_extension_scanner-*.whl
 ```
 
 ### Step 3: Verify
 ```bash
+vscan --version
 vscan --help
 ```
 
 ## Usage
 
-### Quick Scan
+### Standard Scan
 ```bash
-vscan
+vscan scan
 ```
 
-### Detailed Scan
+### Generate Reports
 ```bash
-vscan --detailed --output results.json
+vscan scan --output report.html    # Interactive HTML report
+vscan scan --output results.json   # JSON format
+vscan scan --output data.csv       # CSV format
+```
+
+### Configuration
+```bash
+vscan config init                  # Create config file
+vscan config show                  # View current settings
+```
+
+### Cache Management
+```bash
+vscan cache stats                  # View cache statistics
+vscan cache clear                  # Clear cache
 ```
 
 ### All Options
-See: vscan --help
+See: `vscan --help` or `vscan scan --help`
 
 ## Troubleshooting
 
 **"vscan: command not found"**
-- Use full path: `python3 -m vscode_scanner.vscan --help`
-- Or add to PATH: `export PATH="$PATH:$HOME/Library/Python/3.9/bin"`
+- Use full path: `python3 -m vscode_scanner.vscan --version`
+- Or add Python bin directory to PATH
 
 **"No module named 'vscode_scanner'"**
-- Reinstall: `pip install --force-reinstall vscode_extension_scanner-2.2.0-py3-none-any.whl`
+- Reinstall: `pip install --force-reinstall vscode_extension_scanner-*.whl`
 
 **Permission denied**
-- Install with --user: `pip install --user vscode_extension_scanner-2.2.0-py3-none-any.whl`
+- Install with --user flag: `pip install --user vscode_extension_scanner-*.whl`
 
 ## Support
 Contact: [your-email@company.com]
