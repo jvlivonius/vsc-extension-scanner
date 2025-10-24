@@ -121,7 +121,6 @@ Cross-Platform Support              ██████████████�
 - ✅ Progress indicators (stderr)
 - ✅ Error handling
 - ✅ Request throttling
-- ✅ Verbose logging mode
 - ✅ Custom directory support
 - ✅ Output to file or stdout
 
@@ -178,13 +177,13 @@ vscan.py                  # Main CLI entry point (240 lines)
 - Indexes on extension_id/version and scanned_at for performance
 - Automatic cleanup of old/orphaned entries
 
-**CLI Arguments:**
+**CLI Arguments (v3.0 updated syntax):**
 - `--cache-dir` - Custom cache directory (default: ~/.vscan/)
 - `--cache-max-age` - Cache expiration in days (default: 7)
-- `--refresh-cache` - Force refresh all cached results
+- `--refresh-cache` - Force refresh scanned extensions
 - `--no-cache` - Disable caching for scan
-- `--clear-cache` - Remove all cache entries and exit
-- `--cache-stats` - Show cache statistics and exit
+- `vscan cache clear` - Remove all cache entries (subcommand)
+- `vscan cache stats` - Show cache statistics (subcommand)
 
 **Performance Improvements:**
 - Cached results return instantly (~0.1s vs 5-15s)
@@ -248,7 +247,7 @@ vscan.py                  # Main CLI entry point (240 lines)
 - ✅ Graceful error handling (rate limiting)
 - ✅ Valid JSON output matching specification
 - ✅ All cache management commands functional
-- ✅ Fixed UX bug: cache-stats now works without --verbose
+- ✅ Fixed UX bug: cache stats command shows output correctly
 
 ### Success Criteria
 
@@ -301,10 +300,16 @@ See [MACOS_TEST_RESULTS.md](testing/MACOS_TEST_RESULTS.md) for detailed test res
 - Graceful fallback to plain output when Rich unavailable
 
 **Typer CLI Framework:**
-- Organized subcommands: `scan`, `cache-stats`, `cache-clear`
-- Help panels grouped by category (Basic, Output, Filtering, Advanced, Cache)
+- Organized subcommands: `scan`, `cache stats`, `cache clear`, `report`
+- Simplified help panels - all options in single "Options" panel
 - Comprehensive examples in help text
 - Parameter validation with clear error messages
+
+**Streamlined CLI Options:**
+- ❌ Removed `--verbose` (minimal impact, only added TimeElapsed column)
+- ❌ Removed `--detailed` (scans are always comprehensive now)
+- ✅ Fixed `--quiet` to show minimal single-line summary
+- ✅ Consolidated cache commands into `vscan cache` subcommands
 
 **Refactored Architecture:**
 - Clean separation: display (UI) + scanner (logic) + cli (interface)
@@ -314,16 +319,22 @@ See [MACOS_TEST_RESULTS.md](testing/MACOS_TEST_RESULTS.md) for detailed test res
 
 ### CLI Changes (v2.x → v3.0)
 
-**Before:**
+**Before (v2.x):**
 ```bash
-python vscan.py --output results.json
+python vscan.py --output results.json --detailed
 python vscan.py --cache-stats
+python vscan.py --clear-cache
+python vscan.py --verbose
 ```
 
-**After:**
+**After (v3.0):**
 ```bash
-vscan scan --output results.json
-vscan cache-stats
+vscan scan --output results.json     # Always comprehensive (no --detailed needed)
+vscan cache stats                    # Consolidated subcommand
+vscan cache clear                    # Consolidated subcommand
+vscan scan --plain                   # Replaced --verbose with --plain
+vscan scan --quiet                   # Minimal single-line summary
+vscan report report.html             # Generate reports from cache (NEW)
 ```
 
 ### Success Criteria
@@ -359,7 +370,7 @@ See [PHASE5_COMPLETION_SUMMARY.md](results/PHASE5_COMPLETION_SUMMARY.md) for det
 | **Phases Complete** | 5/5 + 4 enhancements (100%) ✅ |
 | **Bugs Found & Fixed** | 5+ |
 | **Schema Version** | 2.0 |
-| **Output Modes** | 2 (standard, detailed) |
+| **Output Mode** | Always comprehensive (detailed) |
 | **Output Formats** | 2 (JSON, HTML) |
 | **Platforms Supported** | 3 (macOS, Windows, Linux) |
 

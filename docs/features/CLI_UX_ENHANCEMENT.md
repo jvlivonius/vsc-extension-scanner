@@ -1,10 +1,41 @@
 # CLI UX Enhancement Specification
 
-**Version:** 3.0.0
-**Status:** ✅ Completed
+**Version:** 3.0.0 (Final)
+**Status:** ✅ Completed + Refined
 **Created:** 2025-10-24
 **Completed:** 2025-10-24
+**Final Refinements:** 2025-10-24
 **Dependencies:** Rich ≥13.0.0, Typer ≥0.9.0
+
+## Post-Completion Refinements
+
+After initial v3.0 completion, the following refinements were made based on user feedback:
+
+### Streamlined CLI Options
+- ❌ **Removed `--verbose`** - Minimal impact (only added TimeElapsed column), not worth the complexity
+- ❌ **Removed `--detailed`** - All scans are now always comprehensive (output_mode="detailed")
+- ✅ **Fixed `--quiet`** - Now shows minimal single-line summary instead of being completely silent
+- ✅ **Simplified help panels** - Merged "Basic Options", "Output Options" etc. into single "Options" panel
+
+### Consolidated Cache Commands
+- ✅ **Changed `vscan cache-stats`** → `vscan cache stats` (subcommand syntax)
+- ✅ **Changed `vscan cache-clear`** → `vscan cache clear` (subcommand syntax)
+- ✅ **Added `vscan cache --help`** - Shows available cache subcommands
+
+### Updated CLI Syntax (Final)
+```bash
+# v3.0 Final syntax
+vscan scan                      # Always comprehensive, Rich UI
+vscan scan --plain              # Plain output without Rich
+vscan scan --quiet              # Minimal single-line summary
+vscan cache stats               # Show cache statistics
+vscan cache clear               # Clear cache
+vscan report report.html        # Generate report from cache
+```
+
+**Note:** The specification below reflects the initial v3.0 design. Where syntax differs from final implementation (e.g., `cache-stats` vs `cache stats`), the final syntax above takes precedence.
+
+---
 
 ## Overview
 

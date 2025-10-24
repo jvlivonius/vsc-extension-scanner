@@ -8,17 +8,22 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Current Status:** Phase 5 Complete - CLI UX Enhancement (v3.0.0)
 
-**Latest Updates (CLI UX Enhancement - 2025-10-24):**
+**Latest Updates (CLI UX Enhancement v3.0 - 2025-10-24):**
 - ✅ **Rich Terminal Formatting** - Beautiful, modern CLI output
   - Live progress bars showing real-time scan status
   - Rich formatted tables for results and statistics
   - Color-coded risk levels and status indicators
   - Graceful fallback to plain output when Rich unavailable
 - ✅ **Typer CLI Framework** - Modern command-line interface
-  - Organized subcommands: `scan`, `cache-stats`, `cache-clear`
-  - Help panels grouped by category (Basic, Output, Filtering, Advanced, Cache)
+  - Organized subcommands: `scan`, `cache stats`, `cache clear`, `report`
+  - Simplified help panels - all options in single "Options" panel
   - Comprehensive examples in help text
   - Parameter validation with clear error messages
+- ✅ **Streamlined CLI Options** - Removed low-value flags
+  - ❌ Removed `--verbose` (minimal impact, only added TimeElapsed column)
+  - ❌ Removed `--detailed` (scans are always comprehensive now)
+  - ✅ Fixed `--quiet` to show minimal single-line summary
+  - ✅ Consolidated cache commands into `vscan cache` subcommands
 - ✅ **Refactored Architecture** - Clean separation of concerns
   - `display.py` - Rich formatting components (24 tests passing)
   - `scanner.py` - Core scan logic (15 tests passing)
@@ -91,7 +96,6 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - ✅ Retry-After header support for rate limiting compliance
 - ✅ Configurable retry attempts and delays (--max-retries, --retry-delay)
 - ✅ Retry statistics tracking and reporting
-- ✅ Verbose mode logging for retry attempts
 - ✅ Comprehensive documentation and test suite
 
 **Previous Updates (v2.1 - 2025-10-23):**
@@ -194,15 +198,13 @@ python3 tests/test_integration.py  # Integration tests
 
 # Run the tool (v3.0 CLI with subcommands)
 vscan                                         # Show help
-vscan scan                                    # Standard scan with Rich UI
+vscan scan                                    # Standard scan with Rich UI (always comprehensive)
 vscan scan --plain                            # Plain output (v2.x style)
-vscan scan --quiet                            # Minimal output
-vscan scan --verbose                          # Detailed progress
+vscan scan --quiet                            # Minimal single-line summary for CI/CD
 
 # Scan options
 vscan scan --output results.json              # Save JSON to file
 vscan scan --output report.html               # Generate HTML report
-vscan scan --detailed                         # Include full security analysis
 vscan scan --extensions-dir /path             # Custom directory
 
 # Filtering options
@@ -223,16 +225,22 @@ vscan scan --cache-max-age 14                 # 14-day cache expiry
 vscan scan --cache-dir /custom/path           # Custom cache location
 
 # Cache management commands (v3.0 subcommands)
-vscan cache-stats                             # Show cache statistics
-vscan cache-stats --cache-max-age 14          # Check for stale entries
-vscan cache-clear                             # Clear all cache (with confirmation)
-vscan cache-clear --force                     # Clear without confirmation
+vscan cache stats                             # Show cache statistics
+vscan cache stats --cache-max-age 14          # Check for stale entries
+vscan cache clear                             # Clear all cache (with confirmation)
+vscan cache clear --force                     # Clear without confirmation
+
+# Report generation from cache (no API calls)
+vscan report report.html                      # Generate HTML report from cache
+vscan report results.json                     # Generate JSON report from cache
 
 # Help
 vscan --help                                  # Main help with subcommands
-vscan scan --help                             # Scan command help (organized panels)
-vscan cache-stats --help                      # Cache stats help
-vscan cache-clear --help                      # Cache clear help
+vscan scan --help                             # Scan command help (simplified Options panel)
+vscan cache --help                            # Cache command help
+vscan cache stats --help                      # Cache stats help
+vscan cache clear --help                      # Cache clear help
+vscan report --help                           # Report command help
 vscan --version                               # Show version
 
 # Development
@@ -290,15 +298,16 @@ The vscan.dev API has been fully reverse-engineered and validated in Phase 1.
 
 ### JSON Output Schema (v2.0)
 
-**Standard Mode (default):**
+**All scans are comprehensive** (always include full security analysis):
+
 ```json
 {
   "schema_version": "2.0",
-  "output_mode": "standard",
+  "output_mode": "detailed",
   "summary": {
     "total_extensions_scanned": 42,
     "vulnerabilities_found": 3,
-    "scan_timestamp": "2025-10-23T14:30:00Z",
+    "scan_timestamp": "2025-10-24T14:30:00Z",
     "scan_duration_seconds": 95.5
   },
   "cache_stats": {
@@ -312,67 +321,61 @@ The vscan.dev API has been fully reverse-engineered and validated in Phase 1.
       "display_name": "Python",
       "id": "ms-python.python",
       "version": "2024.10.0",
-      "publisher": "ms-python",
-      "publisher_verified": true,
-      "security_score": 82,
-      "risk_level": "high",
-      "vulnerabilities": {
-        "count": 0,
-        "critical": 0,
-        "high": 0,
-        "moderate": 0,
-        "low": 0
+      "publisher": {
+        "id": "ms-python",
+        "name": "Microsoft",
+        "verified": true,
+        "domain": "microsoft.com",
+        "reputation": 100
       },
-      "dependencies_count": 45,
-      "risk_factors_count": 3,
-      "last_updated": "2024-10-15",
+      "security": {
+        "score": 82,
+        "risk_level": "high",
+        "vulnerabilities": {
+          "total": 0,
+          "critical": 0,
+          "high": 0,
+          "moderate": 0,
+          "low": 0
+        },
+        "risk_factors": [
+          {
+            "type": "network_access",
+            "severity": "medium",
+            "description": "Extension makes network requests"
+          }
+        ],
+        "dependencies": {
+          "total_count": 45,
+          "with_vulnerabilities": 0,
+          "list": [
+            {
+              "name": "vscode-languageclient",
+              "version": "8.1.0",
+              "risk_level": "low",
+              "has_vulnerabilities": false
+            }
+          ]
+        },
+        "score_breakdown": {
+          "code_quality": 85,
+          "dependencies": 90,
+          "permissions": 75,
+          "network_usage": 80
+        }
+      },
+      "metadata": {
+        "description": "IntelliSense, linting, debugging...",
+        "install_count": 50000000,
+        "rating": 4.5,
+        "rating_count": 1234,
+        "keywords": ["python", "intellisense", "linting"],
+        "repository_url": "https://github.com/microsoft/vscode-python",
+        "homepage_url": "https://github.com/microsoft/vscode-python",
+        "last_updated": "2024-10-15"
+      },
       "vscan_url": "https://vscan.dev/extension/ms-python.python",
       "scan_status": "success"
-    }
-  ]
-}
-```
-
-**Detailed Mode (--detailed flag):**
-```json
-{
-  "schema_version": "2.0",
-  "output_mode": "detailed",
-  "summary": { /* same as standard */ },
-  "cache_stats": { /* same as standard */ },
-  "extensions": [
-    {
-      /* All standard fields, plus: */
-      "description": "IntelliSense, linting, debugging...",
-      "publisher_domain": "microsoft.com",
-      "publisher_reputation": 100,
-      "install_count": 50000000,
-      "rating": 4.5,
-      "rating_count": 1234,
-      "dependencies": [
-        {
-          "name": "vscode-languageclient",
-          "version": "8.1.0",
-          "risk_level": "low",
-          "has_vulnerabilities": false
-        }
-      ],
-      "security_score_breakdown": {
-        "code_quality": 85,
-        "dependencies": 90,
-        "permissions": 75,
-        "network_usage": 80
-      },
-      "risk_factors": [
-        {
-          "type": "network_access",
-          "severity": "medium",
-          "description": "Extension makes network requests"
-        }
-      ],
-      "keywords": ["python", "intellisense", "linting"],
-      "repository_url": "https://github.com/microsoft/vscode-python",
-      "homepage_url": "https://github.com/microsoft/vscode-python"
     }
   ]
 }
@@ -381,7 +384,7 @@ The vscan.dev API has been fully reverse-engineered and validated in Phase 1.
 **Field Details:**
 
 - `schema_version`: "2.0" (for v2.0 output format)
-- `output_mode`: "standard" or "detailed"
+- `output_mode`: Always "detailed" (v3.0+ includes full security analysis)
 - `scan_status` values: `"success"`, `"not_found"`, `"error"`
 - Include error message for failed scans
 - All vscan.dev requests must use HTTPS
@@ -408,11 +411,12 @@ To improve performance for repeated scans, vscan uses an SQLite-based caching sy
 
 **Cache Management:**
 ```bash
-python vscan.py --cache-stats      # View statistics
-python vscan.py --clear-cache      # Clear all entries
-python vscan.py --refresh-cache    # Force refresh all
-python vscan.py --no-cache         # Disable caching
-python vscan.py --cache-max-age 14 # Custom expiry (days)
+vscan cache stats                  # View statistics
+vscan cache clear                  # Clear all entries
+vscan scan --refresh-cache         # Force refresh of scanned extensions
+vscan scan --no-cache              # Disable caching
+vscan scan --cache-max-age 14      # Custom expiry (days)
+vscan report report.html           # Generate report from cache (no API calls)
 ```
 
 ### Progress Indicators
@@ -453,27 +457,42 @@ Average time per extension: 0.6s
 - ⚠ = Vulnerabilities found
 - ✗ = Error
 
-## Command-Line Interface
+## Command-Line Interface (v3.0)
 
-### Arguments
+### Main Commands
+
+- `vscan scan` - Scan VS Code extensions for vulnerabilities
+- `vscan cache stats` - Show cache statistics
+- `vscan cache clear` - Clear cache (with confirmation)
+- `vscan report` - Generate reports from cache without API calls
+
+### Scan Command Arguments
 
 | Argument | Short | Type | Description | Default |
 |----------|-------|------|-------------|---------|
 | `--extensions-dir` | `-d` | path | VS Code extensions directory | Auto-detected |
-| `--output` | `-o` | path | Output file path (JSON) | stdout |
+| `--output` | `-o` | path | Output file path (JSON/HTML) | Console output |
 | `--delay` | `-t` | float | Delay between requests (seconds) | 1.5 |
-| `--verbose` | `-v` | flag | Enable verbose output | False |
+| `--quiet` | `-q` | flag | Minimal output (single-line summary) | False |
+| `--plain` | - | flag | Plain output without Rich formatting | False |
 | `--max-retries` | - | int | Maximum retry attempts for failed requests | 3 |
 | `--retry-delay` | - | float | Base delay for exponential backoff (seconds) | 2.0 |
 | `--cache-dir` | - | path | Cache directory path | `~/.vscan/` |
 | `--cache-max-age` | - | int | Max age of cached results (days) | 7 |
-| `--refresh-cache` | - | flag | Force refresh all cached results | False |
+| `--refresh-cache` | - | flag | Force refresh scanned extensions | False |
 | `--no-cache` | - | flag | Disable cache (always scan fresh) | False |
-| `--clear-cache` | - | flag | Clear all cached results and exit | False |
-| `--cache-stats` | - | flag | Show cache statistics and exit | False |
-| `--detailed` | - | flag | Include detailed security analysis | False |
+| `--publisher` | - | str | Filter by publisher name | None |
+| `--include-ids` | - | str | Comma-separated extension IDs to include | None |
+| `--exclude-ids` | - | str | Comma-separated extension IDs to exclude | None |
+| `--min-risk-level` | - | str | Minimum risk level (low/medium/high/critical) | None |
 | `--help` | `-h` | flag | Show help message | - |
-| `--version` | `-V` | flag | Show version information | - |
+
+### Global Options
+
+| Argument | Short | Description |
+|----------|-------|-------------|
+| `--version` | `-V` | Show version information |
+| `--help` | `-h` | Show help message |
 
 ## Performance Requirements
 
@@ -638,13 +657,22 @@ response["analysisModules"]["dependencies"]["vulnerabilities"]["summary"]
 ### Running Tests
 
 ```bash
-# API validation (Phase 1)
-python3 test_api.py
+# Display module tests (v3.0)
+python3 tests/test_display.py
 
-# Main tool (Phase 2+)
-python vscan.py --verbose
+# Scanner module tests (v3.0)
+python3 tests/test_scanner.py
 
-# Unit tests (Phase 3)
+# CLI module tests (v3.0)
+python3 tests/test_cli.py
+
+# API validation tests
+python3 tests/test_api.py
+
+# Integration tests
+python3 tests/test_integration.py
+
+# Full test suite
 pytest tests/
 ```
 
@@ -659,14 +687,17 @@ pytest tests/
 ### Debugging
 
 ```bash
-# Verbose mode shows detailed progress
-python vscan.py --verbose
+# Run scan with plain output (shows per-extension progress)
+vscan scan --plain
 
-# Test with single extension
-python vscan.py --extensions-dir ~/.vscode/extensions/ms-python.python-*
+# Test with custom extensions directory
+vscan scan --extensions-dir ~/.vscode/extensions/
 
 # Check API behavior
-python3 test_api.py
+python3 tests/test_api.py
+
+# Run with trace logging
+python3 -m pdb -m vscode_scanner.vscan scan
 ```
 
 ## References

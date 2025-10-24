@@ -1,14 +1,33 @@
 # HTML Report Feature Specification
 
-**Version:** 1.0
+**Version:** 1.0 (Updated for v3.0)
 **Date:** 2025-10-23
-**Status:** ✅ IMPLEMENTED (v2.2)
+**Status:** ✅ IMPLEMENTED (v2.2) + Updated CLI (v3.0)
+
+## v3.0 CLI Updates
+
+**Updated CLI Usage:**
+```bash
+# v3.0 syntax (always comprehensive, no --detailed flag needed)
+vscan scan --output report.html
+vscan report report.html  # Generate from cache (no API calls)
+
+# v2.x syntax (deprecated but still works)
+python vscan.py --output report.html --detailed
+```
+
+**Changes:**
+- ❌ `--detailed` flag removed (all scans are always comprehensive)
+- ✅ HTML reports automatically include full security analysis
+- ✅ New `vscan report` command generates reports from cache
+
+---
 
 ## Implementation Summary
 
 **Module:** `html_report_generator.py` (2,298 lines)
-**Integration:** `vscan.py` auto-detects `.html` file extension in `--output` flag
-**CLI Usage:** `python vscan.py --output report.html` (automatically enables `--detailed` mode)
+**Integration:** Auto-detects `.html` file extension in `--output` flag
+**CLI Usage (v3.0):** `vscan scan --output report.html` (always comprehensive)
 
 **Implemented Features:**
 - ✅ Self-contained HTML report (no external dependencies)

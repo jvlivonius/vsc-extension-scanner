@@ -971,9 +971,9 @@ def report(
     """
     Generate a report from cached scan results without performing new scans.
 
-    This command creates JSON or HTML reports using only data that is already
+    This command creates JSON, HTML, or CSV reports using only data that is already
     cached from previous scans. No API calls are made, so this is very fast.
-    The output format is determined by the file extension (.json or .html).
+    The output format is determined by the file extension (.json, .html, or .csv).
 
     [bold yellow]Note:[/bold yellow] Only cached data is used. Run 'vscan scan' first
     to populate the cache with scan results.
@@ -982,6 +982,9 @@ def report(
 
         [dim]# Generate HTML report from cached data[/dim]
         $ vscan report security-report.html
+
+        [dim]# Generate CSV export from cached data[/dim]
+        $ vscan report results.csv
 
         [dim]# Generate JSON report from last 30 days of cached data[/dim]
         $ vscan report report.json --cache-max-age 30
@@ -1024,11 +1027,11 @@ def report(
     output_path = Path(output_str)
     output_format = output_path.suffix.lower()
 
-    if output_format not in ['.json', '.html']:
+    if output_format not in ['.json', '.html', '.csv']:
         if use_rich:
-            display_error("Output file must have .json or .html extension", use_rich=True)
+            display_error("Output file must have .json, .html, or .csv extension", use_rich=True)
         else:
-            print("Error: Output file must have .json or .html extension")
+            print("Error: Output file must have .json, .html, or .csv extension")
         raise typer.Exit(code=2)
 
     try:
@@ -1142,6 +1145,18 @@ def report(
                 display_success(f"HTML report generated: {output_str}", use_rich=True)
             else:
                 print(f"✓ HTML report generated: {output_str}")
+
+        elif output_format == '.csv':
+            # Generate CSV export
+            csv_content = formatter.format_csv(formatted_results.get('extensions', []))
+
+            with open(output_str, 'w', encoding='utf-8', newline='') as f:
+                f.write(csv_content)
+
+            if use_rich:
+                display_success(f"CSV export generated: {output_str}", use_rich=True)
+            else:
+                print(f"✓ CSV export generated: {output_str}")
 
         else:  # JSON
             import json
