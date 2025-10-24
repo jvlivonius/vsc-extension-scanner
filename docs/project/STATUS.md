@@ -474,8 +474,8 @@ vscan report results.csv               # Generate CSV from cache
 
 ## v3.2: Code Quality Improvements ✅
 
-**Status:** PARTIAL COMPLETE (4 of 17 items)
-**Duration:** ~4 hours
+**Status:** PARTIAL COMPLETE (5 of 17 items)
+**Duration:** ~5 hours
 **Completion Date:** 2025-10-24
 **Version:** 3.2.0
 
@@ -483,7 +483,7 @@ vscan report results.csv               # Generate CSV from cache
 
 - [x] Fix critical database connection leak in batch mode (Phase 1.1)
 - [x] Add division by zero safeguard (Phase 1.2)
-- [x] Partial: Simplify Rich/Typer dependencies - display.py completed (Phase 1.3)
+- [x] **COMPLETE:** Make Rich/Typer required dependencies (Phase 1.3)
 - [x] Replace ScanConfig with SimpleNamespace (Phase 3.1)
 - [ ] Remaining 13 items documented in ROADMAP for future work
 
@@ -494,6 +494,8 @@ vscan report results.csv               # Generate CSV from cache
 | [cache_manager.py](../../vscode_scanner/cache_manager.py) | +23 lines | Batch connection cleanup on error |
 | [scanner.py](../../vscode_scanner/scanner.py) | +7 lines | Try/except for cache errors, defensive division |
 | [display.py](../../vscode_scanner/display.py) | -20 lines | Removed RICH_AVAILABLE checks |
+| [cli.py](../../vscode_scanner/cli.py) | -30 lines | Removed TYPER_AVAILABLE, cli_fallback |
+| [vscan.py](../../vscode_scanner/vscan.py) | -10 lines | Simplified entry point |
 | [test_performance.py](../../tests/test_performance.py) | +48 lines | Batch cleanup error test |
 
 ### Features Implemented
@@ -511,18 +513,23 @@ vscan report results.csv               # Generate CSV from cache
 - More robust during refactoring
 
 **Code Simplification:**
-- Removed ~20 lines of conditional Rich import logic from display.py
-- Removed RICH_AVAILABLE flag and all associated checks
+- Removed ~70 lines of conditional Rich/Typer import logic across 4 files
+- Removed RICH_AVAILABLE and TYPER_AVAILABLE flags completely
+- Removed cli_fallback() function
+- Simplified CLI entry point in vscan.py
 - Replaced ScanConfig empty class with Python's SimpleNamespace
-- Cleaner, more maintainable code
+- Rich and Typer are now required dependencies
+- --plain flag still supported for CI/CD environments
 
 ### Success Criteria
 
 - ✅ Critical database leak fixed (prevents resource leaks)
 - ✅ Defensive coding improvements in place
-- ✅ ~20 lines of conditional logic removed
+- ✅ ~70 lines of conditional logic removed
+- ✅ Rich & Typer fully required (no fallbacks needed)
 - ✅ Code quality improvements applied
 - ✅ All performance tests passing (4/4)
+- ✅ CLI working correctly with simplified code
 
 ### Impact
 

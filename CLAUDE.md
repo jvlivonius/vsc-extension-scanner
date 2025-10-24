@@ -28,10 +28,12 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - ✅ **Defensive Programming** - Division by zero safeguard
   - More robust cache hit rate calculation
   - Prevents edge case errors during refactoring
-- ✅ **Code Simplification** - Partial Rich/Typer dependency cleanup
-  - Removed ~20 lines of conditional logic from display.py
-  - Removed RICH_AVAILABLE flag and checks
-  - Cleaner, more maintainable code
+- ✅ **Code Simplification** - Rich/Typer are now required dependencies
+  - Removed ~70 lines of conditional logic across 4 files
+  - Removed RICH_AVAILABLE and TYPER_AVAILABLE flags completely
+  - Removed cli_fallback() function
+  - Simplified CLI entry point
+  - --plain flag still supported for CI/CD
 - ✅ **Pythonic Refactoring** - SimpleNamespace instead of empty class
   - Replaced ScanConfig empty class with Python's SimpleNamespace
   - More idiomatic Python code
