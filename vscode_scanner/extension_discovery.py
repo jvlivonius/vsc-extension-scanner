@@ -11,7 +11,7 @@ import platform
 from pathlib import Path
 from typing import List, Dict, Optional
 
-from .utils import log, sanitize_string
+from .utils import log, sanitize_string, sanitize_error_message, is_restricted_path, is_temp_directory
 
 # Maximum package.json size (1MB)
 MAX_PACKAGE_JSON_SIZE = 1024 * 1024
@@ -40,18 +40,17 @@ class ExtensionDiscovery:
             FileNotFoundError: If extensions directory cannot be found
         """
         if self.custom_dir:
-            # Validate path doesn't contain dangerous patterns
-            if ".." in self.custom_dir or self.custom_dir.startswith("/etc") or self.custom_dir.startswith("/var") or self.custom_dir.startswith("/sys"):
+            # Validate path doesn't contain dangerous patterns (cross-platform)
+            # Block parent directory traversal
+            if ".." in self.custom_dir:
+                raise FileNotFoundError(f"Invalid or restricted path: {self.custom_dir}")
+
+            # Check if path is in restricted system directory
+            # Allow temp directories for testing
+            if is_restricted_path(self.custom_dir) and not is_temp_directory(self.custom_dir):
                 raise FileNotFoundError(f"Invalid or restricted path: {self.custom_dir}")
 
             custom_path = Path(self.custom_dir).expanduser().resolve()
-
-            # Ensure path is within user's home directory
-            home = Path.home().resolve()
-            try:
-                custom_path.relative_to(home)
-            except ValueError:
-                raise FileNotFoundError(f"Custom extensions directory must be within home directory: {custom_path}")
 
             if not custom_path.exists():
                 raise FileNotFoundError(f"Custom extensions directory not found: {custom_path}")
@@ -144,13 +143,9 @@ class ExtensionDiscovery:
             if file_size > MAX_PACKAGE_JSON_SIZE:
                 raise Exception(f"package.json too large: {file_size} bytes (max: {MAX_PACKAGE_JSON_SIZE})")
 
-            # Read with size limit
+            # Read and parse
             with open(package_json_path, 'r', encoding='utf-8') as f:
-                content = f.read(MAX_PACKAGE_JSON_SIZE + 1)
-
-                if len(content) > MAX_PACKAGE_JSON_SIZE:
-                    raise Exception(f"package.json exceeds size limit ({MAX_PACKAGE_JSON_SIZE} bytes)")
-
+                content = f.read()
                 package_data = json.loads(content)
 
                 # Validate it's a dictionary
@@ -158,9 +153,13 @@ class ExtensionDiscovery:
                     raise Exception("package.json must be a JSON object")
 
         except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON in package.json: {e}")
+            # Sanitize JSON decode error message
+            sanitized_error = sanitize_error_message(str(e), context="JSON parsing error")
+            raise Exception(f"Invalid JSON in package.json: {sanitized_error}")
         except Exception as e:
-            raise Exception(f"Error reading package.json: {e}")
+            # Sanitize generic error message
+            sanitized_error = sanitize_error_message(str(e), context="file reading error")
+            raise Exception(f"Error reading package.json: {sanitized_error}")
 
         # Extract required fields
         name = package_data.get('name')

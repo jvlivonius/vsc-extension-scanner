@@ -6,6 +6,9 @@ Shared utilities for logging and common functions.
 """
 
 import sys
+import platform
+import tempfile
+from pathlib import Path as PathLib
 from typing import Optional
 
 
@@ -54,6 +57,79 @@ def log(message: str, level: str = "INFO", newline: bool = True, force: bool = F
     output = f"{prefix} {message}".strip() if prefix else message
     end = '\n' if newline else ''
     print(output, file=sys.stderr, end=end, flush=True)
+
+
+def get_restricted_paths():
+    """
+    Get list of restricted system paths based on platform.
+
+    Returns:
+        List of restricted path prefixes for the current platform
+    """
+    system = platform.system()
+
+    if system == "Windows":
+        # Windows system directories
+        return [
+            "C:\\Windows",
+            "C:\\Program Files",
+            "C:\\Program Files (x86)",
+            "C:\\ProgramData",
+            "C:\\$",  # System volume information
+        ]
+    else:  # Unix-like (macOS, Linux)
+        # Unix/Linux system directories
+        return ["/etc", "/sys", "/boot", "/dev", "/proc", "/var"]
+
+
+def is_temp_directory(path_str: str) -> bool:
+    """
+    Check if path is within a legitimate temporary directory.
+
+    Args:
+        path_str: Path to check
+
+    Returns:
+        True if path is within system temp directory, False otherwise
+    """
+    try:
+        path = PathLib(path_str).resolve()
+        temp_dir = PathLib(tempfile.gettempdir()).resolve()
+        path.relative_to(temp_dir)
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def is_restricted_path(path_str: str) -> bool:
+    """
+    Check if path is in a restricted system directory (cross-platform).
+
+    Args:
+        path_str: Path to check
+
+    Returns:
+        True if path is restricted, False otherwise
+    """
+    try:
+        path = PathLib(path_str).resolve()
+        restricted = get_restricted_paths()
+
+        # Check if path starts with any restricted path
+        for restricted_path in restricted:
+            try:
+                restricted_resolved = PathLib(restricted_path).resolve()
+                path.relative_to(restricted_resolved)
+                # Path is under restricted directory
+                return True
+            except ValueError:
+                # Not under this restricted path, continue checking
+                continue
+
+        return False
+    except (ValueError, OSError):
+        # If we can't resolve the path, consider it restricted for safety
+        return True
 
 
 def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path") -> bool:
@@ -197,6 +273,69 @@ def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
         return text
 
     return text[:max_length - len(suffix)] + suffix
+
+
+def safe_mkdir(path: PathLib, mode: int = 0o755):
+    """
+    Create directory with permissions (cross-platform).
+
+    On Unix-like systems, sets the specified mode.
+    On Windows, mode parameter is ignored (Windows uses ACLs).
+
+    Args:
+        path: Path object to create
+        mode: Unix permission mode (default: 0o755)
+    """
+    path.mkdir(parents=True, exist_ok=True)
+
+    # Only set mode on Unix-like systems
+    if platform.system() != "Windows":
+        try:
+            path.chmod(mode)
+        except (OSError, NotImplementedError):
+            # Permissions not supported, continue
+            pass
+
+
+def safe_touch(path: PathLib, mode: int = 0o600):
+    """
+    Create file with permissions (cross-platform).
+
+    On Unix-like systems, sets the specified mode.
+    On Windows, mode parameter is ignored (Windows uses ACLs).
+
+    Args:
+        path: Path object to create
+        mode: Unix permission mode (default: 0o600)
+    """
+    path.touch(exist_ok=True)
+
+    # Only set mode on Unix-like systems
+    if platform.system() != "Windows":
+        try:
+            path.chmod(mode)
+        except (OSError, NotImplementedError):
+            # Permissions not supported, continue
+            pass
+
+
+def safe_chmod(path: PathLib, mode: int):
+    """
+    Change file/directory permissions (cross-platform).
+
+    On Unix-like systems, sets the specified mode.
+    On Windows, this is a no-op (Windows uses ACLs).
+
+    Args:
+        path: Path object to modify
+        mode: Unix permission mode
+    """
+    if platform.system() != "Windows":
+        try:
+            path.chmod(mode)
+        except (OSError, NotImplementedError):
+            # Permissions not supported, continue
+            pass
 
 
 # Error help messages with recovery suggestions

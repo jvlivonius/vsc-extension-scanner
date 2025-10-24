@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vscode-extension-scanner"
-version = "2.2.1"
+dynamic = ["version"]
 description = "Security scanner for VS Code extensions using vscan.dev"
 readme = "README.md"
 authors = [
@@ -41,6 +41,9 @@ vscan = "vscode_scanner.vscan:main"
 
 [tool.setuptools]
 packages = ["vscode_scanner"]
+
+[tool.setuptools.dynamic]
+version = {attr = "vscode_scanner._version.__version__"}
 
 [tool.setuptools.package-data]
 vscode_scanner = ["*.py"]

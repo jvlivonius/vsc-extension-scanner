@@ -8,6 +8,11 @@ Modern builds use pyproject.toml instead.
 
 from setuptools import setup, find_packages
 import os
+import sys
+
+# Add the package to path to import version
+sys.path.insert(0, os.path.dirname(__file__))
+from vscode_scanner._version import __version__
 
 # Read README for long description
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -15,7 +20,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="vscode-extension-scanner",
-    version="2.2.1",
+    version=__version__,
     author="Joerg von Livonius",
     author_email="your.email@example.com",
     description="Security scanner for VS Code extensions using vscan.dev",

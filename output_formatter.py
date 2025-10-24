@@ -7,12 +7,13 @@ Schema version 2.0 with reorganized structure.
 """
 
 from typing import List, Dict, Any
+from vscode_scanner._version import SCHEMA_VERSION
 
 
 class OutputFormatter:
     """Formats scan results into standardized JSON output with mode selection."""
 
-    SCHEMA_VERSION = "2.0"
+    SCHEMA_VERSION = SCHEMA_VERSION
 
     def format_output(
         self,
@@ -46,8 +47,8 @@ class OutputFormatter:
 
         # Build output
         output = {
-            "version": self.SCHEMA_VERSION,
-            "mode": "detailed" if detailed else "standard",
+            "schema_version": self.SCHEMA_VERSION,
+            "output_mode": "detailed" if detailed else "standard",
             "summary": summary,
             "extensions": extensions
         }

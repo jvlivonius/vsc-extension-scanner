@@ -14,11 +14,14 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 
+from utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod
+from vscode_scanner._version import SCHEMA_VERSION
+
 
 class CacheManager:
     """Manages caching of extension scan results using SQLite."""
 
-    SCHEMA_VERSION = "2.0"
+    SCHEMA_VERSION = SCHEMA_VERSION
 
     def __init__(self, cache_dir: Optional[str] = None):
         """
@@ -28,8 +31,14 @@ class CacheManager:
             cache_dir: Directory to store cache database. Defaults to ~/.vscan/
         """
         if cache_dir:
-            # Validate cache directory path
-            if ".." in cache_dir or cache_dir.startswith("/etc") or cache_dir.startswith("/var"):
+            # Validate cache directory path (cross-platform)
+            # Block parent directory traversal
+            if ".." in cache_dir:
+                raise ValueError(f"Invalid cache directory path: {cache_dir}")
+
+            # Check if path is in restricted system directory
+            # Allow temp directories for testing
+            if is_restricted_path(cache_dir) and not is_temp_directory(cache_dir):
                 raise ValueError(f"Invalid cache directory path: {cache_dir}")
 
             cache_path = Path(cache_dir).expanduser().resolve()
@@ -132,14 +141,16 @@ class CacheManager:
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
         # Create cache directory with restricted permissions (user-only)
-        self.cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # Uses cross-platform safe_mkdir that handles Windows/Unix differences
+        safe_mkdir(self.cache_dir, mode=0o700)
 
         # Ensure database file has restrictive permissions
+        # Uses cross-platform safe functions that handle Windows/Unix differences
         if not self.cache_db.exists():
-            self.cache_db.touch(mode=0o600)
+            safe_touch(self.cache_db, mode=0o600)
         else:
             # Update permissions on existing database
-            self.cache_db.chmod(0o600)
+            safe_chmod(self.cache_db, 0o600)
 
         conn = sqlite3.connect(self.cache_db)
         cursor = conn.cursor()

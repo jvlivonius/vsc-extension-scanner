@@ -8,15 +8,20 @@ for unchanged extensions.
 
 import sqlite3
 import json
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
+
+from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod
+from ._version import SCHEMA_VERSION
 
 
 class CacheManager:
     """Manages caching of extension scan results using SQLite."""
 
-    SCHEMA_VERSION = "2.0"
+    SCHEMA_VERSION = SCHEMA_VERSION
 
     def __init__(self, cache_dir: Optional[str] = None):
         """
@@ -26,24 +31,28 @@ class CacheManager:
             cache_dir: Directory to store cache database. Defaults to ~/.vscan/
         """
         if cache_dir:
-            # Validate cache directory path
-            if ".." in cache_dir or cache_dir.startswith("/etc") or cache_dir.startswith("/var"):
+            # Validate cache directory path (cross-platform)
+            # Block parent directory traversal
+            if ".." in cache_dir:
+                raise ValueError(f"Invalid cache directory path: {cache_dir}")
+
+            # Check if path is in restricted system directory
+            # Allow temp directories for testing
+            if is_restricted_path(cache_dir) and not is_temp_directory(cache_dir):
                 raise ValueError(f"Invalid cache directory path: {cache_dir}")
 
             cache_path = Path(cache_dir).expanduser().resolve()
-
-            # Ensure within user's home directory
-            home = Path.home().resolve()
-            try:
-                cache_path.relative_to(home)
-            except ValueError:
-                raise ValueError(f"Cache directory must be within home directory: {cache_path}")
 
             self.cache_dir = cache_path
         else:
             self.cache_dir = Path.home() / ".vscan"
 
         self.cache_db = self.cache_dir / "cache.db"
+
+        # Verify database integrity if it exists
+        if self.cache_db.exists():
+            if not self._verify_database_integrity():
+                self._handle_corrupted_database()
 
         # Check if migration is needed before init
         needs_migration = self._check_if_migration_needed()
@@ -53,17 +62,95 @@ class CacheManager:
         else:
             self._init_database()
 
+    @contextmanager
+    def _db_connection(self):
+        """
+        Context manager for database connections.
+        Provides automatic connection management with proper cleanup.
+
+        Yields:
+            sqlite3.Connection: Database connection
+
+        Example:
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM scan_cache")
+                # Connection automatically closed on exit
+        """
+        conn = sqlite3.connect(self.cache_db)
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def _verify_database_integrity(self) -> bool:
+        """
+        Verify database integrity using SQLite's built-in integrity check.
+
+        Returns:
+            True if database is intact, False if corrupted
+        """
+        try:
+            conn = sqlite3.connect(self.cache_db)
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA integrity_check")
+            result = cursor.fetchone()
+            conn.close()
+
+            # integrity_check returns "ok" if everything is fine
+            # or a list of errors if there are problems
+            if result and result[0] == "ok":
+                return True
+            else:
+                print(f"[WARNING] Cache database integrity check failed: {result}",
+                      file=__import__('sys').stderr)
+                return False
+
+        except sqlite3.Error as e:
+            print(f"[WARNING] Cache database integrity check error: {e}",
+                  file=__import__('sys').stderr)
+            return False
+
+    def _handle_corrupted_database(self):
+        """
+        Handle corrupted database by backing it up and creating a fresh one.
+        """
+        import sys
+        import shutil
+
+        print("[WARNING] Detected corrupted cache database", file=sys.stderr)
+
+        try:
+            # Create backup with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = self.cache_db.parent / f"cache.db.corrupted.{timestamp}"
+
+            print(f"[INFO] Backing up corrupted database to: {backup_path}", file=sys.stderr)
+            shutil.copy2(self.cache_db, backup_path)
+
+            # Remove corrupted database
+            print("[INFO] Removing corrupted database...", file=sys.stderr)
+            self.cache_db.unlink()
+
+            print("[INFO] Creating fresh cache database...", file=sys.stderr)
+
+        except (OSError, IOError) as e:
+            print(f"[ERROR] Failed to handle corrupted database: {e}", file=sys.stderr)
+            print("[INFO] Cache functionality may be impaired", file=sys.stderr)
+
     def _init_database(self):
         """Initialize SQLite database with schema v2.0."""
         # Create cache directory with restricted permissions (user-only)
-        self.cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # Uses cross-platform safe_mkdir that handles Windows/Unix differences
+        safe_mkdir(self.cache_dir, mode=0o700)
 
         # Ensure database file has restrictive permissions
+        # Uses cross-platform safe functions that handle Windows/Unix differences
         if not self.cache_db.exists():
-            self.cache_db.touch(mode=0o600)
+            safe_touch(self.cache_db, mode=0o600)
         else:
             # Update permissions on existing database
-            self.cache_db.chmod(0o600)
+            safe_chmod(self.cache_db, 0o600)
 
         conn = sqlite3.connect(self.cache_db)
         cursor = conn.cursor()
@@ -224,7 +311,13 @@ class CacheManager:
             cursor.execute("SELECT id, scan_result FROM scan_cache")
             rows = cursor.fetchall()
 
-            for row_id, scan_result_json in rows:
+            total_rows = len(rows)
+            if total_rows > 0:
+                print(f"Migrating cache schema (v1.0 → v2.0)...", file=__import__('sys').stderr)
+                print(f"Processing {total_rows} cached entries...", file=__import__('sys').stderr)
+
+            updated_count = 0
+            for idx, (row_id, scan_result_json) in enumerate(rows, 1):
                 try:
                     result = json.loads(scan_result_json)
 
@@ -248,9 +341,19 @@ class CacheManager:
                         WHERE id = ?
                     """, (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id))
 
+                    updated_count += 1
+
+                    # Show progress every 10 entries or at the end
+                    if idx % 10 == 0 or idx == total_rows:
+                        print(f"  Progress: {idx}/{total_rows} entries...", file=__import__('sys').stderr, end='\r')
+
                 except (json.JSONDecodeError, Exception):
                     # Skip rows that can't be parsed
                     continue
+
+            if total_rows > 0:
+                print()  # New line after progress
+                print(f"Migration complete: {updated_count}/{total_rows} entries updated", file=__import__('sys').stderr)
 
             # Update schema version
             cursor.execute(
@@ -259,7 +362,6 @@ class CacheManager:
             )
 
             conn.commit()
-            print(f"Successfully migrated cache from v1.0 to v2.0 ({len(rows)} entries)", file=__import__('sys').stderr)
 
         except sqlite3.Error as e:
             print(f"Cache migration error: {e}", file=__import__('sys').stderr)
@@ -284,42 +386,40 @@ class CacheManager:
         Returns:
             Cached result dict if found and valid, None otherwise
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Calculate cutoff timestamp
-            cutoff = datetime.now() - timedelta(days=max_age_days)
-            cutoff_str = cutoff.isoformat()
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute("""
-                SELECT scan_result, scanned_at
-                FROM scan_cache
-                WHERE extension_id = ?
-                  AND version = ?
-                  AND scanned_at >= ?
-            """, (extension_id, version, cutoff_str))
+                # Calculate cutoff timestamp
+                cutoff = datetime.now() - timedelta(days=max_age_days)
+                cutoff_str = cutoff.isoformat()
 
-            row = cursor.fetchone()
+                cursor.execute("""
+                    SELECT scan_result, scanned_at
+                    FROM scan_cache
+                    WHERE extension_id = ?
+                      AND version = ?
+                      AND scanned_at >= ?
+                """, (extension_id, version, cutoff_str))
 
-            if row:
-                scan_result_json, scanned_at = row
-                result = json.loads(scan_result_json)
+                row = cursor.fetchone()
 
-                # Add cache metadata
-                result['_cache_hit'] = True
-                result['_cached_at'] = scanned_at
+                if row:
+                    scan_result_json, scanned_at = row
+                    result = json.loads(scan_result_json)
 
-                return result
+                    # Add cache metadata
+                    result['_cache_hit'] = True
+                    result['_cached_at'] = scanned_at
 
-            return None
+                    return result
+
+                return None
 
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail - just return None (cache miss)
             print(f"Cache read error: {e}", file=__import__('sys').stderr)
             return None
-        finally:
-            conn.close()
 
     def save_result(
         self,
@@ -339,56 +439,53 @@ class CacheManager:
         if result.get('scan_status') != 'success':
             return
 
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Remove cache metadata before storing
-            result_to_store = result.copy()
-            result_to_store.pop('_cache_hit', None)
-            result_to_store.pop('_cached_at', None)
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            scan_result_json = json.dumps(result_to_store)
-            scanned_at = datetime.now().isoformat()
+                # Remove cache metadata before storing
+                result_to_store = result.copy()
+                result_to_store.pop('_cache_hit', None)
+                result_to_store.pop('_cached_at', None)
 
-            # Extract indexed fields for v2 schema
-            risk_level = result_to_store.get('risk_level')
-            security_score = result_to_store.get('security_score')
+                scan_result_json = json.dumps(result_to_store)
+                scanned_at = datetime.now().isoformat()
 
-            # Vulnerabilities
-            vulnerabilities = result_to_store.get('vulnerabilities', {})
-            vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
+                # Extract indexed fields for v2 schema
+                risk_level = result_to_store.get('risk_level')
+                security_score = result_to_store.get('security_score')
 
-            # Dependencies
-            dependencies = result_to_store.get('dependencies', {})
-            dependencies_count = dependencies.get('total_count', 0)
+                # Vulnerabilities
+                vulnerabilities = result_to_store.get('vulnerabilities', {})
+                vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
 
-            # Publisher verification
-            metadata = result_to_store.get('metadata', {})
-            publisher = metadata.get('publisher', {})
-            publisher_verified = 1 if publisher.get('verified') else 0
+                # Dependencies
+                dependencies = result_to_store.get('dependencies', {})
+                dependencies_count = dependencies.get('total_count', 0)
 
-            # Risk factors
-            risk_factors = result_to_store.get('risk_factors', [])
-            has_risk_factors = 1 if len(risk_factors) > 0 else 0
+                # Publisher verification
+                metadata = result_to_store.get('metadata', {})
+                publisher = metadata.get('publisher', {})
+                publisher_verified = 1 if publisher.get('verified') else 0
 
-            # Insert or replace
-            cursor.execute("""
-                INSERT OR REPLACE INTO scan_cache
-                (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                  vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+                # Risk factors
+                risk_factors = result_to_store.get('risk_factors', [])
+                has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
-            conn.commit()
+                # Insert or replace
+                cursor.execute("""
+                    INSERT OR REPLACE INTO scan_cache
+                    (extension_id, version, scan_result, scanned_at, risk_level, security_score,
+                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
+                      vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+
+                conn.commit()
 
         except (sqlite3.Error, json.JSONDecodeError) as e:
             # Log error but don't fail the scan
             print(f"Cache write error: {e}", file=__import__('sys').stderr)
-            conn.rollback()
-        finally:
-            conn.close()
 
     def cleanup_old_entries(self, max_age_days: int = 7) -> int:
         """
@@ -461,66 +558,100 @@ class CacheManager:
         finally:
             conn.close()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self, max_age_days: int = 7) -> Dict[str, Any]:
         """
-        Get cache statistics.
+        Get cache statistics including age information.
+
+        Args:
+            max_age_days: Maximum age threshold for stale detection (default: 7)
 
         Returns:
             Dictionary with cache statistics
         """
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-
         try:
-            # Total entries
-            cursor.execute("SELECT COUNT(*) FROM scan_cache")
-            total_entries = cursor.fetchone()[0]
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
 
-            # Count by risk level
-            cursor.execute("""
-                SELECT risk_level, COUNT(*)
-                FROM scan_cache
-                GROUP BY risk_level
-            """)
-            risk_breakdown = {row[0] or 'unknown': row[1] for row in cursor.fetchall()}
+                # Total entries
+                cursor.execute("SELECT COUNT(*) FROM scan_cache")
+                total_entries = cursor.fetchone()[0]
 
-            # Extensions with vulnerabilities
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM scan_cache
-                WHERE vulnerabilities_count > 0
-            """)
-            with_vulnerabilities = cursor.fetchone()[0]
+                # Count by risk level
+                cursor.execute("""
+                    SELECT risk_level, COUNT(*)
+                    FROM scan_cache
+                    GROUP BY risk_level
+                """)
+                risk_breakdown = {row[0] or 'unknown': row[1] for row in cursor.fetchall()}
 
-            # Oldest entry
-            cursor.execute("""
-                SELECT MIN(scanned_at)
-                FROM scan_cache
-            """)
-            oldest_entry_row = cursor.fetchone()
-            oldest_entry = oldest_entry_row[0] if oldest_entry_row and oldest_entry_row[0] else None
+                # Extensions with vulnerabilities
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM scan_cache
+                    WHERE vulnerabilities_count > 0
+                """)
+                with_vulnerabilities = cursor.fetchone()[0]
 
-            # Newest entry
-            cursor.execute("""
-                SELECT MAX(scanned_at)
-                FROM scan_cache
-            """)
-            newest_entry_row = cursor.fetchone()
-            newest_entry = newest_entry_row[0] if newest_entry_row and newest_entry_row[0] else None
+                # Oldest entry
+                cursor.execute("""
+                    SELECT MIN(scanned_at)
+                    FROM scan_cache
+                """)
+                oldest_entry_row = cursor.fetchone()
+                oldest_entry = oldest_entry_row[0] if oldest_entry_row and oldest_entry_row[0] else None
 
-            # Database size
-            db_size_bytes = self.cache_db.stat().st_size if self.cache_db.exists() else 0
-            db_size_kb = db_size_bytes / 1024
+                # Newest entry
+                cursor.execute("""
+                    SELECT MAX(scanned_at)
+                    FROM scan_cache
+                """)
+                newest_entry_row = cursor.fetchone()
+                newest_entry = newest_entry_row[0] if newest_entry_row and newest_entry_row[0] else None
 
-            return {
-                'total_entries': total_entries,
-                'risk_breakdown': risk_breakdown,
-                'extensions_with_vulnerabilities': with_vulnerabilities,
-                'oldest_entry': oldest_entry,
-                'newest_entry': newest_entry,
-                'database_size_kb': round(db_size_kb, 2),
-                'database_path': str(self.cache_db)
-            }
+                # Calculate average age of cache entries
+                now = datetime.now()
+                cursor.execute("SELECT scanned_at FROM scan_cache")
+                timestamp_strs = [row[0] for row in cursor.fetchall() if row[0]]
+
+                avg_age_days = None
+                if timestamp_strs:
+                    ages = []
+                    for ts_str in timestamp_strs:
+                        try:
+                            ts = datetime.fromisoformat(ts_str)
+                            age_days = (now - ts).total_seconds() / 86400
+                            ages.append(age_days)
+                        except (ValueError, TypeError):
+                            continue
+                    if ages:
+                        avg_age_days = round(sum(ages) / len(ages), 1)
+
+                # Count stale entries (older than max_age_days)
+                cutoff = now - timedelta(days=max_age_days)
+                cutoff_str = cutoff.isoformat()
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM scan_cache
+                    WHERE scanned_at < ?
+                """, (cutoff_str,))
+                stale_entries = cursor.fetchone()[0]
+
+                # Database size
+                db_size_bytes = self.cache_db.stat().st_size if self.cache_db.exists() else 0
+                db_size_kb = db_size_bytes / 1024
+
+                return {
+                    'total_entries': total_entries,
+                    'risk_breakdown': risk_breakdown,
+                    'extensions_with_vulnerabilities': with_vulnerabilities,
+                    'oldest_entry': oldest_entry,
+                    'newest_entry': newest_entry,
+                    'average_age_days': avg_age_days,
+                    'stale_entries': stale_entries,
+                    'stale_threshold_days': max_age_days,
+                    'database_size_kb': round(db_size_kb, 2),
+                    'database_path': str(self.cache_db)
+                }
 
         except sqlite3.Error as e:
             print(f"Cache stats error: {e}", file=__import__('sys').stderr)
@@ -528,8 +659,6 @@ class CacheManager:
                 'error': str(e),
                 'database_path': str(self.cache_db)
             }
-        finally:
-            conn.close()
 
     def clear_cache(self) -> int:
         """

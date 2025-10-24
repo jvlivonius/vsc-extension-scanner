@@ -6,15 +6,53 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** Phase 4 Complete + HTML Report Feature + Phase 3 Improvements (v2.2)
+**Current Status:** Phase 4 Complete + HTML Report Feature + Phase 3 Improvements + Cross-Platform (v2.2.1)
 
-**Latest Updates (Phase 3 Improvements - 2025-10-23):**
-- ✅ **Database Integrity Checks** (NEW!) - Automatic corruption detection and recovery
+**Latest Updates (Version Management - 2025-10-24):**
+- ✅ **Centralized Version Management** - Single source of truth for version numbers
+  - Created `vscode_scanner/_version.py` as single source of truth
+  - All modules now import from `_version.py` (no hardcoded versions)
+  - Dynamic versioning in `setup.py` and `pyproject.toml`
+  - Created `scripts/bump_version.py` for easy version management
+  - Separated app version (2.2.1) from schema version (2.0)
+- ✅ **Improved Output UX** - Human-readable output by default
+  - Console output is now always human-readable summary
+  - JSON output only saved to file when `--output` is specified
+  - No more JSON dumped to console by default
+  - Cleaner, more user-friendly CLI experience
+- ✅ **Enhanced Filter Feedback** - Helpful messages when filters match nothing
+  - Shows which filters are active when 0 extensions match
+  - Displays count of extensions filtered out
+  - Provides tips for troubleshooting filter issues
+  - Example: "Tip: Publisher names are case-insensitive but must match exactly"
+
+**Previous Updates (Cross-Platform Compatibility - 2025-10-24):**
+- ✅ **Windows Compatibility** (NEW!) - Fixed critical import issues
+  - Fixed package import statement for HTML report generator
+  - Windows pip installation now works correctly
+  - Verified on macOS, ready for Windows testing
+- ✅ **Cross-Platform Path Security** (NEW!) - Platform-aware security checks
+  - Blocks Windows system paths (C:\Windows, C:\Program Files, etc.)
+  - Blocks Unix/Linux system paths (/etc, /sys, /var, etc.)
+  - Allows legitimate temp directories on all platforms
+  - 100% backward compatible with existing functionality
+- ✅ **Safe File Permissions** (NEW!) - Unix/Windows permission handling
+  - Graceful fallback on Windows (ignores Unix permissions)
+  - Maintains security on Unix/macOS platforms
+  - No crashes or errors on any platform
+- ✅ **Explicit UTF-8 Encoding** - Consistent encoding across platforms
+  - All file operations use explicit UTF-8 encoding
+  - Handles international characters correctly
+  - Prevents encoding errors on Windows
+- ✅ **All Tests Passing** - 35/35 functional tests verified
+
+**Previous Updates (Phase 3 Improvements - 2025-10-23):**
+- ✅ **Database Integrity Checks** - Automatic corruption detection and recovery
   - PRAGMA integrity_check on database initialization
   - Automatic backup of corrupted databases with timestamps
   - Fresh database creation on corruption detection
   - Comprehensive test suite (3 tests)
-- ✅ **Integration Tests** (NEW!) - Comprehensive workflow testing
+- ✅ **Integration Tests** - Comprehensive workflow testing
   - 7 test suites covering all major workflows
   - Mock vscan.dev API for reliable testing
   - Full coverage: discovery, scanning, caching, output, errors
@@ -57,13 +95,14 @@ See **[docs/security/SECURITY_FIXES_APPLIED.md](docs/security/SECURITY_FIXES_APP
 - **[docs/phases/PHASE4_REQUIREMENTS.md](docs/phases/PHASE4_REQUIREMENTS.md)** - Phase 4: Enhanced Data Integration
 
 ### Features
+- **[docs/features/IMPROVEMENT_PLAN.md](docs/features/IMPROVEMENT_PLAN.md)** - Phase 3 improvements plan
 - **[docs/features/HTML_REPORT_SPECIFICATION.md](docs/features/HTML_REPORT_SPECIFICATION.md)** - HTML report feature spec (v2.2)
 - **[docs/features/RETRY_MECHANISM.md](docs/features/RETRY_MECHANISM.md)** - Retry mechanism documentation (v2.2)
 
 ### Research & Testing
 - **[docs/research/API_RESEARCH.md](docs/research/API_RESEARCH.md)** - vscan.dev API documentation
 - **[docs/testing/TESTING_CHECKLIST.md](docs/testing/TESTING_CHECKLIST.md)** - Testing checklist
-- **[docs/testing/MACOS_TEST_RESULTS.md](docs/testing/MACOS_TEST_RESULTS.md)** - macOS test results
+- **[docs/testing/MACOS_TESTING.md](docs/testing/MACOS_TESTING.md)** - macOS test plan
 
 ### Results & Security
 - **[docs/results/](docs/results/)** - Phase completion summaries and test results

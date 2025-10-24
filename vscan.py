@@ -23,10 +23,8 @@ from extension_discovery import ExtensionDiscovery
 from vscan_api import VscanAPIClient
 from output_formatter import OutputFormatter
 from cache_manager import CacheManager
-from utils import log, setup_logging, validate_path, sanitize_string, show_error_help, get_error_type
-
-
-VERSION = "2.0.0"
+from utils import log, setup_logging, validate_path, sanitize_string, show_error_help, get_error_type, safe_mkdir
+from vscode_scanner._version import __version__ as VERSION
 
 
 def load_config_file() -> dict:
@@ -404,6 +402,41 @@ def apply_pre_scan_filters(extensions, args):
     return filtered
 
 
+def show_filter_help(args, original_count):
+    """
+    Show helpful information about active filters when no extensions match.
+
+    Args:
+        args: Parsed command-line arguments
+        original_count: Number of extensions before filtering
+    """
+    active_filters = []
+
+    if args.publisher:
+        active_filters.append(f"  --publisher: {args.publisher}")
+    if args.include_ids:
+        active_filters.append(f"  --include-ids: {args.include_ids}")
+    if args.exclude_ids:
+        active_filters.append(f"  --exclude-ids: {args.exclude_ids}")
+    if args.min_risk_level:
+        active_filters.append(f"  --min-risk-level: {args.min_risk_level}")
+
+    if active_filters:
+        log("", "INFO")
+        log("No extensions match the specified filters:", "WARNING")
+        for filter_info in active_filters:
+            log(filter_info, "INFO")
+        log("", "INFO")
+
+        # Provide helpful suggestions
+        if original_count > 0:
+            log(f"Tip: {original_count} extensions were found, but all were filtered out.", "INFO")
+
+        if args.publisher:
+            log("Tip: Publisher names are case-insensitive but must match exactly.", "INFO")
+            log("     Run without filters to see available publishers.", "INFO")
+
+
 def discover_extensions(args):
     """
     Discover installed VS Code extensions.
@@ -412,7 +445,7 @@ def discover_extensions(args):
         args: Parsed command-line arguments
 
     Returns:
-        Tuple of (extensions_list, extensions_dir) or (None, None) on error
+        Tuple of (extensions_list, extensions_dir, original_count)
 
     Raises:
         FileNotFoundError: If extensions directory cannot be found
@@ -436,7 +469,7 @@ def discover_extensions(args):
         log(f"Filtered out {filtered_count} extensions based on criteria", "INFO")
         log(f"{len(extensions)} extensions selected for scanning", "SUCCESS")
 
-    return extensions, extensions_dir
+    return extensions, extensions_dir, original_count
 
 
 def scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp):
@@ -724,9 +757,7 @@ def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_sta
     # Output results
     if args.output:
         _write_output_file(args.output, results, is_html_output)
-    else:
-        # Output to stdout
-        print(json.dumps(results, indent=2))
+    # Note: Human-readable summary is printed separately via print_summary()
 
     return results
 
@@ -741,8 +772,8 @@ def _write_output_file(output_path_str, results, is_html_output):
 
     output_path = Path(output_path_str).resolve()
 
-    # Create parent directories with restricted permissions
-    output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+    # Create parent directories with restricted permissions (cross-platform)
+    safe_mkdir(output_path.parent, mode=0o755)
 
     # Generate HTML or JSON based on file extension
     if is_html_output:
@@ -758,7 +789,7 @@ def _write_output_file(output_path_str, results, is_html_output):
         log(f"HTML report written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
     else:
         # JSON output
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)
 
         log(f"Results written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
@@ -856,7 +887,7 @@ def main():
 
     # Step 1: Discover extensions
     try:
-        extensions, extensions_dir = discover_extensions(args)
+        extensions, extensions_dir, original_count = discover_extensions(args)
     except FileNotFoundError as e:
         error_msg = sanitize_string(str(e), max_length=200)
         log(error_msg, "ERROR")
@@ -873,17 +904,18 @@ def main():
     # Handle empty extension list
     if len(extensions) == 0:
         log("No extensions found to scan", "WARNING")
-        formatter = OutputFormatter()
-        results = formatter.format_output([], scan_timestamp, 0)
+        show_filter_help(args, original_count)
 
+        # Still generate output for file if requested
         if args.output:
+            formatter = OutputFormatter()
+            results = formatter.format_output([], scan_timestamp, 0)
             try:
                 _write_output_file(args.output, results, args.output.endswith('.html'))
             except Exception as e:
                 log(f"Error writing output file: {type(e).__name__}", "ERROR")
                 return 2
-        else:
-            print(json.dumps(results, indent=2))
+            log(f"Empty results saved to {sanitize_string(args.output, max_length=100)}", "INFO")
 
         return 0
 

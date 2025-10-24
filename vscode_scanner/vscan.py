@@ -23,10 +23,8 @@ from .extension_discovery import ExtensionDiscovery
 from .vscan_api import VscanAPIClient
 from .output_formatter import OutputFormatter
 from .cache_manager import CacheManager
-from .utils import log, setup_logging, validate_path, sanitize_string
-
-
-VERSION = "2.2.1"
+from .utils import log, setup_logging, validate_path, sanitize_string, safe_mkdir
+from ._version import __version__ as VERSION
 
 
 def parse_arguments():
@@ -217,16 +215,14 @@ def main():
 
     if len(extensions) == 0:
         log("No extensions found to scan", "WARNING")
-        # Output empty results
-        formatter = OutputFormatter()
-        results = formatter.format_output([], scan_timestamp, 0)
 
+        # Still generate output for file if requested
         if args.output:
-            with open(args.output, 'w') as f:
+            formatter = OutputFormatter()
+            results = formatter.format_output([], scan_timestamp, 0)
+            with open(args.output, 'w', encoding='utf-8') as f:
                 json.dump(results, f, indent=2)
-            log(f"Results written to {args.output}", "INFO")
-        else:
-            print(json.dumps(results, indent=2))
+            log(f"Empty results saved to {sanitize_string(args.output, max_length=100)}", "INFO")
 
         return 0
 
@@ -419,12 +415,12 @@ def main():
                 log("Error: Output path must be within current directory", "ERROR")
                 return 2
 
-            # Create parent directories with restricted permissions
-            output_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+            # Create parent directories with restricted permissions (cross-platform)
+            safe_mkdir(output_path.parent, mode=0o755)
 
             # Generate HTML or JSON based on file extension
             if is_html_output:
-                from html_report_generator import HTMLReportGenerator
+                from .html_report_generator import HTMLReportGenerator
 
                 log("Generating HTML report...", "INFO")
                 html_gen = HTMLReportGenerator()
@@ -436,7 +432,7 @@ def main():
                 log(f"HTML report written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
             else:
                 # JSON output
-                with open(output_path, 'w') as f:
+                with open(output_path, 'w', encoding='utf-8') as f:
                     json.dump(results, f, indent=2)
 
                 log(f"Results written to {sanitize_string(args.output, max_length=100)}", "SUCCESS")
@@ -446,9 +442,7 @@ def main():
             if verbose:
                 log(sanitize_string(f"Details: {str(e)}", max_length=200), "ERROR")
             return 2
-    else:
-        # Output to stdout
-        print(json.dumps(results, indent=2))
+    # Note: Human-readable summary is printed below
 
     # Summary (always show, not just in verbose mode)
     log("", "INFO", force=True)
