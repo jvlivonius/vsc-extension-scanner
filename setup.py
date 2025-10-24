@@ -45,6 +45,10 @@ setup(
         "Environment :: Console",
     ],
     python_requires=">=3.8",
+    install_requires=[
+        "rich>=13.0.0,<14.0.0",
+        "typer>=0.9.0,<1.0.0",
+    ],
     entry_points={
         "console_scripts": [
             "vscan=vscode_scanner.vscan:main",

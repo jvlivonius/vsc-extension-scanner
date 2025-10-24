@@ -29,6 +29,10 @@ classifiers = [
 ]
 keywords = ["vscode", "security", "scanner", "extensions", "audit", "vscan"]
 requires-python = ">=3.8"
+dependencies = [
+    "rich>=13.0.0,<14.0.0",
+    "typer>=0.9.0,<1.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/jvlivonius/vsc-extension-scanner"
