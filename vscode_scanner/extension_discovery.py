@@ -12,9 +12,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 from .utils import log, sanitize_string, sanitize_error_message, is_restricted_path, is_temp_directory
-
-# Maximum package.json size (1MB)
-MAX_PACKAGE_JSON_SIZE = 1024 * 1024
+from .constants import MAX_PACKAGE_JSON_SIZE
 
 
 class ExtensionDiscovery:
@@ -43,17 +41,17 @@ class ExtensionDiscovery:
             # Validate path doesn't contain dangerous patterns (cross-platform)
             # Block parent directory traversal
             if ".." in self.custom_dir:
-                raise FileNotFoundError(f"Invalid or restricted path: {self.custom_dir}")
+                raise FileNotFoundError(f"[E300] Invalid or restricted path: {self.custom_dir}")
 
             # Check if path is in restricted system directory
             # Allow temp directories for testing
             if is_restricted_path(self.custom_dir) and not is_temp_directory(self.custom_dir):
-                raise FileNotFoundError(f"Invalid or restricted path: {self.custom_dir}")
+                raise FileNotFoundError(f"[E300] Invalid or restricted path: {self.custom_dir}")
 
             custom_path = Path(self.custom_dir).expanduser().resolve()
 
             if not custom_path.exists():
-                raise FileNotFoundError(f"Custom extensions directory not found: {custom_path}")
+                raise FileNotFoundError(f"[E301] Custom extensions directory not found: {custom_path}")
             if not custom_path.is_dir():
                 raise FileNotFoundError(f"Custom extensions path is not a directory: {custom_path}")
 

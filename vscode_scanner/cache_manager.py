@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 
 from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message
 from ._version import SCHEMA_VERSION
+from .constants import DEFAULT_CACHE_MAX_AGE_DAYS, CACHE_REPORT_MAX_AGE_DAYS
 
 
 class CacheManager:
@@ -39,12 +40,12 @@ class CacheManager:
             # Validate cache directory path (cross-platform)
             # Block parent directory traversal
             if ".." in cache_dir:
-                raise ValueError(f"Invalid cache directory path: {cache_dir}")
+                raise ValueError(f"[E200] Invalid cache directory path: {cache_dir}")
 
             # Check if path is in restricted system directory
             # Allow temp directories for testing
             if is_restricted_path(cache_dir) and not is_temp_directory(cache_dir):
-                raise ValueError(f"Invalid cache directory path: {cache_dir}")
+                raise ValueError(f"[E200] Invalid cache directory path: {cache_dir}")
 
             cache_path = Path(cache_dir).expanduser().resolve()
 
@@ -370,7 +371,7 @@ class CacheManager:
         self,
         extension_id: str,
         version: str,
-        max_age_days: int = 7
+        max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS
     ) -> Optional[Dict[str, Any]]:
         """
         Get cached scan result if exists and not expired.
@@ -585,7 +586,7 @@ class CacheManager:
             self._batch_count = 0
             return count
 
-    def cleanup_old_entries(self, max_age_days: int = 7) -> int:
+    def cleanup_old_entries(self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS) -> int:
         """
         Remove cache entries older than max_age_days.
 
@@ -652,7 +653,7 @@ class CacheManager:
             print(f"Cache orphan cleanup error: {sanitized_error}", file=sys.stderr)
             return 0
 
-    def get_cache_stats(self, max_age_days: int = 7) -> Dict[str, Any]:
+    def get_cache_stats(self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS) -> Dict[str, Any]:
         """
         Get cache statistics including age information.
 
@@ -816,7 +817,7 @@ class CacheManager:
             print(f"Cache list error: {sanitized_error}", file=sys.stderr)
             return []
 
-    def get_all_cached_results(self, max_age_days: int = 365) -> List[Dict[str, Any]]:
+    def get_all_cached_results(self, max_age_days: int = CACHE_REPORT_MAX_AGE_DAYS) -> List[Dict[str, Any]]:
         """
         Get all cached scan results with full data.
 

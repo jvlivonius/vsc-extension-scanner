@@ -16,6 +16,7 @@ from .extension_discovery import ExtensionDiscovery
 from .vscan_api import VscanAPIClient
 from .output_formatter import OutputFormatter
 from .cache_manager import CacheManager
+from .constants import DATABASE_BATCH_SIZE
 from .utils import (
     log, setup_logging, validate_path, sanitize_string,
     show_error_help, get_error_type, safe_mkdir
@@ -353,7 +354,6 @@ def _scan_extensions(
     }
 
     # Begin batch commit for cache operations
-    BATCH_SIZE = 10
     if cache_manager:
         cache_manager.begin_batch()
 
@@ -374,8 +374,8 @@ def _scan_extensions(
                     )
                     progress.update(task, advance=1)
 
-                    # Commit batch every BATCH_SIZE fresh scans
-                    if cache_manager and stats['fresh_scans'] % BATCH_SIZE == 0:
+                    # Commit batch every DATABASE_BATCH_SIZE fresh scans
+                    if cache_manager and stats['fresh_scans'] % DATABASE_BATCH_SIZE == 0:
                         cache_manager.commit_batch()
                         cache_manager.begin_batch()
     else:
@@ -386,8 +386,8 @@ def _scan_extensions(
                 api_client, stats, scan_results, use_rich
             )
 
-            # Commit batch every BATCH_SIZE fresh scans
-            if cache_manager and stats['fresh_scans'] % BATCH_SIZE == 0:
+            # Commit batch every DATABASE_BATCH_SIZE fresh scans
+            if cache_manager and stats['fresh_scans'] % DATABASE_BATCH_SIZE == 0:
                 cache_manager.commit_batch()
                 cache_manager.begin_batch()
 

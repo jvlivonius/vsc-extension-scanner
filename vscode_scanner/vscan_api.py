@@ -13,6 +13,17 @@ import urllib.error
 from typing import Dict, Any, Optional, Tuple
 
 from .utils import sanitize_error_message
+from .constants import (
+    DEFAULT_REQUEST_DELAY,
+    DEFAULT_POLL_INTERVAL,
+    DEFAULT_MAX_WAIT_SECONDS,
+    API_TIMEOUT_SECONDS,
+    MAX_RESPONSE_SIZE_BYTES,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_RETRY_BASE_DELAY,
+    RETRYABLE_STATUS_CODES,
+    RETRYABLE_ERROR_PATTERNS
+)
 
 
 class VscanAPIClient:
@@ -21,41 +32,23 @@ class VscanAPIClient:
     BASE_URL = "https://vscan.dev/api/extensions"
     USER_AGENT = "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)"
 
-    # Maximum response size (10MB)
-    MAX_RESPONSE_SIZE = 10 * 1024 * 1024
-
-    # Retryable HTTP status codes (transient errors)
-    RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
-
-    # Retryable error patterns in error messages (includes status codes as strings)
-    RETRYABLE_ERROR_PATTERNS = [
-        "timeout",
-        "timed out",
-        "connection",
-        "rate limit",
-        "429",  # Rate limit in message
-        "502",  # Bad Gateway in message
-        "503",  # Service Unavailable in message
-        "504",  # Gateway Timeout in message
-    ]
-
     def __init__(
         self,
-        delay: float = 1.5,
+        delay: float = DEFAULT_REQUEST_DELAY,
         verbose: bool = False,
-        timeout: int = 30,
-        max_retries: int = 3,
-        retry_base_delay: float = 2.0
+        timeout: int = API_TIMEOUT_SECONDS,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY
     ):
         """
         Initialize API client.
 
         Args:
-            delay: Delay between API requests in seconds
+            delay: Delay between API requests in seconds (default: from constants)
             verbose: Enable verbose logging
-            timeout: Timeout for individual HTTP requests in seconds
-            max_retries: Maximum retry attempts for failed requests (default: 3)
-            retry_base_delay: Base delay for exponential backoff (default: 2.0)
+            timeout: Timeout for individual HTTP requests in seconds (default: from constants)
+            max_retries: Maximum retry attempts for failed requests (default: from constants)
+            retry_base_delay: Base delay for exponential backoff (default: from constants)
         """
         self.delay = delay
         self.verbose = verbose
@@ -92,7 +85,7 @@ class VscanAPIClient:
             status_code = error.code
 
         # Check if status code is retryable (429, 502, 503, 504)
-        if status_code in self.RETRYABLE_STATUS_CODES:
+        if status_code in RETRYABLE_STATUS_CODES:
             return True
 
         # Non-retryable status codes (explicit client/server errors)
@@ -106,7 +99,7 @@ class VscanAPIClient:
 
         # Check error message for retryable patterns
         error_str = str(error).lower()
-        for pattern in self.RETRYABLE_ERROR_PATTERNS:
+        for pattern in RETRYABLE_ERROR_PATTERNS:
             if pattern in error_str:
                 return True
 
@@ -283,8 +276,8 @@ class VscanAPIClient:
                         break
 
                     total_read += len(chunk)
-                    if total_read > self.MAX_RESPONSE_SIZE:
-                        raise Exception(f"Response exceeds maximum size ({self.MAX_RESPONSE_SIZE} bytes)")
+                    if total_read > MAX_RESPONSE_SIZE_BYTES:
+                        raise Exception(f"[E100] Response exceeds maximum size ({MAX_RESPONSE_SIZE_BYTES} bytes)")
 
                     raw_response += chunk
 
@@ -307,7 +300,7 @@ class VscanAPIClient:
                 json_data = {}
 
             if status_code == 429:
-                raise Exception("Rate limit exceeded. Please try again later.")
+                raise Exception("[E101] Rate limit exceeded. Please try again later.")
             elif status_code == 404:
                 raise Exception("Extension not found on vscan.dev")
             elif status_code >= 500:
@@ -751,8 +744,8 @@ class VscanAPIClient:
             # Step 2: Poll until complete
             final_status = self.poll_until_complete(
                 analysis_id,
-                poll_interval=2.0,
-                max_wait=300,
+                poll_interval=DEFAULT_POLL_INTERVAL,
+                max_wait=DEFAULT_MAX_WAIT_SECONDS,
                 progress_callback=progress_callback
             )
 
