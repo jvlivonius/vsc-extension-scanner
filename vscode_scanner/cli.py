@@ -44,10 +44,21 @@ if TYPER_AVAILABLE:
         no_args_is_help=True
     )
     app.add_typer(cache_app, name="cache")
+
+    # Create config subcommand group
+    config_app = typer.Typer(
+        name="config",
+        help="Manage configuration file",
+        add_completion=False,
+        rich_markup_mode="rich" if RICH_AVAILABLE else None,
+        no_args_is_help=True
+    )
+    app.add_typer(config_app, name="config")
 else:
     # Fallback if Typer is not available
     app = None
     cache_app = None
+    config_app = None
 
 
 def bounded_int_validator(value: int, min_val: int, max_val: int, name: str) -> int:
@@ -200,6 +211,35 @@ def scan(
         [dim]# Scan specific extensions only[/dim]
         $ vscan scan --include-ids "ms-python.python,esbenp.prettier-vscode"
     """
+    # Load configuration file (config values serve as defaults, CLI args override)
+    from .config_manager import load_config
+    config = load_config()
+
+    # Apply config values for parameters that are still at hardcoded defaults
+    # Priority: hardcoded default < config file < CLI argument
+    if delay == 1.5 and config['scan']['delay'] is not None:
+        delay = config['scan']['delay']
+    if max_retries == 3 and config['scan']['max_retries'] is not None:
+        max_retries = config['scan']['max_retries']
+    if retry_delay == 2.0 and config['scan']['retry_delay'] is not None:
+        retry_delay = config['scan']['retry_delay']
+    if cache_max_age == 7 and config['cache']['cache_max_age'] is not None:
+        cache_max_age = config['cache']['cache_max_age']
+    if quiet is False and config['output']['quiet'] is not None:
+        quiet = config['output']['quiet']
+    if plain is False and config['output']['plain'] is not None:
+        plain = config['output']['plain']
+    if no_cache is False and config['cache']['no_cache'] is not None:
+        no_cache = config['cache']['no_cache']
+    if publisher is None and config['scan']['publisher'] is not None:
+        publisher = config['scan']['publisher']
+    if min_risk_level is None and config['scan']['min_risk_level'] is not None:
+        min_risk_level = config['scan']['min_risk_level']
+    if exclude_ids is None and config['scan']['exclude_ids'] is not None:
+        exclude_ids = config['scan']['exclude_ids']
+    if cache_dir is None and config['cache']['cache_dir'] is not None:
+        cache_dir = Path(config['cache']['cache_dir']).expanduser()
+
     # Validate parameters
     try:
         delay = bounded_float_validator(delay, 0.1, 30.0, "delay")
@@ -468,6 +508,413 @@ def cache_clear(
             display_error(f"Error clearing cache: {e}", use_rich=True)
         else:
             print(f"Error clearing cache: {e}")
+        raise typer.Exit(code=2)
+
+
+# =============================================================================
+# Config Commands
+# =============================================================================
+
+@config_app.command("init")
+def config_init(
+    force: bool = typer.Option(
+        False,
+        "--force", "-f",
+        help="Overwrite existing config file"
+    ),
+    plain: bool = typer.Option(
+        False,
+        "--plain",
+        help="Disable colors and rich formatting"
+    )
+):
+    """
+    Create a default configuration file at ~/.vscanrc.
+
+    This creates a configuration file with default values and helpful comments.
+    Edit the file to customize default settings for vscan.
+
+    [bold cyan]Examples:[/bold cyan]
+
+        [dim]# Create config file[/dim]
+        $ vscan config init
+
+        [dim]# Overwrite existing config[/dim]
+        $ vscan config init --force
+    """
+    from .config_manager import create_default_config, get_config_path
+
+    use_rich = should_use_rich(plain_flag=plain)
+
+    try:
+        config_path = create_default_config(force=force)
+
+        if use_rich:
+            display_success(f"Created configuration file: {config_path}", use_rich=True)
+            display_info("Edit this file to customize default settings", use_rich=True)
+            display_info("Run 'vscan config show' to see current configuration", use_rich=True)
+        else:
+            print(f"✓ Created configuration file: {config_path}")
+            print("\nEdit this file to customize default settings.")
+            print("Run 'vscan config show' to see current configuration.")
+
+        raise typer.Exit(code=0)
+
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
+    except FileExistsError:
+        if use_rich:
+            display_error(f"Config file already exists at {get_config_path()}", use_rich=True)
+            display_info("Use --force to overwrite", use_rich=True)
+        else:
+            print(f"Error: Config file already exists at {get_config_path()}")
+            print("Use --force to overwrite")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        if use_rich:
+            display_error(f"Error creating config file: {e}", use_rich=True)
+        else:
+            print(f"Error creating config file: {e}")
+        raise typer.Exit(code=2)
+
+
+@config_app.command("show")
+def config_show(
+    plain: bool = typer.Option(
+        False,
+        "--plain",
+        help="Disable colors and rich formatting"
+    )
+):
+    """
+    Display current configuration values.
+
+    Shows all configuration settings, indicating which values are from the config
+    file and which are defaults. CLI arguments always override config file values.
+
+    [bold cyan]Examples:[/bold cyan]
+
+        [dim]# Show current configuration[/dim]
+        $ vscan config show
+    """
+    from .config_manager import load_config, get_config_path, get_default_value, config_exists
+
+    use_rich = should_use_rich(plain_flag=plain)
+    config_path = get_config_path()
+
+    if not config_exists():
+        if use_rich:
+            display_warning(f"No configuration file found at {config_path}", use_rich=True)
+            display_info("Run 'vscan config init' to create one", use_rich=True)
+        else:
+            print(f"No configuration file found at {config_path}")
+            print("Run 'vscan config init' to create one.")
+        raise typer.Exit(code=0)
+
+    config = load_config()
+
+    # Display configuration
+    if use_rich and RICH_AVAILABLE:
+        from rich.console import Console
+        from rich.table import Table
+        from rich.panel import Panel
+
+        console = Console()
+        console.print(f"\n[bold]Configuration File:[/bold] {config_path}")
+        console.print("[green]Status: Found ✓[/green]\n")
+
+        for section in ['scan', 'cache', 'output']:
+            if section not in config:
+                continue
+
+            table = Table(title=f"[{section}]", show_header=True, header_style="bold cyan")
+            table.add_column("Option", style="cyan")
+            table.add_column("Value", style="yellow")
+            table.add_column("Source", style="dim")
+
+            for option, value in config[section].items():
+                default_value = get_default_value(section, option)
+                is_default = value == default_value
+                source = "default" if is_default else "from config"
+
+                # Format value
+                if value is None:
+                    value_str = "<not set>"
+                elif isinstance(value, bool):
+                    value_str = "true" if value else "false"
+                else:
+                    value_str = str(value)
+
+                table.add_row(option, value_str, source)
+
+            console.print(table)
+            console.print()
+
+        console.print("[dim]CLI arguments always override config file values.[/dim]\n")
+    else:
+        print(f"\nConfiguration File: {config_path}")
+        print("Status: Found ✓\n")
+
+        for section in ['scan', 'cache', 'output']:
+            if section not in config:
+                continue
+
+            print(f"[{section}]")
+            for option, value in config[section].items():
+                default_value = get_default_value(section, option)
+                is_default = value == default_value
+                source = "default" if is_default else "from config"
+
+                # Format value
+                if value is None:
+                    value_str = "<not set>"
+                elif isinstance(value, bool):
+                    value_str = "true" if value else "false"
+                else:
+                    value_str = str(value)
+
+                print(f"  {option} = {value_str:20} ({source})")
+            print()
+
+        print("CLI arguments always override config file values.\n")
+
+    raise typer.Exit(code=0)
+
+
+@config_app.command("set")
+def config_set(
+    key: str = typer.Argument(
+        ...,
+        help="Configuration key in format 'section.option' (e.g., scan.delay)"
+    ),
+    value: str = typer.Argument(
+        ...,
+        help="Configuration value"
+    ),
+    plain: bool = typer.Option(
+        False,
+        "--plain",
+        help="Disable colors and rich formatting"
+    )
+):
+    """
+    Set a configuration value.
+
+    The key must be in format 'section.option' (e.g., 'scan.delay').
+    Values are validated using the same rules as CLI arguments.
+
+    [bold cyan]Examples:[/bold cyan]
+
+        [dim]# Set API request delay to 2.5 seconds[/dim]
+        $ vscan config set scan.delay 2.5
+
+        [dim]# Set default cache expiration to 14 days[/dim]
+        $ vscan config set cache.cache_max_age 14
+
+        [dim]# Set default publisher filter[/dim]
+        $ vscan config set scan.publisher microsoft
+    """
+    from .config_manager import (
+        parse_config_key, validate_config_value, update_config_value,
+        create_default_config, config_exists
+    )
+
+    use_rich = should_use_rich(plain_flag=plain)
+
+    try:
+        # Create config file if it doesn't exist
+        if not config_exists():
+            create_default_config(force=False)
+            if use_rich:
+                display_info("Created new configuration file", use_rich=True)
+            else:
+                print("Created new configuration file")
+
+        # Parse and validate
+        section, option = parse_config_key(key)
+        validated_value = validate_config_value(section, option, value)
+
+        # Update config file
+        update_config_value(section, option, validated_value)
+
+        if use_rich:
+            display_success(f"Updated {key} = {validated_value}", use_rich=True)
+        else:
+            print(f"✓ Updated {key} = {validated_value}")
+
+        raise typer.Exit(code=0)
+
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
+    except ValueError as e:
+        if use_rich:
+            display_error(str(e), use_rich=True)
+            display_info("Run 'vscan config show' to see valid keys", use_rich=True)
+        else:
+            print(f"Error: {e}")
+            print("Run 'vscan config show' to see valid keys.")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        if use_rich:
+            display_error(f"Error updating config: {e}", use_rich=True)
+        else:
+            print(f"Error updating config: {e}")
+        raise typer.Exit(code=2)
+
+
+@config_app.command("get")
+def config_get(
+    key: str = typer.Argument(
+        ...,
+        help="Configuration key in format 'section.option' (e.g., scan.delay)"
+    ),
+    plain: bool = typer.Option(
+        False,
+        "--plain",
+        help="Disable colors and rich formatting"
+    )
+):
+    """
+    Get a specific configuration value.
+
+    Shows the current value and whether it's from the config file or a default.
+
+    [bold cyan]Examples:[/bold cyan]
+
+        [dim]# Get current delay setting[/dim]
+        $ vscan config get scan.delay
+
+        [dim]# Get publisher filter[/dim]
+        $ vscan config get scan.publisher
+    """
+    from .config_manager import (
+        parse_config_key, load_config, get_config_value,
+        get_default_value, config_exists
+    )
+
+    use_rich = should_use_rich(plain_flag=plain)
+
+    try:
+        section, option = parse_config_key(key)
+        config = load_config()
+        value = get_config_value(config, section, option)
+        default_value = get_default_value(section, option)
+
+        is_default = value == default_value
+        source = "default" if is_default else "from config"
+
+        # Format value
+        if value is None:
+            value_str = "<not set>"
+        elif isinstance(value, bool):
+            value_str = "true" if value else "false"
+        else:
+            value_str = str(value)
+
+        if use_rich and RICH_AVAILABLE:
+            from rich.console import Console
+            console = Console()
+            console.print(f"\n[cyan]{key}[/cyan] = [yellow]{value_str}[/yellow] [dim]({source})[/dim]\n")
+        else:
+            print(f"\n{key} = {value_str} ({source})\n")
+
+        raise typer.Exit(code=0)
+
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
+    except ValueError as e:
+        if use_rich:
+            display_error(str(e), use_rich=True)
+            display_info("Run 'vscan config show' to see valid keys", use_rich=True)
+        else:
+            print(f"Error: {e}")
+            print("Run 'vscan config show' to see valid keys.")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        if use_rich:
+            display_error(f"Error reading config: {e}", use_rich=True)
+        else:
+            print(f"Error reading config: {e}")
+        raise typer.Exit(code=2)
+
+
+@config_app.command("reset")
+def config_reset(
+    force: bool = typer.Option(
+        False,
+        "--force", "-f",
+        help="Skip confirmation prompt"
+    ),
+    plain: bool = typer.Option(
+        False,
+        "--plain",
+        help="Disable colors and rich formatting"
+    )
+):
+    """
+    Reset configuration to defaults by deleting the config file.
+
+    This removes the ~/.vscanrc file, causing vscan to use default values for all
+    settings. You can create a new config file with 'vscan config init'.
+
+    [bold cyan]Examples:[/bold cyan]
+
+        [dim]# Reset configuration (with confirmation)[/dim]
+        $ vscan config reset
+
+        [dim]# Reset without confirmation[/dim]
+        $ vscan config reset --force
+    """
+    from .config_manager import delete_config, get_config_path, config_exists
+
+    use_rich = should_use_rich(plain_flag=plain)
+    config_path = get_config_path()
+
+    if not config_exists():
+        if use_rich:
+            display_info("No configuration file to reset", use_rich=True)
+        else:
+            print("No configuration file to reset.")
+        raise typer.Exit(code=0)
+
+    # Confirm before deleting unless --force is used
+    if not force:
+        confirm = typer.confirm(
+            f"This will delete your configuration file: {config_path}\n"
+            "Are you sure?"
+        )
+        if not confirm:
+            if use_rich:
+                display_info("Operation cancelled", use_rich=True)
+            else:
+                print("Operation cancelled.")
+            raise typer.Exit(code=1)
+
+    try:
+        delete_config()
+
+        if use_rich:
+            display_success("Configuration file deleted", use_rich=True)
+            display_info("All settings reset to defaults", use_rich=True)
+            display_info("Run 'vscan config init' to create a new config file", use_rich=True)
+        else:
+            print("✓ Configuration file deleted.")
+            print("All settings reset to defaults.")
+            print("Run 'vscan config init' to create a new config file.")
+
+        raise typer.Exit(code=0)
+
+    except (typer.Exit, SystemExit):
+        # Let these propagate naturally
+        raise
+    except Exception as e:
+        if use_rich:
+            display_error(f"Error deleting config file: {e}", use_rich=True)
+        else:
+            print(f"Error deleting config file: {e}")
         raise typer.Exit(code=2)
 
 
