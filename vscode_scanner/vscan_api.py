@@ -125,27 +125,33 @@ class VscanAPIClient:
         """
         Calculate delay before next retry attempt using exponential backoff with jitter.
 
+        Implements exponential backoff with ceiling to prevent unreasonably long delays.
+        The delay is capped at MAX_BACKOFF_DELAY (30 seconds) to ensure reasonable UX.
+
         Args:
             attempt: Current retry attempt number (0-indexed)
             retry_after: Retry-After header value in seconds (if available)
 
         Returns:
-            Delay in seconds before next retry
+            Delay in seconds before next retry (minimum 0.5s, maximum MAX_BACKOFF_DELAY)
         """
         import random
+        from .constants import MAX_BACKOFF_DELAY
 
-        # If Retry-After header is present, respect it
+        # If Retry-After header is present, respect it (but cap it)
         if retry_after is not None:
-            return float(retry_after)
+            return min(float(retry_after), MAX_BACKOFF_DELAY)
 
-        # Exponential backoff: base_delay * 2^attempt
-        # attempt 0: 2s, attempt 1: 4s, attempt 2: 8s
+        # Exponential backoff
+        # attempt 0: 2s, attempt 1: 4s, attempt 2: 8s, attempt 3: 16s, attempt 4: 32s, etc.
         backoff = self.retry_base_delay * (2 ** attempt)
 
-        # Add jitter (0-1 second randomization)
-        jitter = random.uniform(0, 1)
+        # Add jitter (±20% of backoff) to prevent thundering herd
+        jitter = random.uniform(-0.2 * backoff, 0.2 * backoff)
+        total_delay = backoff + jitter
 
-        return backoff + jitter
+        # Apply ceiling after jitter and ensure minimum delay of 0.5s
+        return max(min(total_delay, MAX_BACKOFF_DELAY), 0.5)
 
     def _log_retry_attempt(self, attempt: int, max_attempts: int, error: str, delay: float):
         """

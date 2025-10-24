@@ -844,6 +844,128 @@ def test_batch_operations():
 
 ---
 
+## Module Dependencies & Import Rules
+
+### Dependency Graph
+
+**Allowed Dependencies** (following layered architecture):
+
+```
+Presentation Layer:
+  cli.py                   → scanner, display, config_manager, utils, constants
+  display.py               → utils, constants
+  output_formatter.py      → utils, constants
+  html_report_generator.py → utils
+
+Application Layer:
+  scanner.py               → vscan_api, cache_manager, extension_discovery,
+                             display, utils, constants
+  vscan.py                 → cli, utils, constants
+  config_manager.py        → utils, constants
+
+Infrastructure Layer:
+  vscan_api.py             → utils, constants
+  cache_manager.py         → utils, constants
+  extension_discovery.py   → utils, constants
+
+Shared Utilities:
+  utils.py                 → (standard library only)
+  constants.py             → (standard library only)
+  _version.py              → (standard library only)
+```
+
+### Dependency Rules
+
+**✅ Allowed:**
+- Presentation → Application → Infrastructure (downward flow only)
+- Any layer → utils.py, constants.py, _version.py (shared utilities)
+- Infrastructure modules can import from other Infrastructure modules
+
+**❌ Forbidden:**
+- Infrastructure → Application (e.g., cache_manager → scanner)
+- Infrastructure → Presentation (e.g., vscan_api → display)
+- Application → Presentation (except scanner → display for progress)
+- Circular dependencies at any level
+
+### Import Patterns
+
+**Good Examples:**
+```python
+# cli.py (Presentation) imports from Application
+from .scanner import run_scan
+from .display import should_use_rich
+
+# scanner.py (Application) imports from Infrastructure
+from .vscan_api import VscanAPIClient
+from .cache_manager import CacheManager
+
+# vscan_api.py (Infrastructure) uses only utilities
+from .constants import MAX_BACKOFF_DELAY
+from .utils import sanitize_error_message
+```
+
+**Bad Examples (Violations):**
+```python
+# ❌ cache_manager.py importing from Presentation
+from .display import display_error  # WRONG: Infrastructure → Presentation
+
+# ❌ vscan_api.py importing from Application
+from .scanner import run_scan  # WRONG: Infrastructure → Application
+
+# ❌ Circular dependency
+# scanner.py imports vscan_api.py, vscan_api.py imports scanner.py
+```
+
+### Testing Module Dependencies
+
+**Automated Validation:**
+
+Create `tests/test_architecture.py` to enforce dependency rules:
+
+```python
+def test_infrastructure_layer_isolation():
+    """Infrastructure must NOT import from Application or Presentation."""
+    infrastructure = ['vscan_api', 'cache_manager', 'extension_discovery']
+    forbidden = ['scanner', 'cli', 'display', 'output_formatter']
+
+    for module in infrastructure:
+        imports = get_imports_from_file(f'vscode_scanner/{module}.py')
+        violations = imports & set(forbidden)
+        assert not violations, f"{module} illegally imports: {violations}"
+
+def test_no_circular_dependencies():
+    """Ensure no circular import dependencies."""
+    # Build dependency graph and detect cycles using DFS
+    assert no_cycles_detected(dependency_graph)
+```
+
+**Manual Review Checklist:**
+
+When adding new modules or modifying imports:
+
+1. ✅ Does this follow the layered architecture?
+2. ✅ Are we importing from the same or lower layer only?
+3. ✅ Are shared utilities (utils, constants) used instead of cross-layer imports?
+4. ✅ Will this create a circular dependency?
+
+### Why These Rules Matter
+
+**Testability:**
+- Infrastructure can be tested in isolation (no UI dependencies)
+- Mock at layer boundaries (e.g., mock API in Application tests)
+
+**Maintainability:**
+- Clear separation of concerns
+- Changes in one layer don't cascade unexpectedly
+- Easier to understand data flow
+
+**Architecture Preservation:**
+- Prevents erosion over time
+- Enforces design decisions
+- Makes refactoring safer
+
+---
+
 ## References
 
 - **[project/ROADMAP.md](../project/ROADMAP.md)** - Version 3.2 improvement recommendations

@@ -323,6 +323,25 @@ def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
     return text[:max_length - len(suffix)] + suffix
 
 
+def _safe_chmod(path: PathLib, mode: int):
+    """
+    Set file permissions (Unix-like systems only).
+
+    Internal helper function used by safe_mkdir, safe_touch, and safe_chmod.
+    On Windows, this is a no-op (Windows uses ACLs).
+
+    Args:
+        path: Path object to modify
+        mode: Unix permission mode
+    """
+    if platform.system() != "Windows":
+        try:
+            path.chmod(mode)
+        except (OSError, NotImplementedError):
+            # Permissions not supported, graceful fallback
+            pass
+
+
 def safe_mkdir(path: PathLib, mode: int = 0o755):
     """
     Create directory with permissions (cross-platform).
@@ -335,14 +354,7 @@ def safe_mkdir(path: PathLib, mode: int = 0o755):
         mode: Unix permission mode (default: 0o755)
     """
     path.mkdir(parents=True, exist_ok=True)
-
-    # Only set mode on Unix-like systems
-    if platform.system() != "Windows":
-        try:
-            path.chmod(mode)
-        except (OSError, NotImplementedError):
-            # Permissions not supported, continue
-            pass
+    _safe_chmod(path, mode)
 
 
 def safe_touch(path: PathLib, mode: int = 0o600):
@@ -357,14 +369,7 @@ def safe_touch(path: PathLib, mode: int = 0o600):
         mode: Unix permission mode (default: 0o600)
     """
     path.touch(exist_ok=True)
-
-    # Only set mode on Unix-like systems
-    if platform.system() != "Windows":
-        try:
-            path.chmod(mode)
-        except (OSError, NotImplementedError):
-            # Permissions not supported, continue
-            pass
+    _safe_chmod(path, mode)
 
 
 def safe_chmod(path: PathLib, mode: int):
@@ -378,12 +383,7 @@ def safe_chmod(path: PathLib, mode: int):
         path: Path object to modify
         mode: Unix permission mode
     """
-    if platform.system() != "Windows":
-        try:
-            path.chmod(mode)
-        except (OSError, NotImplementedError):
-            # Permissions not supported, continue
-            pass
+    _safe_chmod(path, mode)
 
 
 # Error help messages with recovery suggestions

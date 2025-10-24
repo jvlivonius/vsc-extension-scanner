@@ -4,6 +4,58 @@ Configuration Manager for VS Code Extension Scanner
 
 Manages persistent configuration file (~/.vscanrc) using INI format.
 Allows users to set default values for common options.
+
+Configuration Architecture
+==========================
+
+Hierarchy (highest priority first):
+1. CLI Arguments (typer command parameters) - Always override everything
+2. Config File (~/.vscanrc) - User-defined defaults
+3. Defaults (constants.py) - Fallback values
+
+Schema Versioning:
+- Current: v1 (INI format)
+- Future: Supports migration to v2 if needed (via [_meta] section)
+- Schema version stored in [_meta] section for forward compatibility
+
+Validation:
+- Type checking on load (int, float, bool, str, choice, path)
+- Range validation for numeric values
+- Enum validation for fixed choices (e.g., min_risk_level)
+- Invalid values trigger warnings and fall back to defaults
+
+Configuration File Format (~/.vscanrc):
+```ini
+# VS Code Extension Scanner Configuration
+# Schema version for future compatibility
+[_meta]
+schema_version = 1
+
+[scan]
+delay = 2.0                     # Seconds between API requests
+max_retries = 3                 # Maximum HTTP retry attempts
+retry_delay = 2.0               # Base HTTP retry delay in seconds
+
+[cache]
+cache_max_age = 14              # Cache expiration in days
+
+[output]
+quiet = false                   # Minimal output by default
+plain = false                   # Disable Rich formatting
+```
+
+Usage:
+- `vscan config init` - Create default config file
+- `vscan config show` - Display current configuration
+- `vscan config set <key> <value>` - Update config value
+- `vscan config get <key>` - Get specific value
+- `vscan config reset` - Delete config file
+
+Implementation Notes:
+- Config values loaded once at startup
+- All validation happens at load time
+- Malformed values trigger warnings, not errors
+- Config file is optional (all values have defaults)
 """
 
 from configparser import ConfigParser
@@ -29,11 +81,18 @@ from .constants import (
     MAX_CACHE_AGE_DAYS
 )
 
+# Configuration schema version
+CONFIG_SCHEMA_VERSION = 1
+
 # Default configuration template with comments
 DEFAULT_CONFIG_TEMPLATE = f"""# VS Code Extension Scanner Configuration
 # File: ~/.vscanrc
 # Edit this file to set default values for vscan options.
 # CLI arguments always override config file values.
+
+# Schema version for future compatibility
+[_meta]
+schema_version = {CONFIG_SCHEMA_VERSION}
 
 [scan]
 # API request settings
@@ -144,8 +203,28 @@ def load_config() -> Dict[str, Dict[str, Any]]:
         display_warning(f"Failed to read config file {config_path}: {e}")
         return result
 
+    # Check schema version for future migrations
+    schema_version = 1  # Default to v1 if not specified
+    if parser.has_section('_meta'):
+        try:
+            schema_version = parser.getint('_meta', 'schema_version', fallback=1)
+        except ValueError:
+            display_warning(f"Invalid schema_version in config file, using v1")
+
+    # Handle schema migrations if needed
+    if schema_version != CONFIG_SCHEMA_VERSION:
+        display_warning(
+            f"Config schema version mismatch: found v{schema_version}, expected v{CONFIG_SCHEMA_VERSION}. "
+            f"Using compatibility mode."
+        )
+        # Future: Add migration logic here when schema v2 is introduced
+        # For now, we only have v1, so this is just a placeholder
+
     # Merge config file values with defaults
     for section in parser.sections():
+        # Skip internal sections
+        if section.startswith('_'):
+            continue
         if section not in result:
             continue  # Skip unknown sections
 

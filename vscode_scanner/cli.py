@@ -6,7 +6,7 @@ organized help, and Rich formatting support.
 """
 
 import sys
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
 from pathlib import Path
 
 import typer
@@ -297,6 +297,96 @@ def scan(
         raise typer.Exit(code=2)
 
 
+def _format_cache_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Format cache stats for display (format-agnostic).
+
+    Extracts and formats all cache statistics into a dictionary
+    that can be used by both Rich and plain display functions.
+
+    Args:
+        stats: Raw cache statistics from CacheManager
+
+    Returns:
+        Dictionary with formatted values ready for display
+    """
+    # Format database size
+    db_size_kb = stats.get('database_size_kb')
+    if db_size_kb is not None:
+        if db_size_kb < 1024:
+            size_str = f"{db_size_kb:.2f} KB"
+        else:
+            size_str = f"{db_size_kb / 1024:.2f} MB"
+    else:
+        size_str = "N/A"
+
+    return {
+        'database_path': stats.get('database_path', 'N/A'),
+        'total_entries': stats.get('total_entries', 0),
+        'database_size': size_str,
+        'age_distribution': stats.get('age_distribution', {}),
+        'risk_breakdown': stats.get('risk_breakdown', {}),
+        'extensions_with_vulnerabilities': stats.get('extensions_with_vulnerabilities', 0),
+    }
+
+
+def _display_cache_stats_rich(formatted: Dict[str, Any]):
+    """Display cache statistics with Rich formatting."""
+    console = Console()
+
+    console.print(f"[cyan]Database:[/cyan] {formatted['database_path']}")
+    console.print(f"[cyan]Total entries:[/cyan] {formatted['total_entries']}")
+    console.print(f"[cyan]Database size:[/cyan] {formatted['database_size']}")
+
+    # Age distribution
+    if formatted['age_distribution']:
+        console.print()
+        console.print("[cyan]Age Distribution:[/cyan]")
+        for category, count in formatted['age_distribution'].items():
+            console.print(f"  {category}: {count}")
+
+    # Risk breakdown
+    if formatted['risk_breakdown']:
+        console.print()
+        console.print("[cyan]Risk Breakdown:[/cyan]")
+        for risk, count in formatted['risk_breakdown'].items():
+            console.print(f"  {risk}: {count}")
+
+    # Vulnerabilities
+    vuln_count = formatted['extensions_with_vulnerabilities']
+    if vuln_count > 0:
+        console.print()
+        console.print(f"[yellow]Extensions with vulnerabilities:[/yellow] {vuln_count}")
+
+
+def _display_cache_stats_plain(formatted: Dict[str, Any]):
+    """Display cache statistics with plain formatting."""
+    print("Cache Statistics")
+    print("=" * 60)
+    print(f"Database: {formatted['database_path']}")
+    print(f"Total entries: {formatted['total_entries']}")
+    print(f"Database size: {formatted['database_size']}")
+
+    if formatted['age_distribution']:
+        print()
+        print("Age Distribution:")
+        for category, count in formatted['age_distribution'].items():
+            print(f"  {category}: {count}")
+
+    if formatted['risk_breakdown']:
+        print()
+        print("Risk Breakdown:")
+        for risk, count in formatted['risk_breakdown'].items():
+            print(f"  {risk}: {count}")
+
+    vuln_count = formatted['extensions_with_vulnerabilities']
+    if vuln_count > 0:
+        print()
+        print(f"Extensions with vulnerabilities: {vuln_count}")
+
+    print("=" * 60)
+
+
 @cache_app.command("stats")
 def cache_stats(
     cache_dir: Optional[Path] = typer.Option(
@@ -352,80 +442,14 @@ def cache_stats(
         cache_manager = CacheManager(cache_dir=cache_dir_str)
         stats = cache_manager.get_cache_stats(max_age_days=cache_max_age)
 
+        # Format stats once (shared logic)
+        formatted = _format_cache_stats(stats)
+
+        # Display with appropriate formatter
         if use_rich:
-            console = Console()
-
-            # Display cache statistics
-            console.print(f"[cyan]Database:[/cyan] {stats.get('database_path', 'N/A')}")
-            console.print(f"[cyan]Total entries:[/cyan] {stats.get('total_entries', 0)}")
-
-            # Format database size
-            db_size_kb = stats.get('database_size_kb')
-            if db_size_kb is not None:
-                if db_size_kb < 1024:
-                    size_str = f"{db_size_kb:.2f} KB"
-                else:
-                    size_str = f"{db_size_kb / 1024:.2f} MB"
-            else:
-                size_str = "N/A"
-            console.print(f"[cyan]Database size:[/cyan] {size_str}")
-
-            # Age distribution
-            if 'age_distribution' in stats:
-                console.print()
-                console.print("[cyan]Age Distribution:[/cyan]")
-                age_dist = stats['age_distribution']
-                for category, count in age_dist.items():
-                    console.print(f"  {category}: {count}")
-
-            # Risk breakdown
-            if 'risk_breakdown' in stats:
-                console.print()
-                console.print("[cyan]Risk Breakdown:[/cyan]")
-                for risk, count in stats['risk_breakdown'].items():
-                    console.print(f"  {risk}: {count}")
-
-            # Vulnerabilities
-            vuln_count = stats.get('extensions_with_vulnerabilities', 0)
-            if vuln_count > 0:
-                console.print()
-                console.print(f"[yellow]Extensions with vulnerabilities:[/yellow] {vuln_count}")
+            _display_cache_stats_rich(formatted)
         else:
-            # Plain output
-            print("Cache Statistics")
-            print("=" * 60)
-            print(f"Database: {stats.get('database_path', 'N/A')}")
-            print(f"Total entries: {stats.get('total_entries', 0)}")
-
-            # Format database size
-            db_size_kb = stats.get('database_size_kb')
-            if db_size_kb is not None:
-                if db_size_kb < 1024:
-                    size_str = f"{db_size_kb:.2f} KB"
-                else:
-                    size_str = f"{db_size_kb / 1024:.2f} MB"
-            else:
-                size_str = "N/A"
-            print(f"Database size: {size_str}")
-
-            if 'age_distribution' in stats:
-                print()
-                print("Age Distribution:")
-                for category, count in stats['age_distribution'].items():
-                    print(f"  {category}: {count}")
-
-            if 'risk_breakdown' in stats:
-                print()
-                print("Risk Breakdown:")
-                for risk, count in stats['risk_breakdown'].items():
-                    print(f"  {risk}: {count}")
-
-            vuln_count = stats.get('extensions_with_vulnerabilities', 0)
-            if vuln_count > 0:
-                print()
-                print(f"Extensions with vulnerabilities: {vuln_count}")
-
-            print("=" * 60)
+            _display_cache_stats_plain(formatted)
 
         raise typer.Exit(code=0)
 

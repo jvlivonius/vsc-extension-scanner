@@ -12,7 +12,7 @@ import json
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 
 from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message
@@ -262,6 +262,23 @@ class CacheManager:
         except sqlite3.Error:
             return "1.0"  # If table doesn't exist, assume v1
 
+    def _process_migration_batch(self, cursor, batch: List[Tuple]):
+        """
+        Process a batch of migration updates.
+
+        Args:
+            cursor: Database cursor
+            batch: List of tuples (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id)
+        """
+        cursor.executemany("""
+            UPDATE scan_cache
+            SET security_score = ?,
+                dependencies_count = ?,
+                publisher_verified = ?,
+                has_risk_factors = ?
+            WHERE id = ?
+        """, batch)
+
     def _migrate_v1_to_v2(self):
         """Migrate cache database from v1.0 to v2.0 schema."""
         try:
@@ -309,16 +326,21 @@ class CacheManager:
                 """)
 
                 # Update existing rows with parsed data from scan_result JSON
-                cursor.execute("SELECT id, scan_result FROM scan_cache")
-                rows = cursor.fetchall()
+                # Use batch processing to avoid loading all entries into memory
+                cursor.execute("SELECT COUNT(*) FROM scan_cache")
+                total_rows = cursor.fetchone()[0]
 
-                total_rows = len(rows)
                 if total_rows > 0:
                     print(f"Migrating cache schema (v1.0 → v2.0)...")
                     print(f"Processing {total_rows} cached entries...")
 
                 updated_count = 0
-                for idx, (row_id, scan_result_json) in enumerate(rows, 1):
+                batch = []
+                batch_size = 100
+
+                # Process entries using cursor as iterator (not fetchall)
+                cursor.execute("SELECT id, scan_result FROM scan_cache")
+                for idx, (row_id, scan_result_json) in enumerate(cursor, 1):
                     try:
                         result = json.loads(scan_result_json)
 
@@ -332,17 +354,20 @@ class CacheManager:
                         risk_factors = result.get("risk_factors", [])
                         has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
-                        # Update row
-                        cursor.execute("""
-                            UPDATE scan_cache
-                            SET security_score = ?,
-                                dependencies_count = ?,
-                                publisher_verified = ?,
-                                has_risk_factors = ?
-                            WHERE id = ?
-                        """, (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id))
+                        # Add to batch
+                        batch.append((
+                            security_score,
+                            dependencies_count,
+                            publisher_verified,
+                            has_risk_factors,
+                            row_id
+                        ))
 
-                        updated_count += 1
+                        # Process batch when it reaches batch_size
+                        if len(batch) >= batch_size:
+                            self._process_migration_batch(cursor, batch)
+                            updated_count += len(batch)
+                            batch = []
 
                         # Show progress every 10 entries or at the end
                         if idx % 10 == 0 or idx == total_rows:
@@ -351,6 +376,11 @@ class CacheManager:
                     except (json.JSONDecodeError, Exception):
                         # Skip rows that can't be parsed
                         continue
+
+                # Process remaining batch
+                if batch:
+                    self._process_migration_batch(cursor, batch)
+                    updated_count += len(batch)
 
                 if total_rows > 0:
                     print()  # New line after progress

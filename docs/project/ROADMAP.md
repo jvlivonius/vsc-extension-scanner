@@ -1316,7 +1316,758 @@ The codebase is in good shape with solid foundations. These recommendations focu
 
 ---
 
-**Document Version:** 2.0
+## 🏗️ Phase 4: Architecture Enforcement & Layer Compliance (v3.3.0)
+
+**Priority:** HIGH
+**Target Version:** 3.3.0
+**Focus:** Fix architectural violations, enforce layering rules, improve testability
+
+### Background
+
+During architecture review, several critical violations of the documented Simple Layered Architecture were discovered:
+
+**Critical Issues:**
+1. **Infrastructure → Presentation violation**: `cache_manager.py` imports from `display.py`
+2. **Application → Presentation coupling**: `config_manager.py` imports from `display.py`
+3. **Missing enforcement**: No architecture tests exist to prevent violations
+4. **Documentation drift**: Module count outdated (14 vs documented 13)
+
+These violations weaken:
+- Testability (infrastructure can't be tested in isolation)
+- Maintainability (tight coupling across layers)
+- Architecture clarity (documented rules not enforced)
+
+### Architecture Principles Refresher
+
+```
+ALLOWED:
+  Presentation → Application → Infrastructure (downward flow)
+  Any layer → utils.py, constants.py (shared utilities)
+
+FORBIDDEN:
+  Infrastructure → Application or Presentation
+  Infrastructure → Presentation (current violation)
+  Circular dependencies
+```
+
+**Why this matters:**
+- Infrastructure layer should be **pure** (no UI dependencies)
+- Enables unit testing infrastructure without mocking display
+- Clear separation of concerns
+- Architecture erosion prevention
+
+---
+
+### Implementation Tasks
+
+#### Task 4.1: Fix cache_manager.py Layer Violation (HIGH PRIORITY)
+
+**Problem:** `cache_manager.py` (Infrastructure) imports `display.py` (Presentation)
+
+```python
+# Current violation in cache_manager.py:21
+from .display import display_error, display_warning, display_info
+```
+
+**Solution: Return error/warning information to caller instead of displaying directly**
+
+**Changes Required:**
+
+1. **Create error result types** (in `utils.py` or new `types.py`):
+
+```python
+# vscode_scanner/types.py (NEW FILE)
+from typing import Optional, List
+from dataclasses import dataclass
+
+@dataclass
+class CacheWarning:
+    """Warning from cache operations."""
+    message: str
+    context: str
+
+@dataclass
+class CacheError:
+    """Error from cache operations."""
+    message: str
+    context: str
+    recoverable: bool
+```
+
+2. **Refactor cache_manager.py** to return warnings/errors:
+
+```python
+# OLD - Direct display (violates architecture)
+def cleanup_invalid_entries(self, valid_extension_ids):
+    # ...
+    display_warning(f"Removed {count} stale entries")
+
+# NEW - Return warnings for caller to display
+def cleanup_invalid_entries(self, valid_extension_ids) -> Tuple[int, List[CacheWarning]]:
+    """
+    Remove invalid cache entries.
+
+    Returns:
+        Tuple of (count_removed, list_of_warnings)
+    """
+    warnings = []
+    # ... perform cleanup ...
+
+    if count > 0:
+        warnings.append(CacheWarning(
+            message=f"Removed {count} stale cache entries",
+            context="cache_cleanup"
+        ))
+
+    return count, warnings
+```
+
+3. **Update callers** to display returned warnings:
+
+```python
+# In scanner.py or cli.py (Application/Presentation layers)
+count, warnings = cache_mgr.cleanup_invalid_entries(valid_ids)
+
+for warning in warnings:
+    display_warning(warning.message, use_rich=use_rich)
+```
+
+4. **Apply same pattern to all cache_manager display calls:**
+   - `display_error()` → Return `CacheError` objects
+   - `display_warning()` → Return `CacheWarning` objects
+   - `display_info()` → Return info strings or log to utils.log()
+
+**Files to modify:**
+- `vscode_scanner/types.py` (NEW - create result types)
+- `vscode_scanner/cache_manager.py` (refactor ~8 display calls)
+- `vscode_scanner/scanner.py` (handle returned warnings/errors)
+- `vscode_scanner/cli.py` (handle returned warnings/errors)
+
+**Impact:**
+- ✅ Fixes architectural violation
+- ✅ Makes cache_manager testable in isolation
+- ✅ Cleaner separation of concerns
+- ⚠️ Requires updating ~10 call sites
+
+**Estimated Effort:** 3-4 hours
+
+---
+
+#### Task 4.2: Fix config_manager.py Layer Coupling (MEDIUM PRIORITY)
+
+**Problem:** `config_manager.py` (Application) imports `display.py` (Presentation)
+
+```python
+# Current coupling in config_manager.py:14
+from .display import display_warning
+```
+
+**Solution: Return warnings to caller**
+
+**Changes Required:**
+
+1. **Refactor config_manager.py** to return warnings:
+
+```python
+# OLD - Direct display
+def load_config(self) -> Dict[str, Any]:
+    # ...
+    if validation_error:
+        display_warning(f"Invalid config value: {error}")
+    # ...
+
+# NEW - Return warnings
+def load_config(self) -> Tuple[Dict[str, Any], List[str]]:
+    """
+    Load configuration file.
+
+    Returns:
+        Tuple of (config_dict, list_of_warning_messages)
+    """
+    warnings = []
+    # ...
+    if validation_error:
+        warnings.append(f"Invalid config value: {error}")
+    # ...
+    return config, warnings
+```
+
+2. **Update callers** in cli.py:
+
+```python
+# In cli.py
+config, warnings = config_mgr.load_config()
+
+for warning_msg in warnings:
+    display_warning(warning_msg, use_rich=True)
+```
+
+**Files to modify:**
+- `vscode_scanner/config_manager.py` (refactor ~3 display calls)
+- `vscode_scanner/cli.py` (handle returned warnings)
+
+**Impact:**
+- ✅ Reduces Application→Presentation coupling
+- ✅ Cleaner architecture
+- ⚠️ Minor API changes to config_manager
+
+**Estimated Effort:** 1-2 hours
+
+---
+
+#### Task 4.3: Create Architecture Tests (HIGH PRIORITY)
+
+**Problem:** No automated enforcement of architectural rules
+
+**Solution: Create comprehensive architecture test suite**
+
+**Create `tests/test_architecture.py`:**
+
+```python
+#!/usr/bin/env python3
+"""
+Architecture validation tests.
+
+Ensures the codebase maintains Simple Layered Architecture:
+- Presentation Layer: cli, display, output_formatter, html_report_generator
+- Application Layer: scanner, vscan, config_manager
+- Infrastructure Layer: vscan_api, cache_manager, extension_discovery
+- Shared: utils, constants, _version
+"""
+
+import ast
+import sys
+from pathlib import Path
+from typing import Set, List
+
+# Module classification
+PRESENTATION_MODULES = ['cli', 'display', 'output_formatter', 'html_report_generator']
+APPLICATION_MODULES = ['scanner', 'vscan', 'config_manager']
+INFRASTRUCTURE_MODULES = ['vscan_api', 'cache_manager', 'extension_discovery']
+SHARED_MODULES = ['utils', 'constants', '_version', 'types']
+
+def get_imports_from_file(file_path: Path) -> Set[str]:
+    """Extract all local imports from a Python file."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        tree = ast.parse(f.read(), filename=str(file_path))
+
+    imports = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.module and node.module.startswith('.'):
+                # Relative import: .module_name
+                module = node.module.lstrip('.')
+                imports.add(module)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith('vscode_scanner.'):
+                    module = alias.name.split('.')[1]
+                    imports.add(module)
+
+    return imports
+
+def test_infrastructure_layer_isolation():
+    """
+    Infrastructure layer must NOT import from Application or Presentation layers.
+
+    Allowed imports for Infrastructure:
+    - Other Infrastructure modules
+    - Shared modules (utils, constants, _version, types)
+    - Standard library only
+
+    Forbidden imports:
+    - Application modules (scanner, vscan, config_manager)
+    - Presentation modules (cli, display, output_formatter, html_report_generator)
+    """
+    vscode_scanner_dir = Path(__file__).parent.parent / 'vscode_scanner'
+    forbidden_modules = set(APPLICATION_MODULES + PRESENTATION_MODULES)
+
+    violations = []
+
+    for module_name in INFRASTRUCTURE_MODULES:
+        file_path = vscode_scanner_dir / f'{module_name}.py'
+        if not file_path.exists():
+            continue
+
+        imports = get_imports_from_file(file_path)
+        violations_found = imports & forbidden_modules
+
+        if violations_found:
+            violations.append({
+                'module': module_name,
+                'layer': 'Infrastructure',
+                'imports': violations_found,
+                'reason': 'Infrastructure cannot import from Application or Presentation'
+            })
+
+    if violations:
+        error_msg = "\n\n❌ ARCHITECTURE VIOLATIONS DETECTED:\n\n"
+        for v in violations:
+            error_msg += f"  {v['module']}.py ({v['layer']} layer)\n"
+            error_msg += f"    Illegally imports: {', '.join(v['imports'])}\n"
+            error_msg += f"    Reason: {v['reason']}\n\n"
+
+        error_msg += "Fix: Infrastructure modules should return data/errors to callers.\n"
+        error_msg += "Let Application/Presentation layers handle display logic.\n"
+
+        assert False, error_msg
+
+def test_no_circular_dependencies():
+    """
+    Ensure no circular import dependencies exist.
+
+    Circular dependencies make code harder to test and understand.
+    """
+    vscode_scanner_dir = Path(__file__).parent.parent / 'vscode_scanner'
+    all_modules = (PRESENTATION_MODULES + APPLICATION_MODULES +
+                   INFRASTRUCTURE_MODULES + SHARED_MODULES)
+
+    # Build dependency graph
+    dependency_graph = {}
+    for module_name in all_modules:
+        file_path = vscode_scanner_dir / f'{module_name}.py'
+        if file_path.exists():
+            dependency_graph[module_name] = get_imports_from_file(file_path)
+
+    # Detect cycles using DFS
+    def has_cycle(node: str, visited: Set[str], rec_stack: Set[str], path: List[str]) -> bool:
+        visited.add(node)
+        rec_stack.add(node)
+        path.append(node)
+
+        for neighbor in dependency_graph.get(node, set()):
+            if neighbor not in visited:
+                if has_cycle(neighbor, visited, rec_stack, path):
+                    return True
+            elif neighbor in rec_stack:
+                # Cycle detected
+                cycle_start = path.index(neighbor)
+                cycle = path[cycle_start:] + [neighbor]
+                error_msg = f"\n\n❌ CIRCULAR DEPENDENCY DETECTED:\n"
+                error_msg += " → ".join(cycle)
+                error_msg += "\n\nCircular dependencies must be resolved.\n"
+                assert False, error_msg
+
+        path.pop()
+        rec_stack.remove(node)
+        return False
+
+    visited = set()
+    for module in dependency_graph:
+        if module not in visited:
+            has_cycle(module, visited, set(), [])
+
+def test_presentation_layer_dependencies():
+    """
+    Presentation layer can import from Application and Shared layers.
+    Should minimize direct Infrastructure imports (use Application as intermediary).
+    """
+    vscode_scanner_dir = Path(__file__).parent.parent / 'vscode_scanner'
+
+    # Presentation can import from Application and Shared
+    # Direct Infrastructure imports should be minimal
+    for module_name in PRESENTATION_MODULES:
+        file_path = vscode_scanner_dir / f'{module_name}.py'
+        if not file_path.exists():
+            continue
+
+        imports = get_imports_from_file(file_path)
+        infrastructure_imports = imports & set(INFRASTRUCTURE_MODULES)
+
+        # display.py and output_formatter.py should NOT import from Infrastructure
+        if module_name in ['display', 'output_formatter'] and infrastructure_imports:
+            assert False, (
+                f"\n\n❌ ARCHITECTURE WARNING:\n"
+                f"  {module_name}.py imports from Infrastructure: {infrastructure_imports}\n"
+                f"  Presentation layer should use Application layer as intermediary.\n"
+            )
+
+def test_module_count_accuracy():
+    """
+    Verify the documented module count matches reality.
+
+    This test ensures ARCHITECTURE.md stays up to date.
+    """
+    vscode_scanner_dir = Path(__file__).parent.parent / 'vscode_scanner'
+    python_files = list(vscode_scanner_dir.glob('*.py'))
+
+    # Exclude __init__.py from count
+    python_files = [f for f in python_files if f.name != '__init__.py']
+
+    actual_count = len(python_files)
+
+    # Update this number when modules are added/removed
+    expected_count = 14  # As of v3.2.0
+
+    assert actual_count == expected_count, (
+        f"\n\n❌ MODULE COUNT MISMATCH:\n"
+        f"  Expected: {expected_count} modules\n"
+        f"  Actual:   {actual_count} modules\n"
+        f"  Files:    {[f.stem for f in python_files]}\n\n"
+        f"Action: Update ARCHITECTURE.md with current module count.\n"
+    )
+
+def test_shared_modules_have_no_app_dependencies():
+    """
+    Shared modules (utils, constants) must not import from any application layers.
+
+    They should only use standard library to remain truly shared.
+    """
+    vscode_scanner_dir = Path(__file__).parent.parent / 'vscode_scanner'
+    forbidden = set(PRESENTATION_MODULES + APPLICATION_MODULES + INFRASTRUCTURE_MODULES)
+
+    for module_name in ['utils', 'constants']:
+        file_path = vscode_scanner_dir / f'{module_name}.py'
+        if not file_path.exists():
+            continue
+
+        imports = get_imports_from_file(file_path)
+        violations = imports & forbidden
+
+        if violations:
+            assert False, (
+                f"\n\n❌ SHARED MODULE VIOLATION:\n"
+                f"  {module_name}.py imports application modules: {violations}\n"
+                f"  Shared modules should only use standard library.\n"
+            )
+
+if __name__ == '__main__':
+    # Run tests
+    print("Running architecture tests...")
+
+    test_infrastructure_layer_isolation()
+    print("✓ Infrastructure layer isolation")
+
+    test_no_circular_dependencies()
+    print("✓ No circular dependencies")
+
+    test_presentation_layer_dependencies()
+    print("✓ Presentation layer dependencies")
+
+    test_module_count_accuracy()
+    print("✓ Module count accuracy")
+
+    test_shared_modules_have_no_app_dependencies()
+    print("✓ Shared modules isolation")
+
+    print("\n✅ All architecture tests passed!")
+```
+
+**Files to create:**
+- `tests/test_architecture.py` (NEW - ~250 lines)
+
+**Impact:**
+- ✅ Automated enforcement of architectural rules
+- ✅ Prevents future violations
+- ✅ CI/CD integration ready
+- ✅ Clear error messages guide fixes
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+#### Task 4.4: Update ARCHITECTURE.md Documentation (MEDIUM PRIORITY)
+
+**Problem:** Documentation has minor inaccuracies:
+- Says "13 modules" but there are 14
+- Says "~8,400 lines" but there are 9,348
+- Dependency graph doesn't show cache_manager → display violation
+
+**Solution: Update documentation to reflect current state**
+
+**Changes Required:**
+
+1. **Update module count and line count:**
+
+```markdown
+# OLD
+- **~8,400 lines** of Python code
+- **13 modules** organized in flat structure
+
+# NEW
+- **~9,350 lines** of Python code
+- **14 modules** organized in flat structure
+```
+
+2. **Add types.py to module list** (after Task 4.1):
+
+```markdown
+### Shared Utilities
+
+**Modules:**
+- `utils.py` - Helper functions
+- `constants.py` - Shared constants and configuration defaults
+- `types.py` - Common data types and result objects (NEW)
+```
+
+3. **Update dependency graph to show actual dependencies:**
+
+```markdown
+### Dependency Rules
+
+**Allowed Dependencies:**
+
+```
+Presentation Layer:
+  cli.py                   → scanner, display, config_manager, utils, constants
+  display.py               → utils, constants
+  output_formatter.py      → utils, constants, types
+  html_report_generator.py → utils, types
+
+Application Layer:
+  scanner.py       → vscan_api, cache_manager, extension_discovery,
+                     display, utils, constants, types
+  vscan.py         → cli, utils, constants
+  config_manager.py → utils, constants, types
+
+Infrastructure Layer:
+  vscan_api.py            → utils, constants, types
+  cache_manager.py        → utils, constants, types
+  extension_discovery.py  → utils, constants, types
+
+Shared Utilities:
+  utils.py        → (standard library only)
+  constants.py    → (standard library only)
+  types.py        → (standard library + dataclasses)
+```
+```
+
+4. **Add section on testing architecture:**
+
+```markdown
+## Architecture Testing
+
+**Automated Tests:** `tests/test_architecture.py`
+
+The architecture is validated automatically on every test run:
+
+1. **Layer Isolation** - Infrastructure doesn't import from Application/Presentation
+2. **No Circular Dependencies** - Import graph is acyclic
+3. **Module Count** - Documentation stays current
+4. **Shared Module Purity** - Utils/constants remain dependency-free
+
+**Running Tests:**
+
+```bash
+python3 tests/test_architecture.py
+# Or via pytest
+pytest tests/test_architecture.py -v
+```
+
+**On Test Failure:**
+
+Architecture test failures indicate violations of design principles.
+Fix the code to match the architecture (don't update tests to match violations).
+```
+
+**Files to modify:**
+- `docs/guides/ARCHITECTURE.md` (update counts, add types.py, add testing section)
+
+**Impact:**
+- ✅ Documentation matches reality
+- ✅ Architecture testing documented
+- ✅ Clear guidance for developers
+
+**Estimated Effort:** 1 hour
+
+---
+
+#### Task 4.5: Add CI/CD Architecture Validation (LOW PRIORITY)
+
+**Problem:** No automated checks in CI/CD pipeline
+
+**Solution: Add architecture tests to CI/CD**
+
+**If using GitHub Actions** (`.github/workflows/test.yml`):
+
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pytest
+
+      - name: Run architecture tests
+        run: python3 tests/test_architecture.py
+
+      - name: Run unit tests
+        run: pytest tests/ -v
+```
+
+**If using other CI:**
+- Add `python3 tests/test_architecture.py` to test script
+- Ensure it runs before other tests (fast fail)
+
+**Files to create/modify:**
+- `.github/workflows/test.yml` (create or update)
+
+**Impact:**
+- ✅ Catches violations in PRs
+- ✅ Enforces architecture in team environment
+- ✅ Documentation of testing process
+
+**Estimated Effort:** 30 minutes - 1 hour
+
+---
+
+### Implementation Plan
+
+**Phase 4.1: Critical Fixes (Week 1)**
+1. Create `types.py` with result types
+2. Refactor `cache_manager.py` to remove display imports
+3. Update callers in `scanner.py` and `cli.py`
+4. Refactor `config_manager.py` to return warnings
+5. **Test thoroughly** - ensure no regressions
+
+**Phase 4.2: Testing & Validation (Week 1-2)**
+6. Create `tests/test_architecture.py`
+7. Run tests - **expect failures initially**
+8. Fix any remaining violations discovered by tests
+9. Ensure all architecture tests pass
+
+**Phase 4.3: Documentation & Automation (Week 2)**
+10. Update `ARCHITECTURE.md` with accurate counts
+11. Document types.py in module list
+12. Add architecture testing section
+13. Set up CI/CD validation (optional)
+
+---
+
+### Success Criteria
+
+✅ **All violations fixed:**
+- `cache_manager.py` doesn't import `display`
+- `config_manager.py` doesn't import `display`
+- Infrastructure layer is truly isolated
+
+✅ **Tests enforce architecture:**
+- `test_architecture.py` exists and passes
+- Tests catch violations automatically
+- Clear error messages guide developers
+
+✅ **Documentation accurate:**
+- Module count correct (14)
+- Line count current (~9,350)
+- Dependency graph shows actual dependencies
+- Architecture testing documented
+
+✅ **CI/CD integration:**
+- Architecture tests run on every commit/PR
+- Violations block merges
+- Team awareness of architectural rules
+
+---
+
+### Testing Strategy
+
+**Unit Tests:**
+```bash
+# Test individual module changes
+pytest tests/test_cache_manager.py -v
+pytest tests/test_config_manager.py -v
+```
+
+**Architecture Tests:**
+```bash
+# Validate layer boundaries
+python3 tests/test_architecture.py
+```
+
+**Integration Tests:**
+```bash
+# Ensure end-to-end workflows still work
+pytest tests/test_integration.py -v
+```
+
+**Manual Testing:**
+```bash
+# Verify no regressions in user experience
+vscan scan
+vscan cache stats
+vscan config show
+```
+
+---
+
+### Rollback Plan
+
+If issues are discovered after merging:
+
+1. **Revert commits** if critical bugs introduced
+2. **Feature flag** - Add `--legacy-display` flag to use old behavior temporarily
+3. **Gradual rollout** - Fix one module at a time, not all at once
+
+---
+
+### Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| Breaking existing tests | Medium | High | Run full test suite after each change |
+| Introducing regressions | Low | High | Thorough manual testing of all commands |
+| Excessive refactoring | Low | Medium | Keep changes minimal, focused on imports only |
+| Team confusion | Low | Low | Clear documentation and PR descriptions |
+
+---
+
+### Future Considerations
+
+**After Phase 4 completes:**
+
+1. **Consider error module** - If error handling grows complex, create dedicated `errors.py`
+2. **Logging strategy** - Formalize when to use `log()` vs display functions
+3. **Module growth** - Monitor for when to introduce sub-packages (>20 modules)
+
+**Architecture Evolution:**
+- Current: Simple Layered (right for 14 modules)
+- At 20+ modules: Consider sub-packages
+- At 30+ modules: Consider hexagonal architecture
+
+---
+
+### Estimated Total Effort
+
+| Task | Priority | Effort | Dependencies |
+|------|----------|--------|--------------|
+| 4.1: Fix cache_manager | HIGH | 3-4 hours | None |
+| 4.2: Fix config_manager | MEDIUM | 1-2 hours | 4.1 (types.py) |
+| 4.3: Architecture tests | HIGH | 2-3 hours | 4.1, 4.2 complete |
+| 4.4: Update docs | MEDIUM | 1 hour | 4.3 complete |
+| 4.5: CI/CD setup | LOW | 0.5-1 hour | 4.3 complete |
+
+**Total:** 7.5-11 hours (~1.5-2 days)
+
+---
+
+### References
+
+- **ARCHITECTURE.md** - Layering rules and design principles
+- **SECURITY.md** - Security implications of architectural changes
+- **TESTING.md** - Testing strategy and guidelines
+- **PRD.md** - Product requirements context
+
+---
+
+**Phase 4 Status:** Planning
+**Target Release:** v3.3.0
+**Priority:** HIGH - Architectural violations undermine maintainability
+**Approval Required:** Yes - touches core infrastructure
+
+---
+
+**Document Version:** 2.1
 **Last Updated:** 2025-10-24
 **Reviewed By:** Software Architect (Claude)
-**Status:** Planning for v3.2.0
+**Status:** Ready for implementation planning

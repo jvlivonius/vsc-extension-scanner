@@ -26,6 +26,7 @@ MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB maximum response size
 # HTTP-level retry settings (retries individual API calls)
 DEFAULT_MAX_RETRIES = 3  # Maximum retry attempts for HTTP requests
 DEFAULT_RETRY_BASE_DELAY = 2.0  # Base delay for exponential backoff (seconds)
+MAX_BACKOFF_DELAY = 30.0  # Maximum retry delay in seconds (prevents unbounded growth)
 
 # Workflow-level retry settings (retries entire scan workflow)
 DEFAULT_WORKFLOW_MAX_RETRIES = 2  # Maximum retry attempts for scan workflow
