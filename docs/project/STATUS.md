@@ -44,7 +44,7 @@
 
 **Estimated Effort:** 8 days (~1.5 weeks)
 
-**See:** [docs/project/v3.4-ROADMAP.md](v3.4-ROADMAP.md) Phase 2 for details
+**See:** [v3.4.1-ROADMAP.md](v3.4.1-ROADMAP.md) for complete task breakdown and timeline
 
 ---
 

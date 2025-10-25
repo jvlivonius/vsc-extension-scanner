@@ -432,12 +432,14 @@ The following features are **not included** in the current version:
 
 ## 12. Future Enhancements
 
-See [project/ROADMAP.md](ROADMAP.md) for planned v3.2 improvements:
+See [v3.4.1-ROADMAP.md](v3.4.1-ROADMAP.md) for planned v3.4.1 improvements (technical debt & code quality):
 
-- Error handling improvements (centralized ErrorHandler class)
-- Performance optimizations (connection pooling, batch operations)
-- Security enhancements (SQL injection prevention, resource limits)
-- UX improvements (error display, progress accuracy)
+- Code refactoring to eliminate duplication (~300 lines)
+- Thread-safe statistics collection with Lock protection
+- Transactional cache writes for fault tolerance
+- Parallel architecture documentation
+- Integration tests with real vscan.dev API
+- Progress display extraction (DRY principle)
 
 ---
 
@@ -469,6 +471,6 @@ See [project/ROADMAP.md](ROADMAP.md) for planned v3.2 improvements:
 
 ---
 
-**Document Version:** 3.1.0
-**Last Updated:** 2025-10-24
+**Document Version:** 3.4.0
+**Last Updated:** 2025-10-25
 **Status:** Production Ready ✅
