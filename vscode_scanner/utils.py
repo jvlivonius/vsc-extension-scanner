@@ -233,24 +233,63 @@ def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path
 
 def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
     """
-    Sanitize a string for safe inclusion in output.
+    Sanitize a string for safe inclusion in CLI output.
+
+    Enhanced in v3.5.1 to prevent terminal injection and control character attacks.
+    Removes ANSI escape codes, control characters, and other potentially dangerous sequences.
 
     Args:
         text: Text to sanitize
-        max_length: Maximum length
+        max_length: Maximum length (default: 500)
 
     Returns:
-        Sanitized string
+        Sanitized string safe for terminal output
+
+    Examples:
+        >>> sanitize_string("normal text")
+        'normal text'
+        >>> sanitize_string("\\x1b[31mred text\\x1b[0m")  # ANSI color codes stripped
+        'red text'
+        >>> sanitize_string("text\\x00with\\x07nulls")  # Control chars removed
+        'textwithnulls'
     """
     if text is None:
         return ""
 
-    # Truncate if too long
+    # Convert to string if not already
+    text = str(text)
+
+    # Remove ANSI escape sequences (terminal injection prevention)
+    # Pattern: ESC[ followed by any characters and a letter (CSI sequences)
+    # Also removes other ESC sequences (OSC, etc.)
+    import re
+    text = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', text)  # CSI sequences (colors, cursor movement)
+    text = re.sub(r'\x1b\][^\x07]*\x07', '', text)  # OSC sequences (window title, etc.)
+    text = re.sub(r'\x1b[^[]', '', text)  # Other ESC sequences
+
+    # Remove dangerous control characters
+    # Keep: \n (newline), \t (tab), \r (carriage return) - these are safe for display
+    # Remove: \x00 (null), \x07 (bell), \x08 (backspace), \x7f (delete), etc.
+    dangerous_control_chars = [
+        '\x00',  # Null byte
+        '\x07',  # Bell (can be annoying/used for timing attacks)
+        '\x08',  # Backspace (terminal manipulation)
+        '\x0b',  # Vertical tab
+        '\x0c',  # Form feed
+        '\x1b',  # Escape (if any remain after regex)
+        '\x7f',  # Delete
+    ]
+
+    for char in dangerous_control_chars:
+        text = text.replace(char, '')
+
+    # Remove any remaining control characters except \n, \t, \r
+    # Control characters are 0x00-0x1F and 0x7F
+    text = ''.join(char for char in text if ord(char) >= 0x20 or char in '\n\t\r')
+
+    # Truncate if too long (prevents DoS via extremely long strings)
     if len(text) > max_length:
         text = text[:max_length] + "..."
-
-    # Remove null bytes
-    text = text.replace('\x00', '')
 
     return text
 

@@ -140,16 +140,19 @@ class SecurityTester:
             self.tests_passed += 1
 
     def test_unused_sanitize_string(self):
-        """Test #1.2: sanitize_string() exists but is never used."""
+        """Test #1.2: sanitize_string() exists but is never used. (v3.5.1: IS used)"""
         print("Test 1.2: Checking if sanitize_string() is actually used...")
 
-        files_to_check = ['vscan.py', 'extension_discovery.py', 'cache_manager.py',
-                          'output_formatter.py', 'vscan_api.py']
+        # Check in correct paths (v3.5.1: already extensively used)
+        files_to_check = ['vscode_scanner/vscan.py', 'vscode_scanner/extension_discovery.py',
+                          'vscode_scanner/scanner.py', 'vscode_scanner/output_formatter.py']
         usage_found = False
+        base_dir = Path(__file__).parent.parent
 
         for filename in files_to_check:
-            if os.path.exists(filename):
-                with open(filename, 'r') as f:
+            filepath = base_dir / filename
+            if filepath.exists():
+                with open(filepath, 'r') as f:
                     content = f.read()
                     if 'sanitize_string(' in content and 'def sanitize_string' not in content:
                         usage_found = True
