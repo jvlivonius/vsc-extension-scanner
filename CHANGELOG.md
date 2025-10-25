@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2025-10-26
+
+### 🚨 BREAKING CHANGES
+- **Removed `--parallel` flag**: Parallel processing is now always used (no flag needed)
+- **Removed `parallel` config setting**: Remove `parallel = true/false` from `~/.vscanrc`
+- **Default behavior changed**: Now uses 3 workers automatically (4.88x speedup by default)
+- **Sequential mode**: Use `--workers 1` instead of omitting `--parallel`
+
+### Changed
+- ThreadPoolExecutor now always used with configurable workers (1-5, default: 3)
+- `--workers` parameter: Range changed from 2-5 to 1-5
+- Workers=1 provides sequential behavior via ThreadPoolExecutor
+- Unified scan implementation: Removed duplicate sequential code path (~100 lines eliminated)
+
+### Removed
+- `--parallel` CLI flag (breaking change)
+- `parallel` configuration setting (breaking change)
+- Sequential `_scan_extensions()` function (internal API)
+
+### Migration Guide
+
+**Old Commands (v3.4.0):**
+```bash
+vscan scan                  # Sequential (slow)
+vscan scan --parallel       # 3 workers (fast)
+vscan scan --parallel --workers 5  # 5 workers
+```
+
+**New Commands (v3.5.0):**
+```bash
+vscan scan                  # 3 workers (fast) - NEW DEFAULT!
+vscan scan --workers 1      # Sequential (if needed)
+vscan scan --workers 5      # 5 workers
+```
+
+**Configuration File:**
+- **Remove**: `parallel = true/false` from `[scan]` section
+- **Keep**: `workers = 3` (or any value 1-5)
+
+**Action Required:**
+1. Remove `--parallel` flag from all scripts
+2. Remove `parallel = true/false` from `~/.vscanrc`
+3. For sequential behavior: use `--workers 1`
+
+### Benefits
+- ✅ Single code path eliminates maintenance burden
+- ✅ Performance by default (3 workers = 4.88x speedup)
+- ✅ Simpler API (one concept: workers, not two: parallel + workers)
+- ✅ Eliminates code duplication (~100 lines removed)
+- ✅ Solves v3.4.1 roadmap Task 1 (code duplication)
+- ✅ Solves v3.4.1 roadmap Task 6 (progress display duplication)
+
 ## [3.4.0] - 2025-10-25
 
 ### Added

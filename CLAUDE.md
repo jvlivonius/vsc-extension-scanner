@@ -18,30 +18,31 @@ These documents define critical constraints and requirements that must be follow
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** v3.4.0 (Production Ready) ✅
+**Current Status:** v3.5.0 (Production Ready) ✅
 
-**Latest Updates (v3.4.0 - Parallel Scanning - 2025-10-25):**
+**Latest Updates (v3.5.0 - Parallel by Default - 2025-10-26):**
 
-**Release Complete (100%) ✅**
-- ✅ **Phase 0: PoC** - Validated 4.88x speedup with 3 workers, 100% success rate, zero SQLite issues
-- ✅ **Phase 1: Production** - Full implementation with ThreadPoolExecutor, CLI flags, config support
-- ✅ **SQLite Thread Safety Fix** - Main-thread-only cache writes (prevents cross-thread errors)
-- ✅ **Performance** - Real-world: 66 extensions from 6 minutes → 1.2 minutes (3 workers)
-- ✅ **Testing** - All tests passing (84+ test scenarios)
-- ✅ **Documentation** - Complete with PoC results, implementation guide, architectural review
+**🚨 BREAKING CHANGES - Major Release (100%) ✅**
+- ✅ **Parallel Processing Default** - 3 workers automatically (4.88x speedup by default!)
+- ✅ **Removed --parallel Flag** - Breaking change: No longer needed (always parallel now)
+- ✅ **Workers Range 1-5** - Breaking change: Sequential mode via `--workers 1`
+- ✅ **Removed Config Setting** - Breaking change: `parallel = true/false` removed from config
+- ✅ **Code Simplification** - ~100 lines eliminated, single unified code path
+- ✅ **Architecture Win** - Solves v3.4.1 Tasks 1 & 6 (code duplication, progress display)
 
 **Key Features:**
-- `--parallel` flag enables parallel scanning (default: 3 workers, range: 2-5)
-- `--workers` option configures worker count for advanced users
-- Configuration file support (`scan.parallel`, `scan.workers`)
+- ThreadPoolExecutor always used with configurable workers (1-5, default: 3)
+- `--workers` option: 1 = sequential, 2-5 = parallel (default: 3)
+- Configuration file support (`scan.workers` only, range: 1-5)
 - Rich/Plain mode compatibility maintained
 - Thread-safe implementation validated
 - Zero rate limiting from vscan.dev API (tested up to 7 workers)
 
 **Impact:**
-- 4.88x speedup with 3 workers (near-linear scaling)
-- 100% backward compatible (parallel mode is opt-in)
-- Production-ready with 85/100 architectural review score
+- Performance by default: 66 extensions from 6 minutes → 1.2 minutes (no flags needed!)
+- Single code path eliminates maintenance burden
+- Simpler API: One concept (workers), not two (parallel + workers)
+- Reduced roadmap: v3.4.1 from 8 days → 3.25 days (59% reduction)
 
 **Previous Updates (v3.3 - UX Enhancements - 2025-10-25):**
 - ✅ **Extension Directory in Config** - Persistent custom extensions directory
@@ -354,11 +355,11 @@ vscan scan --output report.html               # Generate HTML report
 vscan scan --output results.csv               # Export to CSV (NEW v3.1)
 vscan scan --extensions-dir /path             # Custom directory
 
-# Parallel scanning (NEW v3.4 - 2-5x performance)
-vscan scan --parallel                         # Enable parallel mode (default: 3 workers)
-vscan scan --parallel --workers 5             # Custom worker count (2-5)
-vscan config set scan.parallel true           # Enable by default via config
-vscan config set scan.workers 3               # Set default worker count
+# Worker configuration (v3.5.0 - parallel by default, 2-5x performance)
+vscan scan                                    # 3 workers by default (4.88x faster!)
+vscan scan --workers 5                        # Maximum performance (5 workers)
+vscan scan --workers 1                        # Sequential mode (if needed)
+vscan config set scan.workers 3               # Set default worker count (1-5)
 
 # Filtering options
 vscan scan --publisher microsoft              # Only scan Microsoft extensions

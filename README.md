@@ -4,7 +4,7 @@
 
 A command-line tool that scans your installed VS Code extensions for security vulnerabilities, suspicious permissions, and risky dependencies. Get instant insights into the security posture of your development environment.
 
-**Version:** 3.4.0 | **Status:** Production Ready
+**Version:** 3.5.0 | **Status:** Production Ready
 
 ---
 
@@ -55,11 +55,11 @@ pip install -e .
 **Most common commands:**
 
 ```bash
-# Scan all your extensions (beautiful terminal output)
+# Scan all your extensions (beautiful terminal output, 3 workers by default)
 vscan scan
 
-# Fast parallel scanning (2-5x faster, recommended for large extension sets)
-vscan scan --parallel
+# Maximum performance with 5 workers (5x faster)
+vscan scan --workers 5
 
 # Save results as an interactive HTML report
 vscan scan --output report.html
@@ -497,15 +497,16 @@ vscan cache clear --force
 ## What's New
 
 <details open>
-<summary>Version 3.4.0 - Parallel Scanning Performance Boost</summary>
+<summary>Version 3.5.0 - Parallel Processing by Default 🚨 BREAKING CHANGES</summary>
 
-- Parallel scanning with `--parallel` flag (2-5x faster)
-- Configurable worker count (2-5 workers, default: 3)
-- 4.88x speedup validated with 3 workers
-- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes
-- Thread-safe implementation with SQLite cache
-- Configuration file support for parallel settings
-- Works with both Rich and plain output modes
+- **Parallel processing is now the default** (4.88x faster automatically!)
+- Configurable worker count (1-5 workers, default: 3)
+- Breaking change: Removed `--parallel` flag (no longer needed)
+- Breaking change: Use `--workers 1` for sequential behavior
+- Simplified API: Single code path, ~100 lines of code eliminated
+- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes (by default)
+- Thread-safe SQLite implementation
+- See CHANGELOG.md for migration guide
 </details>
 
 <details>
@@ -551,8 +552,9 @@ vscan cache clear --force
 
 ### Performance
 
-- **Parallel mode (3 workers):** ~0.3 seconds per extension (4.88x faster)
-- **Sequential mode:** ~1.5 seconds per extension (API rate limiting)
+- **Default (3 workers):** ~0.3 seconds per extension (4.88x faster than v3.4)
+- **Sequential mode (1 worker):** ~1.5 seconds per extension (API rate limiting)
+- **Maximum (5 workers):** ~0.35 seconds per extension (4.27x faster)
 - **Cached scans:** Instant (50x faster)
 - **Memory usage:** < 100MB RAM
 - **Typical cache hit rate:** 70-90%

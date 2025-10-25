@@ -1,50 +1,57 @@
 # Project Status & Progress
 
 **Project:** VS Code Extension Security Scanner
-**Last Updated:** 2025-10-25
-**Current Version:** 3.4.0
+**Last Updated:** 2025-10-26
+**Current Version:** 3.5.0
 **Schema Version:** 2.1
 **Status:** Production Ready ✅
 
 ---
 
-## Current Release (v3.4.0 - Complete ✅)
+## Current Release (v3.5.0 - Complete ✅)
 
-**Version:** 3.4.0
-**Release Date:** 2025-10-25
-**Focus:** Performance Optimization with Parallel Scanning
+**Version:** 3.5.0
+**Release Date:** 2025-10-26
+**Focus:** Parallel Processing by Default 🚨 BREAKING CHANGES
 
 ### Achievements
 
-**✅ Parallel Scanning Feature (100% Complete)**
-- Parallel mode with `--parallel` flag (2-5 workers, default: 3)
-- 4.88x speedup validated via PoC (30 extensions)
-- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes
+**✅ Parallel Processing by Default (100% Complete)**
+- Parallel processing is now the default (3 workers automatically)
+- Breaking change: Removed `--parallel` flag (no longer needed)
+- Breaking change: Workers range 1-5 (use `--workers 1` for sequential)
+- Breaking change: Removed `parallel` config setting
+- 4.88x speedup by default (no flags needed!)
+- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes (automatically)
+- Code simplification: ~100 lines eliminated, single unified code path
+- Architecture win: Solves v3.4.1 Tasks 1 & 6 (code duplication eliminated)
 - Thread-safe implementation with main-thread-only cache writes
-- Configuration file support for parallel settings
-- Rich/Plain mode compatibility maintained
 - Zero rate limiting from vscan.dev API (tested up to 7 workers)
 
-**See:** [docs/archive/plans/v3.4-roadmap.md](../archive/plans/v3.4-roadmap.md) (archived)
+**Impact on Roadmap:**
+- Eliminated v3.4.1 Task 1 (code duplication) - solved by design
+- Eliminated v3.4.1 Task 6 (progress display duplication) - solved by design
+- Reduced remaining effort: 8 days → 3.25 days (59% reduction)
+
+**See:** [CHANGELOG.md](../../CHANGELOG.md) for migration guide
 
 ---
 
-## Next Release (v3.4.1 - Planning)
+## Next Release (v3.5.1 - Planning)
 
-**Focus:** Technical Debt & Code Quality
-**Target Completion:** 1-2 weeks after v3.4.0
+**Focus:** Remaining Technical Debt & Code Quality
+**Target Completion:** 1-2 weeks after v3.5.0
 
 ### Objectives
 
-1. **Code Refactoring** - Eliminate duplication (~300 lines)
-2. **Thread Safety** - Guarantee thread-safe stats collection
-3. **Robustness** - Transactional cache writes (fault tolerance)
-4. **Documentation** - Parallel architecture documentation
-5. **Testing** - Integration tests with real API
+1. **Thread Safety** - Guarantee thread-safe stats collection
+2. **Robustness** - Transactional cache writes (fault tolerance)
+3. **Documentation** - Parallel architecture documentation
+4. **Testing** - Integration tests with real API
 
-**Estimated Effort:** 8 days (~1.5 weeks)
+**Estimated Effort:** 3.25 days (reduced from 8 days due to v3.5.0 eliminating Tasks 1 & 6)
 
-**See:** [v3.4.1-ROADMAP.md](v3.4.1-ROADMAP.md) for complete task breakdown and timeline
+**See:** [v3.4-ROADMAP.md](v3.4-ROADMAP.md) (Phase 2 tasks, some now obsolete)
 
 ---
 
