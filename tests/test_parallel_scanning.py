@@ -24,7 +24,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from vscode_scanner.scanner import (
-    _scan_extensions_parallel,
+    _scan_extensions,
     _scan_single_extension_worker,
     run_scan
 )
@@ -94,7 +94,7 @@ class TestParallelScanningBasic(unittest.TestCase):
             }
             mock_api_class.return_value = mock_api
 
-            results, stats = _scan_extensions_parallel(
+            results, stats = _scan_extensions(
                 self.extensions,
                 self.args,
                 cache_manager,
@@ -206,7 +206,7 @@ class TestWorkerIsolation(unittest.TestCase):
             }
             mock_api_class.return_value = mock_api
 
-            _scan_extensions_parallel(
+            _scan_extensions(
                 extensions,
                 args,
                 cache_manager,
@@ -260,7 +260,7 @@ class TestThreadSafety(unittest.TestCase):
             mock_api_class.return_value = mock_api
 
             # This should complete without SQLite locking errors
-            results, stats = _scan_extensions_parallel(
+            results, stats = _scan_extensions(
                 extensions,
                 args,
                 cache_manager,
@@ -300,7 +300,7 @@ class TestThreadSafety(unittest.TestCase):
         )
 
         # Should read from cache without errors
-        results, stats = _scan_extensions_parallel(
+        results, stats = _scan_extensions(
             extensions,
             args,
             cache_manager,
@@ -357,7 +357,7 @@ class TestErrorHandling(unittest.TestCase):
             ]
             mock_api_class.return_value = mock_api
 
-            results, stats = _scan_extensions_parallel(
+            results, stats = _scan_extensions(
                 extensions,
                 args,
                 cache_manager,
@@ -395,7 +395,7 @@ class TestErrorHandling(unittest.TestCase):
             mock_api.scan_extension_with_retry.side_effect = Exception("API timeout")
             mock_api_class.return_value = mock_api
 
-            results, stats = _scan_extensions_parallel(
+            results, stats = _scan_extensions(
                 extensions,
                 args,
                 cache_manager,
@@ -491,7 +491,7 @@ class TestResultConsistency(unittest.TestCase):
                 workers=3
             )
 
-            par_results, par_stats = _scan_extensions_parallel(
+            par_results, par_stats = _scan_extensions(
                 extensions,
                 args_par,
                 cache_manager_par,
