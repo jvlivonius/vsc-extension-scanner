@@ -444,11 +444,11 @@ git ls-remote --tags origin | grep vX.Y.Z
 
 ---
 
-### Step 11: Create GitHub Release (Optional)
+### Step 11: Create GitHub Release
 
 If using GitHub, create a formal release:
 
-**Option A: Using GitHub CLI**
+**Using GitHub CLI**
 
 ```bash
 gh release create vX.Y.Z \
@@ -465,7 +465,7 @@ gh release create vX.Y.Z \
   --notes "See CHANGELOG.md for details"
 ```
 
-**Option B: Via GitHub Web Interface**
+**Fallback: Via GitHub Web Interface**
 
 1. Go to repository on GitHub
 2. Click "Releases" → "Draft a new release"

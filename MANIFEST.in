@@ -1,11 +1,9 @@
 # Include root documentation and metadata files
+include CHANGELOG.md
 include README.md
 include LICENSE
 include pyproject.toml
 include setup.py
-
-# Include scripts directory for version management
-recursive-include scripts *.py
 
 # Exclude build artifacts
 global-exclude *.pyc
@@ -15,6 +13,7 @@ global-exclude .DS_Store
 global-exclude *.so
 
 # Exclude development files
+exclude CLAUDE.md
 exclude .gitignore
 exclude *.json
 prune .git

@@ -281,11 +281,11 @@
   git ls-remote --tags origin | grep vX.Y.Z
   ```
 
-### Create GitHub Release (Optional)
+### Create GitHub Release
 
 - [ ] **Created GitHub release:**
 
-  **Option A: Using GitHub CLI:**
+  **Using GitHub CLI:**
   ```bash
   gh release create vX.Y.Z \
     dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl \
@@ -294,7 +294,7 @@
     --notes-file docs/archive/summaries/vX.Y.Z-release-notes.md
   ```
 
-  **Option B: Via GitHub Web Interface:**
+  **Fallback: Via GitHub Web Interface:**
   - [ ] Navigated to repository → Releases → Draft new release
   - [ ] Selected tag vX.Y.Z
   - [ ] Set release title: vX.Y.Z
