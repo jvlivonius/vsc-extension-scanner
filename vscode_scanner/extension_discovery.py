@@ -28,20 +28,31 @@ class ExtensionDiscovery:
         """
         self.custom_dir = custom_dir
 
-    def _read_extensions_json(self, extensions_dir: Path) -> Dict[str, int]:
+    def _read_extensions_json(self, extensions_dir: Path) -> Dict[str, Dict]:
         """
-        Read installation timestamps from extensions.json.
+        Read installed extensions from extensions.json.
+
+        This is the source of truth for which extensions are actually installed.
+        VS Code may keep old extension versions on disk, but only currently
+        installed versions are listed in extensions.json.
 
         Args:
             extensions_dir: Path to VS Code extensions directory
 
         Returns:
-            Dict mapping extension ID to installation timestamp (Unix ms)
+            Dict mapping directory name to extension metadata:
+            {
+                "publisher.name-1.2.3": {
+                    "id": "publisher.name",
+                    "version": "1.2.3",
+                    "timestamp": 1234567890  # Unix ms
+                }
+            }
         """
         json_path = extensions_dir / "extensions.json"
 
         if not json_path.exists():
-            log("extensions.json not found, installation dates unavailable", "WARNING")
+            log("extensions.json not found, will scan all extension directories", "WARNING")
             return {}
 
         try:
@@ -49,10 +60,10 @@ class ExtensionDiscovery:
                 data = json.load(f)
 
             if not isinstance(data, list):
-                log("extensions.json is not a list, installation dates unavailable", "WARNING")
+                log("extensions.json is not a list, will scan all extension directories", "WARNING")
                 return {}
 
-            timestamps = {}
+            installed = {}
             for entry in data:
                 if not isinstance(entry, dict):
                     continue
@@ -66,17 +77,31 @@ class ExtensionDiscovery:
                 if not ext_id:
                     continue
 
+                # Extract version
+                version = entry.get('version')
+                if not version:
+                    continue
+
+                # Extract relative location (directory name)
+                relative_location = entry.get('relativeLocation')
+                if not relative_location:
+                    continue
+
                 # Extract installation timestamp
                 metadata = entry.get('metadata', {})
                 if not isinstance(metadata, dict):
                     continue
 
-                installed = metadata.get('installedTimestamp')
-                if installed and isinstance(installed, (int, float)):
-                    # Store with lowercase ID for case-insensitive matching
-                    timestamps[ext_id.lower()] = int(installed)
+                installed_timestamp = metadata.get('installedTimestamp')
 
-            return timestamps
+                # Store extension metadata keyed by directory name
+                installed[relative_location] = {
+                    'id': ext_id.lower(),  # Lowercase for case-insensitive matching
+                    'version': version,
+                    'timestamp': int(installed_timestamp) if installed_timestamp and isinstance(installed_timestamp, (int, float)) else None
+                }
+
+            return installed
 
         except (json.JSONDecodeError, IOError) as e:
             sanitized_error = sanitize_error_message(str(e), context="extensions.json parsing")
@@ -136,7 +161,10 @@ class ExtensionDiscovery:
 
     def discover_extensions(self) -> List[Dict[str, str]]:
         """
-        Discover all VS Code extensions in the extensions directory.
+        Discover currently installed VS Code extensions.
+
+        Only extensions listed in extensions.json are considered "installed".
+        Old extension versions may exist on disk but are filtered out.
 
         Returns:
             List of extension metadata dictionaries
@@ -147,8 +175,8 @@ class ExtensionDiscovery:
         extensions_dir = self.find_extensions_directory()
         extensions = []
 
-        # Get installation timestamps from extensions.json
-        install_timestamps = self._read_extensions_json(extensions_dir)
+        # Get installed extensions from extensions.json (source of truth)
+        installed_extensions = self._read_extensions_json(extensions_dir)
 
         try:
             # Iterate through all subdirectories
@@ -160,22 +188,28 @@ class ExtensionDiscovery:
                 if ext_dir.name.startswith('.'):
                     continue
 
+                # Skip if not in installed extensions list (filters out old versions)
+                # If extensions.json doesn't exist, installed_extensions is empty dict,
+                # so we scan all directories for backward compatibility
+                if installed_extensions and ext_dir.name not in installed_extensions:
+                    continue
+
                 # Try to parse extension metadata
                 try:
                     metadata = self._parse_extension(ext_dir)
                     if metadata:
                         # Add installation timestamp if available
-                        ext_id = metadata['id']
-                        if ext_id.lower() in install_timestamps:
-                            # Convert Unix ms to ISO format
-                            timestamp_ms = install_timestamps[ext_id.lower()]
-                            timestamp_sec = timestamp_ms / 1000
-                            try:
-                                installed_at = datetime.fromtimestamp(timestamp_sec).isoformat() + 'Z'
-                                metadata['installed_at'] = installed_at
-                            except (ValueError, OSError) as e:
-                                # Invalid timestamp, skip installation date
-                                log(f"Invalid timestamp for {ext_id}: {timestamp_ms}", "WARNING")
+                        if ext_dir.name in installed_extensions:
+                            timestamp = installed_extensions[ext_dir.name].get('timestamp')
+                            if timestamp:
+                                # Convert Unix ms to ISO format
+                                timestamp_sec = timestamp / 1000
+                                try:
+                                    installed_at = datetime.fromtimestamp(timestamp_sec).isoformat() + 'Z'
+                                    metadata['installed_at'] = installed_at
+                                except (ValueError, OSError) as e:
+                                    # Invalid timestamp, skip installation date
+                                    log(f"Invalid timestamp for {metadata['id']}: {timestamp}", "WARNING")
 
                         extensions.append(metadata)
                 except Exception as e:
