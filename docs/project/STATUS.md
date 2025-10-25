@@ -2,8 +2,8 @@
 
 **Project:** VS Code Extension Security Scanner
 **Last Updated:** 2025-10-25
-**Current Version:** 3.3.0
-**Schema Version:** 2.0
+**Current Version:** 3.3.3
+**Schema Version:** 2.1
 **Status:** Production Ready ✅
 
 ---
@@ -22,10 +22,106 @@
 
 ---
 
-## Current Release (v3.3 - Complete ✅)
+## Current Release (v3.3 Series - Complete ✅)
 
-**Version:** 3.3.0
-**Completion Date:** 2025-10-25
+### Latest: v3.3.3 (2025-10-25) - Duplicate Extensions Fix
+
+**Critical Bug Fix:** Eliminated duplicate extension entries
+
+**Problem:**
+- Extensions with multiple versions on disk appeared as duplicate entries
+- VS Code keeps old versions on disk, but only current version is "installed"
+- Scanner was processing ALL directories instead of using extensions.json
+
+**Solution:**
+- Refactored `_read_extensions_json()` to return installed extension metadata
+- Filter discovery to only scan directories listed in extensions.json
+- Maintains backward compatibility if extensions.json missing
+
+**Impact:**
+- ✅ Eliminates duplicates (e.g., "Extension Pack for Java" now appears once)
+- ✅ Faster scans (fewer directories processed)
+- ✅ Accurate extension counts
+
+**Files Modified:** `extension_discovery.py`
+
+---
+
+### v3.3.2 (2025-10-25) - Date Sorting & Display Fix
+
+**Bug Fixes:** Three critical HTML report date handling issues
+
+1. **Date Column Sorting**
+   - Fixed: Clicking "Installed" or "Last Scanned" headers now sorts chronologically
+   - Uses ISO dates from data-iso-date attribute (not formatted text)
+   - Handles N/A dates properly (sorted to end)
+
+2. **Case-Insensitive Extension ID Matching**
+   - Fixed: Installation dates now load correctly
+   - extensions.json uses lowercase IDs, discovered extensions use mixed-case
+   - Made timestamp lookup case-insensitive
+
+3. **Date Display in Details Sections**
+   - Added "Installed" row to Details→Metadata section
+   - Added "Last Scanned" row to Details→Security Analysis section
+
+**Impact:**
+- ✅ All three date columns (Last Updated, Installed, Last Scanned) fully functional
+- ✅ Installation dates appear in table columns and detail sections
+- ✅ Chronological sorting works correctly
+
+**Files Modified:** `html_report_generator.py`, `extension_discovery.py`
+
+---
+
+### v3.3.1 (2025-10-25) - Date Tracking & Filter Fix
+
+**New Features:**
+
+**Feature 5: Installation & Scan Date Tracking**
+- Added installation date from extensions.json (Unix timestamp → ISO format)
+- Added last scan date (from cache or fresh scan timestamp)
+- Included in JSON, CSV, and HTML exports
+- HTML columns hidden by default, can be enabled via column toggles
+- Sortable date columns with locale-aware formatting
+- Cache schema upgraded v2.0 → v2.1 with automatic migration
+
+**Feature 6: Enhanced CLI Filtering**
+- `--verified-only`: Show only verified publisher extensions
+- `--unverified-only`: Show only unverified publisher extensions
+- `--with-vulnerabilities`: Show only extensions with vulnerabilities
+- `--without-vulnerabilities`: Show only clean extensions
+- Conflicting flags validated (verified+unverified, with+without)
+- Filters can be combined (e.g., `--unverified-only --with-vulnerabilities`)
+
+**Critical Bug Fix: Publisher Verification Filters**
+
+**Problem:**
+- `--verified-only` returned empty set (should show GitHub ✓, Red Hat ✓, etc.)
+- `--unverified-only` included verified publishers (should exclude all ✓)
+
+**Root Cause:**
+- Filters checked wrong data location (publisher field instead of metadata.publisher.verified)
+- Discovery stores publisher as string, API scan adds metadata
+
+**Fix:**
+- Created `_get_verification_status()` helper function
+- Checks metadata.publisher.verified first (primary source from API)
+- Falls back to publisher.verified (rare edge case)
+- Filters now use shared helper (consistent with display logic)
+
+**Impact:**
+- ✅ Both verification filters now work correctly
+- ✅ 25 tests passing (10 new/updated filtering tests)
+- ✅ Schema upgraded to 2.1 (automatic migration)
+- ✅ 17-column CSV, 13-column HTML table
+
+**Files Modified:** 11 files total (see commit message for details)
+
+---
+
+### v3.3.0 (2025-10-25) - UX Enhancements & Error Transparency
+
 **Focus:** UX Enhancements & Error Transparency
 
 ### Delivered Features
@@ -87,16 +183,16 @@
 
 | Metric | Value |
 |--------|-------|
-| **Current Version** | 3.3.0 ✅ |
+| **Current Version** | 3.3.3 ✅ |
 | **Next Version** | 3.4.0 (Planning) |
-| **Production Ready** | Yes ✅ (v3.3.0) |
+| **Production Ready** | Yes ✅ (v3.3.3) |
 | **Total Code** | 10,000+ lines (Python) |
 | **Documentation** | 21,000+ lines (Markdown) |
 | **Modules** | 14 (13 core + 1 version) |
 | **Test Files** | 13+ suites |
 | **Test Scenarios** | 101+ |
 | **Test Success Rate** | 100% |
-| **Schema Version** | 2.0 |
+| **Schema Version** | 2.1 |
 | **Output Formats** | 3 (JSON, HTML, CSV) |
 | **Platforms Supported** | 3 (macOS, Windows, Linux) |
 | **Architecture Layers** | 3 (Presentation, Application, Infrastructure) |
@@ -109,6 +205,9 @@
 | Version | Date | Description | Status |
 |---------|------|-------------|--------|
 | **v3.4.0** | TBD | Performance Optimization (Parallel Scanning) | 🔄 Planning |
+| **v3.3.3** | 2025-10-25 | Duplicate Extensions Fix | ✅ Complete |
+| **v3.3.2** | 2025-10-25 | Date Sorting & Display Fix | ✅ Complete |
+| **v3.3.1** | 2025-10-25 | Date Tracking & Filter Fix (Schema 2.1) | ✅ Complete |
 | **v3.3.0** | 2025-10-25 | UX Enhancements & Error Transparency | ✅ Complete |
 | **v3.2.0** | 2025-10-25 | Code Quality & Architecture | ✅ Complete |
 | **v3.1.0** | 2025-10-24 | Configuration & CSV Export | ✅ Complete |
@@ -136,9 +235,9 @@
 - ✅ Extension directory support (v3.3)
 
 ### Output Formats (v2.2+)
-- ✅ JSON (Schema 2.0) - Detailed security data
-- ✅ HTML - Interactive reports with charts/filters/search
-- ✅ CSV - Spreadsheet-compatible exports (15 columns)
+- ✅ JSON (Schema 2.1) - Detailed security data with date tracking
+- ✅ HTML - Interactive reports with charts/filters/search (13 columns, sortable dates)
+- ✅ CSV - Spreadsheet-compatible exports (17 columns with install/scan dates)
 
 ### Performance (v2.5+)
 - ✅ SQLite caching system (28x faster with cache)
@@ -212,12 +311,23 @@ vscan report results.json     # Generate JSON from cache
 vscan report results.csv      # Generate CSV from cache
 ```
 
-### Filtering Options
+### Filtering Options (v3.3.1+)
 ```bash
-vscan scan --publisher microsoft          # Only Microsoft extensions
-vscan scan --min-risk-level high          # Only high/critical risk
-vscan scan --include-ids "ms-python.python"  # Specific extensions
-vscan scan --exclude-ids "local.test"     # Exclude extensions
+vscan scan --publisher microsoft                    # Only Microsoft extensions
+vscan scan --min-risk-level high                    # Only high/critical risk
+vscan scan --include-ids "ms-python.python"         # Specific extensions
+vscan scan --exclude-ids "local.test"               # Exclude extensions
+
+# Publisher verification filters (v3.3.1+)
+vscan scan --verified-only                          # Only verified publishers
+vscan scan --unverified-only                        # Only unverified publishers
+
+# Vulnerability filters (v3.3.1+)
+vscan scan --with-vulnerabilities                   # Only extensions with vulnerabilities
+vscan scan --without-vulnerabilities                # Only clean extensions
+
+# Combine filters (v3.3.1+)
+vscan scan --unverified-only --with-vulnerabilities # Risky extensions only
 ```
 
 ---
@@ -330,5 +440,5 @@ See [docs/contributing/](../contributing/) for contributor guidelines:
 ---
 
 **Status:** v3.4.0 Planning - Performance Optimization (Parallel Scanning)
-**Current Release:** v3.3.0 ✅ Complete
+**Current Release:** v3.3.3 ✅ Complete (Bug Fix Series)
 **Next Milestone:** Begin v3.4 implementation
