@@ -42,25 +42,31 @@ docs/
 │   ├── TESTING_CHECKLIST.md       # Testing checklist
 │   └── VERSION_MANAGEMENT.md      # Version management guide
 │
-└── archive/                       # Historical documentation
-    ├── phases/                    # Phase requirements (completed)
-    │   ├── phase1-research.md
-    │   ├── phase2-implementation.md
-    │   ├── phase3-testing.md
-    │   └── phase4-enhanced-data.md
-    ├── releases/                  # Release summaries
-    │   ├── phase3-summary.md
-    │   ├── phase4-summary.md
-    │   ├── v3.1-plan.md
-    │   └── v3.1-summary.md
-    └── reviews/                   # Historical reviews and analysis
-        ├── improvement-plan.md
-        ├── improvement-phase1.md
-        ├── improvement-phase2.md
-        ├── improvement-phase3.md
-        ├── security-analysis.md
-        ├── security-fixes.md
-        └── security-quick-fix.md
+└── archive/                       # Historical documentation (version-based organization)
+    ├── README.md                  # Archive index and navigation guide
+    ├── plans/                     # Roadmaps and requirements (what we planned to build)
+    │   ├── v1.0-v2.0-phase1-research.md
+    │   ├── v1.0-v2.0-phase2-implementation.md
+    │   ├── v1.0-v2.0-phase3-testing.md
+    │   ├── v1.0-v2.0-phase4-enhanced-data.md
+    │   ├── v3.1-roadmap.md
+    │   └── v3.2-roadmap.md
+    ├── summaries/                 # Release notes and completion reports (what we built)
+    │   ├── v2.0-phase3-release-notes.md
+    │   ├── v2.0-phase4-release-notes.md
+    │   ├── v3.0-release-notes.md
+    │   └── v3.1-release-notes.md
+    └── reviews/                   # Analysis and research (how we evaluated)
+        ├── v1.0-prd-original.md
+        ├── v2.0-enhanced-data-integration-review.md
+        ├── v2.1-security-analysis.md
+        ├── v2.1-security-fixes.md
+        ├── v2.1-security-quick-fix.md
+        ├── v2.2-retry-mechanism-analysis.md
+        ├── v3.0-macos-testing-review.md
+        ├── v3.2-phase1-review.md
+        ├── v3.2-phase2-review.md
+        └── v3.2-phase3-review.md
 ```
 
 ---
@@ -205,7 +211,7 @@ docs/
 1. [project/STATUS.md](project/STATUS.md) - Current progress
 2. [project/PRD.md](project/PRD.md) - Requirements and scope
 3. [project/ROADMAP.md](project/ROADMAP.md) - Version 3.2 plans
-4. [archive/releases/](archive/releases/) - Phase completion summaries
+4. [archive/summaries/](archive/summaries/) - Release notes and completion summaries
 5. [../README.md](../README.md) - Project summary
 
 ### For Contributors
@@ -221,8 +227,8 @@ docs/
 
 **Start Here:**
 1. [guides/SECURITY.md](guides/SECURITY.md) - Security requirements and status
-2. [archive/reviews/security-analysis.md](archive/reviews/security-analysis.md) - Historical vulnerability analysis
-3. [archive/reviews/security-fixes.md](archive/reviews/security-fixes.md) - Applied fixes
+2. [archive/reviews/v2.1-security-analysis.md](archive/reviews/v2.1-security-analysis.md) - Historical vulnerability analysis
+3. [archive/reviews/v2.1-security-fixes.md](archive/reviews/v2.1-security-fixes.md) - Applied fixes
 4. [guides/TESTING.md](guides/TESTING.md) - Security testing strategy
 
 ---
@@ -231,7 +237,7 @@ docs/
 
 ### Phase 1: Research & Discovery ✅ COMPLETE
 
-**Requirements:** [archive/phases/phase1-research.md](archive/phases/phase1-research.md)
+**Requirements:** [archive/plans/v1.0-v2.0-phase1-research.md](archive/plans/v1.0-v2.0-phase1-research.md)
 
 **What Was Achieved:**
 - Reverse-engineered vscan.dev API
@@ -241,7 +247,7 @@ docs/
 
 ### Phase 2: Core Implementation ✅ COMPLETE
 
-**Requirements:** [archive/phases/phase2-implementation.md](archive/phases/phase2-implementation.md)
+**Requirements:** [archive/plans/v1.0-v2.0-phase2-implementation.md](archive/plans/v1.0-v2.0-phase2-implementation.md)
 
 **What Was Achieved:**
 - All 6 core modules implemented (1,590 LOC)
@@ -252,9 +258,9 @@ docs/
 
 ### Phase 3: Testing & Refinement ✅ COMPLETE
 
-**Requirements:** [archive/phases/phase3-testing.md](archive/phases/phase3-testing.md)
+**Requirements:** [archive/plans/v1.0-v2.0-phase3-testing.md](archive/plans/v1.0-v2.0-phase3-testing.md)
 
-**Summary:** [archive/releases/phase3-summary.md](archive/releases/phase3-summary.md)
+**Summary:** [archive/summaries/v2.0-phase3-release-notes.md](archive/summaries/v2.0-phase3-release-notes.md)
 
 **What Was Achieved:**
 - Comprehensive caching system testing
@@ -265,9 +271,9 @@ docs/
 
 ### Phase 4: Enhanced Data Integration ✅ COMPLETE
 
-**Requirements:** [archive/phases/phase4-enhanced-data.md](archive/phases/phase4-enhanced-data.md)
+**Requirements:** [archive/plans/v1.0-v2.0-phase4-enhanced-data.md](archive/plans/v1.0-v2.0-phase4-enhanced-data.md)
 
-**Summary:** [archive/releases/phase4-summary.md](archive/releases/phase4-summary.md)
+**Summary:** [archive/summaries/v2.0-phase4-release-notes.md](archive/summaries/v2.0-phase4-release-notes.md)
 
 **What Was Achieved:**
 - Complete vscan.dev data capture
@@ -290,7 +296,7 @@ docs/
 
 ### Phase 6: Configuration & CSV Export ✅ COMPLETE (v3.1)
 
-**Summary:** [archive/releases/v3.1-summary.md](archive/releases/v3.1-summary.md)
+**Summary:** [archive/summaries/v3.1-release-notes.md](archive/summaries/v3.1-release-notes.md)
 
 **What Was Achieved:**
 - Configuration file support (~/.vscanrc)
@@ -319,6 +325,14 @@ docs/
 ---
 
 ## Recent Updates
+
+- **2025-10-25** - Archive Reorganization (Version-Based Organization)
+  - Reorganized docs/archive/ with version-based naming scheme
+  - Created three subdirectories: plans/, summaries/, reviews/
+  - Eliminated "Phase 4" duplication (v1.0-v2.0 vs v3.2)
+  - All files renamed to vX.Y-description.md format
+  - Created [archive/README.md](archive/README.md) navigation guide
+  - Git history preserved via git mv for all moves
 
 - **2025-10-24** - Documentation Restructure
   - Created 3-tier organization: Active (guides/, project/, specs/) + Archive + Contributing

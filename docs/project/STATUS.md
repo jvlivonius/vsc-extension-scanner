@@ -919,7 +919,7 @@ Completed ROADMAP Phase 4 to enforce Simple Layered Architecture and eliminate a
 | [vscan.py](../../vscode_scanner/vscan.py) | +15 lines | Version 2.0.0, --detailed flag |
 | [PRD.md](PRD.md) | Updated | Version 3.1.0 features documented |
 | [ENHANCED_DATA_INTEGRATION_PLAN.md](../archive/reviews/enhanced-data-integration.md) | Archived | Complete implementation plan |
-| [PHASE4_COMPLETION_SUMMARY.md](../archive/releases/phase4-summary.md) | Archived | Phase 4 summary and migration guide |
+| [v2.0-phase4-release-notes.md](../archive/summaries/v2.0-phase4-release-notes.md) | Archived | Phase 4 summary and migration guide (v2.0 Enhanced Data Integration) |
 
 ### Features Implemented
 
