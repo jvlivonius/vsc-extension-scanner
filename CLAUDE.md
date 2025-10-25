@@ -224,8 +224,9 @@ Read these when making changes to specific areas:
 
 - **[README.md](README.md)** - Project overview and quick start
 - **[docs/project/STATUS.md](docs/project/STATUS.md)** - Current project status and progress
-- **[docs/project/ROADMAP.md](docs/project/ROADMAP.md)** - Version 3.2 improvement plan
+- **[docs/project/PRD.md](docs/project/PRD.md)** - Product requirements document
 - **[docs/README.md](docs/README.md)** - Complete documentation index
+- **[docs/archive/plans/v3.2-roadmap.md](docs/archive/plans/v3.2-roadmap.md)** - Version 3.2 improvement plan (archived, complete)
 
 ### Feature Specifications
 - **[docs/specs/html-reports.md](docs/specs/html-reports.md)** - HTML report feature (v2.2)

@@ -30,8 +30,7 @@ docs/
 │
 ├── project/                       # Active project management
 │   ├── STATUS.md                  # Current project status and progress
-│   ├── PRD.md                     # Product Requirements Document
-│   └── ROADMAP.md                 # Version 3.2 improvement plan
+│   └── PRD.md                     # Product Requirements Document
 │
 ├── specs/                         # Shipped feature specifications
 │   ├── html-reports.md            # HTML report feature (v2.2)
@@ -134,19 +133,12 @@ docs/
 - Next actions
 
 **[project/PRD.md](project/PRD.md)** - Product Requirements Document
-- Complete product requirements
+- Complete product requirements (v3.1)
 - Scope and objectives
 - User stories
 - Technical specifications
 - Success criteria
 - Phase milestones with references
-
-**[project/ROADMAP.md](project/ROADMAP.md)** - Version 3.2 improvement plan
-- 18 specific recommendations prioritized by impact
-- Security improvements (SQL injection, connection leaks, rate limiting)
-- Usability enhancements (error display, UX consistency)
-- Performance optimizations (cache, VACUUM, backoff)
-- Implementation roadmap (Phase 1-3)
 
 ---
 
@@ -209,16 +201,15 @@ docs/
 4. [guides/SECURITY.md](guides/SECURITY.md) - Security requirements
 5. [guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md) - Error handling patterns
 6. [guides/TESTING.md](guides/TESTING.md) - Testing best practices
-7. [project/ROADMAP.md](project/ROADMAP.md) - Version 3.2 improvements
-8. [guides/API_REFERENCE.md](guides/API_REFERENCE.md) - API details
+7. [guides/API_REFERENCE.md](guides/API_REFERENCE.md) - API details
 
 ### For Project Managers
 
 **Start Here:**
 1. [project/STATUS.md](project/STATUS.md) - Current progress
 2. [project/PRD.md](project/PRD.md) - Requirements and scope
-3. [project/ROADMAP.md](project/ROADMAP.md) - Version 3.2 plans
-4. [archive/summaries/](archive/summaries/) - Release notes and completion summaries
+3. [archive/summaries/](archive/summaries/) - Release notes and completion summaries
+4. [archive/plans/](archive/plans/) - Historical roadmaps and requirements
 5. [../README.md](../README.md) - Project summary
 
 ### For Contributors
@@ -352,7 +343,7 @@ docs/
   - Created [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md) - Simple Layered Architecture
   - Created [guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md) - ERROR_HELP system
   - Created [guides/TESTING.md](guides/TESTING.md) - Testing guidelines
-  - Created [project/ROADMAP.md](project/ROADMAP.md) - 18 prioritized improvements
+  - Created v3.2 roadmap with 18 prioritized improvements (now archived)
   - Formalized architectural principles: KISS, Command-Query Separation, Fail Fast
 
 - **2025-10-24** - Cross-platform Compatibility
@@ -368,7 +359,7 @@ docs/
 ### Folder Structure
 
 - **guides/** - Timeless technical reference (architecture, security, APIs)
-- **project/** - Active project management (status, requirements, roadmap)
+- **project/** - Active project management (status, requirements)
 - **specs/** - Shipped feature specifications
 - **contributing/** - Contributor guides and checklists
 - **archive/** - Historical documentation (phases, releases, reviews)
