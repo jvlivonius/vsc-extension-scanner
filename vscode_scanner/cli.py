@@ -176,18 +176,12 @@ def scan(
         help="Base delay for exponential backoff on retries (seconds)",
         rich_help_panel="Advanced Options"
     ),
-    parallel: bool = typer.Option(
-        False,
-        "--parallel",
-        help="Enable parallel scanning with multiple workers (2-5x faster)",
-        rich_help_panel="Advanced Options"
-    ),
     workers: int = typer.Option(
         3,
         "--workers",
-        min=2,
+        min=1,
         max=5,
-        help="Number of parallel workers (2-5, default: 3). Only used with --parallel.",
+        help="Number of concurrent workers (1-5, default: 3). Use 1 for sequential behavior.",
         rich_help_panel="Advanced Options"
     ),
 
@@ -230,11 +224,11 @@ def scan(
         [dim]# Scan all extensions with default settings[/dim]
         $ vscan scan
 
-        [dim]# Enable parallel scanning (2-5x faster)[/dim]
-        $ vscan scan --parallel
+        [dim]# Scan with 5 workers (maximum parallelism)[/dim]
+        $ vscan scan --workers 5
 
-        [dim]# Parallel scan with custom worker count[/dim]
-        $ vscan scan --parallel --workers 5
+        [dim]# Sequential scan (1 worker)[/dim]
+        $ vscan scan --workers 1
 
         [dim]# Filter by publisher[/dim]
         $ vscan scan --publisher microsoft
@@ -294,8 +288,6 @@ def scan(
         extensions_dir = Path(config['scan']['extensions_dir']).expanduser()
     if cache_dir is None and config['cache']['cache_dir'] is not None:
         cache_dir = Path(config['cache']['cache_dir']).expanduser()
-    if parallel is False and config['scan'].get('parallel') is not None:
-        parallel = config['scan']['parallel']
     if workers == 3 and config['scan'].get('workers') is not None:
         workers = config['scan']['workers']
 
@@ -305,7 +297,7 @@ def scan(
         max_retries = bounded_int_validator(max_retries, 0, 10, "max-retries")
         retry_delay = bounded_float_validator(retry_delay, 0.1, 60.0, "retry-delay")
         cache_max_age = bounded_int_validator(cache_max_age, 1, 365, "cache-max-age")
-        workers = bounded_int_validator(workers, 2, 5, "workers")
+        workers = bounded_int_validator(workers, 1, 5, "workers")
     except typer.BadParameter as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2)
@@ -357,7 +349,6 @@ def scan(
             plain=plain,
             quiet=quiet,
             verbose=verbose,
-            parallel=parallel,
             workers=workers
         )
         raise typer.Exit(code=exit_code)

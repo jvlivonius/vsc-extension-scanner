@@ -51,7 +51,6 @@ def run_scan(
     plain: bool = False,
     quiet: bool = False,
     verbose: bool = False,
-    parallel: bool = False,
     workers: int = 3,
     **kwargs
 ) -> int:
@@ -205,14 +204,9 @@ def run_scan(
         return 0
 
     # Step 2: Scan extensions
-    if parallel:
-        scan_results, stats = _scan_extensions_parallel(
-            extensions, args, cache_manager, scan_timestamp, use_rich, quiet
-        )
-    else:
-        scan_results, stats = _scan_extensions(
-            extensions, args, cache_manager, scan_timestamp, use_rich, quiet
-        )
+    scan_results, stats = _scan_extensions(
+        extensions, args, cache_manager, scan_timestamp, use_rich, quiet
+    )
 
     # Apply post-scan filters (risk level)
     scan_results = _apply_post_scan_filters(scan_results, args, use_rich)
@@ -356,106 +350,9 @@ def _scan_extensions(
     quiet: bool
 ) -> Tuple[List[Dict], Dict]:
     """
-    Scan extensions for vulnerabilities.
+    Scan extensions for vulnerabilities using ThreadPoolExecutor.
 
-    Args:
-        extensions: List of extension metadata dicts
-        args: Scan configuration
-        cache_manager: CacheManager instance or None
-        scan_timestamp: ISO timestamp of scan start
-        use_rich: Whether to use Rich formatting
-        quiet: Minimal output mode
-
-    Returns:
-        Tuple of (scan_results, stats_dict)
-    """
-    if not quiet and not use_rich:
-        log("", "INFO")
-        log("Step 2: Scanning extensions for vulnerabilities...", "INFO")
-
-        if cache_manager and not args.refresh_cache:
-            log(f"Cache enabled (max age: {args.cache_max_age} days)", "INFO")
-        elif args.no_cache:
-            log("Cache disabled", "INFO")
-        elif args.refresh_cache:
-            log("Forcing cache refresh for scanned extensions", "INFO")
-
-    api_client = VscanAPIClient(
-        delay=args.delay,
-        verbose=False,  # No verbose logging
-        max_retries=args.max_retries,
-        retry_base_delay=args.retry_delay
-    )
-
-    scan_results = []
-    stats = {
-        'vulnerabilities_found': 0,
-        'successful_scans': 0,
-        'failed_scans': 0,
-        'cached_results': 0,
-        'fresh_scans': 0,
-        'failed_extensions': [],  # Track failed extensions with details
-        'api_client': api_client
-    }
-
-    # Begin batch commit for cache operations
-    if cache_manager:
-        cache_manager.begin_batch()
-
-    # Use Rich progress bar if available
-    if use_rich and not quiet:
-        from rich.console import Console
-        console = Console()
-
-        progress = create_scan_progress()
-        if progress:
-            with progress:
-                task = progress.add_task("Scanning extensions...", total=len(extensions))
-
-                for idx, ext in enumerate(extensions, 1):
-                    _scan_single_extension(
-                        ext, idx, len(extensions), cache_manager, args,
-                        api_client, stats, scan_results, use_rich
-                    )
-                    progress.update(task, advance=1)
-
-                    # Commit batch every DATABASE_BATCH_SIZE fresh scans
-                    if cache_manager and stats['fresh_scans'] % DATABASE_BATCH_SIZE == 0:
-                        cache_manager.commit_batch()
-                        cache_manager.begin_batch()
-    else:
-        # Plain output
-        for idx, ext in enumerate(extensions, 1):
-            _scan_single_extension(
-                ext, idx, len(extensions), cache_manager, args,
-                api_client, stats, scan_results, use_rich
-            )
-
-            # Commit batch every DATABASE_BATCH_SIZE fresh scans
-            if cache_manager and stats['fresh_scans'] % DATABASE_BATCH_SIZE == 0:
-                cache_manager.commit_batch()
-                cache_manager.begin_batch()
-
-    # Commit any remaining results
-    if cache_manager:
-        cache_manager.commit_batch()
-
-    if not quiet and not use_rich:
-        log("", "INFO")
-
-    return scan_results, stats
-
-
-def _scan_extensions_parallel(
-    extensions: List[Dict],
-    args,
-    cache_manager: Optional[CacheManager],
-    scan_timestamp: str,
-    use_rich: bool,
-    quiet: bool
-) -> Tuple[List[Dict], Dict]:
-    """
-    Scan extensions in parallel using ThreadPoolExecutor.
+    Uses configurable number of workers (1-5). Workers=1 provides sequential behavior.
 
     Args:
         extensions: List of extension metadata dicts
@@ -468,12 +365,13 @@ def _scan_extensions_parallel(
     Returns:
         Tuple of (scan_results, stats_dict)
     """
-    # Validate and cap worker count (based on PoC findings)
-    max_workers = min(max(args.workers, 2), 5)  # Range: 2-5
+    # Validate and cap worker count (1-5, default: 3)
+    max_workers = min(max(args.workers, 1), 5)  # Range: 1-5
+    worker_info = f"{max_workers} worker{'s' if max_workers > 1 else ''}"
 
     if not quiet and not use_rich:
         log("", "INFO")
-        log(f"Step 2: Scanning extensions for vulnerabilities (parallel mode: {max_workers} workers)...", "INFO")
+        log(f"Step 2: Scanning extensions for vulnerabilities ({worker_info})...", "INFO")
 
         if cache_manager and not args.refresh_cache:
             log(f"Cache enabled (max age: {args.cache_max_age} days)", "INFO")
@@ -504,7 +402,7 @@ def _scan_extensions_parallel(
         progress = create_scan_progress()
         if progress:
             with progress:
-                task = progress.add_task(f"Scanning ({max_workers} workers)...", total=len(extensions))
+                task = progress.add_task(f"Scanning ({worker_info})...", total=len(extensions))
 
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     # Submit all scan tasks
