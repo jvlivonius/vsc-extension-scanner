@@ -219,6 +219,14 @@ class HTMLReportGenerator:
                         <input type="checkbox" id="col-last-updated" onchange="toggleColumn('last-updated')">
                         <label for="col-last-updated">Last Updated</label>
                     </div>
+                    <div class="column-dropdown-item">
+                        <input type="checkbox" id="col-installed" onchange="toggleColumn('installed')">
+                        <label for="col-installed">Installed</label>
+                    </div>
+                    <div class="column-dropdown-item">
+                        <input type="checkbox" id="col-last-scanned" onchange="toggleColumn('last-scanned')">
+                        <label for="col-last-scanned">Last Scanned</label>
+                    </div>
                 </div>
             </div>
         </section>
@@ -263,6 +271,8 @@ class HTMLReportGenerator:
             )
 
             last_updated = ext.get('last_updated', 'N/A')
+            installed_at = ext.get('installed_at', 'N/A')
+            last_scanned_at = ext.get('last_scanned_at', 'N/A')
 
             scan_status = ext.get('scan_status', 'unknown')
 
@@ -305,9 +315,11 @@ class HTMLReportGenerator:
                 <td class="col-rating" style="display: none;">{rating_display}</td>
                 <td class="col-dependencies" style="display: none;">{deps_count}</td>
                 <td class="col-last-updated" style="display: none;"><span class="date-value" data-iso-date="{self._safe_escape(last_updated)}">{self._safe_escape(last_updated)}</span></td>
+                <td class="col-installed" style="display: none;"><span class="date-value" data-iso-date="{self._safe_escape(installed_at)}">{self._safe_escape(installed_at)}</span></td>
+                <td class="col-last-scanned" style="display: none;"><span class="date-value" data-iso-date="{self._safe_escape(last_scanned_at)}">{self._safe_escape(last_scanned_at)}</span></td>
             </tr>
             <tr class="detail-row" id="detail-{self._safe_escape(ext_id, quote=True)}" style="display: none;">
-                <td colspan="11">
+                <td colspan="13">
                     {detail_view}
                 </td>
             </tr>
@@ -350,6 +362,12 @@ class HTMLReportGenerator:
                         </th>
                         <th class="col-last-updated sortable" onclick="sortTable('last-updated')" style="display: none;">
                             Last Updated <span class="sort-indicator"></span>
+                        </th>
+                        <th class="col-installed sortable" onclick="sortTable('installed')" style="display: none;">
+                            Installed <span class="sort-indicator"></span>
+                        </th>
+                        <th class="col-last-scanned sortable" onclick="sortTable('last-scanned')" style="display: none;">
+                            Last Scanned <span class="sort-indicator"></span>
                         </th>
                     </tr>
                 </thead>

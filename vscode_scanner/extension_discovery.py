@@ -10,6 +10,7 @@ import json
 import platform
 from pathlib import Path
 from typing import List, Dict, Optional
+from datetime import datetime
 
 from .utils import log, sanitize_string, sanitize_error_message, is_restricted_path, is_temp_directory
 from .constants import MAX_PACKAGE_JSON_SIZE
@@ -26,6 +27,60 @@ class ExtensionDiscovery:
             custom_dir: Optional custom extensions directory path
         """
         self.custom_dir = custom_dir
+
+    def _read_extensions_json(self, extensions_dir: Path) -> Dict[str, int]:
+        """
+        Read installation timestamps from extensions.json.
+
+        Args:
+            extensions_dir: Path to VS Code extensions directory
+
+        Returns:
+            Dict mapping extension ID to installation timestamp (Unix ms)
+        """
+        json_path = extensions_dir / "extensions.json"
+
+        if not json_path.exists():
+            log("extensions.json not found, installation dates unavailable", "WARNING")
+            return {}
+
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            if not isinstance(data, list):
+                log("extensions.json is not a list, installation dates unavailable", "WARNING")
+                return {}
+
+            timestamps = {}
+            for entry in data:
+                if not isinstance(entry, dict):
+                    continue
+
+                # Extract extension ID
+                identifier = entry.get('identifier', {})
+                if not isinstance(identifier, dict):
+                    continue
+
+                ext_id = identifier.get('id')
+                if not ext_id:
+                    continue
+
+                # Extract installation timestamp
+                metadata = entry.get('metadata', {})
+                if not isinstance(metadata, dict):
+                    continue
+
+                installed = metadata.get('installedTimestamp')
+                if installed and isinstance(installed, (int, float)):
+                    timestamps[ext_id] = int(installed)
+
+            return timestamps
+
+        except (json.JSONDecodeError, IOError) as e:
+            sanitized_error = sanitize_error_message(str(e), context="extensions.json parsing")
+            log(f"Failed to parse extensions.json: {sanitized_error}", "WARNING")
+            return {}
 
     def find_extensions_directory(self) -> Path:
         """
@@ -91,6 +146,9 @@ class ExtensionDiscovery:
         extensions_dir = self.find_extensions_directory()
         extensions = []
 
+        # Get installation timestamps from extensions.json
+        install_timestamps = self._read_extensions_json(extensions_dir)
+
         try:
             # Iterate through all subdirectories
             for ext_dir in extensions_dir.iterdir():
@@ -105,6 +163,19 @@ class ExtensionDiscovery:
                 try:
                     metadata = self._parse_extension(ext_dir)
                     if metadata:
+                        # Add installation timestamp if available
+                        ext_id = metadata['id']
+                        if ext_id in install_timestamps:
+                            # Convert Unix ms to ISO format
+                            timestamp_ms = install_timestamps[ext_id]
+                            timestamp_sec = timestamp_ms / 1000
+                            try:
+                                installed_at = datetime.fromtimestamp(timestamp_sec).isoformat() + 'Z'
+                                metadata['installed_at'] = installed_at
+                            except (ValueError, OSError) as e:
+                                # Invalid timestamp, skip installation date
+                                log(f"Invalid timestamp for {ext_id}: {timestamp_ms}", "WARNING")
+
                         extensions.append(metadata)
                 except Exception as e:
                     # Log warning but continue with other extensions

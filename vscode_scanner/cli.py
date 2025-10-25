@@ -119,6 +119,30 @@ def scan(
         help="Minimum risk level to include in results (low, medium, high, critical)",
         rich_help_panel="Filtering Options"
     ),
+    verified_only: bool = typer.Option(
+        False,
+        "--verified-only",
+        help="Only show extensions from verified publishers",
+        rich_help_panel="Filtering Options"
+    ),
+    unverified_only: bool = typer.Option(
+        False,
+        "--unverified-only",
+        help="Only show extensions from unverified publishers",
+        rich_help_panel="Filtering Options"
+    ),
+    with_vulnerabilities: bool = typer.Option(
+        False,
+        "--with-vulnerabilities",
+        help="Only show extensions with known vulnerabilities",
+        rich_help_panel="Filtering Options"
+    ),
+    without_vulnerabilities: bool = typer.Option(
+        False,
+        "--without-vulnerabilities",
+        help="Only show extensions without vulnerabilities",
+        rich_help_panel="Filtering Options"
+    ),
 
     # Advanced options
     extensions_dir: Optional[Path] = typer.Option(
@@ -209,6 +233,15 @@ def scan(
         [dim]# Scan specific extensions only[/dim]
         $ vscan scan --include-ids "ms-python.python,esbenp.prettier-vscode"
     """
+    # Validate conflicting filter flags
+    if verified_only and unverified_only:
+        display_error("Cannot use --verified-only and --unverified-only together")
+        sys.exit(2)
+
+    if with_vulnerabilities and without_vulnerabilities:
+        display_error("Cannot use --with-vulnerabilities and --without-vulnerabilities together")
+        sys.exit(2)
+
     # Load configuration file (config values serve as defaults, CLI args override)
     from .config_manager import load_config
     from .types import ConfigWarning
@@ -287,6 +320,10 @@ def scan(
             include_ids=include_ids,
             exclude_ids=exclude_ids,
             min_risk_level=min_risk_level,
+            verified_only=verified_only,
+            unverified_only=unverified_only,
+            with_vulnerabilities=with_vulnerabilities,
+            without_vulnerabilities=without_vulnerabilities,
             plain=plain,
             quiet=quiet,
             verbose=verbose

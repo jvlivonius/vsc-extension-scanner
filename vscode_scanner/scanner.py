@@ -43,6 +43,10 @@ def run_scan(
     include_ids: Optional[str] = None,
     exclude_ids: Optional[str] = None,
     min_risk_level: Optional[str] = None,
+    verified_only: bool = False,
+    unverified_only: bool = False,
+    with_vulnerabilities: bool = False,
+    without_vulnerabilities: bool = False,
     plain: bool = False,
     quiet: bool = False,
     verbose: bool = False,
@@ -128,7 +132,11 @@ def run_scan(
         publisher=publisher,
         include_ids=include_ids,
         exclude_ids=exclude_ids,
-        min_risk_level=min_risk_level
+        min_risk_level=min_risk_level,
+        verified_only=verified_only,
+        unverified_only=unverified_only,
+        with_vulnerabilities=with_vulnerabilities,
+        without_vulnerabilities=without_vulnerabilities
     )
 
     # Step 1: Discover extensions
@@ -477,6 +485,11 @@ def _process_cached_result(
 
     # Merge with discovery metadata
     result = {**ext, **cached_result}
+
+    # Add last_scanned_at from cache timestamp
+    if '_cached_at' in cached_result:
+        result['last_scanned_at'] = cached_result['_cached_at']
+
     scan_results.append(result)
 
     # Update stats
@@ -511,6 +524,9 @@ def _scan_extension_fresh(
     # Merge with discovery metadata
     result = {**ext, **result}
 
+    # Add last_scanned_at for fresh scans (current time)
+    result['last_scanned_at'] = datetime.now().isoformat() + 'Z'
+
     # Cache the result if cache is enabled (using batch mode)
     if cache_manager and result.get('scan_status') == 'success':
         try:
@@ -542,6 +558,36 @@ def _scan_extension_fresh(
     stats['fresh_scans'] += 1
 
 
+def _get_verification_status(result: Dict) -> bool:
+    """
+    Get publisher verification status from result.
+
+    Checks metadata.publisher.verified first (from API scan),
+    then falls back to publisher.verified (rare case).
+    This matches the display logic in display.py.
+
+    Args:
+        result: Extension scan result dict
+
+    Returns:
+        True if publisher is verified, False otherwise
+    """
+    # Check metadata first (from API scan - primary source)
+    metadata = result.get('metadata', {})
+    publisher_info = metadata.get('publisher', {})
+    # Only use metadata source if it actually exists (has content)
+    if isinstance(publisher_info, dict) and publisher_info:
+        return publisher_info.get('verified', False)
+
+    # Fallback to top-level publisher (rare case)
+    publisher = result.get('publisher', {})
+    if isinstance(publisher, dict):
+        return publisher.get('verified', False)
+
+    # String publishers are unverified
+    return False
+
+
 def _apply_post_scan_filters(scan_results: List[Dict], args, use_rich: bool) -> List[Dict]:
     """
     Apply filters that require scan results.
@@ -554,32 +600,73 @@ def _apply_post_scan_filters(scan_results: List[Dict], args, use_rich: bool) -> 
     Returns:
         Filtered list of scan results
     """
-    if not args.min_risk_level:
-        return scan_results
+    original_count = len(scan_results)
+    filtered = scan_results
 
-    # Define risk level hierarchy
-    risk_hierarchy = {
-        'low': 0,
-        'medium': 1,
-        'high': 2,
-        'critical': 3
-    }
+    # Filter by risk level
+    if args.min_risk_level:
+        risk_hierarchy = {
+            'low': 0,
+            'medium': 1,
+            'high': 2,
+            'critical': 3
+        }
 
-    min_level = risk_hierarchy.get(args.min_risk_level, 0)
+        min_level = risk_hierarchy.get(args.min_risk_level, 0)
 
-    def meets_risk_threshold(result):
-        risk_level = result.get('risk_level', 'low')
-        result_level = risk_hierarchy.get(risk_level, 0)
-        return result_level >= min_level
+        def meets_risk_threshold(result):
+            risk_level = result.get('risk_level', 'low')
+            result_level = risk_hierarchy.get(risk_level, 0)
+            return result_level >= min_level
 
-    filtered = [result for result in scan_results if meets_risk_threshold(result)]
+        filtered = [result for result in filtered if meets_risk_threshold(result)]
 
-    if len(filtered) < len(scan_results):
-        filtered_count = len(scan_results) - len(filtered)
+    # Filter by publisher verification status
+    if args.verified_only:
+        filtered = [r for r in filtered if _get_verification_status(r)]
+
+    if args.unverified_only:
+        filtered = [r for r in filtered if not _get_verification_status(r)]
+
+    # Filter by vulnerability presence
+    if args.with_vulnerabilities:
+        def has_vulns(result):
+            vulns = result.get('vulnerabilities', {})
+            if isinstance(vulns, dict):
+                return vulns.get('count', 0) > 0
+            return False
+        filtered = [r for r in filtered if has_vulns(r)]
+
+    if args.without_vulnerabilities:
+        def no_vulns(result):
+            vulns = result.get('vulnerabilities', {})
+            if isinstance(vulns, dict):
+                return vulns.get('count', 0) == 0
+            return True  # No vulnerabilities dict means no vulns
+        filtered = [r for r in filtered if no_vulns(r)]
+
+    # Show filtering summary if any extensions were filtered out
+    if len(filtered) < original_count:
+        filtered_count = original_count - len(filtered)
+        filters_applied = []
+
+        if args.min_risk_level:
+            filters_applied.append(f"min risk level: {args.min_risk_level}")
+        if args.verified_only:
+            filters_applied.append("verified publishers only")
+        if args.unverified_only:
+            filters_applied.append("unverified publishers only")
+        if args.with_vulnerabilities:
+            filters_applied.append("with vulnerabilities")
+        if args.without_vulnerabilities:
+            filters_applied.append("without vulnerabilities")
+
+        filter_msg = f"Filtered out {filtered_count} extension(s) ({', '.join(filters_applied)})"
+
         if use_rich:
-            display_info(f"Filtered out {filtered_count} extensions below '{args.min_risk_level}' risk level", use_rich=True)
+            display_info(filter_msg, use_rich=True)
         else:
-            log(f"Filtered out {filtered_count} extensions below '{args.min_risk_level}' risk level", "INFO")
+            log(filter_msg, "INFO")
 
     return filtered
 

@@ -65,10 +65,23 @@ class CacheManager:
                 self._init_messages.extend(self._handle_corrupted_database())
 
         # Check if migration is needed before init
-        needs_migration = self._check_if_migration_needed()
+        if self.cache_db.exists():
+            current_version = self._get_schema_version()
 
-        if needs_migration:
-            self._migrate_v1_to_v2()
+            if current_version == "1.0":
+                # Migrate from v1.0 to v2.0
+                self._migrate_v1_to_v2()
+                # Then migrate from v2.0 to v2.1
+                self._migrate_v2_0_to_v2_1()
+            elif current_version == "2.0":
+                # Migrate from v2.0 to v2.1
+                self._migrate_v2_0_to_v2_1()
+            elif current_version == "2.1":
+                # Already at latest version
+                pass
+            else:
+                # Unknown version, init fresh
+                self._init_database()
         else:
             self._init_database()
 
@@ -196,7 +209,7 @@ class CacheManager:
         return messages
 
     def _init_database(self):
-        """Initialize SQLite database with schema v2.0."""
+        """Initialize SQLite database with schema v2.1."""
         # Create cache directory with restricted permissions (user-only)
         # Uses cross-platform safe_mkdir that handles Windows/Unix differences
         safe_mkdir(self.cache_dir, mode=0o700)
@@ -212,7 +225,7 @@ class CacheManager:
         with self._db_connection() as conn:
             cursor = conn.cursor()
 
-            # Create scan_cache table (v2 schema with additional fields)
+            # Create scan_cache table (v2.1 schema with installed_at field)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS scan_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,6 +239,7 @@ class CacheManager:
                     dependencies_count INTEGER DEFAULT 0,
                     publisher_verified BOOLEAN DEFAULT 0,
                     has_risk_factors BOOLEAN DEFAULT 0,
+                    installed_at TIMESTAMP,
                     UNIQUE(extension_id, version)
                 )
             """)
@@ -446,6 +460,41 @@ class CacheManager:
             sanitized_error = sanitize_error_message(str(e), context="cache migration")
             print(f"Cache migration error: {sanitized_error}")
 
+    def _migrate_v2_0_to_v2_1(self):
+        """Migrate cache database from v2.0 to v2.1 schema (add installed_at column)."""
+        try:
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
+
+                # Check if we need to migrate (check for missing column)
+                cursor.execute("PRAGMA table_info(scan_cache)")
+                columns = {row[1] for row in cursor.fetchall()}
+
+                if "installed_at" in columns:
+                    # Already migrated
+                    return
+
+                print("Migrating cache schema (v2.0 → v2.1)...")
+
+                # Add new column to existing table
+                cursor.execute("""
+                    ALTER TABLE scan_cache
+                    ADD COLUMN installed_at TIMESTAMP
+                """)
+
+                # Update schema version
+                cursor.execute(
+                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                    ("schema_version", "2.1")
+                )
+
+                conn.commit()
+                print("Migration complete (v2.0 → v2.1)")
+
+        except sqlite3.Error as e:
+            sanitized_error = sanitize_error_message(str(e), context="cache migration v2.0→v2.1")
+            print(f"Cache migration error: {sanitized_error}")
+
     def get_cached_result(
         self,
         extension_id: str,
@@ -550,14 +599,17 @@ class CacheManager:
                 risk_factors = result_to_store.get('risk_factors', [])
                 has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
+                # Installation timestamp
+                installed_at = result_to_store.get('installed_at')
+
                 # Insert or replace
                 cursor.execute("""
                     INSERT OR REPLACE INTO scan_cache
                     (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                      vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+                      vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at))
 
                 conn.commit()
 
@@ -628,14 +680,17 @@ class CacheManager:
             risk_factors = result_to_store.get('risk_factors', [])
             has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
+            # Installation timestamp
+            installed_at = result_to_store.get('installed_at')
+
             # Insert or replace
             self._batch_cursor.execute("""
                 INSERT OR REPLACE INTO scan_cache
                 (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                  vuln_count, dependencies_count, publisher_verified, has_risk_factors))
+                  vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at))
 
             self._batch_count += 1
 

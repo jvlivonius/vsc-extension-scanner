@@ -2,57 +2,47 @@
 
 **Project:** VS Code Extension Security Scanner
 **Last Updated:** 2025-10-25
-**Current Version:** 3.3.0 (Planning)
+**Current Version:** 3.3.0
 **Schema Version:** 2.0
 **Status:** Production Ready ✅
 
 ---
 
-## Current Release (v3.3 - Planning)
+## Next Release (v3.4 - Planning)
 
-**Focus:** UX Enhancements & Optional Performance
+**Focus:** Performance Optimization
 **Start Date:** 2025-10-25
 **Target Completion:** TBD
 
-### Objectives
+### Objective
 
-1. **Extension Directory in Config** - Allow persistent custom extensions directory in ~/.vscanrc
-2. **Enhanced Verbose Mode** - Security-focused standard output, hide operational details by default
-3. **Failed Extensions Tracking** - Show which extensions failed to scan and why
-4. **Parallel Scanning (Optional)** - 2-3x performance improvement with concurrent workers
+1. **Parallel Scanning** - 2-3x performance improvement with 2-3 concurrent workers (opt-in feature)
 
-### Progress Overview
+**See:** [docs/project/v3.4-ROADMAP.md](v3.4-ROADMAP.md) for complete specifications
 
-```
-Phase 1: Documentation          ████░░░░░░░░░░░░░░░░  20% 🔄
-Phase 2: Foundation             ░░░░░░░░░░░░░░░░░░░░   0% ⏳
-Phase 3: UX Enhancements        ░░░░░░░░░░░░░░░░░░░░   0% ⏳
-Phase 4: Performance (Optional) ░░░░░░░░░░░░░░░░░░░░   0% ⏳
-```
+---
 
-**Total:** 1/4 features (25%)
+## Current Release (v3.3 - Complete ✅)
 
-### Phase 1: Documentation Setup (20% Complete)
+**Version:** 3.3.0
+**Completion Date:** 2025-10-25
+**Focus:** UX Enhancements & Error Transparency
 
-- [x] Create v3.3 ROADMAP.md
-- [ ] Clean up STATUS.md (this file)
-- [ ] Update PRD.md to v3.3.0
-- [ ] Update CLAUDE.md
+### Delivered Features
 
-### Phase 2: Foundation Features (0% Complete)
+1. ✅ **Extension Directory in Config** - Allow persistent custom extensions directory in ~/.vscanrc
+2. ✅ **Enhanced Verbose Mode** - Security-focused standard output, hide operational details by default
+3. ✅ **Failed Extensions Tracking** - Show which extensions failed to scan and why
 
-- [ ] Feature 1: Extension directory in config file (2-3h)
-- [ ] Feature 2: Enhanced verbose mode (4-6h)
+**Note:** Feature 4 (Parallel Scanning) was deferred to v3.4.0 due to higher complexity and optional nature.
 
-### Phase 3: UX Enhancements (0% Complete)
+### Impact
 
-- [ ] Feature 3: Failed extensions tracking (8-12h)
-
-### Phase 4: Performance - Optional (0% Complete)
-
-- [ ] Feature 4: Parallel scanning (12-16h)
-
-**Estimated Timeline:** 16-22 hours (Phases 1-3), 28-38 hours (all phases)
+- **UX:** Cleaner, security-focused output by default (standard mode)
+- **Transparency:** Clear reporting of failed extensions with actionable suggestions
+- **Flexibility:** Persistent configuration for custom extension directories
+- **Rich/Plain:** All features work in both Rich and plain output modes
+- **Testing:** 101 tests passing (including 42 new tests for v3.3 features)
 
 **See:** [docs/project/v3.3-ROADMAP.md](v3.3-ROADMAP.md) for complete specifications
 
@@ -97,13 +87,14 @@ Phase 4: Performance (Optional) ░░░░░░░░░░░░░░░░
 
 | Metric | Value |
 |--------|-------|
-| **Current Version** | 3.3.0 (Planning) |
-| **Production Ready** | Yes ✅ (v3.2.0) |
-| **Total Code** | 9,800+ lines (Python) |
-| **Documentation** | 20,000+ lines (Markdown) |
+| **Current Version** | 3.3.0 ✅ |
+| **Next Version** | 3.4.0 (Planning) |
+| **Production Ready** | Yes ✅ (v3.3.0) |
+| **Total Code** | 10,000+ lines (Python) |
+| **Documentation** | 21,000+ lines (Markdown) |
 | **Modules** | 14 (13 core + 1 version) |
-| **Test Files** | 10+ suites |
-| **Test Scenarios** | 92+ |
+| **Test Files** | 13+ suites |
+| **Test Scenarios** | 101+ |
 | **Test Success Rate** | 100% |
 | **Schema Version** | 2.0 |
 | **Output Formats** | 3 (JSON, HTML, CSV) |
@@ -117,7 +108,8 @@ Phase 4: Performance (Optional) ░░░░░░░░░░░░░░░░
 
 | Version | Date | Description | Status |
 |---------|------|-------------|--------|
-| **v3.3.0** | 2025-10-25 | UX Enhancements & Performance | 🔄 Planning |
+| **v3.4.0** | TBD | Performance Optimization (Parallel Scanning) | 🔄 Planning |
+| **v3.3.0** | 2025-10-25 | UX Enhancements & Error Transparency | ✅ Complete |
 | **v3.2.0** | 2025-10-25 | Code Quality & Architecture | ✅ Complete |
 | **v3.1.0** | 2025-10-24 | Configuration & CSV Export | ✅ Complete |
 | **v3.0.0** | 2025-10-24 | CLI UX Enhancement (Rich UI, Typer) | ✅ Complete |
@@ -135,13 +127,13 @@ Phase 4: Performance (Optional) ░░░░░░░░░░░░░░░░
 - ✅ Modern CLI with Typer framework (organized subcommands)
 - ✅ Rich terminal formatting (live progress bars, color-coded tables)
 - ✅ Graceful fallback to plain output (--plain flag)
-- 🔄 Three output modes: quiet, standard, verbose (v3.3 planning)
+- ✅ Three output modes: quiet, standard, verbose (v3.3)
 
-### Configuration (v3.1+)
+### Configuration (v3.1+, v3.3+)
 - ✅ Persistent settings via ~/.vscanrc (INI format)
 - ✅ Hierarchical precedence: CLI args > config file > defaults
 - ✅ Five management commands: init, show, set, get, reset
-- 🔄 Extension directory support (v3.3 planning)
+- ✅ Extension directory support (v3.3)
 
 ### Output Formats (v2.2+)
 - ✅ JSON (Schema 2.0) - Detailed security data
@@ -152,14 +144,14 @@ Phase 4: Performance (Optional) ░░░░░░░░░░░░░░░░
 - ✅ SQLite caching system (28x faster with cache)
 - ✅ Batch commit optimization (87.6% faster)
 - ✅ VACUUM after bulk deletes (73.9% space reclaimed)
-- 🔄 Parallel scanning (v3.3 optional)
+- 🔄 Parallel scanning (v3.4 planning)
 
-### Error Handling (v2.2+, v3.3 planning)
+### Error Handling (v2.2+, v3.3+)
 - ✅ Intelligent retry mechanism with exponential backoff
 - ✅ Retry-After header support for rate limiting
 - ✅ Centralized error display through display.py
 - ✅ Report command fail-fast (Command-Query Separation)
-- 🔄 Failed extensions tracking and reporting (v3.3 planning)
+- ✅ Failed extensions tracking and reporting (v3.3)
 
 ### Security (v2.1+, v3.2+)
 - ✅ Path validation and sanitization
@@ -188,9 +180,9 @@ vscan scan --output results.csv           # Export CSV
 vscan --version                           # Show version
 ```
 
-### Output Modes (v3.3 Planning)
+### Output Modes (v3.3+)
 ```bash
-vscan scan                    # Standard: security-focused (NEW v3.3)
+vscan scan                    # Standard: security-focused (default)
 vscan scan --verbose          # Verbose: show all operational details
 vscan scan --quiet            # Quiet: minimal single-line summary
 vscan scan --plain            # Plain: no Rich formatting (for CI/CD)
@@ -249,7 +241,7 @@ vscan scan --exclude-ids "local.test"     # Exclude extensions
 - **[docs/guides/ERROR_CODES.md](../guides/ERROR_CODES.md)** - Error code reference
 
 ### Current Planning
-- **[docs/project/v3.3-ROADMAP.md](v3.3-ROADMAP.md)** - v3.3 enhancement plan (active)
+- **[docs/project/v3.4-ROADMAP.md](v3.4-ROADMAP.md)** - v3.4 performance plan (active)
 - **[docs/project/STATUS.md](STATUS.md)** - This file - current status
 
 ### Feature Specifications
@@ -337,5 +329,6 @@ See [docs/contributing/](../contributing/) for contributor guidelines:
 
 ---
 
-**Status:** v3.3.0 Planning - UX Enhancements & Performance
-**Next Milestone:** Complete Phase 1 (Documentation) - Expected 2025-10-25
+**Status:** v3.4.0 Planning - Performance Optimization (Parallel Scanning)
+**Current Release:** v3.3.0 ✅ Complete
+**Next Milestone:** Begin v3.4 implementation

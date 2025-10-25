@@ -161,6 +161,8 @@ class OutputFormatter:
             "repository_url": metadata.get('repository_url'),
             "license": metadata.get('license'),
             "last_updated": metadata.get('last_updated'),
+            "installed_at": result.get('installed_at'),
+            "last_scanned_at": result.get('last_scanned_at'),
             "statistics": {
                 "installs": statistics.get('installs'),
                 "rating": statistics.get('rating'),
@@ -257,7 +259,7 @@ class OutputFormatter:
         output = StringIO()
         writer = csv.writer(output)
 
-        # Header row
+        # Header row (15 columns → 17 columns)
         writer.writerow([
             'Extension ID',
             'Name',
@@ -273,7 +275,9 @@ class OutputFormatter:
             'Low',
             'Dependencies',
             'Last Updated',
-            'vscan.dev URL'
+            'vscan.dev URL',
+            'Installed Date',
+            'Last Scanned Date'
         ])
 
         # Data rows
@@ -300,6 +304,8 @@ class OutputFormatter:
             dep_count = dependencies.get('total_count', 0)
             last_updated = metadata.get('last_updated', '')
             vscan_url = result.get('vscan_url', '')
+            installed_at = result.get('installed_at', '')
+            last_scanned_at = result.get('last_scanned_at', '')
 
             writer.writerow([
                 extension_id,
@@ -316,7 +322,9 @@ class OutputFormatter:
                 vuln_low,
                 dep_count,
                 last_updated,
-                vscan_url
+                vscan_url,
+                installed_at,
+                last_scanned_at
             ])
 
         return output.getvalue()

@@ -24,10 +24,12 @@ The VS Code Extension Security Scanner is a production-ready Python CLI tool tha
 - **Architecture Compliance:** Zero layer violations, clean 3-layer separation
 - **Comprehensive Testing:** 92+ test scenarios, 100% success rate
 
-**Planned (v3.3.0):**
+**Completed (v3.3.0):**
 - **Enhanced Verbose Mode:** Security-focused standard output, operational details hidden by default
 - **Failed Extensions Tracking:** Clear reporting of which extensions failed to scan and why
 - **Custom Extensions Directory:** Configurable in ~/.vscanrc for persistent settings
+
+**Planned (v3.4.0):**
 - **Parallel Scanning (Optional):** 2-3x performance improvement with concurrent workers
 
 ---
@@ -111,7 +113,7 @@ VS Code extensions have broad access to the editor environment and can potential
 - **Suggestions:** Actionable recommendations (e.g., increase --delay or --max-retries)
 - **Rich/Plain Support:** Both modes display failures clearly
 
-### 3.8 Parallel Scanning (NEW v3.3 - Optional)
+### 3.8 Parallel Scanning (PLANNED v3.4 - Optional)
 - **Performance:** 2-3x faster scanning with concurrent workers
 - **Worker Count:** 2-3 parallel workers (conservative to avoid rate limits)
 - **Opt-In:** Disabled by default, enable with `--parallel` flag
@@ -168,8 +170,8 @@ vscan scan --plain                      # Plain output (no Rich UI)
 vscan scan --no-cache                   # Disable caching
 vscan scan --refresh-cache              # Force refresh
 vscan scan --extensions-dir /custom/path
-vscan scan --parallel                   # Enable parallel scanning (v3.3 optional)
-vscan scan --parallel --workers 2       # Custom worker count (v3.3 optional)
+vscan scan --parallel                   # Enable parallel scanning (v3.4 planned)
+vscan scan --parallel --workers 2       # Custom worker count (v3.4 planned)
 ```
 
 **Filtering:**
