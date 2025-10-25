@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # VS Code Extension Security Scanner CLI
 
-**Version:** 3.4.0
-**Date:** 2025-10-25
-**Status:** Production Ready (v3.4.0) ✅
+**Version:** 3.5.0
+**Date:** 2025-10-26
+**Status:** Production Ready (v3.5.0) ✅
 
 ---
 
@@ -11,11 +11,12 @@
 
 The VS Code Extension Security Scanner is a production-ready Python CLI tool that enables developers to perform comprehensive security audits of their installed VS Code extensions. The tool leverages the vscan.dev security analysis service to provide detailed vulnerability reports across multiple output formats.
 
-### Current Capabilities (v3.4.0)
+### Current Capabilities (v3.5.0)
 
-**Production Ready (v3.4.0):**
-- **Parallel Scanning:** 2-5x performance improvement with 2-5 concurrent workers (opt-in)
-- **High Performance:** 4.88x speedup with 3 workers (66 extensions: 6min → 1.2min)
+**Production Ready (v3.5.0):** 🚨 BREAKING CHANGES
+- **Parallel by Default:** 4.88x speedup automatically with 3 workers (no flags needed!)
+- **High Performance:** 66 extensions: 6min → 1.2min (by default, not opt-in)
+- **Simplified API:** Removed `--parallel` flag, single code path (~100 lines eliminated)
 - **Multi-Platform Support:** macOS, Windows, Linux
 - **Intelligent Caching:** SQLite-based caching with 28x performance improvement
 - **Rich Terminal UI:** Live progress bars, color-coded tables, interactive displays
@@ -59,7 +60,7 @@ VS Code extensions have broad access to the editor environment and can potential
 - **vscan.dev Integration:** Complete API integration with 3 endpoints
 - **Request Throttling:** Configurable delays (default 1.5s)
 - **Retry Logic:** Exponential backoff (2s, 4s, 8s) with jitter
-- **Parallel Processing:** Sequential with progress indicators
+- **Parallel Processing:** Default 3 workers (configurable 1-5), 4.88x speedup by default
 - **Error Handling:** Graceful degradation, continue on failures
 
 ### 3.3 Output Formats
