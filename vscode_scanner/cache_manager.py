@@ -10,6 +10,9 @@ import sys
 import sqlite3
 import json
 import time
+import hmac
+import hashlib
+import secrets
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple, Union
@@ -74,10 +77,17 @@ class CacheManager:
                 self._migrate_v1_to_v2()
                 # Then migrate from v2.0 to v2.1
                 self._migrate_v2_0_to_v2_1()
+                # Then migrate from v2.1 to v2.2
+                self._migrate_v2_1_to_v2_2()
             elif current_version == "2.0":
                 # Migrate from v2.0 to v2.1
                 self._migrate_v2_0_to_v2_1()
+                # Then migrate from v2.1 to v2.2
+                self._migrate_v2_1_to_v2_2()
             elif current_version == "2.1":
+                # Migrate from v2.1 to v2.2
+                self._migrate_v2_1_to_v2_2()
+            elif current_version == "2.2":
                 # Already at latest version
                 pass
             else:
@@ -85,6 +95,102 @@ class CacheManager:
                 self._init_database()
         else:
             self._init_database()
+
+        # Initialize secret key for HMAC integrity checking (v3.5.1)
+        self._secret_key = self._get_or_create_secret_key()
+
+    def _get_or_create_secret_key(self) -> bytes:
+        """
+        Get or create secret key for HMAC integrity checking.
+
+        The secret key is stored in ~/.vscan/.cache_secret with restrictive permissions
+        (0o600, user-only read/write). If the file doesn't exist, generates a new
+        cryptographically secure 32-byte key using secrets.token_bytes().
+
+        Returns:
+            bytes: 32-byte secret key for HMAC computation
+
+        Security:
+            - Uses secrets module for cryptographically secure random generation
+            - File permissions restricted to user-only (0o600)
+            - Key is 256 bits (32 bytes) for HMAC-SHA256
+        """
+        secret_file = self.cache_dir / ".cache_secret"
+
+        try:
+            if secret_file.exists():
+                # Load existing key
+                with open(secret_file, 'rb') as f:
+                    key = f.read()
+                    if len(key) == 32:
+                        return key
+                    else:
+                        # Invalid key size, regenerate
+                        print("[WARNING] Invalid cache secret key, regenerating...", file=sys.stderr)
+
+            # Generate new key
+            key = secrets.token_bytes(32)  # 256 bits for HMAC-SHA256
+
+            # Write with restrictive permissions
+            safe_touch(secret_file, mode=0o600)
+            with open(secret_file, 'wb') as f:
+                f.write(key)
+
+            return key
+
+        except (OSError, IOError) as e:
+            # Fallback to in-memory key (warnings only, don't fail)
+            sanitized_error = sanitize_error_message(str(e), context="secret key")
+            print(f"[WARNING] Failed to persist cache secret key: {sanitized_error}", file=sys.stderr)
+            print("[WARNING] Using in-memory key (integrity checks won't persist across restarts)", file=sys.stderr)
+            return secrets.token_bytes(32)
+
+    def _compute_integrity_signature(self, data: str) -> str:
+        """
+        Compute HMAC-SHA256 signature for cache integrity checking.
+
+        Args:
+            data: String data to sign (typically JSON-serialized scan result)
+
+        Returns:
+            str: Hex-encoded HMAC-SHA256 signature
+
+        Security:
+            - Uses HMAC-SHA256 for cryptographic integrity
+            - Secret key is user-specific and stored with restrictive permissions
+            - Signatures are 64 characters (32 bytes hex-encoded)
+        """
+        signature = hmac.new(
+            self._secret_key,
+            data.encode('utf-8'),
+            hashlib.sha256
+        )
+        return signature.hexdigest()
+
+    def _verify_integrity_signature(self, data: str, signature: str) -> bool:
+        """
+        Verify HMAC-SHA256 signature for cache integrity checking.
+
+        Args:
+            data: String data to verify (typically JSON-serialized scan result)
+            signature: Hex-encoded HMAC-SHA256 signature to verify against
+
+        Returns:
+            bool: True if signature is valid, False otherwise
+
+        Security:
+            - Uses hmac.compare_digest() for timing-safe comparison
+            - Prevents timing attacks that could leak signature information
+        """
+        if not signature:
+            return False
+
+        try:
+            expected_signature = self._compute_integrity_signature(data)
+            # Use timing-safe comparison to prevent timing attacks
+            return hmac.compare_digest(signature, expected_signature)
+        except Exception:
+            return False
 
     def get_init_messages(self) -> List[Union[CacheWarning, CacheError, CacheInfo]]:
         """
@@ -226,7 +332,7 @@ class CacheManager:
         with self._db_connection() as conn:
             cursor = conn.cursor()
 
-            # Create scan_cache table (v2.1 schema with installed_at field)
+            # Create scan_cache table (v2.2 schema with integrity_signature field)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS scan_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -241,6 +347,7 @@ class CacheManager:
                     publisher_verified BOOLEAN DEFAULT 0,
                     has_risk_factors BOOLEAN DEFAULT 0,
                     installed_at TIMESTAMP,
+                    integrity_signature TEXT,
                     UNIQUE(extension_id, version)
                 )
             """)
@@ -496,6 +603,46 @@ class CacheManager:
             sanitized_error = sanitize_error_message(str(e), context="cache migration v2.0→v2.1")
             print(f"Cache migration error: {sanitized_error}")
 
+    def _migrate_v2_1_to_v2_2(self):
+        """Migrate cache database from v2.1 to v2.2 schema (add integrity_signature column)."""
+        try:
+            with self._db_connection() as conn:
+                cursor = conn.cursor()
+
+                # Check if we need to migrate (check for missing column)
+                cursor.execute("PRAGMA table_info(scan_cache)")
+                columns = {row[1] for row in cursor.fetchall()}
+
+                if "integrity_signature" in columns:
+                    # Already migrated
+                    return
+
+                print("Migrating cache schema (v2.1 → v2.2)...")
+                print("Adding HMAC integrity checking to cache entries...")
+
+                # Add new column to existing table
+                cursor.execute("""
+                    ALTER TABLE scan_cache
+                    ADD COLUMN integrity_signature TEXT
+                """)
+
+                # Note: Existing entries will have NULL signatures
+                # They will be re-signed on next access or treated as unsigned (cache miss)
+
+                # Update schema version
+                cursor.execute(
+                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                    ("schema_version", "2.2")
+                )
+
+                conn.commit()
+                print("Migration complete (v2.1 → v2.2)")
+                print("Note: Existing cache entries will be re-signed on next access")
+
+        except sqlite3.Error as e:
+            sanitized_error = sanitize_error_message(str(e), context="cache migration v2.1→v2.2")
+            print(f"Cache migration error: {sanitized_error}")
+
     def get_cached_result(
         self,
         extension_id: str,
@@ -522,7 +669,7 @@ class CacheManager:
                 cutoff_str = cutoff.isoformat()
 
                 cursor.execute("""
-                    SELECT scan_result, scanned_at
+                    SELECT scan_result, scanned_at, integrity_signature
                     FROM scan_cache
                     WHERE extension_id = ?
                       AND version = ?
@@ -532,7 +679,24 @@ class CacheManager:
                 row = cursor.fetchone()
 
                 if row:
-                    scan_result_json, scanned_at = row
+                    scan_result_json, scanned_at, integrity_signature = row
+
+                    # Verify HMAC signature (v3.5.1 security hardening)
+                    if integrity_signature:
+                        if not self._verify_integrity_signature(scan_result_json, integrity_signature):
+                            # Signature mismatch - cache entry has been tampered with
+                            print(f"[WARNING] Cache integrity check failed for {extension_id} v{version}",
+                                  file=sys.stderr)
+                            print("[WARNING] Cache entry rejected due to signature mismatch",
+                                  file=sys.stderr)
+                            return None  # Treat as cache miss - will trigger fresh scan
+                    else:
+                        # No signature (old cache entry from v2.1 or earlier)
+                        # Treat as cache miss to force re-scan with signature
+                        print(f"[INFO] Unsigned cache entry for {extension_id} v{version} (will re-scan)",
+                              file=sys.stderr)
+                        return None
+
                     result = json.loads(scan_result_json)
 
                     # Add cache metadata
@@ -603,14 +767,17 @@ class CacheManager:
                 # Installation timestamp
                 installed_at = result_to_store.get('installed_at')
 
+                # Compute HMAC signature for integrity checking (v3.5.1)
+                integrity_signature = self._compute_integrity_signature(scan_result_json)
+
                 # Insert or replace
                 cursor.execute("""
                     INSERT OR REPLACE INTO scan_cache
                     (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                      vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at))
+                      vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature))
 
                 conn.commit()
 
@@ -684,14 +851,17 @@ class CacheManager:
             # Installation timestamp
             installed_at = result_to_store.get('installed_at')
 
+            # Compute HMAC signature for integrity checking (v3.5.1)
+            integrity_signature = self._compute_integrity_signature(scan_result_json)
+
             # Insert or replace
             self._batch_cursor.execute("""
                 INSERT OR REPLACE INTO scan_cache
                 (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                  vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at))
+                  vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature))
 
             self._batch_count += 1
 
