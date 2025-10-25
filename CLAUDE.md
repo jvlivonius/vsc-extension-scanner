@@ -18,9 +18,23 @@ These documents define critical constraints and requirements that must be follow
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** v3.2 Code Quality Improvements (v3.2.0) - 47% Complete
+**Current Status:** v3.3 UX Enhancements & Performance (v3.3.0) - Planning Phase
 
-**Latest Updates (v3.2 - Quality, Security & UX - 2025-10-24):**
+**Latest Updates (v3.3 - UX & Performance - 2025-10-25):**
+
+**Phase 1: Documentation Setup (50% Complete)**
+- ✅ Created v3.3-ROADMAP.md with complete feature specifications
+- ✅ Cleaned up STATUS.md (reduced from ~1400 to 342 lines)
+- ✅ Updated PRD.md to version 3.3.0
+- ✅ Updated CLAUDE.md (this file)
+
+**Planned Features (v3.3):**
+- 🔄 **Enhanced Verbose Mode** - Security-focused standard output (hide operational details by default)
+- 🔄 **Failed Extensions Tracking** - Show which extensions failed to scan and why
+- 🔄 **Extension Directory Config** - Configurable in ~/.vscanrc
+- 🔄 **Parallel Scanning (Optional)** - 2-3x performance with 2-3 concurrent workers
+
+**Previous Updates (v3.2 - Quality, Security & Architecture - 2025-10-25):**
 
 **Phase 1: High Priority (3/3 ✅)**
 - ✅ **Critical Bug Fix** - Database connection leak in batch mode

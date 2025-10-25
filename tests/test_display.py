@@ -259,6 +259,150 @@ class TestFilterSummary(unittest.TestCase):
         self.assertIsNone(table)
 
 
+class TestPlainResultsDisplay(unittest.TestCase):
+    """Test display_results_plain() function."""
+
+    def test_display_results_plain_with_results(self):
+        """Test plain results display with multiple extensions."""
+        import io
+
+        scan_results = [
+            {
+                'name': 'ext1',
+                'display_name': 'Extension One',
+                'version': '1.0.0',
+                'publisher': 'Publisher1',
+                'risk_level': 'high',
+                'security_score': 45,
+                'vulnerabilities': {'count': 3}
+            },
+            {
+                'name': 'ext2',
+                'display_name': 'Extension Two',
+                'version': '2.0.0',
+                'publisher': {'name': 'Publisher2', 'verified': True},
+                'risk_level': 'low',
+                'security_score': 90,
+                'vulnerabilities': {'count': 0}
+            }
+        ]
+
+        # Capture stdout
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+
+        try:
+            display.display_results_plain(scan_results)
+            output = captured_output.getvalue()
+
+            # Verify header
+            self.assertIn('Scan Results (2 extensions)', output)
+
+            # Verify both extensions shown
+            self.assertIn('Extension One', output)
+            self.assertIn('Extension Two', output)
+
+            # Verify sorting (high risk first)
+            ext1_pos = output.index('Extension One')
+            ext2_pos = output.index('Extension Two')
+            self.assertLess(ext1_pos, ext2_pos, "High risk extension should appear before low risk")
+
+            # Verify risk levels shown
+            self.assertIn('HIGH', output)
+            self.assertIn('LOW', output)
+
+            # Verify scores shown
+            self.assertIn('45/100', output)
+            self.assertIn('90/100', output)
+
+            # Verify vulnerability counts shown
+            self.assertIn('3 vulns', output)
+            self.assertIn('0 vulns', output)
+
+            # Verify publisher verification shown
+            self.assertIn('Publisher2 ✓', output)
+        finally:
+            sys.stdout = sys.__stdout__
+
+    def test_display_results_plain_empty_list(self):
+        """Test plain results display with empty list."""
+        import io
+
+        scan_results = []
+
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+
+        try:
+            display.display_results_plain(scan_results)
+            output = captured_output.getvalue()
+
+            # Should produce no output for empty list
+            self.assertEqual(output, '')
+        finally:
+            sys.stdout = sys.__stdout__
+
+    def test_display_results_plain_sorting(self):
+        """Test that results are sorted by risk level then vulnerability count."""
+        import io
+
+        scan_results = [
+            {'name': 'low1', 'display_name': 'Low Risk Clean', 'version': '1.0', 'publisher': 'Pub',
+             'risk_level': 'low', 'security_score': 90, 'vulnerabilities': {'count': 0}},
+            {'name': 'high1', 'display_name': 'High Risk 1 Vuln', 'version': '1.0', 'publisher': 'Pub',
+             'risk_level': 'high', 'security_score': 50, 'vulnerabilities': {'count': 1}},
+            {'name': 'high2', 'display_name': 'High Risk 3 Vulns', 'version': '1.0', 'publisher': 'Pub',
+             'risk_level': 'high', 'security_score': 40, 'vulnerabilities': {'count': 3}},
+            {'name': 'medium1', 'display_name': 'Medium Risk', 'version': '1.0', 'publisher': 'Pub',
+             'risk_level': 'medium', 'security_score': 70, 'vulnerabilities': {'count': 0}}
+        ]
+
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+
+        try:
+            display.display_results_plain(scan_results)
+            output = captured_output.getvalue()
+
+            # Get positions of each extension
+            positions = {
+                'high_3': output.index('High Risk 3 Vulns'),
+                'high_1': output.index('High Risk 1 Vuln'),
+                'medium': output.index('Medium Risk'),
+                'low': output.index('Low Risk Clean')
+            }
+
+            # Verify sorting: high with more vulns, then high with fewer vulns, then medium, then low
+            self.assertLess(positions['high_3'], positions['high_1'])
+            self.assertLess(positions['high_1'], positions['medium'])
+            self.assertLess(positions['medium'], positions['low'])
+        finally:
+            sys.stdout = sys.__stdout__
+
+    def test_display_results_plain_singular_plural(self):
+        """Test correct singular/plural handling for extensions and vulnerabilities."""
+        import io
+
+        # Test singular
+        scan_results = [
+            {'name': 'ext1', 'display_name': 'Extension', 'version': '1.0', 'publisher': 'Pub',
+             'risk_level': 'high', 'security_score': 50, 'vulnerabilities': {'count': 1}}
+        ]
+
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+
+        try:
+            display.display_results_plain(scan_results)
+            output = captured_output.getvalue()
+
+            # Verify singular forms
+            self.assertIn('1 extension):', output)  # Not "extensions"
+            self.assertIn('1 vuln', output)  # Not "vulns"
+        finally:
+            sys.stdout = sys.__stdout__
+
+
 def run_tests():
     """Run all tests."""
     # Create test suite
@@ -272,6 +416,7 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestDisplayFunctions))
     suite.addTests(loader.loadTestsFromTestCase(TestProgressBar))
     suite.addTests(loader.loadTestsFromTestCase(TestFilterSummary))
+    suite.addTests(loader.loadTestsFromTestCase(TestPlainResultsDisplay))
 
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)

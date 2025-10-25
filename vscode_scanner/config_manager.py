@@ -107,6 +107,9 @@ workflow_retry_delay = {DEFAULT_WORKFLOW_RETRY_DELAY}   # Base workflow retry de
 # min_risk_level = medium   # Minimum risk level to report (low/medium/high/critical)
 # exclude_ids =             # Comma-separated extension IDs to exclude
 
+# Custom extensions directory (optional - leave commented to auto-detect)
+# extensions_dir = ~/.vscode/extensions  # Path to VS Code extensions directory
+
 [cache]
 # Cache configuration
 # cache_dir = ~/.vscan/      # Cache directory path
@@ -130,6 +133,7 @@ DEFAULT_CONFIG = {
         'publisher': None,
         'min_risk_level': None,
         'exclude_ids': None,
+        'extensions_dir': None,
     },
     'cache': {
         'cache_dir': None,
@@ -153,6 +157,7 @@ CONFIG_SCHEMA = {
         'publisher': ('string', None, None),
         'min_risk_level': ('choice', ['low', 'medium', 'high', 'critical'], None),
         'exclude_ids': ('string', None, None),
+        'extensions_dir': ('path', None, None),
     },
     'cache': {
         'cache_dir': ('path', None, None),

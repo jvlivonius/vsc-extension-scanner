@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # VS Code Extension Security Scanner CLI
 
-**Version:** 3.1.0
-**Date:** 2025-10-24
-**Status:** Production Ready ✅
+**Version:** 3.3.0
+**Date:** 2025-10-25
+**Status:** Planning (v3.3.0) / Production Ready (v3.2.0) ✅
 
 ---
 
@@ -11,16 +11,24 @@
 
 The VS Code Extension Security Scanner is a production-ready Python CLI tool that enables developers to perform comprehensive security audits of their installed VS Code extensions. The tool leverages the vscan.dev security analysis service to provide detailed vulnerability reports across multiple output formats.
 
-### Current Capabilities (v3.1.0)
+### Current Capabilities (v3.2.0) + Planned (v3.3.0)
 
+**Production Ready (v3.2.0):**
 - **Multi-Platform Support:** macOS, Windows, Linux
 - **Intelligent Caching:** SQLite-based caching with 28x performance improvement
 - **Rich Terminal UI:** Live progress bars, color-coded tables, interactive displays
 - **Multiple Output Formats:** JSON (detailed), HTML (interactive), CSV (spreadsheet)
 - **Configuration Management:** Persistent settings via ~/.vscanrc INI file
 - **Retry Mechanism:** Exponential backoff with jitter for transient API errors
-- **Security Hardened:** 82% vulnerability reduction, path validation, sanitized errors
+- **Security Hardened:** SQL injection prevention, path validation, sanitized errors
+- **Architecture Compliance:** Zero layer violations, clean 3-layer separation
 - **Comprehensive Testing:** 92+ test scenarios, 100% success rate
+
+**Planned (v3.3.0):**
+- **Enhanced Verbose Mode:** Security-focused standard output, operational details hidden by default
+- **Failed Extensions Tracking:** Clear reporting of which extensions failed to scan and why
+- **Custom Extensions Directory:** Configurable in ~/.vscanrc for persistent settings
+- **Parallel Scanning (Optional):** 2-3x performance improvement with concurrent workers
 
 ---
 
@@ -93,7 +101,24 @@ VS Code extensions have broad access to the editor environment and can potential
 - **Color-Coded Tables:** Risk levels (🔴 high, 🟡 medium, 🟢 low)
 - **Interactive Display:** Rich formatted output
 - **Graceful Fallback:** Plain mode when Rich unavailable
-- **Quiet Mode:** Minimal single-line summary for CI/CD
+- **Three Output Modes (v3.3):** Quiet, Standard (security-focused), Verbose (all details)
+
+### 3.7 Failed Extensions Reporting (NEW v3.3)
+- **Tracking:** Capture failed extensions during scan with error categorization
+- **Error Types:** Rate limit, network timeout, network error, API error
+- **Display:** Clear table/list showing which extensions failed and why
+- **JSON Schema:** Include failed_extensions array in summary for automation
+- **Suggestions:** Actionable recommendations (e.g., increase --delay or --max-retries)
+- **Rich/Plain Support:** Both modes display failures clearly
+
+### 3.8 Parallel Scanning (NEW v3.3 - Optional)
+- **Performance:** 2-3x faster scanning with concurrent workers
+- **Worker Count:** 2-3 parallel workers (conservative to avoid rate limits)
+- **Opt-In:** Disabled by default, enable with `--parallel` flag
+- **Thread-Safe:** Each worker has own API client, shared cache manager
+- **Rate Limit Protection:** Distributed delays, exponential backoff per worker
+- **Configuration:** Persistent setting via config file (parallel, workers)
+- **Rich/Plain Support:** Progress display works in both modes
 
 ---
 
@@ -136,12 +161,15 @@ vscan report report.html
 
 **Scanning:**
 ```bash
-vscan scan                              # Standard scan with caching
-vscan scan --plain                      # Plain output (no Rich UI)
+vscan scan                              # Standard scan (security-focused, v3.3)
+vscan scan --verbose                    # Verbose mode (show operational details, v3.3)
 vscan scan --quiet                      # Minimal summary for CI/CD
+vscan scan --plain                      # Plain output (no Rich UI)
 vscan scan --no-cache                   # Disable caching
 vscan scan --refresh-cache              # Force refresh
 vscan scan --extensions-dir /custom/path
+vscan scan --parallel                   # Enable parallel scanning (v3.3 optional)
+vscan scan --parallel --workers 2       # Custom worker count (v3.3 optional)
 ```
 
 **Filtering:**
@@ -156,8 +184,11 @@ vscan scan --exclude-ids "local.test"
 ```bash
 vscan config init                       # Create default ~/.vscanrc
 vscan config show                       # Display current config
-vscan config set scan.delay 2.0         # Set value
-vscan config get scan.delay             # Get value
+vscan config set scan.delay 2.0         # Set API delay
+vscan config set scan.extensions_dir ~/custom/path  # Set custom directory (v3.3)
+vscan config set scan.parallel true     # Enable parallel by default (v3.3)
+vscan config set scan.workers 3         # Set worker count (v3.3)
+vscan config get scan.delay             # Get specific value
 vscan config reset                      # Delete config file
 ```
 

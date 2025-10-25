@@ -20,7 +20,8 @@ class OutputFormatter:
         scan_results: List[Dict[str, Any]],
         scan_timestamp: str,
         scan_duration: float,
-        cache_stats: Dict[str, Any] = None
+        cache_stats: Dict[str, Any] = None,
+        failed_extensions: List[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Format scan results into comprehensive JSON output.
@@ -30,12 +31,13 @@ class OutputFormatter:
             scan_timestamp: ISO 8601 timestamp of scan start
             scan_duration: Scan duration in seconds
             cache_stats: Optional cache statistics
+            failed_extensions: Optional list of failed extensions with error details
 
         Returns:
             Formatted output dictionary with all available data
         """
         # Build summary
-        summary = self._format_summary(scan_results, scan_timestamp, scan_duration, cache_stats)
+        summary = self._format_summary(scan_results, scan_timestamp, scan_duration, cache_stats, failed_extensions)
 
         # Format extensions with all available data
         extensions = [self._format_extension(result) for result in scan_results]
@@ -55,7 +57,8 @@ class OutputFormatter:
         scan_results: List[Dict[str, Any]],
         scan_timestamp: str,
         scan_duration: float,
-        cache_stats: Dict[str, Any] = None
+        cache_stats: Dict[str, Any] = None,
+        failed_extensions: List[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Format summary section with enhanced statistics.
@@ -65,6 +68,7 @@ class OutputFormatter:
             scan_timestamp: Scan timestamp
             scan_duration: Duration in seconds
             cache_stats: Optional cache statistics
+            failed_extensions: Optional list of failed extensions with error details
 
         Returns:
             Summary dictionary
@@ -118,6 +122,10 @@ class OutputFormatter:
                 "fresh_scans": fresh_scans,
                 "cache_hit_rate": cache_hit_rate
             }
+
+        # Add failed extensions if provided
+        if failed_extensions:
+            summary["failed_extensions"] = failed_extensions
 
         return summary
 

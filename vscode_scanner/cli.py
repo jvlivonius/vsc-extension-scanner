@@ -90,7 +90,7 @@ def scan(
     verbose: bool = typer.Option(
         False,
         "--verbose", "-v",
-        help="Show detailed information including retry statistics",
+        help="Show operational details (cache stats, retry stats, timing)",
         rich_help_panel="Options"
     ),
 
@@ -236,6 +236,8 @@ def scan(
         min_risk_level = config['scan']['min_risk_level']
     if exclude_ids is None and config['scan']['exclude_ids'] is not None:
         exclude_ids = config['scan']['exclude_ids']
+    if extensions_dir is None and config['scan']['extensions_dir'] is not None:
+        extensions_dir = Path(config['scan']['extensions_dir']).expanduser()
     if cache_dir is None and config['cache']['cache_dir'] is not None:
         cache_dir = Path(config['cache']['cache_dir']).expanduser()
 

@@ -25,7 +25,7 @@ from .display import (
     should_use_rich, create_scan_progress, create_results_table,
     create_cache_stats_table, create_filter_summary_table,
     ScanDashboard, display_summary, display_error, display_warning,
-    display_info, display_success
+    display_info, display_success, display_failed_extensions, display_results_plain
 )
 
 
@@ -209,7 +209,7 @@ def run_scan(
     }
 
     try:
-        results = _generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data, use_rich)
+        results = _generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data, stats, use_rich)
     except Exception as e:
         error_msg = sanitize_string(str(e), max_length=200)
         if use_rich:
@@ -223,7 +223,7 @@ def run_scan(
         return 2
 
     # Print summary (always show, but minimal in quiet mode)
-    _print_summary(extensions, stats, scan_duration, use_rich, results, quiet)
+    _print_summary(extensions, stats, scan_duration, use_rich, results, quiet, verbose)
 
     # Calculate and return exit code
     return _calculate_exit_code(stats['vulnerabilities_found'])
@@ -374,6 +374,7 @@ def _scan_extensions(
         'failed_scans': 0,
         'cached_results': 0,
         'fresh_scans': 0,
+        'failed_extensions': [],  # Track failed extensions with details
         'api_client': api_client
     }
 
@@ -528,6 +529,15 @@ def _scan_extension_fresh(
         stats['successful_scans'] += 1
     else:
         stats['failed_scans'] += 1
+        # Track failed extension with categorized error
+        error_message = result.get('error', '')
+        error_type = _categorize_error(error_message)
+        stats['failed_extensions'].append({
+            'id': extension_id,
+            'name': ext.get('display_name', ext.get('name', extension_id)),
+            'error_type': error_type,
+            'error_message': _simplify_error_message(error_type)
+        })
 
     stats['fresh_scans'] += 1
 
@@ -574,12 +584,58 @@ def _apply_post_scan_filters(scan_results: List[Dict], args, use_rich: bool) -> 
     return filtered
 
 
+def _categorize_error(error_message: str) -> str:
+    """
+    Categorize error message into user-friendly error type.
+
+    Args:
+        error_message: The error message from API client
+
+    Returns:
+        Error type: 'rate_limit', 'network_timeout', 'network_error', or 'api_error'
+    """
+    if not error_message:
+        return 'api_error'
+
+    error_lower = error_message.lower()
+
+    # Check for specific error patterns
+    if 'rate limit' in error_lower or '429' in error_lower:
+        return 'rate_limit'
+    elif 'timeout' in error_lower or 'timed out' in error_lower:
+        return 'network_timeout'
+    elif 'network' in error_lower or 'connection' in error_lower:
+        return 'network_error'
+    else:
+        return 'api_error'
+
+
+def _simplify_error_message(error_type: str) -> str:
+    """
+    Convert error type to user-friendly message.
+
+    Args:
+        error_type: Categorized error type
+
+    Returns:
+        User-friendly error message
+    """
+    messages = {
+        'rate_limit': 'Rate limit',
+        'network_timeout': 'Network timeout',
+        'network_error': 'Network error',
+        'api_error': 'API error'
+    }
+    return messages.get(error_type, 'API error')
+
+
 def _generate_output(
     scan_results: List[Dict],
     scan_duration: float,
     scan_timestamp: str,
     args,
     cache_stats_data: Dict,
+    stats: Dict,
     use_rich: bool
 ) -> Dict:
     """
@@ -591,6 +647,7 @@ def _generate_output(
         scan_timestamp: ISO timestamp of scan start
         args: Scan configuration
         cache_stats_data: Cache statistics dict
+        stats: Scan statistics including failed_extensions
         use_rich: Whether to use Rich formatting
 
     Returns:
@@ -608,7 +665,8 @@ def _generate_output(
         scan_results,
         scan_timestamp,
         scan_duration,
-        cache_stats=cache_stats_data if not args.no_cache else None
+        cache_stats=cache_stats_data if not args.no_cache else None,
+        failed_extensions=stats.get('failed_extensions', [])
     )
 
     # Output results
@@ -683,7 +741,7 @@ def _write_output_file(output_path_str: str, results: Dict, is_html_output: bool
             log(f"Results written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
 
 
-def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, use_rich: bool, results: Dict, quiet: bool = False):
+def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, use_rich: bool, results: Dict, quiet: bool = False, verbose: bool = False):
     """
     Print scan summary statistics.
 
@@ -694,6 +752,7 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         use_rich: Whether to use Rich formatting
         results: Full results dict for Rich display
         quiet: Show minimal single-line summary only
+        verbose: Show all operational details (cache, retry stats, timing)
     """
     # Quiet mode: show minimal single-line summary
     if quiet:
@@ -705,14 +764,16 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
             print(f"Scanned {total} extensions - No vulnerabilities found ✓")
         return
 
+    # Standard mode (default): security-focused, hide operational details
+    # Verbose mode: show everything (cache stats, retry stats, timing)
     if use_rich:
         # Get retry stats if available
         retry_stats = None
-        if 'api_client' in stats:
+        if 'api_client' in stats and stats['api_client'] is not None:
             retry_stats = stats['api_client'].get_retry_stats()
 
-        # Use Rich formatted summary
-        display_summary(results, scan_duration, retry_stats=retry_stats, use_rich=True)
+        # Use Rich formatted summary (pass verbose flag)
+        display_summary(results, scan_duration, retry_stats=retry_stats, use_rich=True, verbose=verbose)
 
         # Show results table
         scan_results = results.get('extensions', [])
@@ -725,21 +786,26 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                 console.print()
                 console.print(table)
 
-            # Cache stats table
-            cache_stats = results.get('summary', {}).get('cache_statistics')
-            if cache_stats:
-                cache_table = create_cache_stats_table(cache_stats)
-                if cache_table:
-                    console.print()
-                    console.print(cache_table)
+            # Cache stats table (only in verbose mode)
+            if verbose:
+                cache_stats = results.get('summary', {}).get('cache_statistics')
+                if cache_stats:
+                    cache_table = create_cache_stats_table(cache_stats)
+                    if cache_table:
+                        console.print()
+                        console.print(cache_table)
 
-            # Retry stats table (new)
-            if retry_stats:
+            # Retry stats table (only in verbose mode)
+            if verbose and retry_stats:
                 from .display import create_retry_stats_table
                 retry_table = create_retry_stats_table(retry_stats)
                 if retry_table:
                     console.print()
                     console.print(retry_table)
+
+        # Display failed extensions if any (both standard and verbose modes)
+        if stats.get('failed_extensions'):
+            display_failed_extensions(stats['failed_extensions'], use_rich=True)
     else:
         # Plain output
         log("", "INFO", force=True)
@@ -750,8 +816,13 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
         log(f"Failed scans: {stats['failed_scans']}",
             "INFO" if stats['failed_scans'] == 0 else "WARNING", force=True)
 
-        # Cache statistics
-        if stats.get('cached_results', 0) > 0 or stats.get('fresh_scans', 0) > 0:
+        # Show scan results list (all extensions)
+        scan_results = results.get('extensions', [])
+        if scan_results:
+            display_results_plain(scan_results)
+
+        # Cache statistics (only in verbose mode)
+        if verbose and (stats.get('cached_results', 0) > 0 or stats.get('fresh_scans', 0) > 0):
             log("", "INFO", force=True)
             log("Cache Statistics:", "INFO", force=True)
             log(f"  From cache: {stats['cached_results']} (⚡ instant)", "INFO", force=True)
@@ -760,8 +831,8 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                 cache_hit_rate = (stats['cached_results'] / len(extensions)) * 100
                 log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
 
-        # Retry statistics (only shown if retries occurred)
-        if 'api_client' in stats:
+        # Retry statistics (only in verbose mode and if retries occurred)
+        if verbose and 'api_client' in stats and stats['api_client'] is not None:
             retry_stats = stats['api_client'].get_retry_stats()
             http_retries = retry_stats.get('total_retries', 0)
             workflow_retries = retry_stats.get('total_workflow_retries', 0)
@@ -786,13 +857,21 @@ def _print_summary(extensions: List[Dict], stats: Dict, scan_duration: float, us
                     if failed_workflow > 0:
                         log(f"    Failed (need manual rescan): {failed_workflow}", "WARNING")
 
+        # Display failed extensions if any (both standard and verbose modes)
+        if stats.get('failed_extensions'):
+            display_failed_extensions(stats['failed_extensions'], use_rich=False)
+
         log("", "INFO", force=True)
         log(f"Vulnerabilities found: {stats['vulnerabilities_found']}",
             "INFO" if stats['vulnerabilities_found'] == 0 else "WARNING", force=True)
-        log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
-        if len(extensions) > 0:
-            avg_time = scan_duration / len(extensions)
-            log(f"Average time per extension: {avg_time:.1f}s", "INFO", force=True)
+
+        # Timing details (only in verbose mode)
+        if verbose:
+            log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
+            if len(extensions) > 0:
+                avg_time = scan_duration / len(extensions)
+                log(f"Average time per extension: {avg_time:.1f}s", "INFO", force=True)
+
         log("=" * 60, "INFO", force=True)
 
 

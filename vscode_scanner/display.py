@@ -224,6 +224,98 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     return table
 
 
+def display_results_plain(scan_results: List[Dict]) -> None:
+    """
+    Display scan results in plain text format.
+
+    Args:
+        scan_results: List of extension scan results
+
+    Shows all extensions sorted by risk level (descending) then vulnerability count (descending).
+    Format: emoji name version (publisher) - RISK - Score: N/100 - N vulns
+    """
+    if not scan_results:
+        return
+
+    # Define risk hierarchy for sorting (same as create_results_table)
+    risk_hierarchy = {
+        'critical': 3,
+        'high': 2,
+        'medium': 1,
+        'low': 0,
+        'unknown': -1
+    }
+
+    # Sort results by risk level (descending) then by vulnerability count (descending)
+    def sort_key(result):
+        security = result.get('security', {})
+        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
+        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
+        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+
+        risk_priority = risk_hierarchy.get(risk_level, -1)
+        return (-risk_priority, -vuln_count)  # Negative for descending order
+
+    sorted_results = sorted(scan_results, key=sort_key)
+
+    # Print header
+    print(f"\nScan Results ({len(scan_results)} extension{'s' if len(scan_results) != 1 else ''}):")
+    print("=" * 60)
+    print()
+
+    # Display each extension
+    for result in sorted_results:
+        # Get security data (handle both flat and nested structures)
+        security = result.get('security', {})
+        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
+        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
+        score = security.get('score') or result.get('security_score', 0)
+
+        # Get risk display (emoji and label)
+        emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY['unknown'])
+
+        # Get vulnerability count
+        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+        vuln_text = "vuln" if vuln_count == 1 else "vulns"
+
+        # Format extension name and version
+        ext_name = result.get('display_name') or result.get('name', 'Unknown')
+        ext_version = result.get('version', 'N/A')
+
+        # Format security score
+        score_display = f"{score}/100" if score else "N/A"
+
+        # Get publisher information (handle both nested and flat structures)
+        metadata = result.get('metadata', {})
+        publisher_info = metadata.get('publisher', {})
+
+        # Extract publisher name (handle dict or string)
+        publisher_name = publisher_info.get('name') if isinstance(publisher_info, dict) else None
+        if not publisher_name:
+            # Fallback to top-level publisher field
+            pub_field = result.get('publisher', 'Unknown')
+            if isinstance(pub_field, dict):
+                publisher_name = pub_field.get('name', 'Unknown')
+            else:
+                publisher_name = pub_field if pub_field else 'Unknown'
+
+        # Get verification status
+        is_verified = publisher_info.get('verified', False) if isinstance(publisher_info, dict) else False
+        if not is_verified:
+            pub_field = result.get('publisher', {})
+            if isinstance(pub_field, dict):
+                is_verified = pub_field.get('verified', False)
+
+        # Format publisher display with verification indicator
+        publisher_display = f"{publisher_name} ✓" if is_verified else publisher_name
+
+        # Print extension line
+        print(f"{emoji} {ext_name} v{ext_version} ({publisher_display}) - {label.upper()} - Score: {score_display} - {vuln_count} {vuln_text}")
+
+    print()
+    print("=" * 60)
+
+
 def create_cache_stats_table(stats: Dict) -> Optional[Table]:
     """
     Create a Rich table for cache statistics.
@@ -469,7 +561,7 @@ class ScanDashboard:
         return Panel(content, title="VS Code Security Scan", border_style="blue", expand=False)
 
 
-def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] = None, use_rich: bool = True) -> None:
+def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] = None, use_rich: bool = True, verbose: bool = False) -> None:
     """
     Display final scan summary.
 
@@ -478,6 +570,7 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
         duration: Scan duration in seconds
         retry_stats: Optional retry statistics dictionary
         use_rich: Whether to use Rich formatting
+        verbose: Show operational details (timing, retry stats)
     """
     summary = results.get('summary', {})
 
@@ -498,8 +591,8 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
 
         # Cache stats removed from summary - shown in dedicated Cache Statistics table below
 
-        # Retry stats (if any retries occurred)
-        if retry_stats:
+        # Retry stats (only in verbose mode, if any retries occurred)
+        if verbose and retry_stats:
             http_retries = retry_stats.get('total_retries', 0)
             workflow_retries = retry_stats.get('total_workflow_retries', 0)
             successful_http = retry_stats.get('successful_retries', 0)
@@ -513,13 +606,14 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
                 else:
                     content.append(f"🔄 Retries: {total_successful} successful\n", style="green")
 
-        # Duration
-        duration_min = int(duration // 60)
-        duration_sec = int(duration % 60)
-        if duration_min > 0:
-            content.append(f"⏱  Duration: {duration_min}m {duration_sec}s\n", style="dim")
-        else:
-            content.append(f"⏱  Duration: {duration:.1f}s\n", style="dim")
+        # Duration (only in verbose mode)
+        if verbose:
+            duration_min = int(duration // 60)
+            duration_sec = int(duration % 60)
+            if duration_min > 0:
+                content.append(f"⏱  Duration: {duration_min}m {duration_sec}s\n", style="dim")
+            else:
+                content.append(f"⏱  Duration: {duration:.1f}s\n", style="dim")
 
         panel = Panel(content, title="Scan Complete", border_style="green", expand=False)
         console.print(panel)
@@ -594,3 +688,57 @@ def display_success(message: str, use_rich: bool = True) -> None:
         console.print(f"[bold green]✓[/bold green] {message}")
     else:
         print(f"✓ {message}")
+
+
+def display_failed_extensions(failed_extensions: List[Dict], use_rich: bool = True) -> None:
+    """
+    Display failed extensions with error details.
+
+    Args:
+        failed_extensions: List of failed extension dicts with id, name, error_type, error_message
+        use_rich: Whether to use Rich formatting
+    """
+    if not failed_extensions:
+        return
+
+    if use_rich:
+        _display_failed_extensions_rich(failed_extensions)
+    else:
+        _display_failed_extensions_plain(failed_extensions)
+
+
+def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
+    """Display failed extensions in Rich format."""
+    from rich.console import Console
+    from rich.table import Table
+
+    console = Console()
+
+    # Warning header
+    count = len(failed_extensions)
+    console.print(f"\n[yellow]⚠ Failed to Scan ({count} extension{'s' if count != 1 else ''})[/yellow]\n")
+
+    # Create table
+    table = Table(show_header=True, header_style="bold yellow")
+    table.add_column("Extension", style="cyan")
+    table.add_column("Error", style="red")
+
+    for ext in failed_extensions:
+        table.add_row(ext['name'], ext['error_message'])
+
+    console.print(table)
+
+    # Suggestion
+    console.print("\n[dim]Suggestion: Re-run with --delay 3.0 or --max-retries 5[/dim]\n")
+
+
+def _display_failed_extensions_plain(failed_extensions: List[Dict]) -> None:
+    """Display failed extensions in plain format."""
+    count = len(failed_extensions)
+    print(f"\n⚠ Failed to Scan ({count} extension{'s' if count != 1 else ''})")
+    print("=" * 60)
+
+    for ext in failed_extensions:
+        print(f"{ext['name']} - {ext['error_message']}")
+
+    print("\nSuggestion: Re-run with --delay 3.0 or --max-retries 5\n")
