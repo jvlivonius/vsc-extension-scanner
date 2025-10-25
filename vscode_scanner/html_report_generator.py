@@ -392,6 +392,8 @@ class HTMLReportGenerator:
         keywords = ext.get('keywords') or []
         categories = ext.get('categories') or []
         last_updated = ext.get('last_updated') or 'N/A'
+        installed_at = ext.get('installed_at') or 'N/A'
+        last_scanned_at = ext.get('last_scanned_at') or 'N/A'
 
         # Publisher section
         publisher = ext.get('publisher', {})
@@ -479,6 +481,10 @@ class HTMLReportGenerator:
                     <span class="detail-label">Last Updated:</span>
                     <span class="detail-value date-value" data-iso-date="{self._safe_escape(last_updated)}">{self._safe_escape(last_updated)}</span>
                 </div>
+                <div class="detail-item">
+                    <span class="detail-label">Installed:</span>
+                    <span class="detail-value date-value" data-iso-date="{self._safe_escape(installed_at)}">{self._safe_escape(installed_at)}</span>
+                </div>
                 {f'<div class="detail-item"><span class="detail-label">Repository:</span><span class="detail-value"><a href="{self._safe_escape(repo_url)}" target="_blank" title="{self._safe_escape(repo_url)}">{self._safe_escape(repo_url)}</a></span></div>' if repo_url else ''}
                 {f'<div class="detail-item"><span class="detail-label">Marketplace:</span><span class="detail-value"><a href="{self._safe_escape(marketplace_url)}" target="_blank" title="{self._safe_escape(marketplace_url)}">{self._safe_escape(marketplace_url)}</a></span></div>' if marketplace_url else ''}
             </div>
@@ -549,6 +555,10 @@ class HTMLReportGenerator:
             <div class="detail-content">
                 {f'<div class="detail-item"><span class="detail-label">Module Risks:</span><div class="detail-value">{module_risk_html}</div></div>' if module_risk_html else ''}
                 {f'<div class="detail-item"><span class="detail-label">Risk Factors ({len(risk_factors)}):</span>{risk_factors_html}</div>' if risk_factors_html else ''}
+                <div class="detail-item">
+                    <span class="detail-label">Last Scanned:</span>
+                    <span class="detail-value date-value" data-iso-date="{self._safe_escape(last_scanned_at)}">{self._safe_escape(last_scanned_at)}</span>
+                </div>
                 {f'<div class="detail-item"><span class="detail-label">Security Notes:</span>{security_notes_html}</div>' if security_notes_html else ''}
                 {f'<div class="detail-item"><span class="detail-label">View on vscan.dev:</span><span class="detail-value"><a href="{self._safe_escape(vscan_url)}" target="_blank" title="{self._safe_escape(vscan_url)}">{self._safe_escape(vscan_url)}</a></span></div>' if vscan_url else ''}
             </div>
@@ -2086,8 +2096,34 @@ class HTMLReportGenerator:
                         bVal = parseInt(b.querySelector('.col-dependencies')?.textContent) || 0;
                         break;
                     case 'last-updated':
-                        aVal = a.querySelector('.col-last-updated')?.textContent || '';
-                        bVal = b.querySelector('.col-last-updated')?.textContent || '';
+                    case 'installed':
+                    case 'last-scanned':
+                        // Get ISO date from data attribute (not formatted text)
+                        const aDateEl = a.querySelector(`.col-${column} .date-value`);
+                        const bDateEl = b.querySelector(`.col-${column} .date-value`);
+                        const aDate = aDateEl?.getAttribute('data-iso-date');
+                        const bDate = bDateEl?.getAttribute('data-iso-date');
+
+                        // Handle N/A or missing dates (sort to end)
+                        if (!aDate || aDate === 'N/A') {
+                            aVal = 0;
+                        } else {
+                            try {
+                                aVal = new Date(aDate).getTime();
+                            } catch {
+                                aVal = 0;
+                            }
+                        }
+
+                        if (!bDate || bDate === 'N/A') {
+                            bVal = 0;
+                        } else {
+                            try {
+                                bVal = new Date(bDate).getTime();
+                            } catch {
+                                bVal = 0;
+                            }
+                        }
                         break;
                     default:
                         return 0;

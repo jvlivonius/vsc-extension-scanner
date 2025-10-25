@@ -73,7 +73,8 @@ class ExtensionDiscovery:
 
                 installed = metadata.get('installedTimestamp')
                 if installed and isinstance(installed, (int, float)):
-                    timestamps[ext_id] = int(installed)
+                    # Store with lowercase ID for case-insensitive matching
+                    timestamps[ext_id.lower()] = int(installed)
 
             return timestamps
 
@@ -165,9 +166,9 @@ class ExtensionDiscovery:
                     if metadata:
                         # Add installation timestamp if available
                         ext_id = metadata['id']
-                        if ext_id in install_timestamps:
+                        if ext_id.lower() in install_timestamps:
                             # Convert Unix ms to ISO format
-                            timestamp_ms = install_timestamps[ext_id]
+                            timestamp_ms = install_timestamps[ext_id.lower()]
                             timestamp_sec = timestamp_ms / 1000
                             try:
                                 installed_at = datetime.fromtimestamp(timestamp_sec).isoformat() + 'Z'
