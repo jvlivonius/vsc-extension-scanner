@@ -1,242 +1,526 @@
-# Testing Checklist for Phase 3
+# VS Code Extension Scanner - Testing Checklist
 
-## API Behavior Testing
+**Version:** 3.5.0
+**Last Updated:** 2025-10-26
 
-### ✅ Completed in Phase 1
+This comprehensive checklist covers functional, performance, security, and compatibility testing for the VS Code Extension Scanner.
 
-- [x] Test analyze endpoint with popular extensions
-- [x] Test status endpoint with cached results
-- [x] Test results endpoint and parse response
-- [x] Verify JSON response structure
-- [x] Test sequential requests with delays
+---
 
-### ⏳ TODO: Additional API Tests
+## 🚨 v3.5.0 Breaking Changes Testing
 
-- [ ] **Test obscure/unpublished extension** to observe actual polling
-  - Find a very unpopular extension
-  - Observe status "pending" → "completed" transition
-  - Measure actual analysis time
-  - Document progress field behavior
+### Parallel Processing Default
 
-- [ ] **Test invalid extension name**
-  - Submit analysis for non-existent extension
-  - Document error response format
-  - Verify graceful error handling
+- [ ] **Default 3 workers behavior**
+  - Run `vscan scan` without flags
+  - Verify 3 workers are used (check progress output)
+  - Verify faster than sequential mode
+  - Compare timing with v3.4.0 sequential mode
 
-- [ ] **Test invalid publisher**
-  - Submit with fake publisher name
-  - Document response behavior
+- [ ] **Workers parameter range (1-5)**
+  - Test `--workers 1` (sequential mode)
+  - Test `--workers 3` (default, explicit)
+  - Test `--workers 5` (maximum performance)
+  - Test `--workers 0` (should error, below min)
+  - Test `--workers 6` (should error, above max)
 
-- [ ] **Test extension with vulnerabilities**
-  - Find extension with known vulnerabilities
-  - Verify `vulnerabilities.details` structure
-  - Document how individual CVEs are reported
+- [ ] **--parallel flag removed**
+  - Run `vscan scan --parallel` (should show error)
+  - Verify help text doesn't mention `--parallel`
+  - Check `vscan scan --help | grep parallel` returns nothing
 
-- [ ] **Test rate limiting**
-  - Submit many rapid requests
-  - Document HTTP 429 response format
-  - Test retry-after headers
-  - Verify backoff strategy
+- [ ] **Config file changes**
+  - Create `~/.vscanrc` with `parallel = true` (should be ignored with warning)
+  - Create `~/.vscanrc` with `workers = 3` (should work)
+  - Test `workers = 1` through `workers = 5` in config
+  - Test invalid `workers = 0` (should error or default to 1)
 
-- [ ] **Test concurrent requests**
-  - Submit 5-10 simultaneous analyze requests
-  - Check if server handles parallel requests
-  - Monitor for rate limiting
+### Migration Testing
 
-- [ ] **Test network errors**
-  - Simulate connection timeout
-  - Simulate DNS failure
-  - Verify error messages
+- [ ] **Backward compatibility**
+  - Scripts using old sequential behavior work with `--workers 1`
+  - Config files without `workers` setting use default (3)
+  - Performance gain is automatic for users not specifying workers
 
-- [ ] **Test malformed requests**
-  - Missing publisher field
-  - Missing name field
-  - Invalid JSON
-  - Empty strings
+---
 
-## Extension Discovery Testing
+## Core Functionality Testing
 
-### Platform-Specific Tests
+### CLI Commands
+
+- [ ] **Main scan command**
+  - `vscan scan` - Standard scan with default 3 workers
+  - `vscan scan --plain` - Plain output without Rich
+  - `vscan scan --quiet` - Minimal single-line output
+  - `vscan --version` - Version information
+  - `vscan --help` - Main help message
+
+- [ ] **Cache commands**
+  - `vscan cache stats` - Display cache statistics
+  - `vscan cache stats --cache-max-age 14` - Show stale entries
+  - `vscan cache clear` - Clear cache with confirmation
+  - `vscan cache clear --force` - Clear without confirmation
+
+- [ ] **Config commands** (v3.1.0+)
+  - `vscan config init` - Create default config file
+  - `vscan config show` - Display current configuration
+  - `vscan config set scan.workers 3` - Set config value
+  - `vscan config get scan.workers` - Get specific value
+  - `vscan config reset` - Delete config file with confirmation
+
+- [ ] **Report commands**
+  - `vscan report report.html` - Generate HTML from cache
+  - `vscan report results.json` - Generate JSON from cache
+  - `vscan report results.csv` - Generate CSV from cache
+
+### Output Formats
+
+- [ ] **Terminal output (default)**
+  - Rich formatted tables with colors
+  - Progress bars with worker count displayed
+  - Cache hit indicators (⚡)
+  - Risk level color coding (red/yellow/green)
+  - Verified publisher checkmarks
+
+- [ ] **JSON output**
+  - `vscan scan --output results.json`
+  - Schema version 2.1
+  - Valid JSON structure
+  - All required fields present
+  - Proper escaping of special characters
+
+- [ ] **HTML reports** (v2.2.0+)
+  - `vscan scan --output report.html`
+  - Self-contained (no external dependencies)
+  - Sortable tables work
+  - Risk filters functional
+  - Search functionality works
+  - Charts render correctly (pie, gauge, bar)
+  - Print-optimized layout
+
+- [ ] **CSV export** (v3.1.0+)
+  - `vscan scan --output results.csv`
+  - 15-column format
+  - Proper CSV escaping (commas, quotes, newlines)
+  - UTF-8 encoding
+  - Opens correctly in Excel, Google Sheets
+
+### Filtering Options
+
+- [ ] **Publisher filter**
+  - `--publisher microsoft` (exact match, case-insensitive)
+  - `--publisher nonexistent` (no results, helpful message)
+
+- [ ] **Risk level filter**
+  - `--min-risk-level low` (all extensions)
+  - `--min-risk-level medium` (medium/high/critical)
+  - `--min-risk-level high` (high/critical only)
+  - `--min-risk-level critical` (critical only)
+
+- [ ] **Extension ID filters**
+  - `--include-ids "ms-python.python,GitHub.copilot"` (comma-separated)
+  - `--exclude-ids "local.test-extension"` (exclude specific)
+  - Combined with other filters
+
+- [ ] **Verification filters** (v3.3.0+)
+  - `--verified-only` (only verified publishers)
+  - `--unverified-only` (only unverified publishers)
+
+- [ ] **Vulnerability filters** (v3.3.0+)
+  - `--with-vulnerabilities` (only extensions with vulns)
+  - `--without-vulnerabilities` (only clean extensions)
+
+---
+
+## Parallel Processing & Performance
+
+### Worker Configuration
+
+- [ ] **Sequential mode (1 worker)**
+  - `vscan scan --workers 1`
+  - Verify sequential execution (one at a time)
+  - Compare timing with parallel modes
+
+- [ ] **Default mode (3 workers)**
+  - `vscan scan` (no flags)
+  - Verify 3 workers in progress display
+  - ~4.88x faster than sequential
+  - Measure actual speedup
+
+- [ ] **Maximum performance (5 workers)**
+  - `vscan scan --workers 5`
+  - ~4.27x faster than sequential
+  - No rate limiting errors
+  - 96.7%+ success rate
+
+### Thread Safety
+
+- [ ] **Cache writes**
+  - Verify main-thread-only cache writes
+  - No SQLite "database is locked" errors
+  - Batch writes after parallel completion
+  - No cross-thread connection errors
+
+- [ ] **Statistics collection**
+  - Verify stats are collected correctly
+  - No race conditions in counters
+  - Final totals match actual results
+
+- [ ] **Progress display**
+  - Progress updates work correctly
+  - No garbled output from concurrent threads
+  - Worker count displayed correctly
+  - Completion percentage accurate
+
+### Performance Benchmarks
+
+- [ ] **Small set (10 extensions)**
+  - Sequential: ~15 seconds
+  - 3 workers: ~3-4 seconds
+  - Speedup: ~4x
+
+- [ ] **Medium set (30 extensions)**
+  - Sequential: ~45 seconds
+  - 3 workers: ~10 seconds
+  - Speedup: ~4.5x
+
+- [ ] **Large set (66 extensions)**
+  - Sequential: ~6 minutes
+  - 3 workers: ~1.2 minutes
+  - Speedup: ~4.8x
+
+- [ ] **Memory usage**
+  - < 100MB RAM regardless of worker count
+  - No memory leaks
+  - Monitor with `ps aux` or Activity Monitor
+
+---
+
+## Caching System
+
+### Basic Cache Operations
+
+- [ ] **Cache creation**
+  - First scan creates `~/.vscan/cache.db`
+  - SQLite database format
+  - Schema version 2.1
+
+- [ ] **Cache hits**
+  - Second scan uses cached results (⚡ indicator)
+  - Instant results for cached extensions
+  - ~50x faster than fresh scans
+
+- [ ] **Cache expiration**
+  - Default 7 days max age
+  - `--cache-max-age 14` custom expiry
+  - Expired entries refreshed automatically
+
+- [ ] **Cache refresh**
+  - `--refresh-cache` forces fresh scans
+  - `--no-cache` disables caching entirely
+  - Refresh only scanned extensions (not all)
+
+### Cache Statistics
+
+- [ ] **Stats display**
+  - `vscan cache stats` shows totals
+  - From cache vs fresh scans count
+  - Cache hit rate percentage
+  - Total cached extensions
+  - Stale entries detection
+
+- [ ] **Cache clearing**
+  - `vscan cache clear` with confirmation
+  - `vscan cache clear --force` without confirmation
+  - Verify database file is deleted
+
+### Cache Integrity
+
+- [ ] **Schema version**
+  - Current schema: 2.1
+  - Automatic migration from 2.0 → 2.1
+  - Handles corrupted databases gracefully
+
+- [ ] **Data consistency**
+  - Extension ID + version as key
+  - Version changes invalidate cache
+  - Failed scans not cached
+
+---
+
+## Extension Discovery
+
+### Platform-Specific Paths
 
 - [ ] **macOS**
-  - Default path: `~/.vscode/extensions/`
-  - Test with Intel and Apple Silicon
-  - Test with VS Code Insiders
-  - Verify symlinks are handled
+  - Default: `~/.vscode/extensions/`
+  - VS Code Insiders: `~/.vscode-insiders/extensions/`
+  - Custom: `--extensions-dir /custom/path`
 
 - [ ] **Windows**
-  - Default path: `%USERPROFILE%\.vscode\extensions\`
-  - Test with Windows 10 and 11
-  - Test with different user profiles
-  - Handle path with spaces
+  - Default: `%USERPROFILE%\.vscode\extensions\`
+  - Handles paths with spaces
+  - Backslash path separators
 
 - [ ] **Linux**
-  - Default path: `~/.vscode/extensions/`
-  - Test on Ubuntu, Fedora, Arch
-  - Test with snap/flatpak installations
-  - Verify permissions
+  - Default: `~/.vscode/extensions/`
+  - Snap installations
+  - Flatpak installations
 
 ### Edge Cases
 
 - [ ] **No VS Code installed**
-  - Extensions directory doesn't exist
-  - Verify clear error message
+  - Clear error message
   - Exit code 2
+  - Suggest using `--extensions-dir`
 
 - [ ] **Empty extensions directory**
-  - VS Code installed but no extensions
-  - Should complete with 0 extensions scanned
+  - Complete with "0 extensions scanned"
   - Exit code 0
+  - No errors
 
-- [ ] **Corrupted extension**
-  - Extension directory missing package.json
-  - package.json with invalid JSON
-  - package.json missing required fields
-  - Should warn and continue scanning
+- [ ] **Corrupted extensions** (v3.3.3+)
+  - Missing package.json - warn and skip
+  - Invalid JSON - warn and skip
+  - Missing required fields - warn and skip
+  - Continue scanning remaining extensions
 
-- [ ] **Permissions issues**
-  - Extensions directory not readable
-  - package.json not readable
-  - Verify error messages
+- [ ] **Duplicate extensions** (v3.3.3+)
+  - Old versions on disk ignored
+  - Only current version from extensions.json scanned
+  - No duplicate entries in results
 
-- [ ] **Large number of extensions**
-  - Test with 100+ extensions
-  - Verify memory usage < 100MB
-  - Verify progress indicators work
-  - Test with --delay to ensure total time is reasonable
+### Installation Date Tracking (v3.3.1+)
 
-- [ ] **Custom extensions directory**
-  - Use --extensions-dir with custom path
-  - Verify relative paths work
-  - Verify absolute paths work
-  - Handle path that doesn't exist
+- [ ] **Date tracking**
+  - Installation dates from extensions.json
+  - Last scanned timestamp in cache
+  - Dates display in HTML reports
 
-- [ ] **Special characters in paths**
-  - Paths with spaces
-  - Paths with Unicode characters
-  - Windows paths with backslashes
+- [ ] **Date sorting** (v3.3.2+)
+  - HTML report date columns sortable
+  - ISO date format for sorting
+  - N/A dates sorted to end
 
-## package.json Parsing
+---
 
-- [ ] **Standard package.json**
-  - Extract publisher from `publisher` field
-  - Extract name from `name` field
-  - Extract version from `version` field
+## vscan.dev API Integration
 
-- [ ] **Malformed package.json**
-  - Invalid JSON syntax
-  - Missing `name` field
-  - Missing `publisher` field
-  - Missing `version` field
-  - Extra unexpected fields
+### Basic API Workflow
 
-- [ ] **Edge cases**
-  - Very large package.json (>1MB)
-  - package.json with comments (invalid JSON)
-  - UTF-8 BOM markers
-  - Different line endings (CRLF vs LF)
+- [ ] **Analyze endpoint**
+  - POST with publisher + name
+  - Returns analysisId
+  - Popular extensions cached (instant)
 
-## Output Testing
+- [ ] **Status endpoint**
+  - GET with analysisId
+  - Polls until "completed"
+  - Progress field updates
 
-### JSON Output
+- [ ] **Results endpoint**
+  - GET with analysisId
+  - Complete security analysis
+  - All fields populated
 
-- [ ] **Valid JSON structure**
-  - Verify all fields present
-  - Verify types are correct
-  - Verify arrays/objects properly nested
+### Retry Mechanism (v2.2.0+)
 
-- [ ] **Output to stdout**
-  - JSON goes to stdout
-  - Logs go to stderr
-  - Verify no mixing
+- [ ] **Exponential backoff**
+  - First retry: 2 seconds
+  - Second retry: 4 seconds
+  - Third retry: 8 seconds
+  - Configurable via `--retry-delay`
 
-- [ ] **Output to file**
-  - Use --output flag
-  - Verify file is created
-  - Verify file is valid JSON
-  - Handle existing file (overwrite)
-  - Handle path that doesn't exist
+- [ ] **Retry-After header**
+  - Respect server rate limits
+  - Honor Retry-After header
+  - Graceful handling
 
-- [ ] **Progress indicators**
-  - Shown on stderr (not stdout)
-  - Update correctly
-  - Don't interfere with JSON output
+- [ ] **Max retries**
+  - Default: 3 attempts
+  - Configurable via `--max-retries`
+  - `--max-retries 0` disables retries
 
-- [ ] **Special characters in output**
-  - Extension names with Unicode
-  - Extension descriptions with quotes
-  - Proper JSON escaping
+### Error Handling
 
-### Exit Codes
-
-- [ ] Exit code 0: Scan completed, no vulnerabilities
-- [ ] Exit code 1: Scan completed, vulnerabilities found
-- [ ] Exit code 2: Scan failed due to errors
-
-## Performance Testing
-
-- [ ] **Memory usage**
-  - Scan 50 extensions
-  - Verify < 100MB RAM usage
-  - No memory leaks
-
-- [ ] **Execution time**
-  - 50 extensions with 1.5s delay
-  - Should complete in < 2 minutes
-  - Verify progress is linear
-
-- [ ] **File I/O**
-  - Minimize repeated reads
-  - Don't load entire extension files
-  - Only read package.json
-
-## Error Handling
-
-### Network Errors
-
-- [ ] **Connection timeout**
-  - vscan.dev unreachable
+- [ ] **Network errors**
+  - Connection timeout (30 seconds)
   - DNS failure
-  - Verify retry logic
-  - Verify clear error message
+  - Clear error messages
+  - Retry logic activated
 
 - [ ] **HTTP errors**
-  - 404 Not Found
-  - 429 Rate Limited
-  - 500 Internal Server Error
-  - 503 Service Unavailable
+  - 404 Not Found (extension doesn't exist)
+  - 429 Rate Limited (retry with backoff)
+  - 500 Internal Server Error (retry)
+  - 503 Service Unavailable (retry)
 
-### Application Errors
+- [ ] **Invalid responses**
+  - Malformed JSON
+  - Missing fields
+  - Unexpected status values
+  - Graceful degradation
 
-- [ ] **Invalid arguments**
-  - Invalid --delay value (negative, non-numeric)
-  - Invalid --extensions-dir path
-  - Unknown flags
-  - Verify help message shown
+---
 
-- [ ] **Interrupted execution**
-  - Ctrl+C during scan
-  - Graceful shutdown
-  - Partial results handling
+## Configuration Management (v3.1.0+)
+
+### Config File Operations
+
+- [ ] **Init command**
+  - Creates `~/.vscanrc` with defaults
+  - Won't overwrite existing (error)
+  - Proper permissions (600)
+
+- [ ] **Show command**
+  - Displays all settings
+  - Shows config vs default values
+  - Unified table format (scan.delay, cache.max_age)
+
+- [ ] **Set command**
+  - `vscan config set scan.delay 2.0`
+  - Type validation (int, float, bool, choice, path)
+  - Range validation (min/max values)
+
+- [ ] **Get command**
+  - Returns single value
+  - Shows default if not set
+  - Clear output
+
+- [ ] **Reset command**
+  - Deletes config file
+  - Confirmation prompt
+  - `--force` to skip confirmation
+
+### Config Validation
+
+- [ ] **Type checking**
+  - Integers: workers, max_retries, cache_max_age
+  - Floats: delay, retry_delay
+  - Booleans: quiet, plain, no_cache
+  - Strings: publisher, exclude_ids
+  - Paths: extensions_dir, cache_dir
+
+- [ ] **Range validation**
+  - workers: 1-5
+  - delay: 0.0-10.0
+  - max_retries: 0-10
+  - cache_max_age: 1-365 days
+
+- [ ] **Choice validation**
+  - min_risk_level: low|medium|high|critical
+  - Invalid choices rejected
+
+### Config Priority
+
+- [ ] **Hierarchy**
+  - CLI arguments override config
+  - Config overrides defaults
+  - Test all combinations
+
+---
 
 ## Security Testing
 
-- [ ] **Path traversal**
-  - --extensions-dir with ../../../etc/passwd
-  - Verify path validation
-  - Should reject dangerous paths
+### Path Validation
 
-- [ ] **HTTPS verification**
+- [ ] **Path traversal protection**
+  - Reject `--extensions-dir ../../../etc/passwd`
+  - Reject system paths (/etc, /sys, /var)
+  - Reject Windows system paths (C:\Windows)
+  - Allow temp directories
+
+- [ ] **Extension ID validation**
+  - Block SQL injection patterns
+  - Block path traversal in IDs
+  - Block boolean injection
+  - Proper sanitization
+
+### Network Security
+
+- [ ] **HTTPS enforcement**
   - All requests use HTTPS
   - Certificate validation enabled
-  - No insecure requests
+  - No insecure fallbacks
 
-- [ ] **Sensitive data**
+- [ ] **Data privacy**
   - No credentials in output
-  - No user paths in JSON (privacy)
-  - Sanitize error messages
+  - No user paths in JSON
+  - Error messages sanitized
+  - No information disclosure
 
-## Compatibility Testing
+### Input Sanitization
+
+- [ ] **String inputs**
+  - Publisher names escaped
+  - Extension IDs validated
+  - Paths normalized
+  - No code injection
+
+---
+
+## Error Handling & UX
+
+### Error Messages
+
+- [ ] **Clear and actionable**
+  - Describe what went wrong
+  - Suggest how to fix
+  - Reference documentation
+  - No stack traces (unless verbose)
+
+- [ ] **Error codes** (v3.2.0+)
+  - E001-E099: Configuration errors
+  - E100-E199: Discovery errors
+  - E200-E299: API errors
+  - E300-E399: Cache errors
+
+### Exit Codes
+
+- [ ] **0** - Success, no vulnerabilities
+  - Scan completed successfully
+  - All extensions clean
+
+- [ ] **1** - Success, vulnerabilities found
+  - Scan completed successfully
+  - One or more extensions have vulnerabilities
+
+- [ ] **2** - Scan failed
+  - Network errors
+  - Configuration errors
+  - System errors
+
+### Progress Indicators
+
+- [ ] **Rich mode** (default)
+  - Live progress bar
+  - Extension name shown
+  - Worker count displayed
+  - Cache indicators (⚡, 🔍)
+  - Status symbols (✓, ⚠, ✗)
+
+- [ ] **Plain mode** (`--plain`)
+  - Text-only progress
+  - Per-extension status
+  - No special characters
+  - CI/CD friendly
+
+- [ ] **Quiet mode** (`--quiet`)
+  - Single-line summary only
+  - "Scanned X extensions - Found Y vulnerabilities"
+  - Exit code for automation
+
+---
+
+## Cross-Platform Compatibility
+
+### Operating Systems
+
+- [ ] macOS 13+ (Ventura, Sonoma, Sequoia)
+- [ ] Windows 10/11
+- [ ] Ubuntu 22.04 LTS / 24.04 LTS
+- [ ] Fedora (latest)
+- [ ] Debian (latest stable)
 
 ### Python Versions
 
@@ -246,91 +530,215 @@
 - [ ] Python 3.11
 - [ ] Python 3.12
 
-### Operating Systems
+### Dependencies
 
-- [ ] macOS 13 (Ventura)
-- [ ] macOS 14 (Sonoma)
-- [ ] macOS 15 (Sequoia)
-- [ ] Windows 10
-- [ ] Windows 11
-- [ ] Ubuntu 22.04 LTS
-- [ ] Ubuntu 24.04 LTS
-- [ ] Fedora (latest)
+- [ ] **Required**
+  - Rich ≥13.0.0
+  - Typer ≥0.9.0
+  - All dependencies install correctly
 
-## User Experience Testing
+- [ ] **Optional** (no longer needed)
+  - All features work without optional deps
+  - `--plain` provides fallback behavior
 
-- [ ] **Help message**
-  - python vscan.py --help
-  - Clear and concise
-  - Examples provided
+---
 
-- [ ] **Version information**
-  - python vscan.py --version
-  - Shows correct version
+## Regression Testing (Previous Bugs)
 
-- [ ] **Verbose mode**
-  - --verbose flag works
-  - Shows detailed progress
-  - Helps with debugging
+### Fixed in v3.3.3
 
-- [ ] **Error messages**
-  - Clear and actionable
-  - Suggest fixes when possible
-  - No stack traces in normal mode
+- [ ] **Duplicate extensions eliminated**
+  - Old extension versions not scanned
+  - Only current version from extensions.json
+  - Accurate extension counts
 
-- [ ] **Progress indicators**
-  - Show current/total extensions
-  - Show extension being scanned
-  - Show status (✓, ⚠, ✗)
-  - Estimate time remaining
+### Fixed in v3.3.2
+
+- [ ] **Date column sorting**
+  - HTML report date columns sort chronologically
+  - ISO date format used for sorting
+  - N/A values handled correctly
+
+### Fixed in v3.3.1
+
+- [ ] **Critical risk filter**
+  - `--min-risk-level critical` works correctly
+  - Properly identifies critical extensions
+  - Filter comparison fixed
+
+### Fixed in v3.2.0
+
+- [ ] **Database connection leak**
+  - No leaks in batch mode
+  - Cleanup on error
+  - Resource management correct
+
+- [ ] **Division by zero**
+  - Cache hit rate calculation safe
+  - Handles 0 total scans
+
+---
+
+## Performance Testing
+
+### Timing Benchmarks
+
+- [ ] **10 extensions**
+  - Sequential (1 worker): ~15s
+  - Default (3 workers): ~3-4s
+  - Maximum (5 workers): ~3s
+
+- [ ] **30 extensions**
+  - Sequential: ~45s
+  - Default: ~10s
+  - Maximum: ~9s
+
+- [ ] **66 extensions** (real-world)
+  - Sequential: ~6 minutes
+  - Default: ~1.2 minutes (4.88x speedup)
+  - Maximum: ~1.4 minutes (4.27x speedup)
+
+### Resource Usage
+
+- [ ] **Memory**
+  - Peak RAM < 100MB
+  - No memory leaks
+  - Garbage collection works
+
+- [ ] **CPU**
+  - Appropriate CPU usage for worker count
+  - No busy loops
+  - Efficient threading
+
+- [ ] **Network**
+  - Respects API rate limits
+  - No excessive requests
+  - Parallel requests handled
+
+### Cache Performance
+
+- [ ] **Cache hits**
+  - Instant results (< 0.1s per extension)
+  - 50x faster than fresh scans
+  - 70-90% hit rate typical
+
+---
 
 ## Integration Testing
 
-- [ ] **End-to-end workflow**
-  - Fresh VS Code installation
-  - Install 5-10 extensions
-  - Run scanner
-  - Verify results match vscan.dev website
+### Real-World Scenarios
 
-- [ ] **Real-world scenarios**
-  - Developer machine with 30+ extensions
-  - CI/CD pipeline integration
-  - Scheduled scanning via cron
+- [ ] **Developer machine**
+  - 30-50 extensions
+  - Mix of popular and custom
+  - Regular rescans
+
+- [ ] **CI/CD pipeline**
+  - Automated daily scans
+  - Exit code checks
+  - JSON/CSV output processing
+
+- [ ] **Team security audit**
+  - Generate HTML reports
+  - Share with stakeholders
+  - Track over time
+
+### End-to-End Workflows
+
+- [ ] **Initial setup**
+  - Install vscan
+  - Create config file
+  - First scan
+
+- [ ] **Regular usage**
+  - Daily/weekly rescans
+  - Cache utilization
+  - Report generation
+
+- [ ] **Migration** (v3.4.0 → v3.5.0)
+  - Remove `--parallel` from scripts
+  - Update config file
+  - Verify performance improvement
+
+---
 
 ## Documentation Testing
 
-- [ ] README examples work
-- [ ] CLAUDE.md instructions accurate
-- [ ] API_RESEARCH.md findings current
-- [ ] Code comments helpful
+### Accuracy
+
+- [ ] README.md examples work
+- [ ] CLAUDE.md instructions current
+- [ ] CHANGELOG.md complete
+- [ ] docs/guides/ content accurate
+
+### Completeness
+
+- [ ] All features documented
+- [ ] Migration guides clear
 - [ ] Error messages reference docs
-
-## Accessibility
-
-- [ ] Works in terminal with screen readers
-- [ ] Color output is optional
-- [ ] Clear text-only progress indicators
-- [ ] JSON output is machine-readable
+- [ ] Examples cover common use cases
 
 ---
 
 ## Test Execution Strategy
 
-### Phase 2 (During Implementation)
-- Unit tests for each function
-- Test driven development where appropriate
-- Manual testing of basic workflows
+### Automated Testing
 
-### Phase 3 (Testing & Refinement)
-- Systematic execution of this checklist
-- Automated testing where possible
-- Cross-platform testing
-- Performance benchmarking
-- User acceptance testing
+```bash
+# Unit tests
+python3 tests/test_display.py       # Display module (24 tests)
+python3 tests/test_scanner.py       # Scanner module (15 tests)
+python3 tests/test_cli.py          # CLI module (18 tests)
+python3 tests/test_api.py          # API validation
+python3 tests/test_integration.py  # Integration tests
+
+# All tests
+pytest tests/
+```
+
+### Manual Testing
+
+1. **Pre-release testing**
+   - Build package
+   - Install in clean virtualenv
+   - Run through this checklist
+
+2. **Platform testing**
+   - Test on macOS, Windows, Linux
+   - Test multiple Python versions
+   - Verify all features work
+
+3. **Performance testing**
+   - Benchmark timing
+   - Monitor resource usage
+   - Verify speedups
 
 ### Tools
-- `pytest` for unit tests
-- Manual testing for integration tests
-- `time` and `memory_profiler` for performance
-- `tox` for multi-Python version testing
-- Virtual machines for cross-platform testing
+
+- `pytest` - Unit and integration tests
+- `time` - Execution timing
+- `memory_profiler` - Memory usage
+- `tox` - Multi-version testing
+- Virtual machines - Cross-platform
+
+---
+
+## Pre-Release Checklist
+
+Before releasing a new version:
+
+- [ ] All automated tests pass
+- [ ] Manual testing on primary platform complete
+- [ ] Cross-platform testing done
+- [ ] Performance benchmarks meet targets
+- [ ] Documentation updated
+- [ ] CHANGELOG.md updated
+- [ ] Migration guide created (if breaking changes)
+- [ ] Build and install tested
+- [ ] Smoke test passed
+
+---
+
+**Last Updated:** 2025-10-26 for v3.5.0 release
+**Maintained By:** Project contributors
+**Questions:** See [GitHub Issues](https://github.com/jvlivonius/vsc-extension-scanner/issues)
