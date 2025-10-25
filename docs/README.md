@@ -189,6 +189,13 @@ docs/
 - Validation and troubleshooting
 - Version history
 
+**[contributing/DOCUMENTATION_CONVENTIONS.md](contributing/DOCUMENTATION_CONVENTIONS.md)** - Documentation conventions
+- Naming conventions (version-based, lowercase-hyphenated)
+- Directory structure and organization
+- Archiving procedures and git best practices
+- Cross-reference management
+- Validation checklist and quick reference
+
 ---
 
 ## By Role

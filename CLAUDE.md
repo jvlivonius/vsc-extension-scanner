@@ -235,12 +235,14 @@ Read these when making changes to specific areas:
 ### Contributor Resources
 - **[docs/contributing/TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md)** - Testing checklist
 - **[docs/contributing/VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md)** - Version management guide
+- **[docs/contributing/DOCUMENTATION_CONVENTIONS.md](docs/contributing/DOCUMENTATION_CONVENTIONS.md)** - Documentation naming and organization conventions
 - **[docs/guides/ERROR_CODES.md](docs/guides/ERROR_CODES.md)** - Error code reference
 
 ### Historical Documentation (Archive)
-- **[docs/archive/phases/](docs/archive/phases/)** - Completed phase requirements
-- **[docs/archive/releases/](docs/archive/releases/)** - Phase completion summaries
-- **[docs/archive/reviews/](docs/archive/reviews/)** - Historical reviews and analysis
+- **[docs/archive/README.md](docs/archive/README.md)** - Archive navigation guide (version timeline and index)
+- **[docs/archive/plans/](docs/archive/plans/)** - Historical roadmaps and requirements (version-based naming)
+- **[docs/archive/summaries/](docs/archive/summaries/)** - Release notes and completion reports
+- **[docs/archive/reviews/](docs/archive/reviews/)** - Historical analysis and research
 
 ## Technology Stack
 
@@ -839,8 +841,8 @@ The `docs/` directory is organized into:
 - **`docs/guides/`** - Timeless technical reference (REQUIRED reading for architecture, security, APIs)
 - **`docs/project/`** - Active project management (status, requirements, roadmap)
 - **`docs/specs/`** - Shipped feature specifications
-- **`docs/contributing/`** - Contributor guides and checklists
-- **`docs/archive/`** - Historical documentation (phases, releases, reviews)
+- **`docs/contributing/`** - Contributor guides and checklists (includes DOCUMENTATION_CONVENTIONS.md)
+- **`docs/archive/`** - Historical documentation (version-based organization: plans/, summaries/, reviews/)
 
 **⚠️ IMPORTANT:** Before making any code changes, you MUST review the REQUIRED documents in the "Required Reading Documentation" section above, especially:
 1. docs/guides/ARCHITECTURE.md (system design and constraints)
