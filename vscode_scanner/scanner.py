@@ -73,8 +73,7 @@ def run_scan(
         min_risk_level: Minimum risk level filter
         plain: Disable Rich formatting
         quiet: Minimal output (single-line summary only)
-        parallel: Enable parallel scanning with multiple workers
-        workers: Number of parallel workers (2-5, default: 3)
+        workers: Number of concurrent workers (1-5, default: 3)
 
     Returns:
         Exit code (0=clean, 1=vulnerabilities, 2=error)
@@ -141,7 +140,6 @@ def run_scan(
         unverified_only=unverified_only,
         with_vulnerabilities=with_vulnerabilities,
         without_vulnerabilities=without_vulnerabilities,
-        parallel=parallel,
         workers=workers
     )
 
