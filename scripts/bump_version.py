@@ -66,7 +66,7 @@ def set_version(new_version):
 
 
 def check_consistency():
-    """Check that all files import from _version.py correctly."""
+    """Check that all files import from _version.py correctly and docs have consistent versions."""
     root = Path(__file__).parent.parent
     current_version = read_current_version()
     schema_version = read_schema_version()
@@ -76,6 +76,9 @@ def check_consistency():
     print()
 
     issues = []
+
+    # === Python Files ===
+    print("Python Files:")
 
     # Files that should import from _version
     files_to_check = [
@@ -100,7 +103,7 @@ def check_consistency():
 
         # Check if file imports from _version
         if "from vscode_scanner._version import" in content or "from ._version import" in content:
-            print(f"✓ {file_path}: Uses centralized version")
+            print(f"  ✓ {file_path}: Uses centralized version")
         else:
             # Check for hardcoded versions
             if re.search(r'VERSION\s*=\s*"[\d.]+"', content):
@@ -115,9 +118,64 @@ def check_consistency():
     if pyproject.exists():
         content = pyproject.read_text(encoding='utf-8')
         if 'dynamic = ["version"]' in content:
-            print(f"✓ pyproject.toml: Uses dynamic versioning")
+            print(f"  ✓ pyproject.toml: Uses dynamic versioning")
         elif re.search(r'version\s*=\s*"[\d.]+"', content):
             issues.append(f"✗ pyproject.toml: Has hardcoded version")
+
+    print()
+
+    # === Documentation Files ===
+    print("Documentation Files:")
+
+    # Documentation files that should have consistent version numbers
+    doc_checks = {
+        "README.md": [
+            (r'\*\*Version:\*\*\s+(\d+\.\d+\.\d+)', "version badge"),
+            (r'Version.*?(\d+\.\d+\.\d+)', "version number"),
+        ],
+        "CLAUDE.md": [
+            (r'Current Status:.*?v(\d+\.\d+\.\d+)', "Current Status section"),
+            (r'\*\*Current Status:\*\*.*?v(\d+\.\d+\.\d+)', "Current Status field"),
+        ],
+        "docs/project/STATUS.md": [
+            (r'\*\*Current Version:\*\*\s+(\d+\.\d+\.\d+)', "Current Version field"),
+            (r'Current Version:\s+(\d+\.\d+\.\d+)', "Current Version line"),
+        ],
+        "docs/project/PRD.md": [
+            (r'\*\*Version:\*\*\s+(\d+\.\d+\.\d+)', "Version field"),
+            (r'Version:\s+(\d+\.\d+\.\d+)', "Version line"),
+        ],
+        "DISTRIBUTION.md": [
+            (r'vscode_extension_scanner-(\d+\.\d+\.\d+)', "version in examples"),
+        ],
+    }
+
+    for doc_file, patterns in doc_checks.items():
+        full_path = root / doc_file
+        if not full_path.exists():
+            print(f"  ⚠ {doc_file}: File not found (skipping)")
+            continue
+
+        content = full_path.read_text(encoding='utf-8')
+        file_has_issue = False
+
+        for pattern, description in patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
+            if matches:
+                # Check if all matches are correct version
+                incorrect_versions = [m for m in matches if m != current_version]
+                if incorrect_versions:
+                    # Show unique incorrect versions
+                    unique_incorrect = list(set(incorrect_versions))
+                    for wrong_ver in unique_incorrect:
+                        issues.append(
+                            f"✗ {doc_file}: {description} shows '{wrong_ver}' "
+                            f"(expected '{current_version}')"
+                        )
+                    file_has_issue = True
+
+        if not file_has_issue:
+            print(f"  ✓ {doc_file}: Version {current_version} matches")
 
     print()
 
@@ -127,7 +185,7 @@ def check_consistency():
             print(f"  {issue}")
         return False
     else:
-        print("✓ All files use centralized versioning!")
+        print("✓ All files use consistent versioning!")
         return True
 
 

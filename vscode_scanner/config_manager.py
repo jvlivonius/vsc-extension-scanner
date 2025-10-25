@@ -102,6 +102,10 @@ retry_delay = {DEFAULT_RETRY_BASE_DELAY}           # Base HTTP retry delay in se
 max_workflow_retries = {DEFAULT_WORKFLOW_MAX_RETRIES}  # Maximum workflow retry attempts (int, {MIN_RETRIES}-{MAX_RETRIES})
 workflow_retry_delay = {DEFAULT_WORKFLOW_RETRY_DELAY}   # Base workflow retry delay in seconds (float, {MIN_RETRY_DELAY}-{MAX_RETRY_DELAY})
 
+# Parallel scanning (2-5x performance improvement)
+# parallel = false          # Enable parallel scanning (true/false)
+# workers = 3               # Number of workers (int, 2-5, recommended: 3)
+
 # Default filters (optional - leave commented to disable)
 # publisher = microsoft     # Default publisher filter
 # min_risk_level = medium   # Minimum risk level to report (low/medium/high/critical)
@@ -130,6 +134,8 @@ DEFAULT_CONFIG = {
         'retry_delay': DEFAULT_RETRY_BASE_DELAY,
         'max_workflow_retries': DEFAULT_WORKFLOW_MAX_RETRIES,
         'workflow_retry_delay': DEFAULT_WORKFLOW_RETRY_DELAY,
+        'parallel': False,
+        'workers': 3,
         'publisher': None,
         'min_risk_level': None,
         'exclude_ids': None,
@@ -154,6 +160,8 @@ CONFIG_SCHEMA = {
         'retry_delay': ('float', MIN_RETRY_DELAY, MAX_RETRY_DELAY),
         'max_workflow_retries': ('int', MIN_RETRIES, MAX_RETRIES),
         'workflow_retry_delay': ('float', MIN_RETRY_DELAY, MAX_RETRY_DELAY),
+        'parallel': ('bool', None, None),
+        'workers': ('int', 2, 5),
         'publisher': ('string', None, None),
         'min_risk_level': ('choice', ['low', 'medium', 'high', 'critical'], None),
         'exclude_ids': ('string', None, None),

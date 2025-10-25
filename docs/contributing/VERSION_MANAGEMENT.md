@@ -106,31 +106,75 @@ python3 scripts/bump_version.py --check
 
 ### Release a New Version
 
+**For complete release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md)**
+
+Quick reference:
+
 ```bash
 # 1. Update version
 python3 scripts/bump_version.py 2.3.0
 
-# 2. Verify consistency
+# 2. Verify consistency (checks Python files + documentation)
 python3 scripts/bump_version.py --check
 
-# 3. Test the build
+# 3. Update documentation (8 files - see RELEASE_PROCESS.md)
+
+# 4. Run tests and build
+python3 tests/test_*.py
 python3 -m build
 
-# 4. Verify version in package
-python3 -c "from vscode_scanner import __version__; print(__version__)"
-
-# 5. Commit changes
-git add vscode_scanner/_version.py
-git commit -m "Bump version to 2.3.0"
+# 5. Commit and tag
+git commit -m "Release v2.3.0: ..."
+git tag -a v2.3.0 -m "..."
+git push origin main v2.3.0
 ```
 
 ### Check Version Consistency
 
+The `--check` command now validates **both Python files and documentation**:
+
+```bash
+# Comprehensive check (Python + docs)
+python3 scripts/bump_version.py --check
+```
+
+**What it checks:**
+
+**Python Files:**
+- All Python modules use centralized `_version.py` import
+- No hardcoded `__version__` or `VERSION` strings
+- `setup.py` and `pyproject.toml` use dynamic versioning
+
+**Documentation Files:**
+- `README.md` version badge/number
+- `CLAUDE.md` "Current Status" section
+- `docs/project/STATUS.md` current version line
+- `docs/project/PRD.md` version field
+- `DISTRIBUTION.md` version examples
+
+**Example output:**
+```
+Current version: 3.3.3
+Schema version: 2.1
+
+Python Files:
+  ✓ vscode_scanner/__init__.py: Uses centralized version
+  ✓ vscode_scanner/vscan.py: Uses centralized version
+  ...
+
+Documentation Files:
+  ✓ README.md: Version 3.3.3 matches
+  ✓ CLAUDE.md: Version 3.3.3 matches
+  ✓ docs/project/STATUS.md: Version 3.3.3 matches
+  ✓ docs/project/PRD.md: Version 3.3.3 matches
+  ✓ DISTRIBUTION.md: All examples use 3.3.3
+
+✓ All files use consistent versioning!
+```
+
+**Manual verification:**
 ```bash
 # Quick check
-python3 scripts/bump_version.py --check
-
-# Manual verification
 python3 vscan.py --version
 python3 -c "from vscode_scanner import __version__; print(__version__)"
 ```
@@ -161,15 +205,25 @@ python3 -c "from vscode_scanner._version import __version__; print(__version__)"
 
 ## Documentation Updates
 
-When bumping versions, also update:
+When bumping versions, update these files (verified by `bump_version.py --check`):
 
-1. ✅ [CLAUDE.md](../CLAUDE.md) - Current Status section
-2. ✅ [README.md](../README.md) - Version badge
-3. ⚠️ [CHANGELOG.md](../CHANGELOG.md) - Add release notes (if created)
+1. ✅ [CHANGELOG.md](../../CHANGELOG.md) - Add release section (Keep a Changelog format)
+2. ✅ [README.md](../../README.md) - Version badge/number (line 7)
+3. ✅ [CLAUDE.md](../../CLAUDE.md) - Current Status section
+4. ✅ [DISTRIBUTION.md](../../DISTRIBUTION.md) - Version examples
+5. ✅ [docs/project/STATUS.md](../project/STATUS.md) - Current version (line 5-6)
+6. ✅ [docs/project/PRD.md](../project/PRD.md) - Version field
+7. ✅ [docs/README.md](../README.md) - Navigation and links
+8. ✅ [docs/archive/summaries/vX.Y.Z-release-notes.md](../archive/summaries/) - Create new
+
+**Complete documentation update checklist:** [RELEASE_PROCESS.md](RELEASE_PROCESS.md#step-2-documentation-updates)
 
 ## See Also
 
-- [scripts/bump_version.py](../scripts/bump_version.py) - Version management script
-- [vscode_scanner/_version.py](../vscode_scanner/_version.py) - Single source of truth
-- [setup.py](../setup.py) - Package setup with dynamic versioning
-- [pyproject.toml](../pyproject.toml) - Modern Python packaging config
+- **[RELEASE_PROCESS.md](RELEASE_PROCESS.md)** - Complete release process (11 steps)
+- **[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)** - Printable release checklist
+- **[CHANGELOG.md](../../CHANGELOG.md)** - Release history
+- [scripts/bump_version.py](../../scripts/bump_version.py) - Version management script
+- [vscode_scanner/_version.py](../../vscode_scanner/_version.py) - Single source of truth
+- [setup.py](../../setup.py) - Package setup with dynamic versioning
+- [pyproject.toml](../../pyproject.toml) - Modern Python packaging config

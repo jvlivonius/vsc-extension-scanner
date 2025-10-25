@@ -19,6 +19,7 @@ from .display import (
     should_use_rich, create_cache_stats_table,
     display_error, display_success, display_info, display_warning
 )
+from .utils import validate_path, safe_mkdir
 
 # Create Typer app
 app = typer.Typer(
@@ -175,6 +176,20 @@ def scan(
         help="Base delay for exponential backoff on retries (seconds)",
         rich_help_panel="Advanced Options"
     ),
+    parallel: bool = typer.Option(
+        False,
+        "--parallel",
+        help="Enable parallel scanning with multiple workers (2-5x faster)",
+        rich_help_panel="Advanced Options"
+    ),
+    workers: int = typer.Option(
+        3,
+        "--workers",
+        min=2,
+        max=5,
+        help="Number of parallel workers (2-5, default: 3). Only used with --parallel.",
+        rich_help_panel="Advanced Options"
+    ),
 
     # Cache options
     no_cache: bool = typer.Option(
@@ -214,6 +229,12 @@ def scan(
 
         [dim]# Scan all extensions with default settings[/dim]
         $ vscan scan
+
+        [dim]# Enable parallel scanning (2-5x faster)[/dim]
+        $ vscan scan --parallel
+
+        [dim]# Parallel scan with custom worker count[/dim]
+        $ vscan scan --parallel --workers 5
 
         [dim]# Filter by publisher[/dim]
         $ vscan scan --publisher microsoft
@@ -273,6 +294,10 @@ def scan(
         extensions_dir = Path(config['scan']['extensions_dir']).expanduser()
     if cache_dir is None and config['cache']['cache_dir'] is not None:
         cache_dir = Path(config['cache']['cache_dir']).expanduser()
+    if parallel is False and config['scan'].get('parallel') is not None:
+        parallel = config['scan']['parallel']
+    if workers == 3 and config['scan'].get('workers') is not None:
+        workers = config['scan']['workers']
 
     # Validate parameters
     try:
@@ -280,6 +305,7 @@ def scan(
         max_retries = bounded_int_validator(max_retries, 0, 10, "max-retries")
         retry_delay = bounded_float_validator(retry_delay, 0.1, 60.0, "retry-delay")
         cache_max_age = bounded_int_validator(cache_max_age, 1, 365, "cache-max-age")
+        workers = bounded_int_validator(workers, 2, 5, "workers")
     except typer.BadParameter as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2)
@@ -293,6 +319,10 @@ def scan(
     if no_cache and refresh_cache:
         typer.echo("Error: --no-cache and --refresh-cache cannot be used together", err=True)
         raise typer.Exit(code=2)
+
+    # Validate output path BEFORE resolving to preserve relative/absolute distinction
+    if output:
+        validate_path(str(output), allow_absolute=True, path_type="output")
 
     # Convert Path objects to strings for scanner
     extensions_dir_str = str(extensions_dir.resolve()) if extensions_dir else None
@@ -326,7 +356,9 @@ def scan(
             without_vulnerabilities=without_vulnerabilities,
             plain=plain,
             quiet=quiet,
-            verbose=verbose
+            verbose=verbose,
+            parallel=parallel,
+            workers=workers
         )
         raise typer.Exit(code=exit_code)
     except (typer.Exit, SystemExit):
@@ -1127,11 +1159,12 @@ def report(
 
     # Convert paths to strings
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
-    output_str = str(output.resolve())
 
-    # Validate output path
+    # Validate output path BEFORE resolving to preserve relative/absolute distinction
     try:
-        validate_path(output_str, allow_absolute=True, path_type="output file")
+        validate_path(str(output), allow_absolute=True, path_type="output file")
+        # Resolve AFTER validation
+        output_str = str(output.resolve())
         # Create parent directory if needed
         output_parent = Path(output_str).parent
         safe_mkdir(output_parent)

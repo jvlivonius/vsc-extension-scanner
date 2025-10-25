@@ -24,3 +24,4 @@ prune docs
 prune node_modules
 prune temp
 prune tests
+prune scripts

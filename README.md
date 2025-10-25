@@ -4,7 +4,7 @@
 
 A command-line tool that scans your installed VS Code extensions for security vulnerabilities, suspicious permissions, and risky dependencies. Get instant insights into the security posture of your development environment.
 
-**Version:** 3.1.0 | **Status:** Production Ready
+**Version:** 3.4.0 | **Status:** Production Ready
 
 ---
 
@@ -57,6 +57,9 @@ pip install -e .
 ```bash
 # Scan all your extensions (beautiful terminal output)
 vscan scan
+
+# Fast parallel scanning (2-5x faster, recommended for large extension sets)
+vscan scan --parallel
 
 # Save results as an interactive HTML report
 vscan scan --output report.html
@@ -493,6 +496,18 @@ vscan cache clear --force
 
 ## What's New
 
+<details open>
+<summary>Version 3.4.0 - Parallel Scanning Performance Boost</summary>
+
+- Parallel scanning with `--parallel` flag (2-5x faster)
+- Configurable worker count (2-5 workers, default: 3)
+- 4.88x speedup validated with 3 workers
+- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes
+- Thread-safe implementation with SQLite cache
+- Configuration file support for parallel settings
+- Works with both Rich and plain output modes
+</details>
+
 <details>
 <summary>Version 3.1.0 - Configuration & CSV Export</summary>
 
@@ -536,7 +551,8 @@ vscan cache clear --force
 
 ### Performance
 
-- **First scan:** ~1.5 seconds per extension (API rate limiting)
+- **Parallel mode (3 workers):** ~0.3 seconds per extension (4.88x faster)
+- **Sequential mode:** ~1.5 seconds per extension (API rate limiting)
 - **Cached scans:** Instant (50x faster)
 - **Memory usage:** < 100MB RAM
 - **Typical cache hit rate:** 70-90%

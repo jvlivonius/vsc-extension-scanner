@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # VS Code Extension Security Scanner CLI
 
-**Version:** 3.3.0
+**Version:** 3.4.0
 **Date:** 2025-10-25
-**Status:** Planning (v3.3.0) / Production Ready (v3.2.0) ✅
+**Status:** Production Ready (v3.4.0) ✅
 
 ---
 
@@ -11,9 +11,11 @@
 
 The VS Code Extension Security Scanner is a production-ready Python CLI tool that enables developers to perform comprehensive security audits of their installed VS Code extensions. The tool leverages the vscan.dev security analysis service to provide detailed vulnerability reports across multiple output formats.
 
-### Current Capabilities (v3.2.0) + Planned (v3.3.0)
+### Current Capabilities (v3.4.0)
 
-**Production Ready (v3.2.0):**
+**Production Ready (v3.4.0):**
+- **Parallel Scanning:** 2-5x performance improvement with 2-5 concurrent workers (opt-in)
+- **High Performance:** 4.88x speedup with 3 workers (66 extensions: 6min → 1.2min)
 - **Multi-Platform Support:** macOS, Windows, Linux
 - **Intelligent Caching:** SQLite-based caching with 28x performance improvement
 - **Rich Terminal UI:** Live progress bars, color-coded tables, interactive displays
@@ -24,13 +26,12 @@ The VS Code Extension Security Scanner is a production-ready Python CLI tool tha
 - **Architecture Compliance:** Zero layer violations, clean 3-layer separation
 - **Comprehensive Testing:** 92+ test scenarios, 100% success rate
 
-**Completed (v3.3.0):**
+**Previous Capabilities (v3.2.0-v3.3.3):**
 - **Enhanced Verbose Mode:** Security-focused standard output, operational details hidden by default
 - **Failed Extensions Tracking:** Clear reporting of which extensions failed to scan and why
 - **Custom Extensions Directory:** Configurable in ~/.vscanrc for persistent settings
-
-**Planned (v3.4.0):**
-- **Parallel Scanning (Optional):** 2-3x performance improvement with concurrent workers
+- **Date Tracking:** Installation and scan date tracking with sorting
+- **Enhanced Filtering:** Verification and vulnerability filters
 
 ---
 

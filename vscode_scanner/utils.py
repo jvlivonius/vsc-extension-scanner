@@ -164,7 +164,7 @@ def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path
 
         # For absolute paths, warn user but allow (per approved plan)
         if allow_absolute and p.is_absolute():
-            log(f"WARNING: Using absolute path for {path_type}: {p}", "WARNING")
+            log(f"Using absolute path for {path_type}: {p}", "WARNING")
 
         return True
     except (ValueError, OSError):

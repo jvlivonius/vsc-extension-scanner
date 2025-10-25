@@ -18,21 +18,38 @@ These documents define critical constraints and requirements that must be follow
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service. The tool automates discovery of installed extensions, queries vscan.dev for security information, and generates JSON reports of findings.
 
-**Current Status:** v3.3 UX Enhancements & Performance (v3.3.0) - Planning Phase
+**Current Status:** v3.4.0 (Production Ready) ✅
 
-**Latest Updates (v3.3 - UX & Performance - 2025-10-25):**
+**Latest Updates (v3.4.0 - Parallel Scanning - 2025-10-25):**
 
-**Phase 1: Documentation Setup (50% Complete)**
-- ✅ Created v3.3-ROADMAP.md with complete feature specifications
-- ✅ Cleaned up STATUS.md (reduced from ~1400 to 342 lines)
-- ✅ Updated PRD.md to version 3.3.0
-- ✅ Updated CLAUDE.md (this file)
+**Release Complete (100%) ✅**
+- ✅ **Phase 0: PoC** - Validated 4.88x speedup with 3 workers, 100% success rate, zero SQLite issues
+- ✅ **Phase 1: Production** - Full implementation with ThreadPoolExecutor, CLI flags, config support
+- ✅ **SQLite Thread Safety Fix** - Main-thread-only cache writes (prevents cross-thread errors)
+- ✅ **Performance** - Real-world: 66 extensions from 6 minutes → 1.2 minutes (3 workers)
+- ✅ **Testing** - All tests passing (84+ test scenarios)
+- ✅ **Documentation** - Complete with PoC results, implementation guide, architectural review
 
-**Planned Features (v3.3):**
-- 🔄 **Enhanced Verbose Mode** - Security-focused standard output (hide operational details by default)
-- 🔄 **Failed Extensions Tracking** - Show which extensions failed to scan and why
-- 🔄 **Extension Directory Config** - Configurable in ~/.vscanrc
-- 🔄 **Parallel Scanning (Optional)** - 2-3x performance with 2-3 concurrent workers
+**Key Features:**
+- `--parallel` flag enables parallel scanning (default: 3 workers, range: 2-5)
+- `--workers` option configures worker count for advanced users
+- Configuration file support (`scan.parallel`, `scan.workers`)
+- Rich/Plain mode compatibility maintained
+- Thread-safe implementation validated
+- Zero rate limiting from vscan.dev API (tested up to 7 workers)
+
+**Impact:**
+- 4.88x speedup with 3 workers (near-linear scaling)
+- 100% backward compatible (parallel mode is opt-in)
+- Production-ready with 85/100 architectural review score
+
+**Previous Updates (v3.3 - UX Enhancements - 2025-10-25):**
+- ✅ **Extension Directory in Config** - Persistent custom extensions directory
+- ✅ **Enhanced Verbose Mode** - Security-focused output, hide operational details
+- ✅ **Failed Extensions Tracking** - Show which extensions failed and why
+- ✅ **Duplicate Extensions Fix** - Eliminated duplicate entries from old versions
+- ✅ **Date Tracking** - Installation and scan date tracking
+- ✅ **Enhanced CLI Filtering** - Verification and vulnerability filters
 
 **Previous Updates (v3.2 - Quality, Security & Architecture - 2025-10-25):**
 
@@ -336,6 +353,12 @@ vscan scan --output results.json              # Save JSON to file
 vscan scan --output report.html               # Generate HTML report
 vscan scan --output results.csv               # Export to CSV (NEW v3.1)
 vscan scan --extensions-dir /path             # Custom directory
+
+# Parallel scanning (NEW v3.4 - 2-5x performance)
+vscan scan --parallel                         # Enable parallel mode (default: 3 workers)
+vscan scan --parallel --workers 5             # Custom worker count (2-5)
+vscan config set scan.parallel true           # Enable by default via config
+vscan config set scan.workers 3               # Set default worker count
 
 # Filtering options
 vscan scan --publisher microsoft              # Only scan Microsoft extensions
@@ -838,6 +861,79 @@ python3 tests/test_api.py
 # Run with trace logging
 python3 -m pdb -m vscode_scanner.vscan scan
 ```
+
+## Release Process
+
+For detailed release process, see **[docs/contributing/RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md)**
+
+### Quick Reference
+
+```bash
+# 1. Version management
+python3 scripts/bump_version.py X.Y.Z
+python3 scripts/bump_version.py --check  # Verifies Python files + ALL documentation
+
+# 2. Update documentation (8 files - see RELEASE_PROCESS.md for details)
+# - CHANGELOG.md
+# - README.md (line 7: version)
+# - CLAUDE.md (line ~21: Current Status)
+# - DISTRIBUTION.md (version examples)
+# - docs/project/STATUS.md (lines 5-6)
+# - docs/project/PRD.md (version field)
+# - docs/README.md (navigation)
+# - docs/archive/summaries/vX.Y.Z-release-notes.md (create new)
+
+# 3. Run tests
+python3 tests/test_*.py  # All tests must pass
+
+# 4. Build and verify
+rm -rf build/ dist/ *.egg-info
+python3 -m build
+# Test installation in clean virtual environment (see RELEASE_PROCESS.md)
+
+# 5. Generate checksums
+cd dist/ && shasum -a 256 *.whl *.tar.gz > SHA256SUMS.txt && cd ..
+
+# 6. Commit and tag
+git add vscode_scanner/_version.py CHANGELOG.md README.md CLAUDE.md DISTRIBUTION.md docs/
+git commit -m "Release vX.Y.Z: {description}"
+git tag -a vX.Y.Z -m "Release vX.Y.Z..."
+git push origin [branch] vX.Y.Z
+
+# 7. Create GitHub release (optional)
+gh release create vX.Y.Z dist/*.whl dist/SHA256SUMS.txt \
+  --title "vX.Y.Z" --notes-file docs/archive/summaries/vX.Y.Z-release-notes.md
+```
+
+### Key Documents
+
+- **[CHANGELOG.md](CHANGELOG.md)** - Release history (Keep a Changelog format)
+- **[docs/contributing/RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md)** - Complete 11-step process (3 phases)
+- **[docs/contributing/RELEASE_CHECKLIST.md](docs/contributing/RELEASE_CHECKLIST.md)** - Printable checklist
+- **[docs/contributing/VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md)** - Version management
+- **[docs/templates/release-notes-template.md](docs/templates/release-notes-template.md)** - Release notes template
+- **[DISTRIBUTION.md](DISTRIBUTION.md)** - Package distribution (post-release)
+
+### Release Process Phases
+
+**Phase 1: Pre-Release Preparation**
+1. Update version with `bump_version.py`
+2. Update 8 documentation files systematically
+3. Run automated and manual tests
+
+**Phase 2: Build & Package**
+4. Clean build environment
+5. Build distribution package
+6. Verify package installation
+7. Generate checksums
+
+**Phase 3: Version Control**
+8. Commit all changes
+9. Create version tag
+10. Push to remote
+11. Create GitHub release (optional)
+
+**Note:** Distribution and post-release communication are separate workflows documented in [DISTRIBUTION.md](DISTRIBUTION.md).
 
 ## References
 

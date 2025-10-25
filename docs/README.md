@@ -8,11 +8,13 @@ Complete documentation for the VS Code Extension Security Scanner project.
 |----------|---------|----------|
 | [../README.md](../README.md) | Project overview and quick start | All users |
 | [../CLAUDE.md](../CLAUDE.md) | Development guidance and specifications | Claude Code / Developers |
+| [../CHANGELOG.md](../CHANGELOG.md) | Release history (Keep a Changelog format) | All users |
 | [project/STATUS.md](project/STATUS.md) | Current status and roadmap | All users |
 | [guides/ARCHITECTURE.md](guides/ARCHITECTURE.md) | System architecture and design principles | Developers / Architects |
 | [guides/SECURITY.md](guides/SECURITY.md) | Security requirements and best practices | Developers / Security |
 | [guides/ERROR_HANDLING.md](guides/ERROR_HANDLING.md) | Error handling strategy and patterns | Developers |
 | [guides/TESTING.md](guides/TESTING.md) | Testing guidelines and best practices | Contributors / QA |
+| [contributing/RELEASE_PROCESS.md](contributing/RELEASE_PROCESS.md) | Complete release process (11 steps) | Maintainers |
 
 ## Documentation Structure
 
@@ -49,12 +51,14 @@ docs/
     │   ├── v1.0-v2.0-phase3-testing.md
     │   ├── v1.0-v2.0-phase4-enhanced-data.md
     │   ├── v3.1-roadmap.md
-    │   └── v3.2-roadmap.md
+    │   ├── v3.2-roadmap.md
+    │   └── v3.4-roadmap.md
     ├── summaries/                 # Release notes and completion reports (what we built)
     │   ├── v2.0-phase3-release-notes.md
     │   ├── v2.0-phase4-release-notes.md
     │   ├── v3.0-release-notes.md
-    │   └── v3.1-release-notes.md
+    │   ├── v3.1-release-notes.md
+    │   └── v3.4.0-release-notes.md
     └── reviews/                   # Analysis and research (how we evaluated)
         ├── v1.0-prd-original.md
         ├── v2.0-enhanced-data-integration-review.md
@@ -65,7 +69,11 @@ docs/
         ├── v3.0-macos-testing-review.md
         ├── v3.2-phase1-review.md
         ├── v3.2-phase2-review.md
-        └── v3.2-phase3-review.md
+        ├── v3.2-phase3-review.md
+        ├── v3.4-parallel-scan-poc-guide.md
+        ├── v3.4-parallel-scan-poc-results.md
+        ├── v3.4-architectural-review.md
+        └── v3.4-phase1-implementation-plan.md
 ```
 
 ---
@@ -167,6 +175,19 @@ docs/
 
 ## Contributing
 
+**[contributing/RELEASE_PROCESS.md](contributing/RELEASE_PROCESS.md)** - Release process guide
+- Complete 11-step release process (3 phases)
+- Pre-release preparation (version, documentation, testing)
+- Build & package (clean build, verification, checksums)
+- Version control (commit, tag, push, GitHub release)
+- Documentation update checklist (8 specific files)
+
+**[contributing/RELEASE_CHECKLIST.md](contributing/RELEASE_CHECKLIST.md)** - Release checklist
+- Printable step-by-step release checklist
+- Quick reference for release execution
+- Verification checkpoints and quality gates
+- Post-release notes and improvement tracking
+
 **[contributing/TESTING_CHECKLIST.md](contributing/TESTING_CHECKLIST.md)** - Testing checklist
 - API behavior tests
 - Extension discovery tests
@@ -178,6 +199,7 @@ docs/
 **[contributing/VERSION_MANAGEMENT.md](contributing/VERSION_MANAGEMENT.md)** - Version management guide
 - Centralized version system (_version.py)
 - How to bump versions (semantic versioning)
+- Enhanced --check command (Python + documentation validation)
 - Validation and troubleshooting
 - Version history
 

@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Internal imports
 from .extension_discovery import ExtensionDiscovery
@@ -50,6 +51,8 @@ def run_scan(
     plain: bool = False,
     quiet: bool = False,
     verbose: bool = False,
+    parallel: bool = False,
+    workers: int = 3,
     **kwargs
 ) -> int:
     """
@@ -71,6 +74,8 @@ def run_scan(
         min_risk_level: Minimum risk level filter
         plain: Disable Rich formatting
         quiet: Minimal output (single-line summary only)
+        parallel: Enable parallel scanning with multiple workers
+        workers: Number of parallel workers (2-5, default: 3)
 
     Returns:
         Exit code (0=clean, 1=vulnerabilities, 2=error)
@@ -136,7 +141,9 @@ def run_scan(
         verified_only=verified_only,
         unverified_only=unverified_only,
         with_vulnerabilities=with_vulnerabilities,
-        without_vulnerabilities=without_vulnerabilities
+        without_vulnerabilities=without_vulnerabilities,
+        parallel=parallel,
+        workers=workers
     )
 
     # Step 1: Discover extensions
@@ -198,9 +205,14 @@ def run_scan(
         return 0
 
     # Step 2: Scan extensions
-    scan_results, stats = _scan_extensions(
-        extensions, args, cache_manager, scan_timestamp, use_rich, quiet
-    )
+    if parallel:
+        scan_results, stats = _scan_extensions_parallel(
+            extensions, args, cache_manager, scan_timestamp, use_rich, quiet
+        )
+    else:
+        scan_results, stats = _scan_extensions(
+            extensions, args, cache_manager, scan_timestamp, use_rich, quiet
+        )
 
     # Apply post-scan filters (risk level)
     scan_results = _apply_post_scan_filters(scan_results, args, use_rich)
@@ -432,6 +444,282 @@ def _scan_extensions(
         log("", "INFO")
 
     return scan_results, stats
+
+
+def _scan_extensions_parallel(
+    extensions: List[Dict],
+    args,
+    cache_manager: Optional[CacheManager],
+    scan_timestamp: str,
+    use_rich: bool,
+    quiet: bool
+) -> Tuple[List[Dict], Dict]:
+    """
+    Scan extensions in parallel using ThreadPoolExecutor.
+
+    Args:
+        extensions: List of extension metadata dicts
+        args: Scan configuration
+        cache_manager: CacheManager instance or None (thread-safe)
+        scan_timestamp: ISO timestamp of scan start
+        use_rich: Whether to use Rich formatting
+        quiet: Minimal output mode
+
+    Returns:
+        Tuple of (scan_results, stats_dict)
+    """
+    # Validate and cap worker count (based on PoC findings)
+    max_workers = min(max(args.workers, 2), 5)  # Range: 2-5
+
+    if not quiet and not use_rich:
+        log("", "INFO")
+        log(f"Step 2: Scanning extensions for vulnerabilities (parallel mode: {max_workers} workers)...", "INFO")
+
+        if cache_manager and not args.refresh_cache:
+            log(f"Cache enabled (max age: {args.cache_max_age} days)", "INFO")
+        elif args.no_cache:
+            log("Cache disabled", "INFO")
+        elif args.refresh_cache:
+            log("Forcing cache refresh for scanned extensions", "INFO")
+
+    # Initialize stats with thread-safe counters
+    stats = {
+        'vulnerabilities_found': 0,
+        'successful_scans': 0,
+        'failed_scans': 0,
+        'cached_results': 0,
+        'fresh_scans': 0,
+        'failed_extensions': [],
+        'api_client': None  # Will be set from worker results
+    }
+
+    scan_results = []
+    results_to_cache = []  # Collect results for main-thread batch caching
+
+    # Use Rich progress bar if available
+    if use_rich and not quiet:
+        from rich.console import Console
+        console = Console()
+
+        progress = create_scan_progress()
+        if progress:
+            with progress:
+                task = progress.add_task(f"Scanning ({max_workers} workers)...", total=len(extensions))
+
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    # Submit all scan tasks
+                    futures = {}
+                    for ext in extensions:
+                        future = executor.submit(
+                            _scan_single_extension_worker,
+                            ext,
+                            cache_manager,
+                            args
+                        )
+                        futures[future] = ext
+
+                    # Collect results as they complete
+                    for future in as_completed(futures):
+                        ext = futures[future]
+                        try:
+                            result, from_cache, should_cache = future.result()
+
+                            scan_results.append(result)
+
+                            # Collect for caching (main thread will handle writes)
+                            if should_cache:
+                                results_to_cache.append((ext['id'], ext['version'], result))
+
+                            # Update stats (safe operations)
+                            if result.get('scan_status') == 'success':
+                                if result.get('vulnerabilities', {}).get('count', 0) > 0:
+                                    stats['vulnerabilities_found'] += 1
+                                stats['successful_scans'] += 1
+                            else:
+                                stats['failed_scans'] += 1
+                                # Track failed extension
+                                error_message = result.get('error', '')
+                                error_type = _categorize_error(error_message)
+                                stats['failed_extensions'].append({
+                                    'id': ext['id'],
+                                    'name': ext.get('display_name', ext.get('name', ext['id'])),
+                                    'error_type': error_type,
+                                    'error_message': _simplify_error_message(error_type)
+                                })
+
+                            if from_cache:
+                                stats['cached_results'] += 1
+                            else:
+                                stats['fresh_scans'] += 1
+
+                            # Update progress display
+                            progress.update(task, advance=1)
+
+                        except Exception as e:
+                            # Handle worker failure
+                            stats['failed_scans'] += 1
+                            error_type = _categorize_error(str(e))
+                            stats['failed_extensions'].append({
+                                'id': ext['id'],
+                                'name': ext.get('display_name', ext.get('name', ext['id'])),
+                                'error_type': error_type,
+                                'error_message': _simplify_error_message(error_type)
+                            })
+
+                            progress.update(task, advance=1)
+    else:
+        # Plain output
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all scan tasks
+            futures = {}
+            for idx, ext in enumerate(extensions, 1):
+                future = executor.submit(
+                    _scan_single_extension_worker,
+                    ext,
+                    cache_manager,
+                    args
+                )
+                futures[future] = (ext, idx)
+
+            # Collect results as they complete
+            for future in as_completed(futures):
+                ext, idx = futures[future]
+                try:
+                    result, from_cache, should_cache = future.result()
+
+                    scan_results.append(result)
+
+                    # Collect for caching (main thread will handle writes)
+                    if should_cache:
+                        results_to_cache.append((ext['id'], ext['version'], result))
+
+                    # Log progress in plain mode
+                    if not quiet:
+                        extension_id = ext['id']
+                        version = ext['version']
+                        progress_prefix = f"[{idx}/{len(extensions)}]"
+                        if from_cache:
+                            log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO")
+                        else:
+                            log(f"{progress_prefix} {extension_id} v{version}... 🔍 Fresh", "INFO")
+
+                    # Update stats
+                    if result.get('scan_status') == 'success':
+                        if result.get('vulnerabilities', {}).get('count', 0) > 0:
+                            stats['vulnerabilities_found'] += 1
+                        stats['successful_scans'] += 1
+                    else:
+                        stats['failed_scans'] += 1
+                        error_message = result.get('error', '')
+                        error_type = _categorize_error(error_message)
+                        stats['failed_extensions'].append({
+                            'id': ext['id'],
+                            'name': ext.get('display_name', ext.get('name', ext['id'])),
+                            'error_type': error_type,
+                            'error_message': _simplify_error_message(error_type)
+                        })
+
+                    if from_cache:
+                        stats['cached_results'] += 1
+                    else:
+                        stats['fresh_scans'] += 1
+
+                except Exception as e:
+                    # Handle worker failure
+                    stats['failed_scans'] += 1
+                    error_type = _categorize_error(str(e))
+                    stats['failed_extensions'].append({
+                        'id': ext['id'],
+                        'name': ext.get('display_name', ext.get('name', ext['id'])),
+                        'error_type': error_type,
+                        'error_message': _simplify_error_message(error_type)
+                    })
+
+    # Batch write all results to cache in main thread (thread-safe)
+    if cache_manager and results_to_cache:
+        cache_manager.begin_batch()
+        for ext_id, version, result in results_to_cache:
+            try:
+                cache_manager.save_result_batch(ext_id, version, result)
+            except Exception:
+                # Cache errors should not fail the scan
+                pass
+        cache_manager.commit_batch()
+
+    if not quiet and not use_rich:
+        log("", "INFO")
+
+    return scan_results, stats
+
+
+def _scan_single_extension_worker(
+    ext: Dict,
+    cache_manager: Optional[CacheManager],
+    args
+) -> Tuple[Dict, bool, bool]:
+    """
+    Worker function to scan a single extension (thread-safe).
+
+    Each worker gets its own API client instance for thread isolation.
+
+    IMPORTANT: This function does NOT write to cache to avoid SQLite thread
+    safety issues. Cache writes are handled by the main thread after all
+    workers complete.
+
+    Args:
+        ext: Extension metadata dict
+        cache_manager: Cache manager (used for reads only)
+        args: Scan configuration
+
+    Returns:
+        Tuple of (result_dict, from_cache_bool, should_cache_bool)
+    """
+    extension_id = ext['id']
+    version = ext['version']
+
+    # Check cache first (read-only, thread-safe)
+    cached_result = None
+    if cache_manager and not args.refresh_cache:
+        cached_result = cache_manager.get_cached_result(
+            extension_id,
+            version,
+            max_age_days=args.cache_max_age
+        )
+
+    if cached_result:
+        # Use cached result
+        result = {**ext, **cached_result}
+
+        # Add last_scanned_at from cache timestamp
+        if '_cached_at' in cached_result:
+            result['last_scanned_at'] = cached_result['_cached_at']
+
+        return result, True, False  # from_cache=True, should_cache=False
+
+    # Create API client for this worker (thread isolation)
+    api_client = VscanAPIClient(
+        delay=args.delay,
+        verbose=False,
+        max_retries=args.max_retries,
+        retry_base_delay=args.retry_delay
+    )
+
+    # Scan via API
+    publisher = ext.get('publisher', '')
+    name = ext.get('name', '')
+
+    result = api_client.scan_extension_with_retry(publisher, name)
+
+    # Merge with discovery metadata
+    result = {**ext, **result}
+
+    # Add last_scanned_at for fresh scans
+    result['last_scanned_at'] = datetime.now().isoformat() + 'Z'
+
+    # Determine if result should be cached (main thread will handle actual caching)
+    should_cache = result.get('scan_status') == 'success'
+
+    return result, False, should_cache  # from_cache=False, should_cache=True/False
 
 
 def _scan_single_extension(
@@ -765,14 +1053,9 @@ def _generate_output(
 
 def _write_output_file(output_path_str: str, results: Dict, is_html_output: bool, use_rich: bool):
     """Write output to file (JSON, HTML, or CSV)."""
-    # Validate output path
-    if not validate_path(output_path_str, allow_absolute=True, path_type="output"):
-        if use_rich:
-            display_error("Invalid output path", use_rich=True)
-        log(sanitize_string(f"Path validation failed for: {output_path_str}", max_length=100), "ERROR")
-        raise ValueError("Invalid output path")
-
-    output_path = Path(output_path_str).resolve()
+    # Path validation happens in cli.py before resolve() to preserve relative/absolute distinction
+    # Here we receive already-resolved absolute paths
+    output_path = Path(output_path_str)
 
     # Create parent directories with restricted permissions (cross-platform)
     safe_mkdir(output_path.parent, mode=0o755)

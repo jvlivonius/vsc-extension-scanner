@@ -2,23 +2,49 @@
 
 **Project:** VS Code Extension Security Scanner
 **Last Updated:** 2025-10-25
-**Current Version:** 3.3.3
+**Current Version:** 3.4.0
 **Schema Version:** 2.1
 **Status:** Production Ready ✅
 
 ---
 
-## Next Release (v3.4 - Planning)
+## Current Release (v3.4.0 - Complete ✅)
 
-**Focus:** Performance Optimization
-**Start Date:** 2025-10-25
-**Target Completion:** TBD
+**Version:** 3.4.0
+**Release Date:** 2025-10-25
+**Focus:** Performance Optimization with Parallel Scanning
 
-### Objective
+### Achievements
 
-1. **Parallel Scanning** - 2-3x performance improvement with 2-3 concurrent workers (opt-in feature)
+**✅ Parallel Scanning Feature (100% Complete)**
+- Parallel mode with `--parallel` flag (2-5 workers, default: 3)
+- 4.88x speedup validated via PoC (30 extensions)
+- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes
+- Thread-safe implementation with main-thread-only cache writes
+- Configuration file support for parallel settings
+- Rich/Plain mode compatibility maintained
+- Zero rate limiting from vscan.dev API (tested up to 7 workers)
 
-**See:** [docs/project/v3.4-ROADMAP.md](v3.4-ROADMAP.md) for complete specifications
+**See:** [docs/archive/plans/v3.4-roadmap.md](../archive/plans/v3.4-roadmap.md) (archived)
+
+---
+
+## Next Release (v3.4.1 - Planning)
+
+**Focus:** Technical Debt & Code Quality
+**Target Completion:** 1-2 weeks after v3.4.0
+
+### Objectives
+
+1. **Code Refactoring** - Eliminate duplication (~300 lines)
+2. **Thread Safety** - Guarantee thread-safe stats collection
+3. **Robustness** - Transactional cache writes (fault tolerance)
+4. **Documentation** - Parallel architecture documentation
+5. **Testing** - Integration tests with real API
+
+**Estimated Effort:** 8 days (~1.5 weeks)
+
+**See:** [docs/project/v3.4-ROADMAP.md](v3.4-ROADMAP.md) Phase 2 for details
 
 ---
 
@@ -183,9 +209,9 @@
 
 | Metric | Value |
 |--------|-------|
-| **Current Version** | 3.3.3 ✅ |
-| **Next Version** | 3.4.0 (Planning) |
-| **Production Ready** | Yes ✅ (v3.3.3) |
+| **Current Version** | 3.4.0 ✅ |
+| **Next Version** | 3.4.1 (Planning) |
+| **Production Ready** | Yes ✅ (v3.4.0) |
 | **Total Code** | 10,000+ lines (Python) |
 | **Documentation** | 21,000+ lines (Markdown) |
 | **Modules** | 14 (13 core + 1 version) |
@@ -204,7 +230,8 @@
 
 | Version | Date | Description | Status |
 |---------|------|-------------|--------|
-| **v3.4.0** | TBD | Performance Optimization (Parallel Scanning) | 🔄 Planning |
+| **v3.4.1** | TBD | Technical Debt & Code Quality | 🔄 Planning |
+| **v3.4.0** | 2025-10-25 | Performance Optimization (Parallel Scanning) | ✅ Complete |
 | **v3.3.3** | 2025-10-25 | Duplicate Extensions Fix | ✅ Complete |
 | **v3.3.2** | 2025-10-25 | Date Sorting & Display Fix | ✅ Complete |
 | **v3.3.1** | 2025-10-25 | Date Tracking & Filter Fix (Schema 2.1) | ✅ Complete |
