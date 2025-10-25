@@ -163,7 +163,7 @@ def test_full_scan_workflow():
             }
         )
 
-        assert output["schema_version"] == "2.0", "Expected schema version 2.0"
+        assert output["schema_version"] == "2.1", "Expected schema version 2.1"
         assert output["summary"]["total_extensions_scanned"] == 3
         assert len(output["extensions"]) == 3
         print("✓ Generated JSON output")

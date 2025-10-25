@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple, Union
 from datetime import datetime, timedelta
 
-from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message
+from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message, validate_path
 from ._version import SCHEMA_VERSION
 from .constants import DEFAULT_CACHE_MAX_AGE_DAYS, CACHE_REPORT_MAX_AGE_DAYS
 from .types import CacheWarning, CacheError, CacheInfo
@@ -41,17 +41,18 @@ class CacheManager:
         # Initialization messages (warnings, errors, info from setup)
         self._init_messages = []
         if cache_dir:
-            # Validate cache directory path (cross-platform)
-            # Block parent directory traversal
-            if ".." in cache_dir:
-                raise ValueError(f"[E200] Invalid cache directory path: {cache_dir}")
+            # Validate cache directory using unified validation (v3.5.1)
+            # Blocks: URL encoding, dangerous chars, parent traversal, system directories
+            # Expands: shell variables (~/, $HOME/, $USER/)
+            try:
+                validate_path(cache_dir, allow_absolute=True, path_type="cache directory")
+            except ValueError as e:
+                raise ValueError(f"[E200] {str(e)}")
 
-            # Check if path is in restricted system directory
-            # Allow temp directories for testing
-            if is_restricted_path(cache_dir) and not is_temp_directory(cache_dir):
-                raise ValueError(f"[E200] Invalid cache directory path: {cache_dir}")
-
-            cache_path = Path(cache_dir).expanduser().resolve()
+            # Expand and resolve path (validation already expanded for checking)
+            import os
+            expanded = os.path.expandvars(os.path.expanduser(cache_dir))
+            cache_path = Path(expanded).resolve()
 
             self.cache_dir = cache_path
         else:

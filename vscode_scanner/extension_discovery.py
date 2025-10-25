@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from .utils import log, sanitize_string, sanitize_error_message, is_restricted_path, is_temp_directory
+from .utils import log, sanitize_string, sanitize_error_message, is_restricted_path, is_temp_directory, validate_path
 from .constants import MAX_PACKAGE_JSON_SIZE
 
 
@@ -119,17 +119,18 @@ class ExtensionDiscovery:
             FileNotFoundError: If extensions directory cannot be found
         """
         if self.custom_dir:
-            # Validate path doesn't contain dangerous patterns (cross-platform)
-            # Block parent directory traversal
-            if ".." in self.custom_dir:
-                raise FileNotFoundError(f"[E300] Invalid or restricted path: {self.custom_dir}")
+            # Validate path using unified validation (v3.5.1)
+            # Blocks: URL encoding, dangerous chars, parent traversal, system directories
+            # Expands: shell variables (~/, $HOME/, $USER/)
+            try:
+                validate_path(self.custom_dir, allow_absolute=True, path_type="extensions directory")
+            except ValueError as e:
+                raise FileNotFoundError(f"[E300] {str(e)}")
 
-            # Check if path is in restricted system directory
-            # Allow temp directories for testing
-            if is_restricted_path(self.custom_dir) and not is_temp_directory(self.custom_dir):
-                raise FileNotFoundError(f"[E300] Invalid or restricted path: {self.custom_dir}")
-
-            custom_path = Path(self.custom_dir).expanduser().resolve()
+            # Expand and resolve path (validation already expanded for checking)
+            import os
+            expanded = os.path.expandvars(os.path.expanduser(self.custom_dir))
+            custom_path = Path(expanded).resolve()
 
             if not custom_path.exists():
                 raise FileNotFoundError(f"[E301] Custom extensions directory not found: {custom_path}")

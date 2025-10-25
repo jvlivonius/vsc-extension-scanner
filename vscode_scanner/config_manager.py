@@ -64,6 +64,7 @@ from typing import Dict, Any, Optional, Tuple, List
 import sys
 
 from .types import ConfigWarning
+from .utils import validate_path
 from .constants import (
     DEFAULT_REQUEST_DELAY,
     DEFAULT_MAX_RETRIES,
@@ -332,7 +333,15 @@ def _parse_config_value(section: str, option: str, value_str: str) -> Any:
             raise ValueError(f"Invalid choice: {value}. Must be one of: {', '.join(choices)}")
         return value
 
-    elif value_type in ('string', 'path'):
+    elif value_type == 'path':
+        # Validate path using unified validation (v3.5.1)
+        # Blocks: URL encoding, dangerous chars, parent traversal, system directories
+        # Expands: shell variables (~/, $HOME/, $USER/)
+        path_value = value_str.strip()
+        validate_path(path_value, allow_absolute=True, path_type=option)
+        return path_value
+
+    elif value_type == 'string':
         return value_str.strip()
 
     else:

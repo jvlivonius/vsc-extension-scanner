@@ -312,9 +312,27 @@ def scan(
         typer.echo("Error: --no-cache and --refresh-cache cannot be used together", err=True)
         raise typer.Exit(code=2)
 
-    # Validate output path BEFORE resolving to preserve relative/absolute distinction
+    # Validate paths BEFORE resolving to preserve relative/absolute distinction (v3.5.1)
     if output:
-        validate_path(str(output), allow_absolute=True, path_type="output")
+        try:
+            validate_path(str(output), allow_absolute=True, path_type="output")
+        except ValueError as e:
+            typer.echo(f"Error: {str(e)}", err=True)
+            raise typer.Exit(code=2)
+
+    if extensions_dir:
+        try:
+            validate_path(str(extensions_dir), allow_absolute=True, path_type="extensions directory")
+        except ValueError as e:
+            typer.echo(f"Error: {str(e)}", err=True)
+            raise typer.Exit(code=2)
+
+    if cache_dir:
+        try:
+            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+        except ValueError as e:
+            typer.echo(f"Error: {str(e)}", err=True)
+            raise typer.Exit(code=2)
 
     # Convert Path objects to strings for scanner
     extensions_dir_str = str(extensions_dir.resolve()) if extensions_dir else None
@@ -503,6 +521,14 @@ def cache_stats(
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2)
 
+    # Validate cache directory path (v3.5.1)
+    if cache_dir:
+        try:
+            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+        except ValueError as e:
+            typer.echo(f"Error: {str(e)}", err=True)
+            raise typer.Exit(code=2)
+
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
     use_rich = should_use_rich(plain_flag=plain)
 
@@ -579,6 +605,14 @@ def cache_clear(
         [dim]# Clear custom cache directory[/dim]
         $ vscan cache clear --cache-dir /custom/path
     """
+    # Validate cache directory path (v3.5.1)
+    if cache_dir:
+        try:
+            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+        except ValueError as e:
+            typer.echo(f"Error: {str(e)}", err=True)
+            raise typer.Exit(code=2)
+
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
     use_rich = should_use_rich(plain_flag=plain)
 
@@ -1147,6 +1181,14 @@ def report(
     except typer.BadParameter as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2)
+
+    # Validate cache directory path (v3.5.1)
+    if cache_dir:
+        try:
+            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+        except ValueError as e:
+            typer.echo(f"Error: {str(e)}", err=True)
+            raise typer.Exit(code=2)
 
     # Convert paths to strings
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None

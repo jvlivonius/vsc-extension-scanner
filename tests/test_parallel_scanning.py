@@ -148,7 +148,9 @@ class TestWorkerIsolation(unittest.TestCase):
             max_retries=0,
             retry_delay=0.1,
             cache_max_age=7,
-            refresh_cache=False
+            refresh_cache=False,
+            no_cache=False,
+            workers=3
         )
 
     def tearDown(self):
@@ -459,7 +461,8 @@ class TestResultConsistency(unittest.TestCase):
                 retry_delay=0.1,
                 cache_max_age=7,
                 refresh_cache=False,
-                no_cache=False
+                no_cache=False,
+                workers=1
             )
 
             seq_results, seq_stats = _scan_extensions(

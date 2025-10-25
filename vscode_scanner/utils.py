@@ -63,6 +63,8 @@ def get_restricted_paths():
     """
     Get list of restricted system paths based on platform.
 
+    Enhanced in v3.5.1 with additional critical system paths.
+
     Returns:
         List of restricted path prefixes for the current platform
     """
@@ -75,11 +77,18 @@ def get_restricted_paths():
             "C:\\Program Files",
             "C:\\Program Files (x86)",
             "C:\\ProgramData",
+            "C:\\System32",
             "C:\\$",  # System volume information
         ]
-    else:  # Unix-like (macOS, Linux)
+    elif system == "Darwin":  # macOS
+        # macOS system directories
+        return [
+            "/etc", "/sys", "/boot", "/dev", "/proc", "/var", "/root",
+            "/System", "/Library/System"
+        ]
+    else:  # Linux and other Unix-like
         # Unix/Linux system directories
-        return ["/etc", "/sys", "/boot", "/dev", "/proc", "/var"]
+        return ["/etc", "/sys", "/boot", "/dev", "/proc", "/var", "/root"]
 
 
 def is_temp_directory(path_str: str) -> bool:
@@ -136,39 +145,90 @@ def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path
     """
     Validate that a path doesn't contain dangerous patterns.
 
+    Enhanced in v3.5.1 with:
+    - URL encoding detection (prevents %2e%2e%2f traversal)
+    - Shell variable expansion (~/, $HOME/, etc.)
+    - Critical system path blocking
+    - Helpful error messages via ValueError
+
     Args:
-        path: Path to validate
+        path: Path to validate (supports shell expansion like ~/, $HOME/)
         allow_absolute: Whether to allow absolute paths (default: True)
-        path_type: Type of path for warning messages (e.g., "output", "cache")
+        path_type: Type of path for error messages (e.g., "output", "cache")
+
+    Raises:
+        ValueError: If path contains dangerous patterns or resolves to restricted location
 
     Returns:
-        True if path is safe, False otherwise
+        True if path is valid (for backward compatibility with existing code)
+
+    Examples:
+        >>> validate_path("~/Documents/results.json")  # OK: expands to home
+        True
+        >>> validate_path("/etc/passwd")  # Raises: system directory
+        ValueError: Access to system directories not allowed
+        >>> validate_path("%2e%2e%2f")  # Raises: URL encoding
+        ValueError: URL-encoded paths are not allowed
     """
+    import os
+
     if not path:
-        return False
+        raise ValueError(f"{path_type.capitalize()} path cannot be empty")
+
+    # Block URL-encoded paths (security: prevent encoded traversal like %2e%2e%2f)
+    if '%' in path:
+        raise ValueError(
+            f"URL-encoded paths are not allowed. "
+            f"Found '%' character in {path_type} path: {path}"
+        )
 
     # Block dangerous characters that enable command injection
     dangerous_chars = ['\0', '|', ';', '`', '\n', '\r']
     for char in dangerous_chars:
         if char in path:
-            return False
+            raise ValueError(
+                f"{path_type.capitalize()} path contains dangerous character: {repr(char)}. "
+                f"Characters like null bytes, pipes, and backticks are not allowed."
+            )
 
     # Block parent directory traversal attempts
     if '..' in path:
-        return False
+        raise ValueError(
+            f"Parent directory traversal (..) not allowed in {path_type} path: {path}"
+        )
+
+    # Expand shell variables and user home directory for validation
+    # This ensures we check the actual target path, not the unexpanded form
+    # Examples: ~/docs -> /home/user/docs, $HOME/data -> /home/user/data
+    try:
+        expanded_path = os.path.expandvars(os.path.expanduser(path))
+    except Exception as e:
+        raise ValueError(f"Failed to expand {path_type} path '{path}': {str(e)}")
 
     # Validate it's a valid path format
     try:
-        from pathlib import Path as PathLib
-        p = PathLib(path).expanduser()
+        p = PathLib(expanded_path)
+
+        # Check if expanded path resolves to a critical system directory
+        if is_restricted_path(str(p)):
+            # Allow temp directories (legitimate use case for output files)
+            if not is_temp_directory(str(p)):
+                raise ValueError(
+                    f"Access to system directories not allowed. "
+                    f"{path_type.capitalize()} path resolves to restricted location: {p}"
+                )
 
         # For absolute paths, warn user but allow (per approved plan)
         if allow_absolute and p.is_absolute():
             log(f"Using absolute path for {path_type}: {p}", "WARNING")
 
         return True
-    except (ValueError, OSError):
-        return False
+
+    except ValueError:
+        # Re-raise our own ValueError messages unchanged
+        raise
+    except (OSError, Exception) as e:
+        raise ValueError(f"Invalid {path_type} path format '{path}': {str(e)}")
 
 
 def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
@@ -514,8 +574,17 @@ def main():
     print(f"  3665.0s -> {format_duration(3665.0)}")
 
     print(f"\nPath validation:")
-    print(f"  /home/user/.vscode -> {validate_path('/home/user/.vscode')}")
-    print(f"  ../../../etc/passwd -> {validate_path('../../../etc/passwd')}")
+    try:
+        result = validate_path('/home/user/.vscode')
+        print(f"  /home/user/.vscode -> {result}")
+    except ValueError as e:
+        print(f"  /home/user/.vscode -> ERROR: {e}")
+
+    try:
+        result = validate_path('../../../etc/passwd')
+        print(f"  ../../../etc/passwd -> {result}")
+    except ValueError as e:
+        print(f"  ../../../etc/passwd -> ERROR: {e}")
 
     print(f"\nText truncation:")
     long_text = "This is a very long text that should be truncated to a reasonable length for display purposes"

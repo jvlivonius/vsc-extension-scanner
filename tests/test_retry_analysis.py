@@ -178,7 +178,15 @@ class TestRetryMechanismAnalysis(unittest.TestCase):
                 }
 
                 ext = {'id': 'test.ext', 'version': '1.0.0', 'publisher': 'test', 'name': 'ext', 'path': '/test'}
-                stats = {'failed_scans': 0, 'successful_scans': 0, 'fresh_scans': 0, 'vulnerabilities_found': 0}
+                stats = {
+                    'failed_scans': 0,
+                    'successful_scans': 0,
+                    'fresh_scans': 0,
+                    'vulnerabilities_found': 0,
+                    'failed_extensions': [],
+                    'cached_results': 0,
+                    'api_client': None
+                }
                 scan_results = []
 
                 # Simulate scanning
