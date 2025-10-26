@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # VS Code Extension Security Scanner CLI
 
-**Version:** 3.5.0
+**Version:** 3.5.1
 **Date:** 2025-10-26
-**Status:** Production Ready (v3.5.0) ✅
+**Status:** Production Ready (v3.5.1) ✅
 
 ---
 
@@ -11,9 +11,9 @@
 
 The VS Code Extension Security Scanner is a production-ready Python CLI tool that enables developers to perform comprehensive security audits of their installed VS Code extensions. The tool leverages the vscan.dev security analysis service to provide detailed vulnerability reports across multiple output formats.
 
-### Current Capabilities (v3.5.0)
+### Current Capabilities (v3.5.1)
 
-**Production Ready (v3.5.0):** 🚨 BREAKING CHANGES
+**Production Ready (v3.5.1):** Security Hardening + Technical Debt
 - **Parallel by Default:** 4.88x speedup automatically with 3 workers (no flags needed!)
 - **High Performance:** 66 extensions: 6min → 1.2min (by default, not opt-in)
 - **Simplified API:** Removed `--parallel` flag, single code path (~100 lines eliminated)

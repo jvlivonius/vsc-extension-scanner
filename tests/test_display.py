@@ -98,12 +98,6 @@ class TestTableGeneration(unittest.TestCase):
         # Verify table has columns (count may vary by version)
         self.assertGreater(len(table.columns), 0)
 
-    @unittest.skip("Obsolete: Rich is now a required dependency")
-    def test_create_results_table_no_rich(self):
-        """Test that table returns None when Rich is not available."""
-        table = display.create_results_table(self.sample_results)
-        self.assertIsNone(table)
-
     def test_create_results_table_with_limit(self):
         """Test table creation with result limiting."""
         # Create list with more than 10 items
@@ -163,13 +157,6 @@ class TestScanDashboard(unittest.TestCase):
         panel = dashboard.generate_panel()
         self.assertIsNotNone(panel)
 
-    @unittest.skip("Obsolete: Rich is now a required dependency")
-    def test_dashboard_no_rich(self):
-        """Test dashboard returns None when Rich not available."""
-        dashboard = display.ScanDashboard(total_extensions=10)
-        panel = dashboard.generate_panel()
-        self.assertIsNone(panel)
-
 
 class TestDisplayFunctions(unittest.TestCase):
     """Test display helper functions."""
@@ -217,19 +204,6 @@ class TestProgressBar(unittest.TestCase):
         """Test creating scan progress bar."""
         progress = display.create_scan_progress()
         self.assertIsNotNone(progress)
-
-    @unittest.skip("Obsolete: verbose parameter removed in v3.0")
-    def test_create_scan_progress_verbose(self):
-        """Test creating verbose progress bar."""
-        progress = display.create_scan_progress()
-        self.assertIsNotNone(progress)
-        # Verbose mode should have more columns
-
-    @unittest.skip("Obsolete: Rich is now a required dependency")
-    def test_create_scan_progress_no_rich(self):
-        """Test progress returns None when Rich not available."""
-        progress = display.create_scan_progress()
-        self.assertIsNone(progress)
 
 
 class TestFilterSummary(unittest.TestCase):

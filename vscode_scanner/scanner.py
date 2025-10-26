@@ -30,6 +30,92 @@ from .display import (
 )
 
 
+class ThreadSafeStats:
+    """
+    Thread-safe statistics collection for parallel scanning.
+
+    This class provides thread-safe operations for collecting scan statistics
+    from multiple worker threads. All operations are protected by a threading.Lock
+    to prevent race conditions.
+
+    Attributes:
+        _lock: Threading lock for synchronization
+        _stats: Internal statistics dictionary
+    """
+
+    def __init__(self):
+        """Initialize thread-safe stats collection."""
+        from threading import Lock
+
+        self._lock = Lock()
+        self._stats = {
+            'successful_scans': 0,
+            'failed_scans': 0,
+            'vulnerabilities_found': 0,
+            'cached_results': 0,
+            'fresh_scans': 0,
+            'failed_extensions': [],
+            'api_client': None
+        }
+
+    def increment(self, key: str, amount: int = 1):
+        """
+        Thread-safe increment operation.
+
+        Args:
+            key: Statistics key to increment
+            amount: Amount to increment by (default: 1)
+        """
+        with self._lock:
+            if key not in self._stats:
+                self._stats[key] = 0
+            self._stats[key] += amount
+
+    def append_failed(self, ext_info: Dict):
+        """
+        Thread-safe list append for failed extensions.
+
+        Args:
+            ext_info: Extension failure information dict
+        """
+        with self._lock:
+            self._stats['failed_extensions'].append(ext_info)
+
+    def set(self, key: str, value):
+        """
+        Thread-safe set operation.
+
+        Args:
+            key: Statistics key to set
+            value: Value to set
+        """
+        with self._lock:
+            self._stats[key] = value
+
+    def to_dict(self) -> Dict:
+        """
+        Get immutable copy of stats.
+
+        Returns:
+            Copy of statistics dictionary
+        """
+        with self._lock:
+            return self._stats.copy()
+
+    def get(self, key: str):
+        """
+        Thread-safe read operation.
+
+        Args:
+            key: Statistics key to read
+
+        Returns:
+            Value of the statistics key
+        """
+        with self._lock:
+            return self._stats.get(key)
+
+
 def run_scan(
     extensions_dir: Optional[str] = None,
     output: Optional[str] = None,
@@ -378,16 +464,8 @@ def _scan_extensions(
         elif args.refresh_cache:
             log("Forcing cache refresh for scanned extensions", "INFO")
 
-    # Initialize stats with thread-safe counters
-    stats = {
-        'vulnerabilities_found': 0,
-        'successful_scans': 0,
-        'failed_scans': 0,
-        'cached_results': 0,
-        'fresh_scans': 0,
-        'failed_extensions': [],
-        'api_client': None  # Will be set from worker results
-    }
+    # Initialize thread-safe stats collection
+    stats = ThreadSafeStats()
 
     scan_results = []
     results_to_cache = []  # Collect results for main-thread batch caching
@@ -426,17 +504,17 @@ def _scan_extensions(
                             if should_cache:
                                 results_to_cache.append((ext['id'], ext['version'], result))
 
-                            # Update stats (safe operations)
+                            # Update stats (thread-safe operations)
                             if result.get('scan_status') == 'success':
                                 if result.get('vulnerabilities', {}).get('count', 0) > 0:
-                                    stats['vulnerabilities_found'] += 1
-                                stats['successful_scans'] += 1
+                                    stats.increment('vulnerabilities_found')
+                                stats.increment('successful_scans')
                             else:
-                                stats['failed_scans'] += 1
+                                stats.increment('failed_scans')
                                 # Track failed extension
                                 error_message = result.get('error', '')
                                 error_type = _categorize_error(error_message)
-                                stats['failed_extensions'].append({
+                                stats.append_failed({
                                     'id': ext['id'],
                                     'name': ext.get('display_name', ext.get('name', ext['id'])),
                                     'error_type': error_type,
@@ -444,18 +522,18 @@ def _scan_extensions(
                                 })
 
                             if from_cache:
-                                stats['cached_results'] += 1
+                                stats.increment('cached_results')
                             else:
-                                stats['fresh_scans'] += 1
+                                stats.increment('fresh_scans')
 
                             # Update progress display
                             progress.update(task, advance=1)
 
                         except Exception as e:
                             # Handle worker failure
-                            stats['failed_scans'] += 1
+                            stats.increment('failed_scans')
                             error_type = _categorize_error(str(e))
-                            stats['failed_extensions'].append({
+                            stats.append_failed({
                                 'id': ext['id'],
                                 'name': ext.get('display_name', ext.get('name', ext['id'])),
                                 'error_type': error_type,
@@ -499,16 +577,16 @@ def _scan_extensions(
                         else:
                             log(f"{progress_prefix} {extension_id} v{version}... 🔍 Fresh", "INFO")
 
-                    # Update stats
+                    # Update stats (thread-safe operations)
                     if result.get('scan_status') == 'success':
                         if result.get('vulnerabilities', {}).get('count', 0) > 0:
-                            stats['vulnerabilities_found'] += 1
-                        stats['successful_scans'] += 1
+                            stats.increment('vulnerabilities_found')
+                        stats.increment('successful_scans')
                     else:
-                        stats['failed_scans'] += 1
+                        stats.increment('failed_scans')
                         error_message = result.get('error', '')
                         error_type = _categorize_error(error_message)
-                        stats['failed_extensions'].append({
+                        stats.append_failed({
                             'id': ext['id'],
                             'name': ext.get('display_name', ext.get('name', ext['id'])),
                             'error_type': error_type,
@@ -516,15 +594,15 @@ def _scan_extensions(
                         })
 
                     if from_cache:
-                        stats['cached_results'] += 1
+                        stats.increment('cached_results')
                     else:
-                        stats['fresh_scans'] += 1
+                        stats.increment('fresh_scans')
 
                 except Exception as e:
                     # Handle worker failure
-                    stats['failed_scans'] += 1
+                    stats.increment('failed_scans')
                     error_type = _categorize_error(str(e))
-                    stats['failed_extensions'].append({
+                    stats.append_failed({
                         'id': ext['id'],
                         'name': ext.get('display_name', ext.get('name', ext['id'])),
                         'error_type': error_type,
@@ -532,20 +610,37 @@ def _scan_extensions(
                     })
 
     # Batch write all results to cache in main thread (thread-safe)
+    # Use try/finally to ensure cache commits even on Ctrl+C or exception
     if cache_manager and results_to_cache:
-        cache_manager.begin_batch()
-        for ext_id, version, result in results_to_cache:
+        try:
+            cache_manager.begin_batch()
+
+            for ext_id, version, result in results_to_cache:
+                try:
+                    cache_manager.save_result_batch(ext_id, version, result)
+                except Exception as e:
+                    # Log but continue with other results
+                    log(f"Cache save failed for {ext_id}: {e}", "WARNING")
+
+        except Exception as e:
+            # Critical error in batch operation
+            log(f"Batch cache operation failed: {e}", "ERROR")
+
+        finally:
+            # ALWAYS commit, even on Ctrl+C or exception
+            # Ensures partial results are saved
             try:
-                cache_manager.save_result_batch(ext_id, version, result)
-            except Exception:
-                # Cache errors should not fail the scan
-                pass
-        cache_manager.commit_batch()
+                cache_manager.commit_batch()
+            except Exception as e:
+                # If commit fails, cache may be corrupted
+                # Integrity check will catch this on next run
+                log(f"Cache commit failed: {e}", "ERROR")
 
     if not quiet and not use_rich:
         log("", "INFO")
 
-    return scan_results, stats
+    # Convert thread-safe stats to dict for return
+    return scan_results, stats.to_dict()
 
 
 def _scan_single_extension_worker(

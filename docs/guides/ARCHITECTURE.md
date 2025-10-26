@@ -17,7 +17,8 @@
 7. [Error Handling Strategy](#error-handling-strategy)
 8. [Configuration Management](#configuration-management)
 9. [Observability](#observability)
-10. [What We DON'T Do (Avoiding Over-Engineering)](#what-we-dont-do)
+10. [Parallel Scanning Architecture](#parallel-scanning-architecture)
+11. [What We DON'T Do (Avoiding Over-Engineering)](#what-we-dont-do)
 
 ---
 
@@ -972,6 +973,268 @@ When adding new modules or modifying imports:
 - Prevents erosion over time
 - Enforces design decisions
 - Makes refactoring safer
+
+---
+
+## Parallel Scanning Architecture (v3.5+)
+
+### Overview
+
+Starting with v3.5.0, parallel processing is the default mode with 3 workers. The parallel scanning architecture is designed around **worker isolation** and **main-thread coordination** to ensure thread safety while maintaining high performance.
+
+### Threading Model
+
+**Worker Isolation Pattern:**
+- Each worker thread has its own isolated `VscanAPIClient` instance
+- No shared mutable state between workers
+- Thread-safe cache reads (SQLite supports concurrent reads)
+- Cache writes serialized in main thread (avoids SQLite locking issues)
+- Thread-safe stats collection via `ThreadSafeStats` class (v3.5.1+)
+
+**Main Thread Responsibilities:**
+
+1. **Cache writes** - Batch operations in single transaction
+2. **Stats aggregation** - Collects stats from all workers via thread-safe class
+3. **Progress display** - Updates Rich progress bars
+4. **Result collection** - Gathers scan results from workers
+
+**Worker Thread Responsibilities:**
+
+1. **Cache reads** - Check cache for existing results (read-only, thread-safe)
+2. **API scanning** - Scan extension via isolated API client
+3. **Return results** - Pass result + metadata to main thread for caching
+
+### Cache Write Strategy
+
+**Why Main Thread Only:**
+
+1. **SQLite Limitation:** Connection objects cannot safely cross thread boundaries
+2. **Performance:** Single batch transaction more efficient than multiple separate transactions
+3. **Error Recovery:** Easier to handle partial failures in one centralized location
+4. **Simplicity:** No need for connection pooling, locks, or complex synchronization
+
+**Implementation Pattern:**
+
+```python
+# Workers: Read + compute, return data
+def _scan_single_extension_worker(ext, cache_manager, args):
+    """Worker function (isolated, thread-safe)."""
+    # Check cache (read-only, thread-safe)
+    cached = cache_manager.get_cached_result(ext_id, version)
+    if cached:
+        return cached, True, False  # (result, from_cache, should_cache)
+
+    # Scan (isolated API client instance per worker)
+    api_client = VscanAPIClient(...)
+    result = api_client.scan_extension_with_retry(publisher, name)
+
+    # Return for main thread to cache
+    return result, False, True  # (result, from_cache, should_cache)
+
+# Main thread: Collect and batch write
+results_to_cache = []
+with ThreadPoolExecutor(max_workers=3) as executor:
+    futures = {executor.submit(_scan_single_extension_worker, ext, ...): ext
+               for ext in extensions}
+
+    for future in as_completed(futures):
+        result, from_cache, should_cache = future.result()
+        scan_results.append(result)
+
+        if should_cache:
+            results_to_cache.append((ext_id, version, result))
+
+        # Update thread-safe stats
+        stats.increment('successful_scans')
+
+# Single batch write in main thread (transactional with try/finally)
+try:
+    cache_manager.begin_batch()
+    for ext_id, version, result in results_to_cache:
+        cache_manager.save_result_batch(ext_id, version, result)
+finally:
+    # ALWAYS commit, even on Ctrl+C or exception (v3.5.1+)
+    cache_manager.commit_batch()
+```
+
+### Thread Safety Guarantees
+
+**SQLite Operations:**
+- ✅ **Cache reads** (from workers): Thread-safe (read-only operations)
+- ✅ **Cache writes** (from main thread): Thread-safe (serialized in main thread)
+- ✅ **No connection sharing** across threads (each worker isolation)
+
+**API Client Operations:**
+- ✅ **Worker isolation**: Each worker has its own `VscanAPIClient` instance
+- ✅ **No shared state**: Workers operate completely independently
+- ✅ **HTTP request delays**: Per-worker delay configuration
+
+**Stats Collection (v3.5.1+):**
+- ✅ **Thread-safe**: Using `Lock`-protected `ThreadSafeStats` class
+- ✅ **No race conditions**: All updates protected by threading.Lock
+- ✅ **Atomic operations**: increment(), append_failed(), set(), get(), to_dict()
+
+**Transactional Cache Writes (v3.5.1+):**
+- ✅ **Interrupt-safe**: try/finally ensures commit even on Ctrl+C
+- ✅ **Partial saves**: Partial results committed if interrupted mid-batch
+- ✅ **Error recovery**: Individual save failures don't prevent other saves
+
+### Performance Characteristics
+
+**Validated via PoC (30 extensions, real vscan.dev API):**
+
+| Workers | Speedup | Success Rate | Recommendation |
+|---------|---------|--------------|----------------|
+| 1       | 1.00x   | 90.0%        | Sequential     |
+| 3       | 4.88x   | 100.0%       | ✅ Default     |
+| 5       | 4.27x   | 96.7%        | Advanced users |
+| 7       | 4.07x   | 66.7%        | Not recommended |
+
+**Real-World Impact:**
+- **66 extensions**: 6 minutes → 1.2 minutes (3 workers, 5x faster)
+- **Near-linear scaling** up to 3 workers
+- **Diminishing returns** above 5 workers
+- **No rate limiting** from vscan.dev API (tested up to 7 workers)
+
+### Worker Count Limits
+
+**Range:** 1-5 workers (configurable)
+
+**Why this range:**
+- **Minimum (1)**: Sequential mode for debugging or low-resource systems
+- **Default (3)**: Optimal performance/reliability balance (4.88x speedup, 100% success)
+- **Maximum (5)**: Prevents API overload and maintains high success rates
+
+**Validation Logic:**
+```python
+max_workers = min(max(args.workers, 1), 5)  # Clamp to 1-5 range
+```
+
+### Evolution: v3.4 → v3.5 Breaking Changes
+
+**v3.4.0 (Optional Parallel):**
+- `--parallel` flag to enable (opt-in)
+- Sequential mode by default
+- Workers range: 2-5
+- Two separate code paths (`_scan_extensions()` and `_scan_extensions_parallel()`)
+
+**v3.5.0 (Parallel by Default):**
+- **Breaking Change:** Removed `--parallel` flag (no longer needed)
+- **Breaking Change:** Workers range changed to 1-5 (use `--workers 1` for sequential)
+- **Breaking Change:** Removed `parallel` config setting
+- **Benefit:** Simplified codebase (~100 lines eliminated, single unified code path)
+- **Benefit:** 4.88x speedup by default (no flags needed)
+
+**Migration:**
+```bash
+# v3.4
+vscan scan --parallel --workers 3
+
+# v3.5
+vscan scan --workers 3  # or just 'vscan scan' (3 is default)
+vscan scan --workers 1  # for sequential mode
+```
+
+### Design Decisions
+
+**Why ThreadPoolExecutor instead of multiprocessing:**
+- ✅ Simpler to implement and debug
+- ✅ Lower overhead (no process spawning)
+- ✅ Shared memory access (SQLite cache reads)
+- ✅ Network I/O bound (not CPU bound) - GIL not a bottleneck
+- ✅ Easier error handling and resource cleanup
+
+**Why 3 workers as default:**
+- ✅ Optimal speedup (4.88x) with 100% success rate
+- ✅ Conservative resource usage
+- ✅ Validated with real API (no rate limiting issues)
+- ✅ Works well across different system sizes
+
+**Why main-thread cache writes:**
+- ✅ Avoids SQLite threading complexity
+- ✅ Simpler error handling
+- ✅ Batch transactions more efficient
+- ✅ No need for connection pooling
+
+### Anti-Patterns to Avoid
+
+**❌ DON'T:** Share mutable state between workers
+```python
+# Bad: Shared dict updated from multiple threads
+shared_stats = {'count': 0}
+def worker():
+    shared_stats['count'] += 1  # RACE CONDITION!
+```
+
+**✅ DO:** Use ThreadSafeStats or return results to main thread
+```python
+# Good: Thread-safe stats class with Lock protection
+stats = ThreadSafeStats()
+def worker():
+    stats.increment('count')  # THREAD-SAFE
+```
+
+**❌ DON'T:** Write to database from worker threads
+```python
+# Bad: SQLite connection issues
+def worker():
+    cache_manager.save_result(...)  # NOT THREAD-SAFE
+```
+
+**✅ DO:** Return results for main thread to cache
+```python
+# Good: Worker returns data, main thread writes
+def worker():
+    return result, from_cache, should_cache
+# Main thread collects and batches writes
+```
+
+**❌ DON'T:** Ignore KeyboardInterrupt in cache operations
+```python
+# Bad: Ctrl+C loses partial results
+cache_manager.begin_batch()
+for item in items:
+    cache_manager.save_result_batch(...)  # May lose partial results on Ctrl+C
+cache_manager.commit_batch()
+```
+
+**✅ DO:** Use try/finally to ensure commit
+```python
+# Good: Partial results saved even on interrupt
+try:
+    cache_manager.begin_batch()
+    for item in items:
+        cache_manager.save_result_batch(...)
+finally:
+    cache_manager.commit_batch()  # ALWAYS executes
+```
+
+### Testing Strategy
+
+**Thread Safety Tests:**
+- Concurrent stats updates (10 threads × 100 increments = 1000 expected)
+- Concurrent list appends (verify no lost updates)
+- Mixed operations (increments + appends + reads)
+- Real-world parallel scan simulation
+
+**Integration Tests:**
+- Parallel vs sequential result consistency
+- Worker count validation (1-5 range)
+- Cache read/write concurrency
+- Error handling in parallel mode
+
+**Performance Benchmarks:**
+- Worker count scaling (1, 3, 5 workers)
+- Cache hit rate impact
+- Real API integration tests
+
+**Interrupt Handling Tests:**
+- KeyboardInterrupt during cache writes
+- Individual save failures
+- Commit failures
+- Begin_batch failures
+
+**See:** `tests/test_parallel_scanning.py` and `tests/test_transactional_cache.py` for complete test suite.
 
 ---
 

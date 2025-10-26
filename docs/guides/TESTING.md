@@ -283,69 +283,144 @@ def test_scan_and_report_workflow():
 
 ## Running Tests
 
-### Run All Tests
+### Test Suite Runner (Recommended - v3.5.1+)
 
+The unified test runner provides standardized execution with clear output.
+
+**Quick Start:**
 ```bash
-# Using pytest
-pytest tests/
+# Run all tests
+python3 scripts/run_tests.py --all
 
-# With coverage
-pytest tests/ --cov=vscode_scanner --cov-report=html
+# Run specific groups
+python3 scripts/run_tests.py --unit
+python3 scripts/run_tests.py --security --architecture
+python3 scripts/run_tests.py --unit --security --parallel
 
-# Verbose output
-pytest tests/ -v
+# Skip slow tests (faster CI)
+python3 scripts/run_tests.py --all --skip-slow
+
+# Skip real API tests
+python3 scripts/run_tests.py --all --skip-real-api
 ```
 
-### Run Specific Test Categories
+**Available Test Groups:**
+
+| Flag | Tests | Duration | Description |
+|------|-------|----------|-------------|
+| `--unit` | 101 | ~2s | Core functionality (scanner, display, CLI) |
+| `--security` | 87 | ~0.5s | Security validation, path/string sanitization |
+| `--architecture` | 5 | ~0.2s | Layer compliance, zero violations |
+| `--parallel` | 21 | ~0.15s | Threading, parallel scanning |
+| `--integration` | 13+ | ~1s | Integration tests (mocked API) |
+| `--real-api` | 6 | ~30s | Real vscan.dev API calls (slow) |
+| `--mock-validation` | 11 | ~5s | Mock validation against real API |
+| `--all` | 196+ | ~40s | All test groups |
+
+**Output Formats:**
 
 ```bash
-# Unit tests only
-pytest tests/test_cache.py tests/test_api.py
+# Console (default) - colored, human-readable
+python3 scripts/run_tests.py --unit
 
-# Integration tests
-pytest tests/test_integration.py
+# JSON output for automation
+python3 scripts/run_tests.py --all --output json --output-file results.json
 
-# Architecture tests
-pytest tests/test_architecture.py
+# JUnit XML for CI/CD
+python3 scripts/run_tests.py --all --output junit --output-file results.xml
 
-# Security tests
-pytest tests/test_security.py
+# Quiet mode (summary only)
+python3 scripts/run_tests.py --all --quiet
 
-# Performance tests
-pytest tests/test_performance.py
+# Verbose mode (include test output)
+python3 scripts/run_tests.py --unit --verbose
 ```
 
-### Run Individual Test Files
+**Example Output:**
+
+```
+======================================================================
+VS CODE EXTENSION SCANNER - TEST SUITE
+======================================================================
+
+Running Test Groups: unit, security
+Skip Slow Tests: No
+Skip Real API: No
+
+----------------------------------------------------------------------
+TEST GROUP: Unit (7 files)
+----------------------------------------------------------------------
+✓ test_scanner.py                           15 tests   0.018s   PASS
+✓ test_display.py                           23 tests   0.003s   PASS
+✓ test_cli.py                               17 tests   0.580s   PASS
+...
+
+Summary: 101 tests, 101 passed, 0 failed, 0 skipped (0.925s)
+
+----------------------------------------------------------------------
+TEST GROUP: Security (5 files)
+----------------------------------------------------------------------
+✓ test_security.py                          11 tests   0.012s   PASS
+...
+
+Summary: 87 tests, 87 passed, 0 failed, 0 skipped (0.193s)
+⚠️  CRITICAL: 0 vulnerabilities confirmed
+
+======================================================================
+OVERALL SUMMARY
+======================================================================
+
+Total Test Files: 12
+Total Tests Run:  188
+Total Passed:     188 ✓
+Total Failed:     0 ✗
+Total Skipped:    0 ⊘
+Total Duration:   1.118s
+
+Exit Code: 0 (SUCCESS)
+======================================================================
+```
+
+**CI/CD Integration:**
+
+```yaml
+# .github/workflows/tests.yml
+- name: Run test suite
+  run: |
+    python3 scripts/run_tests.py --all --skip-real-api \
+      --output junit --output-file test-results.xml
+
+- name: Publish test results
+  uses: EnricoMi/publish-unit-test-result-action@v2
+  with:
+    files: test-results.xml
+```
+
+**Exit Codes:**
+- `0` - All tests passed (success)
+- `1` - Some tests failed
+- `2` - No tests found
+- `3` - Execution error
+
+---
+
+### Alternative: Individual Test Files
 
 ```bash
-# Display module tests
-python3 tests/test_display.py
-
-# Scanner module tests
+# Run individual test files directly
 python3 tests/test_scanner.py
-
-# CLI module tests
-python3 tests/test_cli.py
+python3 tests/test_display.py
+python3 tests/test_security.py
 ```
 
-### Run by Test Name Pattern
+### Alternative: pytest
 
 ```bash
-# All tests with "cache" in name
-pytest -k cache
-
-# All tests with "error" in name
-pytest -k error
-
-# Exclude slow tests
+# Using pytest (if installed)
+pytest tests/ -v
+pytest tests/test_scanner.py
+pytest -k "cache" -v
 pytest -m "not slow"
-```
-
-### Watch Mode (Development)
-
-```bash
-# Rerun tests on file changes
-pytest-watch tests/
 ```
 
 ---
@@ -747,6 +822,78 @@ def test_cache_expiration(mock_time):
 
     assert result is None  # Expired
 ```
+
+### Mock Validation (v3.5.1+)
+
+**Problem:** Mocks can drift from real API behavior, causing tests to pass while real integration fails.
+
+**Solution:** Validate mocks against real API structure using `test_mock_validation.py`.
+
+**Canonical Mock Usage:**
+```python
+from tests.fixtures.canonical_mock import CanonicalVscanAPIMock
+
+def test_scanner_with_valid_response():
+    """Test scanner with realistic API response."""
+    # Use canonical mock that matches real API structure
+    mock_response = CanonicalVscanAPIMock.get_success_response(
+        publisher="test-publisher",
+        name="test-extension",
+        security_score=85,
+        vuln_count=0
+    )
+
+    # Mock will have all required fields that real API returns
+    assert 'scan_status' in mock_response
+    assert 'metadata' in mock_response
+    assert 'security' in mock_response
+    # ... all 16 required fields present
+```
+
+**Available Mock Methods:**
+- `get_success_response()` - Clean extension (no vulnerabilities)
+- `get_error_response()` - Failed scan
+- `get_vulnerable_response()` - Extension with vulnerabilities
+
+**Validation:**
+```bash
+# Run mock validation tests (includes 1 real API call)
+python3 tests/test_mock_validation.py
+
+# Output shows real API structure vs mock structure
+# Tests fail if mocks drift from real API
+```
+
+**Required Fields (validated 2025-10-26):**
+```python
+REQUIRED_SUCCESS_FIELDS = {
+    'name', 'publisher', 'scan_status', 'error',
+    'metadata', 'security', 'dependencies', 'risk_factors',
+    'security_score', 'risk_level', 'vulnerabilities',
+    'vscan_url', 'analysis_timestamp', 'has_errors',
+    'raw_response', 'analysis_id'
+}
+```
+
+**Critical Fields (scanner depends on these):**
+```python
+CRITICAL_FIELDS = {
+    'scan_status',      # 'success' or 'error'
+    'security_score',   # int 0-100 or None
+    'vulnerabilities'   # dict with 'count', 'critical', etc.
+}
+```
+
+**When Creating New Mocks:**
+1. Always use `CanonicalVscanAPIMock` as base
+2. Run `test_mock_validation.py` to verify
+3. Update canonical mock if real API changes
+4. Re-run validation after updates
+
+**Validation Frequency:**
+- Run before each release
+- Run when vscan.dev API updates
+- Run if mock-based tests fail in production
 
 ---
 

@@ -570,6 +570,207 @@ class TestIntegration(unittest.TestCase):
             self.assertEqual(exit_code, 0)
 
 
+class TestThreadSafeStats(unittest.TestCase):
+    """Test ThreadSafeStats class for thread safety (v3.5.1 Task 5)."""
+
+    def test_increment_thread_safety(self):
+        """Test that concurrent increments are thread-safe."""
+        from vscode_scanner.scanner import ThreadSafeStats
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+
+        stats = ThreadSafeStats()
+        num_threads = 10
+        increments_per_thread = 100
+
+        def increment_worker():
+            """Worker function that increments stats."""
+            for _ in range(increments_per_thread):
+                stats.increment('test_counter')
+
+        # Run concurrent increments
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(increment_worker) for _ in range(num_threads)]
+            for future in futures:
+                future.result()
+
+        # Verify count is exactly what we expect (no race conditions)
+        expected_count = num_threads * increments_per_thread
+        actual_count = stats.get('test_counter')
+        self.assertEqual(actual_count, expected_count,
+                        f"Expected {expected_count} but got {actual_count}. Race condition detected!")
+
+    def test_append_failed_thread_safety(self):
+        """Test that concurrent list appends are thread-safe."""
+        from vscode_scanner.scanner import ThreadSafeStats
+        from concurrent.futures import ThreadPoolExecutor
+
+        stats = ThreadSafeStats()
+        num_threads = 10
+        appends_per_thread = 10
+
+        def append_worker(thread_id):
+            """Worker function that appends failed extensions."""
+            for i in range(appends_per_thread):
+                stats.append_failed({
+                    'id': f'thread{thread_id}.ext{i}',
+                    'name': f'Extension {i}',
+                    'error_type': 'test_error'
+                })
+
+        # Run concurrent appends
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(append_worker, i) for i in range(num_threads)]
+            for future in futures:
+                future.result()
+
+        # Verify all items were appended
+        failed_extensions = stats.get('failed_extensions')
+        expected_count = num_threads * appends_per_thread
+        self.assertEqual(len(failed_extensions), expected_count,
+                        f"Expected {expected_count} failed extensions but got {len(failed_extensions)}")
+
+        # Verify all IDs are unique (no lost updates)
+        ids = [ext['id'] for ext in failed_extensions]
+        self.assertEqual(len(ids), len(set(ids)),
+                        "Duplicate IDs found - race condition detected!")
+
+    def test_mixed_operations_thread_safety(self):
+        """Test that mixed concurrent operations are thread-safe."""
+        from vscode_scanner.scanner import ThreadSafeStats
+        from concurrent.futures import ThreadPoolExecutor
+
+        stats = ThreadSafeStats()
+        num_threads = 5
+        operations_per_thread = 50
+
+        def mixed_worker(thread_id):
+            """Worker function that performs mixed operations."""
+            for i in range(operations_per_thread):
+                # Mix of different operations
+                stats.increment('successful_scans')
+                stats.increment('vulnerabilities_found')
+                if i % 5 == 0:
+                    stats.append_failed({
+                        'id': f'thread{thread_id}.fail{i}',
+                        'error_type': 'test'
+                    })
+                stats.increment('cached_results')
+
+        # Run concurrent mixed operations
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(mixed_worker, i) for i in range(num_threads)]
+            for future in futures:
+                future.result()
+
+        # Verify all counts
+        stats_dict = stats.to_dict()
+        expected_scans = num_threads * operations_per_thread
+        expected_failed = num_threads * (operations_per_thread // 5)
+
+        self.assertEqual(stats_dict['successful_scans'], expected_scans)
+        self.assertEqual(stats_dict['vulnerabilities_found'], expected_scans)
+        self.assertEqual(stats_dict['cached_results'], expected_scans)
+        self.assertEqual(len(stats_dict['failed_extensions']), expected_failed)
+
+    def test_to_dict_immutability(self):
+        """Test that to_dict() returns immutable copy."""
+        from vscode_scanner.scanner import ThreadSafeStats
+
+        stats = ThreadSafeStats()
+        stats.increment('test_counter', 10)
+
+        # Get a copy
+        dict1 = stats.to_dict()
+
+        # Modify stats
+        stats.increment('test_counter', 5)
+
+        # Get another copy
+        dict2 = stats.to_dict()
+
+        # First copy should not be affected
+        self.assertEqual(dict1['test_counter'], 10)
+        self.assertEqual(dict2['test_counter'], 15)
+
+    def test_set_operation_thread_safety(self):
+        """Test that set operations are thread-safe."""
+        from vscode_scanner.scanner import ThreadSafeStats
+        from concurrent.futures import ThreadPoolExecutor
+
+        stats = ThreadSafeStats()
+
+        def set_worker(value):
+            """Worker function that sets a value."""
+            stats.set('api_client', f'client_{value}')
+
+        # Run concurrent sets (last one wins, but should not corrupt)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(set_worker, i) for i in range(10)]
+            for future in futures:
+                future.result()
+
+        # Value should be one of the set values (not corrupted)
+        value = stats.get('api_client')
+        self.assertIsNotNone(value)
+        self.assertTrue(value.startswith('client_'))
+
+    def test_real_world_parallel_scan_stats(self):
+        """Test ThreadSafeStats in a realistic parallel scan scenario."""
+        from vscode_scanner.scanner import ThreadSafeStats
+        from concurrent.futures import ThreadPoolExecutor
+        import random
+        import time
+
+        stats = ThreadSafeStats()
+        num_workers = 3
+        extensions_per_worker = 20
+
+        def scan_worker(worker_id):
+            """Simulate a worker scanning extensions."""
+            for i in range(extensions_per_worker):
+                # Simulate scan delay
+                time.sleep(0.001)
+
+                # Random success/failure
+                if random.random() > 0.1:  # 90% success rate
+                    stats.increment('successful_scans')
+                    if random.random() > 0.7:  # 30% have vulnerabilities
+                        stats.increment('vulnerabilities_found')
+                else:
+                    stats.increment('failed_scans')
+                    stats.append_failed({
+                        'id': f'worker{worker_id}.ext{i}',
+                        'error_type': 'timeout'
+                    })
+
+                # Random cache hit
+                if random.random() > 0.5:
+                    stats.increment('cached_results')
+                else:
+                    stats.increment('fresh_scans')
+
+        # Run parallel scan simulation
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            futures = [executor.submit(scan_worker, i) for i in range(num_workers)]
+            for future in futures:
+                future.result()
+
+        # Verify stats consistency
+        stats_dict = stats.to_dict()
+        total_scans = stats_dict['successful_scans'] + stats_dict['failed_scans']
+        total_cache = stats_dict['cached_results'] + stats_dict['fresh_scans']
+
+        expected_total = num_workers * extensions_per_worker
+
+        self.assertEqual(total_scans, expected_total,
+                        "Total scans don't match expected count")
+        self.assertEqual(total_cache, expected_total,
+                        "Total cache stats don't match expected count")
+        self.assertEqual(stats_dict['failed_scans'], len(stats_dict['failed_extensions']),
+                        "Failed scans count doesn't match failed extensions list")
+
+
 def run_tests():
     """Run all tests."""
     # Create test suite
@@ -583,6 +784,7 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestErrorHandling))
     suite.addTests(loader.loadTestsFromTestCase(TestResultConsistency))
     suite.addTests(loader.loadTestsFromTestCase(TestIntegration))
+    suite.addTests(loader.loadTestsFromTestCase(TestThreadSafeStats))
 
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
