@@ -216,21 +216,21 @@ docs/archive/
 **Reviews:**
 - [v3.5.1-comprehensive-review.md](reviews/v3.5.1-comprehensive-review.md) - Architecture, code quality, and security review
 
-**Phase 1: Security Hardening (COMPLETE):**
+**Phase 1: Security Hardening (COMPLETE ✅):**
 - ✅ Unified path validation (blocks URL encoding, system directories)
 - ✅ Unified string sanitization (context-aware, prevents injection)
 - ✅ Cache integrity checks (HMAC-SHA256 signatures)
-- ✅ Comprehensive regression test suite (161+ tests passing)
+- ✅ Comprehensive regression test suite (35+ new security tests)
 
-**Phase 2: Technical Debt (IN PROGRESS):**
-- Thread-safe stats collection
-- Transactional cache writes
-- Parallel architecture documentation
-- Integration tests with real API
+**Phase 2: Technical Debt & Reliability (COMPLETE ✅):**
+- ✅ Thread-safe stats collection (ThreadSafeStats class with Lock protection)
+- ✅ Transactional cache writes (Ctrl+C safe with try/finally pattern)
+- ✅ Parallel architecture documentation (~200 lines in ARCHITECTURE.md)
+- ✅ Integration tests with real API (test_integration_real_api.py)
 
 **Key Achievement:** Security score improved from 7/10 → 9.5/10 (0 vulnerabilities remaining)
 
-**Status:** Phase 1 complete (4/4 tasks), Phase 2 in progress (0/4 tasks). v3.5.1 released 2025-10-26.
+**Status:** Complete (8/8 tasks - both phases). v3.5.1 released 2025-10-26. Overall grade: A- (93/100).
 
 ---
 

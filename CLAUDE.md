@@ -7,8 +7,8 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Current Status
 
 **Version:** v3.5.1 Complete ✅
-**Latest:** Security hardening (4/4 tasks) + Technical debt (4/4 tasks) both complete
-**Completed Roadmap:** [docs/archive/plans/v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) (Phase 1 security hardening complete)
+**Latest:** Security hardening (4/4 tasks) + Technical debt (4/4 tasks) = 8/8 tasks complete
+**Completed Roadmap:** [docs/archive/plans/v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) (Both phases complete)
 
 ---
 
@@ -58,7 +58,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 **Adding Features:**
 - Check scope: [PRD.md](docs/project/PRD.md) - Is this feature in scope?
 - Check roadmap: [STATUS.md](docs/project/STATUS.md) - Current sprint priorities
-- Check roadmap: [v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) - Security tasks complete
+- Check roadmap: [v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) - All 8 tasks complete
 
 **Security Changes:**
 - [SECURITY.md](docs/guides/SECURITY.md) - Complete security requirements, validation patterns, defense layers
@@ -86,7 +86,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Current Work:**
 - [STATUS.md](docs/project/STATUS.md) - Current sprint status, version progress, metrics
-- [v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) - Archived roadmap (Phase 1 complete, Phase 2 pending)
+- [v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) - Archived roadmap (Both phases complete - 8/8 tasks)
 
 **Finding Historical Info:**
 - [docs/archive/README.md](docs/archive/README.md) - Version timeline & complete archive index

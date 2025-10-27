@@ -37,12 +37,14 @@
 
 ---
 
-## Next Release (v3.5.1 - In Progress - Phase 2)
+## Current Release (v3.5.1 - Complete ✅)
 
-**Focus:** Security Hardening ✅ COMPLETE + Technical Debt ⏳ IN PROGRESS
-**Target Completion:** 1-2 weeks after v3.5.0
+**Version:** 3.5.1
+**Release Date:** 2025-10-26
+**Focus:** Security Hardening + Technical Debt & Reliability
+**Status:** Production Ready - All 8 tasks complete
 
-### Phase 1: Security Hardening ✅ COMPLETE (2025-10-26)
+### Phase 1: Security Hardening ✅ COMPLETE (4/4 tasks)
 
 **Delivered:**
 - ✅ **Unified Path Validation** - validate_path() used in all 4 locations (cb5298b)
@@ -56,18 +58,22 @@
 - 11 files modified/created
 - ~400 lines of security improvements
 
-### Phase 2: Technical Debt ⏳ IN PROGRESS
+### Phase 2: Technical Debt & Reliability ✅ COMPLETE (4/4 tasks)
 
-**Remaining Objectives:**
+**Delivered:**
+1. ✅ **Thread Safety** - ThreadSafeStats class with Lock protection (f325d9f)
+2. ✅ **Robustness** - Transactional cache writes with try/finally pattern (f325d9f)
+3. ✅ **Documentation** - Parallel architecture documented in ARCHITECTURE.md (~200 lines)
+4. ✅ **Testing** - Integration tests with real vscan.dev API (test_integration_real_api.py)
 
-1. **Thread Safety** - Guarantee thread-safe stats collection
-2. **Robustness** - Transactional cache writes (fault tolerance)
-3. **Documentation** - Parallel architecture documentation
-4. **Testing** - Integration tests with real API
+**Impact:**
+- Thread-safe statistics (no race conditions)
+- Fault-tolerant cache writes (Ctrl+C safe)
+- Comprehensive parallel architecture documentation
+- Real API test coverage (220 total tests, 100% passing)
+- Overall grade: A- (93/100)
 
-**Estimated Effort:** 3.5 days remaining (Phase 1: 3 days ✅, Phase 2: 3.5 days ⏳)
-
-**See:** [v3.5.1-roadmap.md](../archive/plans/v3.5.1-roadmap.md) (Archived roadmap - Phase 1 complete)
+**See:** [v3.5.1-roadmap.md](../archive/plans/v3.5.1-roadmap.md) (Archived - both phases complete)
 
 ---
 
