@@ -67,7 +67,7 @@
 
 **Estimated Effort:** 3.5 days remaining (Phase 1: 3 days ✅, Phase 2: 3.5 days ⏳)
 
-**See:** [v3.5.1-ROADMAP.md](v3.5.1-ROADMAP.md) (Active implementation document)
+**See:** [v3.5.1-roadmap.md](../archive/plans/v3.5.1-roadmap.md) (Archived roadmap - Phase 1 complete)
 
 ---
 

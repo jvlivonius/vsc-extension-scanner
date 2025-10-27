@@ -145,6 +145,95 @@ docs/archive/
 
 ---
 
+### v3.3: UX Enhancement (2025-10-25)
+
+**Plans:**
+- [v3.3-roadmap.md](plans/v3.3-roadmap.md) - UX improvement roadmap
+
+**Key Features:**
+- Security-focused output (hide operational details by default)
+- Failed extension transparency (clear reporting of scan failures)
+- Configuration flexibility (custom extension directory support)
+- Enhanced CLI filtering (verified status, vulnerability presence)
+
+**Status:** v3.3.0 complete, v3.3.1 in progress
+
+---
+
+### v3.4: Parallel Scanning (2025-10-25)
+
+**Plans:**
+- [v3.4-roadmap.md](plans/v3.4-roadmap.md) - Parallel scanning implementation roadmap
+
+**Summaries:**
+- [v3.4.0-release-notes.md](summaries/v3.4.0-release-notes.md) - Release completion summary
+
+**Reviews:**
+- [v3.4-architectural-review.md](reviews/v3.4-architectural-review.md) - Comprehensive architectural analysis
+- [v3.4-parallel-scan-poc-guide.md](reviews/v3.4-parallel-scan-poc-guide.md) - Proof of concept guide
+- [v3.4-parallel-scan-poc-results.md](reviews/v3.4-parallel-scan-poc-results.md) - PoC validation results
+- [v3.4-phase1-implementation-plan.md](reviews/v3.4-phase1-implementation-plan.md) - Phase 1 implementation plan
+
+**Key Features:**
+- Parallel scanning with multiple workers (2-5 workers)
+- 4.88x speedup with 3 workers (recommended)
+- Thread-safe implementation (main-thread-only cache writes)
+- Configuration support for parallel settings
+- 100% backward compatibility
+
+**Status:** Complete. v3.4.0 released 2025-10-25.
+
+---
+
+### v3.5.0: Parallel by Default (2025-10-26)
+
+**Summaries:**
+- [v3.5.0-release-notes.md](summaries/v3.5.0-release-notes.md) - Breaking change release notes
+
+**Key Changes:**
+- 🚨 **BREAKING:** Parallel processing now default (3 workers automatically)
+- 🚨 **BREAKING:** Removed `--parallel` flag (no longer needed)
+- 🚨 **BREAKING:** Workers range changed from 2-5 to 1-5
+- 🚨 **BREAKING:** Removed `parallel` config setting
+
+**Migration:**
+- Old: `vscan scan` → sequential (slow)
+- New: `vscan scan` → 3 workers (4.88x faster by default!)
+- Sequential mode: Use `vscan scan --workers 1`
+
+**Status:** Production ready. v3.5.0 released 2025-10-26.
+
+---
+
+### v3.5.1: Security Hardening & Technical Debt (2025-10-26)
+
+**Plans:**
+- [v3.5.1-roadmap.md](plans/v3.5.1-roadmap.md) - 2-phase roadmap (Security + Technical Debt)
+
+**Summaries:**
+- [v3.5.1-release-notes.md](summaries/v3.5.1-release-notes.md) - Release completion summary
+
+**Reviews:**
+- [v3.5.1-comprehensive-review.md](reviews/v3.5.1-comprehensive-review.md) - Architecture, code quality, and security review
+
+**Phase 1: Security Hardening (COMPLETE):**
+- ✅ Unified path validation (blocks URL encoding, system directories)
+- ✅ Unified string sanitization (context-aware, prevents injection)
+- ✅ Cache integrity checks (HMAC-SHA256 signatures)
+- ✅ Comprehensive regression test suite (161+ tests passing)
+
+**Phase 2: Technical Debt (IN PROGRESS):**
+- Thread-safe stats collection
+- Transactional cache writes
+- Parallel architecture documentation
+- Integration tests with real API
+
+**Key Achievement:** Security score improved from 7/10 → 9.5/10 (0 vulnerabilities remaining)
+
+**Status:** Phase 1 complete (4/4 tasks), Phase 2 in progress (0/4 tasks). v3.5.1 released 2025-10-26.
+
+---
+
 ## Document Types Explained
 
 ### Plans (Roadmaps & Requirements)
