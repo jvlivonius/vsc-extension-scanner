@@ -8,35 +8,6 @@
 
 ---
 
-## Current Release (v3.5.0 - Complete ✅)
-
-**Version:** 3.5.0
-**Release Date:** 2025-10-26
-**Focus:** Parallel Processing by Default 🚨 BREAKING CHANGES
-
-### Achievements
-
-**✅ Parallel Processing by Default (100% Complete)**
-- Parallel processing is now the default (3 workers automatically)
-- Breaking change: Removed `--parallel` flag (no longer needed)
-- Breaking change: Workers range 1-5 (use `--workers 1` for sequential)
-- Breaking change: Removed `parallel` config setting
-- 4.88x speedup by default (no flags needed!)
-- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes (automatically)
-- Code simplification: ~100 lines eliminated, single unified code path
-- Architecture win: Solves v3.4.1 Tasks 1 & 6 (code duplication eliminated)
-- Thread-safe implementation with main-thread-only cache writes
-- Zero rate limiting from vscan.dev API (tested up to 7 workers)
-
-**Impact on Roadmap:**
-- Eliminated v3.4.1 Task 1 (code duplication) - solved by design
-- Eliminated v3.4.1 Task 6 (progress display duplication) - solved by design
-- Reduced remaining effort: 8 days → 3.25 days (59% reduction)
-
-**See:** [CHANGELOG.md](../../CHANGELOG.md) for migration guide
-
----
-
 ## Current Release (v3.5.1 - Complete ✅)
 
 **Version:** 3.5.1
@@ -77,7 +48,36 @@
 
 ---
 
-## Current Release (v3.3 Series - Complete ✅)
+## Previous Release (v3.5.0 - Complete ✅)
+
+**Version:** 3.5.0
+**Release Date:** 2025-10-26
+**Focus:** Parallel Processing by Default 🚨 BREAKING CHANGES
+
+### Achievements
+
+**✅ Parallel Processing by Default (100% Complete)**
+- Parallel processing is now the default (3 workers automatically)
+- Breaking change: Removed `--parallel` flag (no longer needed)
+- Breaking change: Workers range 1-5 (use `--workers 1` for sequential)
+- Breaking change: Removed `parallel` config setting
+- 4.88x speedup by default (no flags needed!)
+- Real-world impact: 66 extensions from 6 minutes → 1.2 minutes (automatically)
+- Code simplification: ~100 lines eliminated, single unified code path
+- Architecture win: Solves v3.4.1 Tasks 1 & 6 (code duplication eliminated)
+- Thread-safe implementation with main-thread-only cache writes
+- Zero rate limiting from vscan.dev API (tested up to 7 workers)
+
+**Impact on Roadmap:**
+- Eliminated v3.4.1 Task 1 (code duplication) - solved by design
+- Eliminated v3.4.1 Task 6 (progress display duplication) - solved by design
+- Reduced remaining effort: 8 days → 3.25 days (59% reduction)
+
+**See:** [CHANGELOG.md](../../CHANGELOG.md) for migration guide
+
+---
+
+## Previous Release (v3.3 Series - Complete ✅)
 
 ### Latest: v3.3.3 (2025-10-25) - Duplicate Extensions Fix
 
@@ -238,20 +238,22 @@
 
 | Metric | Value |
 |--------|-------|
-| **Current Version** | 3.5.0 ✅ |
-| **Next Version** | 3.5.1 (In Progress - Phase 2) |
-| **Production Ready** | Yes ✅ (v3.5.0) |
-| **Total Code** | 10,000+ lines (Python) |
+| **Current Version** | 3.5.1 ✅ |
+| **Next Version** | TBD |
+| **Production Ready** | Yes ✅ (v3.5.1) |
+| **Total Code** | 11,000+ lines (Python) |
 | **Documentation** | 21,000+ lines (Markdown) |
 | **Modules** | 14 (13 core + 1 version) |
-| **Test Files** | 13+ suites |
-| **Test Scenarios** | 101+ |
+| **Test Files** | 15+ suites |
+| **Test Scenarios** | 220+ |
 | **Test Success Rate** | 100% |
 | **Schema Version** | 2.1 |
 | **Output Formats** | 3 (JSON, HTML, CSV) |
 | **Platforms Supported** | 3 (macOS, Windows, Linux) |
 | **Architecture Layers** | 3 (Presentation, Application, Infrastructure) |
 | **Layer Violations** | 0 ✅ |
+| **Security Score** | 9.5/10 ✅ |
+| **Overall Grade** | A- (93/100) ✅ |
 
 ---
 
@@ -259,8 +261,8 @@
 
 | Version | Date | Description | Status |
 |---------|------|-------------|--------|
-| **v3.5.1** | TBD | Security Hardening & Technical Debt | 🔄 In Progress (Phase 1 ✅, Phase 2 ⏳) |
-| **v3.5.0** | 2025-10-26 | Parallel Processing by Default | ✅ Complete |
+| **v3.5.1** | 2025-10-26 | Security Hardening & Technical Debt (8/8 tasks) | ✅ Complete |
+| **v3.5.0** | 2025-10-26 | Parallel Processing by Default (Breaking) | ✅ Complete |
 | **v3.3.3** | 2025-10-25 | Duplicate Extensions Fix | ✅ Complete |
 | **v3.3.2** | 2025-10-25 | Date Sorting & Display Fix | ✅ Complete |
 | **v3.3.1** | 2025-10-25 | Date Tracking & Filter Fix (Schema 2.1) | ✅ Complete |
@@ -495,6 +497,7 @@ See [docs/contributing/](../contributing/) for contributor guidelines:
 
 ---
 
-**Status:** v3.5.1 In Progress - Phase 1 Complete ✅, Phase 2 Pending ⏳
-**Current Release:** v3.5.0 ✅ Complete (Parallel by Default)
-**Next Milestone:** Complete Phase 2 (Technical Debt) and release v3.5.1
+**Status:** v3.5.1 Complete ✅ (All 8 tasks - Both phases complete)
+**Current Release:** v3.5.1 ✅ (Security Hardening + Technical Debt + Parallel by Default)
+**Overall Grade:** A- (93/100) | **Security Score:** 9.5/10 | **Test Coverage:** 220 tests, 100% passing
+**Next Milestone:** TBD
