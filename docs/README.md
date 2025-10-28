@@ -34,11 +34,6 @@ docs/
 │   ├── STATUS.md                  # Current project status and progress
 │   └── PRD.md                     # Product Requirements Document
 │
-├── specs/                         # Shipped feature specifications
-│   ├── html-reports.md            # HTML report feature (v2.2)
-│   ├── retry-mechanism.md         # Retry mechanism (v2.2)
-│   └── cli-ux.md                  # CLI UX enhancement (v3.0)
-│
 ├── contributing/                  # Contributor guides
 │   ├── TESTING_CHECKLIST.md       # Testing checklist
 │   └── VERSION_MANAGEMENT.md      # Version management guide
@@ -150,22 +145,22 @@ docs/
 
 ---
 
-## Feature Specifications
+## Archived Feature Specifications
 
-**[specs/html-reports.md](specs/html-reports.md)** - HTML report feature (v2.2)
+**[archive/plans/v2.2-html-reports-spec.md](archive/plans/v2.2-html-reports-spec.md)** - HTML report feature (v2.2)
 - Interactive HTML reports with sortable tables
 - Data visualizations (pie charts, gauges, bar charts)
 - Self-contained design (embedded CSS/JS)
 - Print-optimized layout
 - Auto-detection from `.html` file extension
 
-**[specs/retry-mechanism.md](specs/retry-mechanism.md)** - Retry mechanism (v2.2)
+**[archive/plans/v2.2-retry-mechanism-spec.md](archive/plans/v2.2-retry-mechanism-spec.md)** - Retry mechanism (v2.2)
 - Exponential backoff with jitter (2s, 4s, 8s delays)
 - Retry-After header support for rate limiting
 - Configurable retry attempts and delays
 - Statistics tracking and reporting
 
-**[specs/cli-ux.md](specs/cli-ux.md)** - CLI UX enhancement (v3.0)
+**[archive/plans/v3.0-cli-ux-spec.md](archive/plans/v3.0-cli-ux-spec.md)** - CLI UX enhancement (v3.0)
 - Rich terminal formatting (progress bars, tables, panels)
 - Typer CLI framework with subcommands
 - Simplified help panels
@@ -306,7 +301,7 @@ docs/
 
 ### Phase 5: CLI UX Enhancement ✅ COMPLETE (v3.0)
 
-**Specification:** [specs/cli-ux.md](specs/cli-ux.md)
+**Specification:** [archive/plans/v3.0-cli-ux-spec.md](archive/plans/v3.0-cli-ux-spec.md)
 
 **What Was Achieved:**
 - Rich terminal formatting with live progress
@@ -355,7 +350,7 @@ docs/
   - Git history preserved via git mv for all moves
 
 - **2025-10-24** - Documentation Restructure
-  - Created 3-tier organization: Active (guides/, project/, specs/) + Archive + Contributing
+  - Created organization: Active (guides/, project/) + Archive + Contributing
   - Consolidated security docs into single [guides/SECURITY.md](guides/SECURITY.md)
   - Renamed files to lowercase-hyphenated naming convention
   - Clear separation of concerns: timeless guides vs. project management vs. historical archive
@@ -382,16 +377,14 @@ docs/
 
 - **guides/** - Timeless technical reference (architecture, security, APIs)
 - **project/** - Active project management (status, requirements)
-- **specs/** - Shipped feature specifications
 - **contributing/** - Contributor guides and checklists
-- **archive/** - Historical documentation (phases, releases, reviews)
+- **archive/** - Historical documentation (roadmaps, specs, releases, reviews)
 
 ### Guidelines
 
 1. **Guides are timeless** - Focus on principles, not specific bugs or versions
 2. **Project docs are current** - Reflect active status and plans
-3. **Specs document shipped features** - Implementation details for released features
-4. **Archive is historical** - Phase requirements, old reviews, past summaries
+3. **Archive is historical** - Roadmaps, specs, release notes, reviews, analysis
 5. **Use lowercase-hyphenated naming** - For new files: `my-new-document.md`
 6. **Update cross-references** - When moving files, update links in CLAUDE.md, README.md
 7. **Keep this index current** - Update navigation when adding files

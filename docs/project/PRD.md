@@ -48,22 +48,267 @@ VS Code extensions have broad access to the editor environment and can potential
 
 ---
 
-## 3. Core Features
+## 3. User Personas & Use Cases
 
-### 3.1 Extension Discovery
+### 3.1 User Personas
+
+#### Security-Conscious Developer
+**Profile:** Individual developer maintaining a secure development environment
+**Background:** Writes code daily in VS Code, concerned about supply chain security
+**Goals:**
+- Regular security audits of installed extensions
+- Awareness of vulnerabilities in development tools
+- Maintain compliance with organizational security policies
+
+**Usage Pattern:** Weekly scans with HTML reports for documentation
+**Pain Points:** Manual checking of extensions is tedious and error-prone
+
+**Typical Workflow:**
+```bash
+# Weekly security check
+vscan scan --output weekly-report.html
+
+# Review HTML report
+open weekly-report.html
+
+# Share with security team if issues found
+```
+
+#### DevOps/Security Team Lead
+**Profile:** Responsible for organizational security compliance and automation
+**Background:** Manages security scanning infrastructure for development teams
+**Goals:**
+- Automated scanning integrated into CI/CD pipelines
+- CSV exports for tracking and trending analysis
+- Monitoring security posture across multiple developers
+
+**Usage Pattern:** Automated daily scans with JSON/CSV output for monitoring systems
+**Pain Points:** Need machine-readable output for integration with security dashboards
+
+**Typical Workflow:**
+```bash
+# CI/CD pipeline integration
+vscan scan --output results.csv --quiet
+
+# Parse results for automated decision-making
+if [ $? -eq 1 ]; then
+  echo "Vulnerabilities found, review required"
+  # Send CSV to security tracking system
+fi
+```
+
+#### Extension Developer
+**Profile:** VS Code extension author ensuring security best practices
+**Background:** Develops and maintains VS Code extensions for community
+**Goals:**
+- Verify extension security before publishing updates
+- Ensure dependencies are free from known vulnerabilities
+- Maintain high security standards for users
+
+**Usage Pattern:** Pre-release scanning with verbose output for detailed analysis
+**Pain Points:** Need to verify extension security quickly during development cycles
+
+**Typical Workflow:**
+```bash
+# Before publishing update
+vscan scan --verbose --extensions-dir ~/my-extension-dev
+
+# Review detailed output for any issues
+# Fix vulnerabilities before release
+```
+
+### 3.2 Use Cases
+
+#### UC-1: First-Time Security Audit
+**Actor:** Security-Conscious Developer
+**Precondition:** User has VS Code installed with multiple extensions
+**Trigger:** User wants to perform initial security assessment
+
+**Main Flow:**
+1. User installs tool: `pip install vsc-extension-scanner`
+2. User runs first scan: `vscan scan`
+3. System auto-detects VS Code installation
+4. System scans all installed extensions (shows progress bar)
+5. System displays summary with security scores and risk levels
+6. User generates HTML report: `vscan scan --output report.html`
+7. User reviews interactive HTML report in browser
+8. User shares findings with team if vulnerabilities found
+
+**Postcondition:** User has comprehensive security assessment of all extensions
+**Alternative Flow:** If VS Code not found, user specifies custom directory with `--extensions-dir`
+
+#### UC-2: Continuous Security Monitoring
+**Actor:** DevOps/Security Team Lead
+**Precondition:** Tool is integrated into CI/CD pipeline
+**Trigger:** Scheduled job or manual pipeline execution
+
+**Main Flow:**
+1. CI/CD system initializes config: `vscan config init`
+2. System configures settings for automation:
+   ```bash
+   vscan config set scan.quiet true
+   vscan config set cache.max_age 1  # Daily cache refresh
+   ```
+3. Scheduled job executes: `vscan scan --output results.csv --quiet`
+4. System scans all extensions using cache when available
+5. System exports results to CSV format
+6. CI/CD system parses exit code (see [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes))
+7. System sends CSV to security tracking dashboard
+8. If vulnerabilities found, system triggers alerts/notifications
+
+**Postcondition:** Security metrics are tracked and trended over time
+**Alternative Flow:** If API fails, system uses cached results with warning
+
+#### UC-3: Pre-Release Extension Validation
+**Actor:** Extension Developer
+**Precondition:** Extension developer has development environment set up
+**Trigger:** Developer is ready to publish extension update
+
+**Main Flow:**
+1. Developer updates extension dependencies
+2. Developer runs verbose scan: `vscan scan --verbose`
+3. System performs deep scan with operational details
+4. System displays detailed security analysis including:
+   - Dependency tree with versions
+   - Known vulnerabilities in dependencies
+   - Security scores and risk factors
+5. Developer reviews verbose output
+6. Developer addresses any identified vulnerabilities
+7. Developer re-runs scan to verify fixes
+8. Developer publishes extension update with confidence
+
+**Postcondition:** Extension is verified secure before public release
+**Alternative Flow:** If vulnerabilities cannot be fixed, developer documents risks in extension README
+
+---
+
+## 4. User Stories & Acceptance Criteria
+
+### Epic: Security Scanning
+
+**US-1: Initial Security Audit**
+> As a developer, I want to scan all my VS Code extensions for vulnerabilities so that I can maintain a secure development environment.
+
+**Acceptance Criteria:**
+- ✅ Tool auto-detects VS Code installation on macOS, Windows, Linux
+- ✅ Scans all installed extensions in one command (`vscan scan`)
+- ✅ Displays clear security summary with risk levels (high, medium, low)
+- ✅ Completes scan of 66 extensions in <2 minutes (without cache)
+- ✅ Exit code 0 (clean) or 1 (vulnerabilities found) for automation
+- ✅ Shows progress bar with real-time status updates
+
+**US-2: Export Security Reports**
+> As a security lead, I want to export scan results to CSV so that I can track vulnerabilities across the organization.
+
+**Acceptance Criteria:**
+- ✅ CSV includes all security metrics (score, vulnerabilities, dependencies)
+- ✅ Compatible with Excel and Google Sheets (UTF-8 encoding)
+- ✅ Proper escaping for special characters (commas, quotes)
+- ✅ 15-column schema with complete extension data
+- ✅ Command: `vscan scan --output results.csv`
+
+**US-3: Interactive HTML Reports**
+> As a developer, I want interactive HTML reports so that I can share findings with my team in a professional format.
+
+**Acceptance Criteria:**
+- ✅ Self-contained HTML file with embedded CSS/JS (no external dependencies)
+- ✅ Sortable tables by risk level, name, publisher
+- ✅ Risk filters (show only high/medium/low risk extensions)
+- ✅ Search functionality for finding specific extensions
+- ✅ Data visualizations (pie charts, security score gauges)
+- ✅ Print-optimized layout for documentation
+- ✅ Command: `vscan scan --output report.html`
+
+### Epic: Performance & Caching
+
+**US-4: Fast Repeated Scans**
+> As a developer, I want fast repeated scans so that I can run security checks frequently without waiting.
+
+**Acceptance Criteria:**
+- ✅ First scan caches results for 7 days (configurable)
+- ✅ Subsequent scans complete in <15 seconds for 66 extensions
+- ✅ Cache invalidates when extension version changes
+- ✅ Manual cache refresh available via `--refresh-cache`
+- ✅ Cache statistics command: `vscan cache stats`
+- ✅ Achieves 28x speedup for cached results
+
+**US-5: Parallel Processing**
+> As a user with many extensions, I want parallel scanning so that initial scans complete faster.
+
+**Acceptance Criteria:**
+- ✅ Parallel processing enabled by default (3 workers)
+- ✅ Achieves 4.88x speedup compared to sequential scanning
+- ✅ Configurable worker count (1-5 workers)
+- ✅ Thread-safe operation with isolated API clients
+- ✅ Automatic rate limiting to respect API constraints
+- ✅ Configuration: `vscan config set scan.workers 5`
+
+### Epic: Configuration & Customization
+
+**US-6: Persistent Configuration**
+> As a power user, I want to configure default behavior so that I don't need to pass flags every time.
+
+**Acceptance Criteria:**
+- ✅ Persistent config file at ~/.vscanrc (INI format)
+- ✅ CLI flags override config file settings
+- ✅ `vscan config init` creates default configuration
+- ✅ `vscan config show` displays current settings
+- ✅ `vscan config set` modifies individual settings
+- ✅ `vscan config get` retrieves specific values
+- ✅ Type validation (int, float, bool, string, choice, path)
+
+**US-7: Custom Extensions Directory**
+> As a developer with multiple VS Code installations, I want to specify a custom extensions directory so that I can scan any installation.
+
+**Acceptance Criteria:**
+- ✅ Command-line flag: `--extensions-dir /path/to/extensions`
+- ✅ Persistent config setting: `vscan config set scan.extensions_dir /path`
+- ✅ Path validation prevents security issues
+- ✅ Clear error message if directory not found or invalid
+- ✅ Works with relative and absolute paths
+
+### Epic: Error Handling & Reliability
+
+**US-8: Graceful Failure Handling**
+> As a user, I want the tool to continue scanning even if individual extensions fail so that I get results for all working extensions.
+
+**Acceptance Criteria:**
+- ✅ Individual extension failures don't stop entire scan
+- ✅ Failed extensions are tracked and reported at the end
+- ✅ Error categorization (rate limit, timeout, network, API error)
+- ✅ Clear table showing which extensions failed and why
+- ✅ Actionable suggestions for resolution (e.g., increase --delay)
+- ✅ JSON output includes `failed_extensions` array for automation
+
+**US-9: Automatic Retry Logic**
+> As a user, I want automatic retries for transient failures so that temporary network issues don't cause scan failures.
+
+**Acceptance Criteria:**
+- ✅ Exponential backoff retry (2s, 4s, 8s delays)
+- ✅ Jitter to prevent thundering herd effect
+- ✅ Maximum 3 retries by default (configurable with `--max-retries`)
+- ✅ Per-worker retry tracking in parallel mode
+- ✅ Clear logging of retry attempts in verbose mode
+- ✅ Disable retries with `--max-retries 0` for fail-fast behavior
+
+---
+
+## 5. Core Features
+
+### 5.1 Extension Discovery
 - **Auto-detection** of VS Code installation on all platforms
 - **Custom directory** support via `--extensions-dir`
 - **Metadata parsing** from package.json files
 - **Cross-platform** path handling with pathlib
 
-### 3.2 Security Scanning
+### 5.2 Security Scanning
 - **vscan.dev Integration:** Complete API integration with 3 endpoints
 - **Request Throttling:** Configurable delays (default 1.5s)
 - **Retry Logic:** Exponential backoff (2s, 4s, 8s) with jitter
 - **Parallel Processing:** Default 3 workers (configurable 1-5), 4.88x speedup by default
 - **Error Handling:** Graceful degradation, continue on failures
 
-### 3.3 Output Formats
+### 5.3 Output Formats
 
 **JSON (Detailed Security Data)**
 - Schema version 2.0
@@ -86,28 +331,28 @@ VS Code extensions have broad access to the editor environment and can potential
 - Proper escaping for special characters
 - UTF-8 encoding
 
-### 3.4 Caching System
+### 5.4 Caching System
 - **SQLite Database:** ~/.vscan/cache.db
 - **Version-Based Invalidation:** Re-scan on version changes
 - **Configurable Expiry:** Default 7 days, adjustable
 - **Performance:** 28x faster for cached results
 - **Management Commands:** `vscan cache stats`, `vscan cache clear`
 
-### 3.5 Configuration Management
+### 5.5 Configuration Management
 - **Configuration File:** ~/.vscanrc (INI format)
 - **Three Sections:** scan, cache, output
 - **Type Validation:** int, float, bool, string, choice, path
 - **CLI Override:** Arguments always override config
 - **Management Commands:** init, show, set, get, reset
 
-### 3.6 Rich Terminal UI
+### 5.6 Rich Terminal UI
 - **Live Progress Bars:** Real-time scan status
 - **Color-Coded Tables:** Risk levels (🔴 high, 🟡 medium, 🟢 low)
 - **Interactive Display:** Rich formatted output
 - **Graceful Fallback:** Plain mode when Rich unavailable
 - **Three Output Modes (v3.3):** Quiet, Standard (security-focused), Verbose (all details)
 
-### 3.7 Failed Extensions Reporting (NEW v3.3)
+### 5.7 Failed Extensions Reporting
 - **Tracking:** Capture failed extensions during scan with error categorization
 - **Error Types:** Rate limit, network timeout, network error, API error
 - **Display:** Clear table/list showing which extensions failed and why
@@ -115,10 +360,9 @@ VS Code extensions have broad access to the editor environment and can potential
 - **Suggestions:** Actionable recommendations (e.g., increase --delay or --max-retries)
 - **Rich/Plain Support:** Both modes display failures clearly
 
-### 3.8 Parallel Scanning (PLANNED v3.4 - Optional)
+### 5.8 Parallel Scanning
 - **Performance:** 2-3x faster scanning with concurrent workers
 - **Worker Count:** 2-3 parallel workers (conservative to avoid rate limits)
-- **Opt-In:** Disabled by default, enable with `--parallel` flag
 - **Thread-Safe:** Each worker has own API client, shared cache manager
 - **Rate Limit Protection:** Distributed delays, exponential backoff per worker
 - **Configuration:** Persistent setting via config file (parallel, workers)
@@ -126,9 +370,281 @@ VS Code extensions have broad access to the editor environment and can potential
 
 ---
 
-## 4. User Guide
+## 6. Non-Functional Requirements
 
-### 4.1 Installation
+### NFR-1: Performance
+**Response Time:**
+- Cached scans complete in <15 seconds for 66 extensions
+- Initial scan completes in <2 minutes per 10 extensions
+- Progress updates every 100ms for responsive UI
+
+**Throughput:**
+- Handle 5 concurrent extension scans (parallel mode with 3 workers)
+- Process up to 200 extensions without performance degradation
+- Sustain 1.5 requests/second to vscan.dev API (configurable)
+
+**Resource Usage:**
+- Memory footprint <50MB during typical operation
+- Disk cache <5MB per 100 extensions
+- Network bandwidth respects rate limits (configurable delay)
+
+### NFR-2: Reliability
+**Availability:**
+- Graceful degradation when vscan.dev API is unavailable (use cached data)
+- Continue scanning even if individual extensions fail
+- No complete scan failures due to single extension errors
+
+**Error Handling:**
+- Automatic retry with exponential backoff (3 attempts by default)
+- Clear error categorization (rate limit, timeout, network, API)
+- Actionable error messages with resolution suggestions
+
+**Data Integrity:**
+- HMAC-SHA256 signatures prevent cache tampering
+- Version-based cache invalidation ensures accuracy
+- Atomic database transactions prevent corruption
+
+### NFR-3: Usability
+**Learning Curve:**
+- New users can run first scan in <2 minutes
+- Command help available via `--help` for all commands
+- Interactive configuration wizard: `vscan config init`
+
+**Error Messages:**
+- Clear, sanitized error messages (no sensitive path disclosure)
+- ERROR_HELP system provides actionable guidance
+- Contextual suggestions based on error type
+
+**Documentation:**
+- Complete user guide integrated into PRD
+- Command reference with examples for all features
+- Quick start guide in README.md
+
+### NFR-4: Security
+**Data Privacy:**
+- No sensitive data transmitted to vscan.dev (only extension IDs)
+- No logging of user file system paths
+- Sanitized error messages prevent information disclosure
+
+**File Permissions:**
+- Restrictive permissions (0o600/0o700) for cache and config files
+- Path validation blocks URL-encoded traversal attacks
+- System directory access prevention
+
+**Network Security:**
+- HTTPS-only API communication (no HTTP fallback)
+- Certificate validation enforced
+- 10 MB response size limit prevents memory exhaustion
+
+### NFR-5: Maintainability
+**Code Coverage:**
+- ≥85% overall test coverage
+- ≥95% coverage for security modules (utils.py, cache_manager.py)
+- 161+ test scenarios, 100% passing
+
+**Architecture:**
+- Clean 3-layer separation (Presentation, Application, Infrastructure)
+- Zero layer violations (enforced by test_architecture.py)
+- SOLID principles and design patterns
+
+**Documentation:**
+- All public APIs documented with examples
+- Architecture decision records for major changes
+- Comprehensive inline code comments
+
+### NFR-6: Compatibility
+**Platform Support:**
+- macOS (10.14+), Windows (10+), Linux (Ubuntu 18.04+)
+- Cross-platform path handling with pathlib
+- Platform-specific VS Code directory detection
+
+**Python Version:**
+- Python 3.8+ (supports 4 years of Python releases)
+- Type hints for IDE support and documentation
+- Standard library preference (minimal dependencies)
+
+**VS Code Versions:**
+- All VS Code versions with standard extension directory structure
+- VS Code Insiders support
+- Remote development extension support
+
+---
+
+## 7. Constraints & Assumptions
+
+### Technical Constraints
+
+**API Dependency:**
+- Requires vscan.dev API availability for initial scans
+- API must provide consistent JSON response format
+- API rate limits must be respected (configurable delay)
+- **Impact:** Offline operation limited to cached results only
+
+**Network Requirement:**
+- Internet connection required for initial scans
+- HTTPS access to vscan.dev (port 443) must be available
+- **Impact:** Cannot scan new extensions without network
+
+**Python Version:**
+- Minimum Python 3.8 (for typing support and pathlib features)
+- **Impact:** Users on older Python versions must upgrade
+
+**VS Code Structure:**
+- Assumes standard VS Code extension directory structure
+- package.json file must exist for each extension
+- **Impact:** Non-standard installations may not be detected
+
+### Operational Constraints
+
+**Rate Limits:**
+- vscan.dev API imposes rate limits (respect required)
+- Default 1.5s delay between requests (configurable 0.5-10s)
+- **Impact:** Large extension counts require time for initial scan
+
+**Cache Size:**
+- Cache grows with extension count (~50KB per extension)
+- No automatic cache size limit (manual clearing required)
+- **Impact:** Users with 1000+ extensions may need periodic cache cleanup
+
+**Memory Limit:**
+- Designed for <50MB memory usage (typical operation)
+- 10 MB API response limit prevents memory exhaustion
+- **Impact:** Systems with <100MB free RAM may experience issues
+
+### Legal/Compliance Constraints
+
+**API Terms:**
+- Must comply with vscan.dev terms of service
+- No commercial use restrictions (verify with vscan.dev)
+- **Impact:** Tool usage subject to third-party terms
+
+**Data Privacy:**
+- GDPR-compliant (no personal data transmission)
+- Only extension IDs sent to vscan.dev
+- **Impact:** Users in regulated industries can use safely
+
+**Open Source:**
+- MIT license for tool code
+- All dependencies must be MIT-compatible
+- **Impact:** Free to use, modify, and distribute
+
+### Assumptions
+
+**User Environment Assumptions:**
+- Users have admin/sudo access for pip installation
+- VS Code is installed in standard system locations
+- Users have stable internet connection (>1 Mbps)
+- Users understand basic command-line operations
+
+**API Behavior Assumptions:**
+- vscan.dev API maintains stable endpoint structure
+- Popular extensions are pre-analyzed and cached by vscan.dev
+- API response times remain <5 seconds per extension
+- API availability >99% uptime (not guaranteed)
+
+**Security Landscape Assumptions:**
+- Vulnerability databases are regularly updated by vscan.dev
+- vscan.dev continues providing free tier access
+- Extension security remains critical concern for developers
+- Supply chain attacks on VS Code extensions remain relevant threat
+
+---
+
+## 8. Dependencies & Integrations
+
+### External Services
+
+| Service | Purpose | Criticality | Fallback |
+|---------|---------|-------------|----------|
+| **vscan.dev API** | Security analysis of extensions | Critical | Cache provides degraded mode for previously scanned extensions |
+| **PyPI** | Package distribution | High | Manual installation from source available |
+
+**vscan.dev API Details:**
+- **Endpoints:** 3 endpoints (search, extension details, vulnerability data)
+- **Rate Limits:** Configurable delay (default 1.5s between requests)
+- **Authentication:** None required (public API)
+- **Availability:** No SLA guarantee, community service
+
+### Required Libraries
+
+| Library | Version | Purpose | License |
+|---------|---------|---------|---------|
+| **typer** | ≥0.9.0 | CLI framework with subcommands | MIT |
+| **rich** | ≥13.0.0 | Terminal UI (progress bars, tables, formatting) | MIT |
+| **Python stdlib** | 3.8+ | Core functionality (urllib, sqlite3, configparser) | PSF |
+
+**Dependency Rationale:**
+- **Minimal Dependencies:** Only 2 external libraries (typer, rich)
+- **Standard Library Priority:** All core functionality uses stdlib
+- **No Transitive Security Risks:** Minimal dependency tree reduces attack surface
+
+### System Requirements
+
+**Disk Space:**
+- <10MB: Tool installation
+- Variable: Cache database (~50KB per extension)
+- **Total Recommended:** 50 MB (includes room for reports and cache)
+
+**RAM:**
+- <50MB: Typical operation (3 workers)
+- Peak: <100MB (5 workers + large report generation)
+
+**Network:**
+- Outbound HTTPS (port 443) for vscan.dev API access
+- ~8 KB data transfer per extension (initial scan)
+- ~500 KB total for 66 extensions
+
+**Permissions:**
+- Read access to VS Code extensions directory
+- Write access to ~/.vscan/ (cache) and ~/.vscanrc (config)
+- No elevated privileges required (runs as user)
+
+### Integration Points
+
+**Current Integrations (v3.5.1):**
+- **JSON Export:** Machine-readable format for automation and monitoring systems
+- **CSV Export:** Spreadsheet import for reporting and tracking (Excel, Google Sheets)
+- **Exit Codes:** Standard codes for CI/CD decision logic (see [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes))
+- **Configuration File:** Integration with dotfile management tools
+
+**Planned Integrations (Future):**
+- **CI/CD Pipelines:** GitHub Actions, GitLab CI, Jenkins examples and templates
+- **Monitoring Systems:** Prometheus metrics export for dashboards
+- **Security Dashboards:** Grafana visualization templates
+- **Notification Services:** Slack/Teams webhooks for critical vulnerabilities
+- **Vulnerability Databases:** Integration with additional CVE sources (NVD, GitHub Advisory)
+
+### Integration Architecture
+
+**Data Flow:**
+```
+VS Code Extensions
+      ↓
+Extension Discovery (extension_discovery.py)
+      ↓
+Security Scanner (scanner.py)
+      ↓
+vscan.dev API (vscan_api.py)
+      ↓
+Cache Manager (cache_manager.py) ←→ SQLite Database
+      ↓
+Output Formatters (output_formatter.py, html_report_generator.py)
+      ↓
+JSON / HTML / CSV Reports
+```
+
+**Integration Points:**
+- **Input:** VS Code extension directory (auto-detected or user-specified)
+- **Processing:** vscan.dev API + local caching
+- **Output:** Multiple formats (JSON, HTML, CSV) for different use cases
+- **Configuration:** ~/.vscanrc for persistent settings
+- **State:** ~/.vscan/cache.db for performance optimization
+
+---
+
+## 9. User Guide
+
+### 9.1 Installation
 
 ```bash
 # Install from source
@@ -138,7 +654,7 @@ pip install -e .
 python -m vscode_scanner.vscan
 ```
 
-### 4.2 Quick Start
+### 9.2 Quick Start
 
 ```bash
 # Basic scan with Rich UI
@@ -161,7 +677,7 @@ vscan cache clear
 vscan report report.html
 ```
 
-### 4.3 Common Commands
+### 9.3 Common Commands
 
 **Scanning:**
 ```bash
@@ -189,9 +705,8 @@ vscan scan --exclude-ids "local.test"
 vscan config init                       # Create default ~/.vscanrc
 vscan config show                       # Display current config
 vscan config set scan.delay 2.0         # Set API delay
-vscan config set scan.extensions_dir ~/custom/path  # Set custom directory (v3.3)
-vscan config set scan.parallel true     # Enable parallel by default (v3.3)
-vscan config set scan.workers 3         # Set worker count (v3.3)
+vscan config set scan.extensions_dir ~/custom/path  # Set custom directory
+vscan config set scan.workers 3         # Set worker count
 vscan config get scan.delay             # Get specific value
 vscan config reset                      # Delete config file
 ```
@@ -213,35 +728,7 @@ vscan scan --max-retries 0              # Disable retries (fail fast)
 
 ---
 
-## 5. Architecture Overview
-
-### 5.1 System Architecture
-
-**Simple Layered Architecture (3 layers):**
-
-```
-┌─────────────────────────────────────────────┐
-│  PRESENTATION LAYER                         │
-│  cli.py, display.py, output_formatter.py    │
-├─────────────────────────────────────────────┤
-│  APPLICATION LAYER                          │
-│  scanner.py, config_manager.py              │
-├─────────────────────────────────────────────┤
-│  INFRASTRUCTURE LAYER                       │
-│  vscan_api.py, cache_manager.py,            │
-│  extension_discovery.py                     │
-└─────────────────────────────────────────────┘
-```
-
-**Design Principles:**
-- **KISS:** Keep It Simple, avoid over-engineering
-- **Command-Query Separation:** Commands modify, queries don't
-- **Fail Fast:** Detect errors early with helpful guidance
-- **Defense in Depth:** Multiple validation layers
-
-See [guides/ARCHITECTURE.md](../guides/ARCHITECTURE.md) for complete details.
-
-### 5.2 Technology Stack
+## 10. Technical Dependencies
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
@@ -258,145 +745,98 @@ See [guides/ARCHITECTURE.md](../guides/ARCHITECTURE.md) for complete details.
 - `rich` - Terminal formatting and UI
 - All other functionality uses Python stdlib
 
----
-
-## 6. Security
-
-### 6.1 Current Security Status
-
-**Overall Risk Level:** LOW ✅
-
-**Vulnerabilities Fixed:** 82% reduction (15 → 2 remaining)
-
-**Security Features:**
-- ✅ Path traversal protection (3 CRITICAL issues fixed)
-- ✅ Input validation with size limits
-- ✅ Resource exhaustion protection (10MB API response limit)
-- ✅ Restrictive file permissions (0o600/0o700)
-- ✅ Error message sanitization
-- ✅ HTTPS enforcement for all API calls
-- ⚠️ Cache integrity (no HMAC - medium priority)
-
-See [guides/SECURITY.md](../guides/SECURITY.md) for complete security documentation.
-
-### 6.2 Error Code System
-
-**Error Code Ranges:**
-- **E100-E199:** API Client errors (rate limit, timeout, network)
-- **E200-E299:** Cache Manager errors (invalid paths, corruption)
-- **E300-E399:** Extension Discovery errors (restricted paths, not found)
-
-See [guides/ERROR_CODES.md](../guides/ERROR_CODES.md) for complete reference.
+**Architecture Details:** See [guides/ARCHITECTURE.md](/docs/guides/ARCHITECTURE.md) for complete system design, layering principles, and design patterns.
 
 ---
 
-## 7. Performance
+## 11. Security
 
-### 7.1 Benchmarks (v3.1.0)
+**Security Posture:** Enterprise-grade security with comprehensive validation and protection (Risk Level: LOW ✅)
 
-| Metric | Without Cache | With Cache | Improvement |
-|--------|---------------|------------|-------------|
-| **66 extensions** | 6m 45s | 14.2s | **28.6x faster** |
-| **3 extensions** | 26.3s | 0.2s | **131x faster** |
-| **Average per ext** | 6.1s | 0.21s | **29x faster** |
-| **Cache hit rate** | 0% | 97% | - |
+**Core Security Features:**
+- Path traversal protection
+- Input validation and sanitization
+- HTTPS-only API communication
+- Restrictive file permissions (0o600/0o700)
+- Resource exhaustion protection (10MB response limit)
+- Error message sanitization
+- Cache integrity with HMAC-SHA256 signatures
 
-**Database Performance (v3.1):**
-- Batch commit optimization: 87.6% faster
-- VACUUM after bulk deletes: 73.9% space reclaimed
+**Complete Security Documentation:**
+- **[guides/SECURITY.md](/docs/guides/SECURITY.md)** - Threat model, validation patterns, security requirements
+- **[guides/ERROR_CODES.md](/docs/guides/ERROR_CODES.md)** - Error code reference and handling
 
-### 7.2 Resource Usage
+---
 
+## 12. Performance
+
+**User Experience:**
+- Scans 66 extensions in ~15 seconds (with cache)
+- First scan: ~6 minutes, subsequent scans: ~15 seconds (28x speedup)
+- Parallel processing by default (3 workers) provides 4.88x faster scanning
+- Minimal memory footprint (<50MB typical usage)
+- Efficient caching: 97% cache hit rate on repeated scans
+
+**Resource Requirements:**
 - **Memory:** < 50MB typical usage
 - **Disk:** ~/.vscan/cache.db (~2-5MB for 100 extensions)
-- **Network:** Respects rate limits with configurable delays
+- **Network:** Configurable rate limiting (default 1.5s delay between requests)
+
+**Detailed Benchmarks:** See [guides/PERFORMANCE.md](/docs/guides/PERFORMANCE.md) for comprehensive performance data, optimization strategies, and troubleshooting.
 
 ---
 
-## 8. Documentation
+## 13. Documentation
 
-### 8.1 Developer Guides
+**For Users:**
+- Quick Start: See Section 9 (User Guide)
+- Command Reference: See Section 9.3 (Common Commands)
 
-- **[guides/ARCHITECTURE.md](../guides/ARCHITECTURE.md)** - System architecture and design
-- **[guides/SECURITY.md](../guides/SECURITY.md)** - Security requirements and best practices
-- **[guides/ERROR_HANDLING.md](../guides/ERROR_HANDLING.md)** - Error handling strategy
-- **[guides/ERROR_CODES.md](../guides/ERROR_CODES.md)** - Error code reference
-- **[guides/TESTING.md](../guides/TESTING.md)** - Testing guidelines
-- **[guides/API_REFERENCE.md](../guides/API_REFERENCE.md)** - vscan.dev API documentation
-
-### 8.2 Feature Specifications
-
-- **[specs/html-reports.md](../specs/html-reports.md)** - HTML report feature (v2.2)
-- **[specs/retry-mechanism.md](../specs/retry-mechanism.md)** - Retry mechanism (v2.2)
-- **[specs/cli-ux.md](../specs/cli-ux.md)** - CLI UX enhancement (v3.0)
-
-### 8.3 Project Management
-
-- **[project/STATUS.md](STATUS.md)** - Complete implementation history
-- **[project/ROADMAP.md](ROADMAP.md)** - Version 3.2 improvement plan
-
-### 8.4 Contributing
-
-- **[contributing/TESTING_CHECKLIST.md](../contributing/TESTING_CHECKLIST.md)** - Testing checklist
-- **[contributing/VERSION_MANAGEMENT.md](../contributing/VERSION_MANAGEMENT.md)** - Version management guide
-
-### 8.5 Historical Documentation
-
-- **[archive/reviews/prd-original.md](../archive/reviews/prd-original.md)** - Original PRD (Phases 1-4)
-- **[archive/phases/](../archive/phases/)** - Phase requirements
-- **[archive/releases/](../archive/releases/)** - Release summaries
-- **[archive/reviews/](../archive/reviews/)** - Historical reviews
+**For Developers:**
+- **Complete Documentation Index:** [docs/README.md](/docs/README.md)
+- **Architecture:** [guides/ARCHITECTURE.md](/docs/guides/ARCHITECTURE.md)
+- **Security:** [guides/SECURITY.md](/docs/guides/SECURITY.md)
+- **Testing:** [guides/TESTING.md](/docs/guides/TESTING.md)
+- **Performance:** [guides/PERFORMANCE.md](/docs/guides/PERFORMANCE.md)
+- **API Reference:** [guides/API_REFERENCE.md](/docs/guides/API_REFERENCE.md)
 
 ---
 
-## 9. Development History
+## 14. Version History
 
-### Version Timeline
+**Current Version:** v3.5.1 (Production Ready) ✅
 
-| Version | Date | Description |
-|---------|------|-------------|
-| **v3.1.0** | 2025-10-24 | Configuration & CSV Export |
-| **v3.0.0** | 2025-10-24 | CLI UX Enhancement (Rich UI, Typer) |
-| **v2.2.1** | 2025-10-24 | Centralized Version Management |
-| **v2.2.0** | 2025-10-23 | Retry Mechanism & HTML Reports |
-| **v2.1.0** | 2025-10-23 | Code Quality & Security Improvements |
-| **v2.0.0** | 2025-10-22 | Enhanced Data Integration |
-| **v1.0.0** | 2025-10-20 | Initial Release (Phases 1-3) |
+**Major Milestones:**
+- **v3.5.1:** Security hardening & technical debt resolution
+- **v3.4.0:** Parallel processing by default (4.88x speedup)
+- **v3.0.0:** CLI UX enhancement with Rich UI
+- **v2.0.0:** Enhanced data integration
+- **v1.0.0:** Initial release
 
-### Implementation Phases
-
-**Completed:**
-- ✅ **Phase 1:** Research & Discovery (API reverse-engineering)
-- ✅ **Phase 2:** Core Implementation (extension discovery, scanning)
-- ✅ **Phase 3:** Testing & Refinement (caching, macOS testing)
-- ✅ **Phase 4:** Enhanced Data Integration (complete vscan.dev data)
-- ✅ **Phase 5:** CLI UX Enhancement (Rich UI, Typer framework)
-- ✅ **Phase 6:** Configuration & CSV Export (config files, CSV format)
-
-**Planned:**
-- 🔄 **Phase 7 (v3.2):** Code quality improvements (see ROADMAP.md)
-
-See [project/STATUS.md](STATUS.md) for complete implementation history.
+**Complete History:**
+- **[CHANGELOG.md](/CHANGELOG.md)** - Detailed release notes
+- **[project/STATUS.md](/docs/project/STATUS.md)** - Implementation history and current status
+- **[archive/README.md](/docs/archive/README.md)** - Overview of previous implementation plans, summaries and reviews
 
 ---
 
-## 10. Success Metrics
+## 15. Success Metrics
 
-### 10.1 Functional Metrics (Achieved)
+### 15.1 Functional Metrics (Achieved)
 
 - ✅ 100% extension detection on all platforms
 - ✅ 100% scan success rate (with graceful failure handling)
 - ✅ Valid output in all formats (JSON, HTML, CSV)
-- ✅ Correct exit codes (0=clean, 1=vulns, 2=error)
+- ✅ Correct exit codes (see [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes))
 
-### 10.2 Performance Metrics (Achieved)
+### 15.2 Performance Metrics (Achieved)
 
 - ✅ < 15 seconds for 66 extensions (with cache)
 - ✅ < 50MB memory usage
 - ✅ Zero unhandled exceptions (92+ test scenarios)
 - ✅ 28x performance improvement with caching
 
-### 10.3 Quality Metrics (Achieved)
+### 15.3 Quality Metrics (Achieved)
 
 - ✅ 92+ test scenarios, 100% passing
 - ✅ 82% security vulnerability reduction
@@ -405,11 +845,11 @@ See [project/STATUS.md](STATUS.md) for complete implementation history.
 
 ---
 
-## 11. Out of Scope
+## 16. Out of Scope
 
 The following features are **not included** in the current version:
 
-### 11.1 Not Implemented
+### 16.1 Not Implemented
 
 - ❌ Support for VS Code variants (VSCodium, Cursor)
 - ❌ CI/CD pipeline integration templates
@@ -422,7 +862,7 @@ The following features are **not included** in the current version:
 - ❌ Extension update recommendations
 - ❌ Integration with other vulnerability databases
 
-### 11.2 Previously Considered (Now Implemented)
+### 16.2 Previously Considered (Now Implemented)
 
 - ~~HTML report generation~~ ✅ Implemented in v2.2
 - ~~Local caching~~ ✅ Implemented in Phase 2.5
@@ -431,29 +871,20 @@ The following features are **not included** in the current version:
 
 ---
 
-## 12. Future Enhancements
-
-See [v3.4.1-ROADMAP.md](v3.4.1-ROADMAP.md) for planned v3.4.1 improvements (technical debt & code quality):
-
-- Code refactoring to eliminate duplication (~300 lines)
-- Thread-safe statistics collection with Lock protection
-- Transactional cache writes for fault tolerance
-- Parallel architecture documentation
-- Integration tests with real vscan.dev API
-- Progress display extraction (DRY principle)
+## 17. Future Enhancements
 
 ---
 
-## 13. References
+## 18. References
 
-### 13.1 External Resources
+### 18.1 External Resources
 
 - **[vscan.dev](https://vscan.dev)** - VS Code Extension Security Analyzer
 - **[VS Code Extension API](https://code.visualstudio.com/api)** - Official VS Code documentation
 - **[Typer Documentation](https://typer.tiangolo.com/)** - CLI framework docs
 - **[Rich Documentation](https://rich.readthedocs.io/)** - Terminal formatting docs
 
-### 13.2 Standards & Compliance
+### 18.2 Standards & Compliance
 
 - **[CWE Top 25](https://cwe.mitre.org/top25/)** - Common Weakness Enumeration
 - **[OWASP Top 10 (2021)](https://owasp.org/Top10/)** - Web application security risks
@@ -461,17 +892,17 @@ See [v3.4.1-ROADMAP.md](v3.4.1-ROADMAP.md) for planned v3.4.1 improvements (tech
 
 ---
 
-## 14. Contact & Support
+## 19. Contact & Support
 
 **Issues & Feedback:**
 - GitHub Issues: https://github.com/anthropics/claude-code/issues
 
 **Documentation:**
-- Full documentation: [docs/README.md](../README.md)
-- Quick reference: [../README.md](../../README.md)
+- Full documentation: [/docs/README.md](/docs/README.md)
+- Quick user reference: [/README.md](/README.md)
 
 ---
 
-**Document Version:** 3.4.0
+**Document Version:** 3.4.1
 **Last Updated:** 2025-10-25
 **Status:** Production Ready ✅

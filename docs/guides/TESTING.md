@@ -1,8 +1,10 @@
 # Testing Guide
 
-**Version:** 3.1.0
-**Last Updated:** 2025-10-24
+**Document Type:** Timeless Reference
+**Applies To:** All 3.x versions
+**Major Revision Trigger:** Test framework changes, testing philosophy shifts, or major tool updates
 **Target Audience:** Contributors, Developers, QA Engineers
+**See:** [CHANGELOG.md](../../CHANGELOG.md) for version-specific test additions
 
 ---
 
@@ -76,23 +78,39 @@ assert result['vulnerabilities'] == 0
 
 ```
 tests/
-├── test_architecture.py      # Architecture validation tests
-├── test_display.py            # Display module tests (24 tests)
-├── test_scanner.py            # Scanner module tests (15 tests)
-├── test_cli.py                # CLI module tests (18 tests)
-├── test_api.py                # API validation tests
-├── test_cache.py              # Cache manager tests
-├── test_config.py             # Configuration manager tests
-├── test_security.py           # Security vulnerability tests
-├── test_performance.py        # Performance benchmark tests
-├── test_integration.py        # End-to-end integration tests (7 suites)
-├── test_retry.py              # Retry mechanism tests
-├── test_db_integrity.py       # Database integrity tests
-├── fixtures/                  # Test data and fixtures
-│   ├── sample_extensions/
-│   ├── mock_responses/
-│   └── test_configs/
-└── conftest.py                # Pytest configuration and shared fixtures
+├── test_architecture.py               # Layer compliance and dependency validation
+├── test_display.py                    # Terminal formatting and Rich integration
+├── test_scanner.py                    # Core scanning workflow and filtering
+├── test_cli.py                        # Command-line interface and argument parsing
+├── test_api.py                        # API client validation
+├── test_security.py                   # Security vulnerability detection
+├── test_security_regression.py        # Security regression suite (v3.5.1+)
+├── test_path_validation.py            # Path traversal protection (v3.5.1+)
+├── test_string_sanitization.py        # String sanitization coverage (v3.5.1+)
+├── test_cache_integrity.py            # HMAC cache integrity (v3.5.1+)
+├── test_parallel_scanning.py          # Multi-threaded execution (v3.5.0+)
+├── test_transactional_cache.py        # Thread-safe cache operations (v3.5.0+)
+├── test_performance.py                # Performance benchmarks and profiling
+├── test_integration.py                # End-to-end workflow integration
+├── test_integration_real_api.py       # Live API integration scenarios
+├── test_db_integrity.py               # Database consistency validation
+├── test_retry.py                      # Retry mechanism with exponential backoff
+├── test_retry_analysis.py             # Retry timing and behavior analysis
+├── test_workflow_retry.py             # Workflow-specific retry patterns
+├── test_mock_validation.py            # Mock-to-real-API conformance
+├── test_failed_extensions.py          # Failed extension tracking and reporting
+├── test_verbose_mode.py               # Verbose output mode testing
+├── test_config_extensions_dir.py      # Custom extensions directory handling
+├── test_report_empty_cache.py         # Empty cache edge case handling
+├── fixtures/                          # Test data and fixtures
+│   ├── __init__.py
+│   └── canonical_mock.py              # Canonical mock implementation
+└── conftest.py                        # Pytest configuration and shared fixtures
+```
+
+**To see current test counts:** Run `pytest --collect-only -q tests/` or use the test suite runner:
+```bash
+python3 scripts/run_tests.py --all
 ```
 
 ### Test File Naming
@@ -306,16 +324,18 @@ python3 scripts/run_tests.py --all --skip-real-api
 
 **Available Test Groups:**
 
-| Flag | Tests | Duration | Description |
-|------|-------|----------|-------------|
-| `--unit` | 101 | ~2s | Core functionality (scanner, display, CLI) |
-| `--security` | 87 | ~0.5s | Security validation, path/string sanitization |
-| `--architecture` | 5 | ~0.2s | Layer compliance, zero violations |
-| `--parallel` | 21 | ~0.15s | Threading, parallel scanning |
-| `--integration` | 13+ | ~1s | Integration tests (mocked API) |
-| `--real-api` | 6 | ~30s | Real vscan.dev API calls (slow) |
-| `--mock-validation` | 11 | ~5s | Mock validation against real API |
-| `--all` | 196+ | ~40s | All test groups |
+| Flag | Duration | Description |
+|------|----------|-------------|
+| `--unit` | ~2s | Core functionality (scanner, display, CLI, edge cases) |
+| `--security` | ~0.5s | Security validation, path/string sanitization, cache integrity |
+| `--architecture` | ~0.2s | Layer compliance, zero violations |
+| `--parallel` | ~0.15s | Threading, parallel scanning, thread-safe cache |
+| `--integration` | ~1s | Integration tests (mocked API + DB integrity) |
+| `--real-api` | ~30s | Real vscan.dev API calls (slow) |
+| `--mock-validation` | ~5s | Mock validation against real API |
+| `--all` | ~40s | All test groups combined |
+
+**Note:** Run `python3 scripts/run_tests.py --all` to see current test counts for each group.
 
 **Output Formats:**
 
@@ -350,12 +370,12 @@ Skip Real API: No
 ----------------------------------------------------------------------
 TEST GROUP: Unit (7 files)
 ----------------------------------------------------------------------
-✓ test_scanner.py                           15 tests   0.018s   PASS
-✓ test_display.py                           23 tests   0.003s   PASS
-✓ test_cli.py                               17 tests   0.580s   PASS
+✓ test_scanner.py                           XX tests   0.018s   PASS
+✓ test_display.py                           XX tests   0.003s   PASS
+✓ test_cli.py                               XX tests   0.580s   PASS
 ...
 
-Summary: 101 tests, 101 passed, 0 failed, 0 skipped (0.925s)
+Summary: Run `pytest tests/ -v --tb=no` to see current test counts
 
 ----------------------------------------------------------------------
 TEST GROUP: Security (5 files)
@@ -363,19 +383,19 @@ TEST GROUP: Security (5 files)
 ✓ test_security.py                          11 tests   0.012s   PASS
 ...
 
-Summary: 87 tests, 87 passed, 0 failed, 0 skipped (0.193s)
+Summary: XX tests, XX passed, 0 failed, 0 skipped (0.193s)
 ⚠️  CRITICAL: 0 vulnerabilities confirmed
 
 ======================================================================
 OVERALL SUMMARY
 ======================================================================
 
-Total Test Files: 12
-Total Tests Run:  188
-Total Passed:     188 ✓
+Total Test Files: Run `pytest --collect-only -q tests/` to see file count
+Total Tests Run:  Run `pytest tests/ -v` for current test counts
+Total Passed:     Check pytest output for pass/fail breakdown
 Total Failed:     0 ✗
 Total Skipped:    0 ⊘
-Total Duration:   1.118s
+Total Duration:   Varies by system (typically <2s for full suite)
 
 Exit Code: 0 (SUCCESS)
 ======================================================================
@@ -606,56 +626,113 @@ def test_no_circular_dependencies():
 
 ## Security Tests
 
-### Input Validation
+### Overview
 
-```python
-def test_extension_id_validation_blocks_injection():
-    """Extension IDs are validated before use in database queries."""
-    from vscode_scanner.utils import validate_extension_id
+Security testing is divided into multiple specialized test suites (v3.5.1):
+- **test_security.py** - Core security vulnerability tests
+- **test_path_validation.py** - Comprehensive path validation coverage
+- **test_string_sanitization.py** - String sanitization in all contexts
+- **test_cache_integrity.py** - HMAC signature validation
+- **test_security_regression.py** - Regression suite for all fixed vulnerabilities
 
-    malicious_inputs = [
-        "'; DROP TABLE scan_cache; --",
-        "' OR '1'='1",
-        "1' UNION SELECT * FROM users--",
-    ]
+**To see current test counts:** Run `pytest --collect-only -q tests/test_security*.py tests/test_path*.py tests/test_string*.py tests/test_cache*.py`
 
-    for malicious in malicious_inputs:
-        assert not validate_extension_id(malicious), \
-            f"Should reject malicious input: {malicious}"
-```
-
-### Path Traversal
+### Path Validation Tests (v3.5.1)
 
 ```python
 def test_path_traversal_blocked():
-    """Path traversal attempts are blocked."""
-    from vscode_scanner.utils import is_safe_path
+    """validate_path() blocks all path traversal attempts."""
+    from vscode_scanner.utils import validate_path
 
     dangerous_paths = [
         "../../../etc/passwd",
         "..\\..\\..\\Windows\\System32",
         "/etc/passwd",
         "C:\\Windows\\System32",
+        "%2e%2e%2f/etc/passwd",  # URL-encoded traversal
+        "~/../.ssh/id_rsa",       # Shell expansion
     ]
 
     for dangerous in dangerous_paths:
-        assert not is_safe_path(dangerous), \
-            f"Should block dangerous path: {dangerous}"
+        with pytest.raises(ValueError, match="Invalid path"):
+            validate_path(dangerous, path_type="output")
 ```
 
-### Error Message Sanitization
+### String Sanitization Tests (v3.5.1)
 
 ```python
-def test_error_messages_dont_leak_paths():
-    """Error messages don't expose file paths."""
-    from vscode_scanner.utils import sanitize_error_message
+def test_string_sanitization_prevents_injection():
+    """sanitize_string() prevents terminal and log injection."""
+    from vscode_scanner.utils import sanitize_string
 
+    # Test ANSI escape sequences (terminal injection)
+    ansi_input = "\x1b[31mRed Text\x1b[0m"
+    result = sanitize_string(ansi_input, context="output")
+    assert "\x1b" not in result
+
+    # Test path disclosure in errors
     error_with_path = "File not found: /Users/john/secret/keys.json"
-    sanitized = sanitize_error_message(error_with_path)
-
+    sanitized = sanitize_string(error_with_path, context="error", max_length=100)
     assert "/Users/john" not in sanitized
     assert "keys.json" not in sanitized
-    assert "<path>" in sanitized
+
+    # Test control characters
+    control_chars = "Normal\x00text\x01with\x1fcontrol"
+    result = sanitize_string(control_chars, context="log")
+    assert "\x00" not in result
+    assert "\x01" not in result
+```
+
+### Cache Integrity Tests (v3.5.1)
+
+```python
+def test_cache_integrity_hmac_validation():
+    """HMAC signatures prevent cache tampering."""
+    from vscode_scanner.cache_manager import CacheManager
+
+    cache = CacheManager()
+
+    # Cache a result
+    extension_id = "test.extension"
+    version = "1.0.0"
+    result = {"vulnerabilities": [], "risk_score": 0}
+    cache.save_result(extension_id, version, result)
+
+    # Tamper with database directly (bypass cache manager)
+    import sqlite3
+    conn = sqlite3.connect(cache.cache_db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE scan_cache SET vulnerability_data = ? WHERE extension_id = ?",
+        ('{"vulnerabilities": ["FAKE"], "risk_score": 10}', extension_id)
+    )
+    conn.commit()
+    conn.close()
+
+    # Attempt to retrieve tampered entry
+    cached = cache.get_cached_result(extension_id, version)
+
+    # HMAC verification should detect tampering and reject entry
+    assert cached is None, "Tampered cache entry should be rejected"
+```
+
+### Security Regression Tests (v3.5.1)
+
+```python
+def test_all_fixed_vulnerabilities_stay_fixed():
+    """Regression suite ensures all fixed CVEs stay fixed."""
+    # test_security_regression.py contains 24 tests covering:
+    # - CWE-22: Path traversal (3 variants fixed)
+    # - CWE-400: Resource exhaustion (2 variants fixed)
+    # - CWE-345: Data authenticity (HMAC implementation)
+    # - CWE-209: Information disclosure (error sanitization)
+
+    # Example: URL-encoded path traversal (fixed in v3.5.1)
+    from vscode_scanner.utils import validate_path
+
+    url_encoded_traversal = "data/%2e%2e%2f/etc/passwd"
+    with pytest.raises(ValueError):
+        validate_path(url_encoded_traversal, path_type="output")
 ```
 
 ---
@@ -718,6 +795,122 @@ def test_cache_migration_memory_usage():
 
 ---
 
+## Parallel Scanning Tests (v3.5.0+)
+
+### Overview
+
+Parallel scanning (v3.5.0) introduces multi-threaded execution with 1-5 worker threads. Tests ensure thread safety, performance gains, and correct behavior under concurrent operations.
+
+Test files:
+- **test_parallel_scanning.py** - Parallel execution, performance, worker isolation
+- **test_transactional_cache.py** - Thread-safe cache operations
+
+### Thread Safety Tests
+
+```python
+def test_thread_safe_statistics_collection():
+    """Statistics are correctly accumulated across worker threads."""
+    from vscode_scanner.scanner import ThreadSafeStats
+    import threading
+
+    stats = ThreadSafeStats()
+    num_threads = 5
+    increments_per_thread = 100
+
+    def worker():
+        for _ in range(increments_per_thread):
+            stats.increment('total_scanned', 1)
+            stats.increment('vulnerabilities_found', 1)
+
+    # Run concurrent increments
+    threads = [threading.Thread(target=worker) for _ in range(num_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    # Verify correct totals (no race conditions)
+    result = stats.to_dict()
+    expected_total = num_threads * increments_per_thread
+    assert result['total_scanned'] == expected_total
+    assert result['vulnerabilities_found'] == expected_total
+```
+
+### Performance Tests
+
+```python
+def test_parallel_faster_than_sequential():
+    """Parallel scanning is significantly faster than sequential."""
+    from vscode_scanner.scanner import _scan_extensions
+    import time
+
+    # Create test extensions
+    extensions = [f"test.ext{i}" for i in range(20)]
+
+    # Sequential scan (1 worker)
+    start = time.time()
+    results_seq = _scan_extensions(extensions, workers=1)
+    duration_seq = time.time() - start
+
+    # Parallel scan (3 workers)
+    start = time.time()
+    results_par = _scan_extensions(extensions, workers=3)
+    duration_par = time.time() - start
+
+    # Verify same results
+    assert len(results_seq) == len(results_par)
+
+    # Verify speedup (should be >2x faster with 3 workers)
+    speedup = duration_seq / duration_par
+    assert speedup >= 2.0, f"Expected 2x+ speedup, got {speedup}x"
+```
+
+### Worker Isolation Tests
+
+```python
+def test_worker_isolation_no_shared_state():
+    """Each worker has isolated API client and state."""
+    from vscode_scanner.scanner import _scan_extensions
+
+    extensions = [f"test.ext{i}" for i in range(10)]
+
+    # Run parallel scan
+    results = _scan_extensions(extensions, workers=3)
+
+    # Verify all results are independent
+    extension_ids = [r['extension_id'] for r in results]
+    assert len(extension_ids) == len(set(extension_ids)), \
+        "Workers should not interfere with each other"
+
+    # Verify no race conditions in cache writes
+    # (all writes happen in main thread after workers complete)
+    for result in results:
+        assert 'error' not in result or result['error'] is None
+```
+
+### Cache Thread Safety Tests
+
+```python
+def test_cache_writes_serialized():
+    """Database writes are serialized in main thread (SQLite limitation)."""
+    from vscode_scanner.cache_manager import CacheManager
+    from vscode_scanner.scanner import _parallel_scan_extensions
+
+    cache = CacheManager()
+    extensions = [f"test.ext{i}" for i in range(20)]
+
+    # Run parallel scan with caching enabled
+    results = _parallel_scan_extensions(extensions, workers=3, use_cache=True)
+
+    # Verify all results were cached correctly
+    for result in results:
+        cached = cache.get_cached_result(result['extension_id'], result['version'])
+        assert cached is not None, "Result should be cached"
+        assert cached['risk_score'] == result['risk_score']
+```
+
+---
+
 ## Integration Tests
 
 ### Full Scan Workflow
@@ -771,6 +964,452 @@ def test_report_generation_from_cache():
     assert result == 0  # Success
     assert os.path.exists("report.html")
     assert_no_api_calls_made()  # Verify cache-only
+```
+
+---
+
+## CLI Testing (v3.0+)
+
+### Overview
+
+The CLI UX enhancement (v3.0) introduced Typer and Rich for modern terminal formatting. Tests ensure command structure, terminal compatibility, and output formatting work correctly across environments.
+
+### Command Structure Tests
+
+```python
+def test_command_structure():
+    """Verify Typer commands are correctly organized."""
+    from vscode_scanner.cli import app
+
+    # Verify main commands exist
+    commands = [cmd.name for cmd in app.registered_commands]
+    assert 'scan' in commands
+    assert 'report' in commands
+    assert 'cache' in commands
+    assert 'config' in commands
+
+def test_subcommand_organization():
+    """Verify subcommands are properly nested."""
+    from vscode_scanner.cli import app, cache_app, config_app
+
+    # Cache subcommands
+    cache_commands = [cmd.name for cmd in cache_app.registered_commands]
+    assert 'stats' in cache_commands
+    assert 'clear' in cache_commands
+
+    # Config subcommands
+    config_commands = [cmd.name for cmd in config_app.registered_commands]
+    assert 'init' in config_commands
+    assert 'show' in config_commands
+    assert 'set' in config_commands
+    assert 'get' in config_commands
+```
+
+### Terminal Compatibility Tests
+
+```python
+def test_rich_output_with_color_support():
+    """Rich formatting works in terminals with color support."""
+    runner = CliRunner(color=True)
+    result = runner.invoke(app, ["scan"])
+
+    # Verify Rich formatting (color codes present)
+    assert '\x1b[' in result.output  # ANSI escape sequences
+
+def test_plain_output_without_color():
+    """Plain output works in terminals without color support."""
+    runner = CliRunner(color=False)
+    result = runner.invoke(app, ["scan", "--plain"])
+
+    # Verify no ANSI codes (plain text only)
+    assert '\x1b[' not in result.output
+
+def test_output_redirection():
+    """Output can be redirected to files and pipes."""
+    import subprocess
+
+    # Redirect stdout to file
+    result = subprocess.run(
+        ["vscan", "scan", "--output", "results.json"],
+        capture_output=True,
+        text=True
+    )
+
+    assert result.returncode in {0, 1}  # Success or vulnerabilities found
+    assert os.path.exists("results.json")
+```
+
+### Terminal Compatibility Matrix
+
+Test the CLI across different terminal environments:
+
+| Terminal | Color Support | Rich Formatting | Plain Fallback | Status |
+|----------|---------------|-----------------|----------------|--------|
+| iTerm2 (macOS) | Yes | ✅ Full support | ✅ Works | Tested |
+| Terminal.app | Yes | ✅ Full support | ✅ Works | Tested |
+| GNOME Terminal | Yes | ✅ Full support | ✅ Works | Tested |
+| Windows Terminal | Yes | ✅ Full support | ✅ Works | Tested |
+| CMD.exe | Limited | ⚠️ Partial | ✅ Works | Tested |
+| CI/CD (GitHub Actions) | No | ❌ Disabled | ✅ Works | Tested |
+| SSH sessions | Varies | ✅ Auto-detect | ✅ Works | Tested |
+
+### Help Text Tests
+
+```python
+def test_help_text_completeness():
+    """All commands have comprehensive help text."""
+    runner = CliRunner()
+
+    # Main help
+    result = runner.invoke(app, ["--help"])
+    assert "VS Code Extension Security Scanner" in result.output
+    assert "scan" in result.output
+    assert "report" in result.output
+
+    # Command-specific help
+    result = runner.invoke(app, ["scan", "--help"])
+    assert "--output" in result.output
+    assert "--workers" in result.output
+    assert "Examples:" in result.output
+```
+
+### Manual Testing Checklist
+
+**CLI UX Testing:**
+- [ ] All commands accessible and responsive
+- [ ] Help text clear and comprehensive
+- [ ] Progress bars display correctly
+- [ ] Tables render properly in terminal
+- [ ] Color-coding works (risk levels, status)
+- [ ] Error messages formatted correctly
+- [ ] Confirmation prompts work
+- [ ] Auto-completion (if enabled) works
+
+**Terminal Compatibility:**
+- [ ] Test in iTerm2/Terminal.app (macOS)
+- [ ] Test in GNOME Terminal (Linux)
+- [ ] Test in Windows Terminal
+- [ ] Test in CMD.exe
+- [ ] Test with `--plain` flag
+- [ ] Test output redirection (`> file.txt`)
+- [ ] Test in CI/CD environment (GitHub Actions)
+
+**Edge Cases:**
+- [ ] Very narrow terminal width (<80 cols)
+- [ ] Very wide terminal width (>200 cols)
+- [ ] No color support (TERM=dumb)
+- [ ] SSH session over slow connection
+
+---
+
+## HTML Report Testing (v2.2+)
+
+### Overview
+
+HTML reports (v2.2) generate self-contained interactive reports with embedded CSS/JavaScript. Tests ensure HTML structure, interactivity, and browser compatibility.
+
+### HTML Structure Validation
+
+```python
+def test_html_report_structure():
+    """Generated HTML has required structure."""
+    from vscode_scanner.html_report_generator import HTMLReportGenerator
+
+    generator = HTMLReportGenerator()
+    html = generator.generate_report(sample_scan_data())
+
+    # Verify basic HTML structure
+    assert '<!DOCTYPE html>' in html
+    assert '<html' in html and '</html>' in html
+    assert '<head>' in html and '</head>' in html
+    assert '<body>' in html and '</body>' in html
+
+    # Verify sections
+    assert '<header class="report-header">' in html
+    assert '<section class="controls">' in html
+    assert '<section class="overview-table">' in html
+    assert '<footer class="report-footer">' in html
+
+def test_html_has_embedded_styles():
+    """CSS is embedded, not external."""
+    html = generate_html_report(sample_scan_data())
+
+    # Verify embedded CSS
+    assert '<style>' in html and '</style>' in html
+    assert 'href=' not in html  # No external stylesheets
+    assert '.risk-high' in html  # CSS classes present
+
+def test_html_has_embedded_scripts():
+    """JavaScript is embedded, not external."""
+    html = generate_html_report(sample_scan_data())
+
+    # Verify embedded JavaScript
+    assert '<script>' in html and '</script>' in html
+    assert 'src=' not in html or 'data:' in html  # No external scripts (except data URIs for SVG)
+    assert 'sortTable' in html  # JS functions present
+    assert 'filterByRisk' in html
+```
+
+### Chart Generation Tests
+
+```python
+def test_pie_chart_svg_generation():
+    """Pie chart SVG is generated correctly."""
+    from vscode_scanner.html_report_generator import HTMLReportGenerator
+
+    generator = HTMLReportGenerator()
+    svg = generator._generate_pie_chart_svg(high=10, medium=20, low=30)
+
+    # Verify SVG structure
+    assert '<svg' in svg
+    assert '<path' in svg  # Pie chart segments
+    assert 'viewBox=' in svg
+    assert '</svg>' in svg
+
+def test_security_gauge_generation():
+    """Security score gauges render correctly."""
+    generator = HTMLReportGenerator()
+
+    # Test various scores
+    gauge_high = generator._generate_security_gauge(85)
+    gauge_med = generator._generate_security_gauge(65)
+    gauge_low = generator._generate_security_gauge(35)
+
+    # Verify color coding
+    assert 'green' in gauge_high or '#28a745' in gauge_high
+    assert 'orange' in gauge_med or '#ffc107' in gauge_med
+    assert 'red' in gauge_low or '#dc3545' in gauge_low
+```
+
+### Interactive Features Tests
+
+```python
+def test_table_sorting_javascript():
+    """Table sorting JavaScript is present."""
+    html = generate_html_report(sample_scan_data())
+
+    # Verify sorting function exists
+    assert 'function sortTable' in html
+    assert 'onclick="sortTable(' in html
+
+def test_filtering_javascript():
+    """Filtering JavaScript is present."""
+    html = generate_html_report(sample_scan_data())
+
+    # Verify filter functions
+    assert 'function filterByRisk' in html
+    assert 'function searchExtensions' in html
+    assert 'function toggleColumn' in html
+
+def test_expandable_rows_javascript():
+    """Row expansion JavaScript is present."""
+    html = generate_html_report(sample_scan_data())
+
+    # Verify expand/collapse functions
+    assert 'function toggleDetails' in html
+    assert 'onclick="toggleDetails(' in html
+```
+
+### Browser Compatibility Tests
+
+**Manual Testing Checklist:**
+
+| Browser | Version | HTML Rendering | JavaScript | CSS | Status |
+|---------|---------|----------------|------------|-----|--------|
+| Chrome | Latest | ✅ | ✅ | ✅ | Tested |
+| Firefox | Latest | ✅ | ✅ | ✅ | Tested |
+| Safari | Latest | ✅ | ✅ | ✅ | Tested |
+| Edge | Latest | ✅ | ✅ | ✅ | Tested |
+| Chrome | -2 versions | ✅ | ✅ | ✅ | Tested |
+| Firefox | -2 versions | ✅ | ✅ | ✅ | Tested |
+
+**Feature Testing:**
+- [ ] Report loads in all browsers
+- [ ] Tables render correctly
+- [ ] Charts display properly
+- [ ] Sorting works
+- [ ] Filtering works
+- [ ] Search works
+- [ ] Row expansion works
+- [ ] Column toggles work
+- [ ] Print preview looks good
+- [ ] Responsive design works
+
+**Performance Testing:**
+- [ ] 10 extensions: < 1s load time
+- [ ] 50 extensions: < 2s load time
+- [ ] 100 extensions: < 5s load time
+- [ ] 500 extensions: < 10s load time
+
+### Print Testing
+
+```python
+def test_print_media_queries():
+    """Print CSS media queries are present."""
+    html = generate_html_report(sample_scan_data())
+
+    # Verify print styles
+    assert '@media print' in html
+    assert 'page-break-inside: avoid' in html
+    assert '.controls { display: none' in html  # Hide controls when printing
+```
+
+**Manual Print Testing:**
+- [ ] Print preview shows all extensions
+- [ ] Details are expanded automatically
+- [ ] Interactive controls hidden
+- [ ] Page breaks appropriate
+- [ ] Black & white mode works
+- [ ] Headers/footers appropriate
+
+### HTML Validation
+
+**Automated Validation:**
+```bash
+# Use HTML5 validator (if available)
+html5validator report.html
+
+# Or use online validator
+curl -F "uploaded_file=@report.html" \
+  https://validator.w3.org/nu/?out=json
+```
+
+**Validation Checklist:**
+- [ ] Valid HTML5 syntax
+- [ ] No unclosed tags
+- [ ] No duplicate IDs
+- [ ] Proper nesting
+- [ ] Valid CSS syntax
+- [ ] Valid JavaScript syntax
+- [ ] Accessibility attributes (ARIA labels)
+- [ ] Semantic HTML elements
+
+### Offline Testing
+
+```python
+def test_report_works_offline():
+    """HTML report works without internet connection."""
+    # Generate report
+    generate_html_report(sample_scan_data(), "report.html")
+
+    # Disconnect network
+    # (manual test - open report.html with network disabled)
+
+    # Verify:
+    # - Report loads
+    # - All features work
+    # - No network errors in console
+```
+
+---
+
+## Retry Mechanism Tests
+
+### Overview
+
+The retry mechanism (v2.2+) implements exponential backoff with jitter to handle transient API failures gracefully. Tests ensure correct retry behavior, proper backoff timing, and workflow-level retry separation.
+
+Test files:
+- **test_retry.py** - Basic retry mechanism tests
+- **test_retry_analysis.py** - Retry timing and backoff analysis
+- **test_workflow_retry.py** - Workflow-specific retry behavior
+
+### Exponential Backoff Tests
+
+```python
+def test_exponential_backoff_timing():
+    """Verify exponential backoff with jitter works correctly."""
+    from vscode_scanner.vscan_api import _calculate_backoff_delay
+
+    # Test exponential growth
+    delay_0 = _calculate_backoff_delay(0, base_delay=2.0)  # ~2s
+    delay_1 = _calculate_backoff_delay(1, base_delay=2.0)  # ~4s
+    delay_2 = _calculate_backoff_delay(2, base_delay=2.0)  # ~8s
+
+    # Verify exponential pattern (allowing for jitter ±20%)
+    assert 1.6 <= delay_0 <= 2.4
+    assert 3.2 <= delay_1 <= 4.8
+    assert 6.4 <= delay_2 <= 9.6
+
+    # Verify maximum ceiling (30s prevents DoS)
+    delay_10 = _calculate_backoff_delay(10, base_delay=2.0)
+    assert delay_10 <= 30.0
+```
+
+### Retryable Error Detection Tests
+
+```python
+def test_non_retryable_errors_fail_immediately():
+    """Permanent errors don't trigger retries."""
+    from vscode_scanner.vscan_api import _is_retryable_error
+
+    # Client errors - don't retry
+    assert not _is_retryable_error(400, "Bad Request")
+    assert not _is_retryable_error(401, "Unauthorized")
+    assert not _is_retryable_error(403, "Forbidden")
+    assert not _is_retryable_error(404, "Not Found")
+    assert not _is_retryable_error(500, "Internal Server Error")
+
+    # Transient errors - safe to retry
+    assert _is_retryable_error(408, "Request Timeout")
+    assert _is_retryable_error(429, "Too Many Requests")
+    assert _is_retryable_error(502, "Bad Gateway")
+    assert _is_retryable_error(503, "Service Unavailable")
+    assert _is_retryable_error(504, "Gateway Timeout")
+```
+
+### Workflow Retry Separation Tests
+
+```python
+def test_workflow_specific_retry_limits():
+    """Different workflows have appropriate retry limits."""
+    from vscode_scanner.vscan_api import VScanAPI
+
+    api = VScanAPI()
+
+    # Critical operations: 3 retries
+    assert api.max_retries_scan == 3
+    assert api.retry_base_delay_scan == 2.0
+
+    # Non-critical operations: fewer retries
+    assert api.max_retries_cache <= 1
+    assert api.retry_base_delay_cache <= 1.0
+```
+
+### Retry-After Header Handling Tests
+
+```python
+def test_respects_retry_after_header():
+    """API Retry-After header is honored (with ceiling)."""
+    from vscode_scanner.vscan_api import VScanAPI
+    from unittest import mock
+
+    api = VScanAPI()
+
+    # Mock response with Retry-After: 5
+    mock_response = mock.Mock()
+    mock_response.getheader.return_value = "5"
+
+    delay = api._get_retry_delay(mock_response, retry_count=0)
+
+    # Should use Retry-After value (5s)
+    assert 4.5 <= delay <= 5.5  # Allow small jitter
+
+def test_retry_after_ceiling_prevents_dos():
+    """Malicious Retry-After headers are capped at MAX_BACKOFF_DELAY."""
+    from vscode_scanner.vscan_api import VScanAPI, MAX_BACKOFF_DELAY
+    from unittest import mock
+
+    api = VScanAPI()
+
+    # Mock malicious Retry-After: 9999
+    mock_response = mock.Mock()
+    mock_response.getheader.return_value = "9999"
+
+    delay = api._get_retry_delay(mock_response, retry_count=0)
+
+    # Should be capped at 30s maximum
+    assert delay <= MAX_BACKOFF_DELAY
 ```
 
 ---
@@ -901,9 +1540,10 @@ CRITICAL_FIELDS = {
 
 ### Coverage Goals
 
-- **Unit Tests:** 80%+ coverage
+- **Overall Coverage:** 85%+ across all modules
+- **Security Modules:** 95%+ coverage (utils.py, cache_manager.py)
 - **Integration Tests:** Cover major workflows
-- **Security Tests:** 100% of security functions
+- **Security Tests:** 100% of security functions (validate_path, sanitize_string, HMAC validation)
 
 ### Measure Coverage
 

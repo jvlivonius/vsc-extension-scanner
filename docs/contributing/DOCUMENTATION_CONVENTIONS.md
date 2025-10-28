@@ -64,15 +64,13 @@ docs/
 │   ├── PRD.md
 │   └── ROADMAP.md
 │
-├── specs/          # Shipped feature specifications (archive after 2+ versions)
-│   ├── html-reports.md
-│   ├── retry-mechanism.md
-│   └── cli-ux.md
-│
 ├── contributing/   # Contributor guides (NEVER archive)
 │   ├── TESTING_CHECKLIST.md
 │   ├── VERSION_MANAGEMENT.md
 │   └── DOCUMENTATION_CONVENTIONS.md  # This file
+│
+├── templates/      # Document templates for consistency
+│   └── release-notes-template.md
 │
 └── archive/        # Historical documentation (version-based organization)
     ├── README.md   # Navigation guide (REQUIRED)
@@ -87,8 +85,8 @@ docs/
 |-----------|---------|----------|--------------|
 | **guides/** | Timeless technical documentation | **NEVER** | lowercase-hyphenated |
 | **project/** | Current project status and plans | When complete | lowercase-hyphenated |
-| **specs/** | Shipped feature specifications | After 2+ versions | lowercase-hyphenated |
 | **contributing/** | Contributor guides and checklists | **NEVER** | SCREAMING_SNAKE_CASE |
+| **templates/** | Document templates for consistency | **NEVER** | lowercase-hyphenated |
 | **archive/plans/** | Historical roadmaps and requirements | Created here | vX.Y-description |
 | **archive/summaries/** | Historical release notes | Created here | vX.Y-release-notes |
 | **archive/reviews/** | Historical analysis and research | Created here | vX.Y-topic-type |
@@ -97,7 +95,7 @@ docs/
 
 ## Naming Conventions
 
-### Active Documentation (guides/, project/, specs/)
+### Active Documentation (guides/, project/, contributing/)
 
 **Format:** `lowercase-hyphenated-name.md`
 
@@ -142,6 +140,7 @@ docs/
 | **Roadmap** | `vX.Y-roadmap.md` | `v3.1-roadmap.md` |
 | **Requirements (single version)** | `vX.Y-{topic}-requirements.md` | `v3.2-security-requirements.md` |
 | **Requirements (multi-version)** | `vX.Y-vZ.W-phaseN-{topic}.md` | `v1.0-v2.0-phase1-research.md` |
+| **Feature Specification** | `vX.Y-{feature}-spec.md` | `v2.2-html-reports-spec.md` |
 
 #### Summaries (Release Notes & Completion Reports)
 
@@ -187,7 +186,7 @@ docs/
 ### Active Documents
 
 **Creation:**
-1. Create in appropriate directory (guides/, project/, specs/)
+1. Create in appropriate directory (guides/, project/, contributing/)
 2. Use lowercase-hyphenated naming
 3. Add to `docs/README.md` index
 4. Reference in `CLAUDE.md` if developer-facing
@@ -207,7 +206,7 @@ docs/
 | **Requirements** | Implementation complete | `archive/plans/` |
 | **Release Notes** | Created in archive | `archive/summaries/` |
 | **Analysis/Research** | Immediately after completion | `archive/reviews/` |
-| **Feature Specs** | After 2+ major versions | `archive/specs/` (consider) |
+| **Feature Specs** | Upon completion | `archive/plans/` (vX.Y-feature-spec.md) |
 
 **How to Archive:**
 
@@ -216,8 +215,8 @@ docs/
 # If in project/, add version prefix and move to archive
 git mv docs/project/ROADMAP.md docs/archive/plans/v3.2-roadmap.md
 
-# If already has version-based name
-git mv docs/specs/retry-mechanism.md docs/archive/specs/v2.2-retry-mechanism.md
+# For feature specifications, add version prefix and move to archive/plans
+git mv docs/old-location/retry-mechanism.md docs/archive/plans/v2.2-retry-mechanism-spec.md
 ```
 
 **Step 2: Update Cross-References**
@@ -253,6 +252,168 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - `contributing/VERSION_MANAGEMENT.md` - Active process
 
 **Rationale:** These are living documents that define current practices, not historical snapshots.
+
+---
+
+## Documentation Maintainability
+
+### Single Source of Truth Principle
+
+**Core Rule:** Each concept should be documented in detail in **ONE** canonical location. Other documents should **link** to the canonical source, not duplicate the content.
+
+**Benefits:**
+- Reduces maintenance burden (update once vs. update everywhere)
+- Eliminates version drift between duplicate definitions
+- Makes it clear where to find authoritative information
+- Reduces documentation size and complexity
+
+**Canonical References:**
+See `docs/guides/_CANONICAL_REFERENCES.md` for the complete index of canonical sources.
+
+### Reference vs. Duplication Pattern
+
+**✅ GOOD - Reference canonical source:**
+```markdown
+Exit codes are defined in [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes)
+```
+
+**❌ BAD - Duplicate exit code table:**
+```markdown
+| Code | Meaning |
+|------|---------|
+| 0 | Success, no vulnerabilities |
+| 1 | Success, vulnerabilities found |
+| 2 | Scan failed |
+```
+
+**✅ GOOD - Reference code constants:**
+```markdown
+See `constants.py:MAX_RESPONSE_SIZE_BYTES` for the current API response size limit.
+```
+
+**❌ BAD - Duplicate constant value:**
+```markdown
+The API response size limit is 10 * 1024 * 1024 bytes (10MB).
+```
+
+### Timeless vs. Versioned Content
+
+**Timeless Documentation** (docs/guides/, docs/contributing/):
+- ❌ No version numbers (e.g., "Version: 3.5.1", "v3.5.1 features")
+- ✅ Use "Document Type: Timeless Reference"
+- ✅ Use "Applies To: All 3.x versions"
+- ✅ Exceptions: Document Version (e.g., "Document Version: 1.0" for schema versioning)
+- ✅ Exceptions: Schema Version, Current Version in technical contexts
+
+**Versioned Documentation** (docs/archive/):
+- ✅ Version prefix required (e.g., "v3.1-roadmap.md")
+- ✅ Preserve historical accuracy (don't update values to current)
+- ✅ Document state as it was at that version
+
+### Dynamic vs. Hard-Coded Content
+
+**Prefer Dynamic References Over Hard-Coded Values:**
+
+| Content Type | ❌ BAD (Hard-Coded) | ✅ GOOD (Dynamic) |
+|--------------|---------------------|------------------|
+| **Test Counts** | `test_scanner.py (25 tests)` | `Run pytest --collect-only -q tests/` |
+| **Constants** | `timeout=30` | `See constants.py:API_TIMEOUT_SECONDS` |
+| **Exit Codes** | `0=clean, 1=vulns, 2=error` | `See ERROR_HANDLING.md § Exit Codes` |
+| **Version Numbers** | `Version: 3.5.1` | `Document Type: Timeless Reference` |
+| **Benchmarks** | `66 extensions in 14.2s` | `Benchmark Date: 2025-10-28` |
+
+**When Hard-Coding Is Acceptable:**
+- Examples in tutorials (showing expected output)
+- Historical documents (archive/)
+- Technical specifications (exact requirements)
+
+### Anti-Patterns to Avoid
+
+**❌ Duplication Anti-Pattern:**
+```markdown
+# In 3 different files:
+Exit code 0 means success with no vulnerabilities.
+Exit code 1 means success with vulnerabilities found.
+Exit code 2 means scan failed due to errors.
+```
+
+**✅ Solution:**
+```markdown
+# In ERROR_HANDLING.md (canonical source):
+[Complete exit code documentation with table]
+
+# In TESTING_CHECKLIST.md:
+See [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes)
+
+# In PRD.md:
+Exit codes follow [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes)
+```
+
+**❌ Stale Constants Anti-Pattern:**
+```markdown
+# In documentation:
+SOME_LIMIT = 5000  # Hard-coded value
+
+# Later, in constants.py:
+SOME_LIMIT = 10000  # Changed limit
+# Documentation is now outdated!
+```
+
+**✅ Solution:**
+```markdown
+# In documentation:
+See `constants.py:MAX_RESPONSE_SIZE_BYTES` for the current response size limit.
+
+# When constants.py changes, documentation stays accurate automatically.
+```
+
+### Documentation Freshness Checking
+
+**Automated Checking:**
+```bash
+# Run freshness check script
+./scripts/check_doc_freshness.sh
+
+# Returns warnings for:
+# - Version numbers in timeless docs
+# - Duplicated constants from constants.py
+# - Hard-coded test counts
+# - Exit code duplication without references
+```
+
+**Integration into Workflow:**
+- ✅ Run before releases
+- ✅ Run monthly as part of documentation review
+- ✅ Run after major refactors
+- ✅ Add to CI/CD pipeline (optional)
+
+**Maintaining Freshness:**
+- When updating code constants, search docs for hard-coded values
+- When changing APIs, update canonical documentation only
+- When fixing bugs, check if documentation needs updates
+- Regular audits using `check_doc_freshness.sh`
+
+### Maintainability Checklist
+
+**When Creating New Documentation:**
+- [ ] Check `_CANONICAL_REFERENCES.md` - does concept already have canonical source?
+- [ ] If new canonical source, add to `_CANONICAL_REFERENCES.md`
+- [ ] Use references, not duplication, for existing canonical concepts
+- [ ] Avoid hard-coding values that could change (use code references)
+- [ ] Choose appropriate document type (timeless vs. versioned)
+
+**When Updating Documentation:**
+- [ ] Is this the canonical source? If not, update the canonical source instead
+- [ ] After updating canonical source, search for duplicates and replace with references
+- [ ] Run `./scripts/check_doc_freshness.sh` to catch issues
+- [ ] Update cross-references if structure changed
+
+**Monthly Maintenance:**
+- [ ] Run documentation freshness checker
+- [ ] Review `_CANONICAL_REFERENCES.md` for completeness
+- [ ] Check for new duplication patterns
+- [ ] Update outdated examples or benchmarks
+- [ ] Verify all cross-references still valid
 
 ---
 
@@ -357,15 +518,6 @@ See [v2.0 Phase 4 Requirements](../archive/plans/v1.0-v2.0-phase4-enhanced-data.
 - Reading order for new developers
 - Cross-references between guides
 
-### docs/specs/README.md
-
-**Status:** OPTIONAL (but recommended)
-
-**Should Include:**
-- List of all feature specs
-- Version where each feature shipped
-- Current status (active, archived, deprecated)
-
 ---
 
 ## Git Best Practices
@@ -446,7 +598,6 @@ git commit -m "moved files"
 docs/guides/architecture.md
 docs/guides/error-handling.md
 docs/project/STATUS.md
-docs/specs/html-reports.md
 docs/contributing/TESTING_CHECKLIST.md
 ```
 
@@ -534,7 +685,7 @@ Use this checklist to ensure conventions are followed:
 **File Location:**
 - [ ] Timeless guides in `docs/guides/`
 - [ ] Active project docs in `docs/project/`
-- [ ] Shipped specs in `docs/specs/` (or archived if old)
+- [ ] Feature specifications archived in `docs/archive/plans/` (version-based naming: vX.Y-*-spec.md)
 - [ ] Contributor guides in `docs/contributing/`
 - [ ] Historical docs in appropriate `docs/archive/` subdirectory
 
@@ -577,17 +728,17 @@ Is it timeless technical documentation?
    │  ├─ YES → docs/project/ (lowercase-hyphenated)
    │  └─ NO
    │     ├─ Is it a shipped feature spec?
-   │     │  ├─ YES
-   │     │  │  ├─ Is it from 2+ versions ago?
-   │     │  │  │  ├─ YES → docs/archive/specs/ (vX.Y-name)
-   │     │  │  │  └─ NO → docs/specs/ (lowercase-hyphenated)
+   │     │  ├─ YES → docs/archive/plans/ (vX.Y-feature-spec.md)
    │     │  └─ NO
    │     │     ├─ Is it a contributor/process guide?
    │     │     │  ├─ YES → docs/contributing/ (SCREAMING_SNAKE_CASE)
    │     │     │  └─ NO
-   │     │     │     ├─ Is it a historical roadmap/plan?
-   │     │     │     │  ├─ YES → docs/archive/plans/ (vX.Y-name)
+   │     │     │     ├─ Is it a document template?
+   │     │     │     │  ├─ YES → docs/templates/ (lowercase-hyphenated)
    │     │     │     │  └─ NO
+   │     │     │     │     ├─ Is it a historical roadmap/plan?
+   │     │     │     │     │  ├─ YES → docs/archive/plans/ (vX.Y-name)
+   │     │     │     │     │  └─ NO
    │     │     │     │     ├─ Is it a release note/summary?
    │     │     │     │     │  ├─ YES → docs/archive/summaries/ (vX.Y-name)
    │     │     │     │     │  └─ NO
@@ -657,7 +808,7 @@ find docs/archive -name "v3.1-*"
 **List all files not following naming convention:**
 ```bash
 # Active docs with version prefixes (should be archived)
-find docs/guides docs/project docs/specs -name "v[0-9]*"
+find docs/guides docs/project docs/contributing -name "v[0-9]*"
 
 # Archived docs without version prefixes (should be renamed)
 find docs/archive/plans docs/archive/summaries -name "*.md" ! -name "v[0-9]*" ! -name "README.md"
@@ -722,9 +873,9 @@ Consider reviewing conventions when:
 
 - **[VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)** - Code versioning conventions (separate from docs)
 - **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)** - Testing process documentation
-- **[docs/README.md](../README.md)** - Complete documentation index
-- **[docs/archive/README.md](../archive/README.md)** - Archive navigation guide
-- **[CLAUDE.md](../../CLAUDE.md)** - Overall project instructions
+- **[../archive/README.md](../archive/README.md)** - Archive navigation guide (specs/ migrated to plans/ as of 2025-10-25)
+- **[../README.md](../README.md)** - Complete documentation index (should reflect current structure)
+- **[../../CLAUDE.md](../../CLAUDE.md)** - Overall project instructions
 
 ---
 

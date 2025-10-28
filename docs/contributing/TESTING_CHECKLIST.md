@@ -477,18 +477,12 @@ This comprehensive checklist covers functional, performance, security, and compa
 
 ### Exit Codes
 
+**For complete exit code documentation, see [ERROR_HANDLING.md § Exit Codes](../guides/ERROR_HANDLING.md#exit-codes)**
+
+Test scenarios:
 - [ ] **0** - Success, no vulnerabilities
-  - Scan completed successfully
-  - All extensions clean
-
 - [ ] **1** - Success, vulnerabilities found
-  - Scan completed successfully
-  - One or more extensions have vulnerabilities
-
-- [ ] **2** - Scan failed
-  - Network errors
-  - Configuration errors
-  - System errors
+- [ ] **2** - Scan failed (network, config, or system errors)
 
 ### Progress Indicators
 

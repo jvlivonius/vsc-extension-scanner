@@ -1,8 +1,9 @@
 # Architecture Documentation
 
-**Version:** 3.1.0
-**Last Updated:** 2025-10-24
-**Status:** Current Architecture
+**Document Type:** Timeless Reference
+**Applies To:** All 3.x versions
+**Major Revision Trigger:** Layer count changes, module organization refactors, or architectural pattern shifts
+**See:** [CHANGELOG.md](../../CHANGELOG.md) for version-specific changes
 
 ---
 
@@ -269,6 +270,47 @@ Quick workflow:
 **Lines of Code:** ~900
 **Dependencies:** scanner, display, config_manager, utils
 
+**CLI Architecture (Typer/Rich Integration - v3.0+):**
+
+**Typer App Configuration:**
+```python
+app = typer.Typer(
+    name="vscan",
+    help="VS Code Extension Security Scanner",
+    add_completion=False,
+    rich_markup_mode="rich",
+    pretty_exceptions_enable=False  # Custom error handling
+)
+```
+
+**Help Panel Organization:**
+- **Main Commands** - Primary operations (scan, report)
+- **Cache Management** - Cache operations (stats, clear)
+- **Configuration** - Config file management (init, show, set, get)
+- Organized help reduces cognitive load for users
+
+**Command Structure Rationale:**
+- Subcommands over flags (clearer intent: `vscan cache clear` vs `vscan --clear-cache`)
+- Consistent verb-noun pattern (`cache clear`, `config show`)
+- Short and memorable command names
+- Each command has comprehensive help text with examples
+
+**Console Script Entry Points:**
+```python
+# setup.py configuration
+entry_points={
+    'console_scripts': [
+        'vscan=vscode_scanner.vscan:main',
+    ],
+}
+```
+
+**Key Design Decisions:**
+- Rich and Typer are required dependencies (not optional) for consistent UX
+- `--plain` flag provides fallback for CI/CD environments
+- All user-facing errors route through display.py for centralized formatting
+- Command-query separation: Commands modify state (scan, cache clear), Queries read-only (report, cache stats)
+
 ### display.py (Presentation)
 
 ```python
@@ -287,6 +329,106 @@ Quick workflow:
 
 **Lines of Code:** ~500
 **Dependencies:** utils, constants
+
+### html_report_generator.py (Presentation)
+
+```python
+# Responsibilities:
+# 1. Generate self-contained HTML reports
+# 2. Embed CSS and JavaScript (no external dependencies)
+# 3. Create interactive data visualizations
+# 4. Optimize for both screen and print
+
+# Key Functions:
+- generate_report() - Main HTML generation
+- _generate_header() - Summary and charts
+- _generate_overview_table() - Sortable extension table
+- _generate_detail_view() - Expandable details
+- _generate_pie_chart_svg() - Risk distribution chart
+```
+
+**Lines of Code:** ~2,300
+**Dependencies:** utils
+
+**Self-Contained HTML Design (v2.2+):**
+
+**Zero External Dependencies:**
+- All CSS embedded in `<style>` tags
+- All JavaScript embedded in `<script>` tags
+- No CDN dependencies (Chart.js, Bootstrap, etc.)
+- Works offline and in any environment
+- Single HTML file contains complete report
+
+**Embedded CSS Strategy:**
+```python
+def _generate_styles(self) -> str:
+    """Generate embedded CSS (no external stylesheets)."""
+    # ~300 lines of CSS embedded directly
+    # Includes: Layout, tables, charts, print media queries
+    # Works in all modern browsers
+```
+
+**Embedded JavaScript Strategy:**
+```python
+def _generate_scripts(self) -> str:
+    """Generate embedded JavaScript (no external libraries)."""
+    # ~200 lines of vanilla JavaScript
+    # Functions: Table sorting, filtering, row expansion, search
+    # No jQuery, React, or other frameworks
+```
+
+**Data Visualizations (Pure CSS/SVG):**
+- **Pie Charts**: SVG `<path>` elements (no Chart.js)
+- **Bar Charts**: Colored `<div>` elements with CSS widths
+- **Security Gauges**: Horizontal progress bars with color gradients
+- Lightweight and fast (no library overhead)
+
+**Performance Optimizations:**
+
+**1. Collapsible Dependency Lists:**
+```python
+# Show first 10 dependencies by default
+# "Show X more..." button to expand
+# Reduces initial DOM size for large reports
+```
+
+**2. Lazy Rendering:**
+```python
+# Detail sections use display: none when collapsed
+# Only visible when user expands row
+# Minimizes initial rendering time
+```
+
+**3. Efficient DOM:**
+```python
+# Minimize DOM nodes
+# Simple CSS selectors (no complex queries)
+# Reuse elements where possible
+```
+
+**Print Optimization:**
+```css
+@media print {
+  /* Auto-expand all rows for complete report */
+  .extension-details { display: block !important; }
+
+  /* Remove interactive controls */
+  .controls, .expand-button { display: none; }
+
+  /* Prevent page breaks in extension details */
+  .extension-row { page-break-inside: avoid; }
+
+  /* Black & white friendly colors */
+  .risk-high { border: 2px solid #000; }
+}
+```
+
+**Key Design Decisions:**
+- Self-contained design enables easy sharing and archival
+- No external dependencies reduces security risks (no CDN compromise)
+- Works offline (air-gapped environments, security audits)
+- Print-friendly format for documentation and compliance
+- Performance optimized for reports with 100+ extensions
 
 ### scanner.py (Application)
 
@@ -326,6 +468,21 @@ Quick workflow:
 
 **Lines of Code:** ~600
 **Dependencies:** utils, constants
+
+**Retry Mechanism (v2.2+):**
+
+The API client implements intelligent retry with exponential backoff and jitter to handle transient failures. See **[ERROR_HANDLING.md](ERROR_HANDLING.md#retry-mechanism)** for comprehensive documentation including:
+- Error classification (retryable vs non-retryable)
+- Exponential backoff algorithm with jitter
+- Retry-After header handling
+- Retry statistics tracking
+- Configuration best practices
+
+**Key Architectural Decisions:**
+- Retry at API client layer (not scanner layer) for cleaner separation
+- Non-retryable errors fail immediately (fail-fast principle)
+- Retry statistics tracked for observability
+- 30-second backoff ceiling prevents DoS from malicious headers
 
 ### cache_manager.py (Infrastructure)
 
@@ -398,26 +555,63 @@ Shared Utilities:
   _version.py     → (standard library only)
 ```
 
-### Forbidden Dependencies
+### Dependency Rules
 
-❌ **Infrastructure → Application**
+**✅ Allowed:**
+- Presentation → Application → Infrastructure (downward flow only)
+- Any layer → utils.py, constants.py, types.py, _version.py (shared utilities)
+- Infrastructure modules can import from other Infrastructure modules
+
+**❌ Forbidden:**
+- Infrastructure → Application (e.g., cache_manager → scanner)
+- Infrastructure → Presentation (e.g., vscan_api → display)
+- Application → Presentation (except scanner → display for progress)
+- Circular dependencies at any level
+
+### Import Patterns
+
+**Good Examples:**
 ```python
-# BAD - vscan_api.py should not import scanner
-from vscode_scanner.scanner import perform_scan
+# cli.py (Presentation) imports from Application
+from .scanner import run_scan
+from .display import should_use_rich
+
+# scanner.py (Application) imports from Infrastructure
+from .vscan_api import VscanAPIClient
+from .cache_manager import CacheManager
+
+# vscan_api.py (Infrastructure) uses only utilities
+from .constants import MAX_BACKOFF_DELAY
+from .utils import sanitize_error_message
 ```
 
-❌ **Infrastructure → Presentation**
+**Bad Examples (Violations):**
 ```python
-# BAD - cache_manager.py should not import display
-from vscode_scanner.display import display_error
+# ❌ cache_manager.py importing from Presentation
+from .display import display_error  # WRONG: Infrastructure → Presentation
+
+# ❌ vscan_api.py importing from Application
+from .scanner import run_scan  # WRONG: Infrastructure → Application
+
+# ❌ Circular dependency
+# scanner.py imports vscan_api.py, vscan_api.py imports scanner.py
 ```
 
-❌ **Circular Dependencies**
-```python
-# BAD - A imports B, B imports A
-# cli.py imports scanner.py
-# scanner.py imports cli.py  # ❌ Circular!
-```
+### Why These Rules Matter
+
+**Testability:**
+- Infrastructure can be tested in isolation (no UI dependencies)
+- Mock at layer boundaries (e.g., mock API in Application tests)
+
+**Maintainability:**
+- Clear separation of concerns
+- Changes in one layer don't cascade unexpectedly
+- Easier to understand data flow
+
+**Architecture Preservation:**
+- Prevents erosion over time
+- Enforces design decisions
+- Makes refactoring safer
 
 ### How to Enforce
 
@@ -690,16 +884,14 @@ Retry Statistics:
   Rate limit hits: 2
 ```
 
-### Performance Metrics
+### Performance Characteristics
 
-**Cache Performance:**
-- First scan: ~1.5s per extension
-- Cached scan: ~instant (50x faster)
-- Typical hit rate: 70-90%
-
-**Database Performance:**
-- Batch operations: 87.6% faster than individual inserts
-- VACUUM: 73.9% space reclaimed (when beneficial)
+**See:** [PERFORMANCE.md](PERFORMANCE.md) for detailed benchmarks, optimization strategies, and resource usage metrics including:
+- Cache performance (28x speedup for repeated scans)
+- Parallel processing performance (4.88x speedup with 3 workers)
+- Database optimization metrics
+- Memory and disk usage patterns
+- Troubleshooting guides
 
 ---
 
@@ -809,170 +1001,21 @@ The architecture intentionally **avoids** these patterns to maintain simplicity:
 
 ## Architecture Testing
 
-### Test Categories
+Architecture compliance is validated through automated tests that enforce layer separation and dependency rules.
 
-**1. Layering Tests** (`tests/test_architecture.py`):
-```python
-def test_infrastructure_isolation():
-    """Infrastructure layer doesn't import from application/presentation."""
-    # Verify vscan_api, cache_manager, extension_discovery
-    # Don't import scanner, cli, display
+**Test Coverage:**
+- Layer violation detection (zero violations required)
+- Import dependency validation
+- Circular dependency detection
+- Module isolation verification
 
-def test_no_circular_dependencies():
-    """No circular imports exist."""
-    # Use import detection
+**See:** [TESTING.md](TESTING.md#architecture-tests) for complete test organization, examples, execution instructions, and CI/CD integration.
+
+**Quick Verification:**
+```bash
+python3 tests/test_architecture.py  # Must show 0 violations
 ```
 
-**2. Integration Tests** (`tests/test_integration.py`):
-```python
-def test_full_scan_workflow():
-    """Verify complete scan workflow through all layers."""
-    # CLI → Scanner → API → Cache → Output
-```
-
-**3. Performance Tests** (`tests/test_performance.py`):
-```python
-def test_cache_performance():
-    """Verify cache provides expected speedup."""
-
-def test_batch_operations():
-    """Verify batch operations are faster than individual."""
-```
-
-### Continuous Validation
-
-**On Every Commit:**
-- Run architecture tests
-- Verify no new circular dependencies
-- Check import structure
-
-**On Pull Requests:**
-- Review new dependencies
-- Verify layer boundaries maintained
-- Check for over-engineering patterns
-
----
-
-## Module Dependencies & Import Rules
-
-### Dependency Graph
-
-**Allowed Dependencies** (following layered architecture):
-
-```
-Presentation Layer:
-  cli.py                   → scanner, display, config_manager, utils, constants
-  display.py               → utils, constants
-  output_formatter.py      → utils, constants
-  html_report_generator.py → utils
-
-Application Layer:
-  scanner.py               → vscan_api, cache_manager, extension_discovery,
-                             display, utils, constants
-  vscan.py                 → cli, utils, constants
-  config_manager.py        → utils, constants
-
-Infrastructure Layer:
-  vscan_api.py             → utils, constants
-  cache_manager.py         → utils, constants
-  extension_discovery.py   → utils, constants
-
-Shared Utilities:
-  utils.py                 → (standard library only)
-  constants.py             → (standard library only)
-  types.py                 → (standard library only)
-  _version.py              → (standard library only)
-```
-
-### Dependency Rules
-
-**✅ Allowed:**
-- Presentation → Application → Infrastructure (downward flow only)
-- Any layer → utils.py, constants.py, types.py, _version.py (shared utilities)
-- Infrastructure modules can import from other Infrastructure modules
-
-**❌ Forbidden:**
-- Infrastructure → Application (e.g., cache_manager → scanner)
-- Infrastructure → Presentation (e.g., vscan_api → display)
-- Application → Presentation (except scanner → display for progress)
-- Circular dependencies at any level
-
-### Import Patterns
-
-**Good Examples:**
-```python
-# cli.py (Presentation) imports from Application
-from .scanner import run_scan
-from .display import should_use_rich
-
-# scanner.py (Application) imports from Infrastructure
-from .vscan_api import VscanAPIClient
-from .cache_manager import CacheManager
-
-# vscan_api.py (Infrastructure) uses only utilities
-from .constants import MAX_BACKOFF_DELAY
-from .utils import sanitize_error_message
-```
-
-**Bad Examples (Violations):**
-```python
-# ❌ cache_manager.py importing from Presentation
-from .display import display_error  # WRONG: Infrastructure → Presentation
-
-# ❌ vscan_api.py importing from Application
-from .scanner import run_scan  # WRONG: Infrastructure → Application
-
-# ❌ Circular dependency
-# scanner.py imports vscan_api.py, vscan_api.py imports scanner.py
-```
-
-### Testing Module Dependencies
-
-**Automated Validation:**
-
-Create `tests/test_architecture.py` to enforce dependency rules:
-
-```python
-def test_infrastructure_layer_isolation():
-    """Infrastructure must NOT import from Application or Presentation."""
-    infrastructure = ['vscan_api', 'cache_manager', 'extension_discovery']
-    forbidden = ['scanner', 'cli', 'display', 'output_formatter']
-
-    for module in infrastructure:
-        imports = get_imports_from_file(f'vscode_scanner/{module}.py')
-        violations = imports & set(forbidden)
-        assert not violations, f"{module} illegally imports: {violations}"
-
-def test_no_circular_dependencies():
-    """Ensure no circular import dependencies."""
-    # Build dependency graph and detect cycles using DFS
-    assert no_cycles_detected(dependency_graph)
-```
-
-**Manual Review Checklist:**
-
-When adding new modules or modifying imports:
-
-1. ✅ Does this follow the layered architecture?
-2. ✅ Are we importing from the same or lower layer only?
-3. ✅ Are shared utilities (utils, constants) used instead of cross-layer imports?
-4. ✅ Will this create a circular dependency?
-
-### Why These Rules Matter
-
-**Testability:**
-- Infrastructure can be tested in isolation (no UI dependencies)
-- Mock at layer boundaries (e.g., mock API in Application tests)
-
-**Maintainability:**
-- Clear separation of concerns
-- Changes in one layer don't cascade unexpectedly
-- Easier to understand data flow
-
-**Architecture Preservation:**
-- Prevents erosion over time
-- Enforces design decisions
-- Makes refactoring safer
 
 ---
 
@@ -980,7 +1023,7 @@ When adding new modules or modifying imports:
 
 ### Overview
 
-Starting with v3.5.0, parallel processing is the default mode with 3 workers. The parallel scanning architecture is designed around **worker isolation** and **main-thread coordination** to ensure thread safety while maintaining high performance.
+Since v3.5.0, parallel processing is the default mode with 3 workers (configurable 1-5). The parallel scanning architecture is designed around **worker isolation** and **main-thread coordination** to ensure thread safety while maintaining high performance.
 
 ### Threading Model
 
@@ -1240,11 +1283,18 @@ finally:
 
 ## References
 
-- **[project/ROADMAP.md](../project/ROADMAP.md)** - Version 3.2 improvement recommendations
-- **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Error handling strategy
-- **[TESTING.md](TESTING.md)** - Testing guidelines
-- **[../CLAUDE.md](../CLAUDE.md)** - Development guidance
-- **[project/PRD.md](../project/PRD.md)** - Product requirements
+### System Design
+
+- **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Error handling strategy and patterns
+- **[TESTING.md](TESTING.md)** - Test architecture and verification
+- **[SECURITY.md](SECURITY.md)** - Security architecture and validation patterns
+- **[PERFORMANCE.md](PERFORMANCE.md)** - Performance benchmarks and optimization
+
+### Project Context
+
+- **[../CLAUDE.md](../../CLAUDE.md)** - Development guidelines and constraints
+- **[project/PRD.md](../project/PRD.md)** - Product requirements and feature scope
+- **[archive/plans/v3.5.1-roadmap.md](../archive/plans/v3.5.1-roadmap.md)** - Completed v3.5.1 roadmap
 
 ---
 

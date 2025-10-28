@@ -1,9 +1,9 @@
 # Error Handling Strategy
 
-**Version:** 3.2.0
-**Last Updated:** 2025-10-24
-**Status:** Formalized (Phase 2.6 - v3.2 Development)
-**Formalized In:** Phase 2.6 of ROADMAP v3.2
+**Document Type:** Timeless Reference
+**Applies To:** All 3.x versions
+**Major Revision Trigger:** Exit code system changes, error handling philosophy shifts, or ERROR_HELP system redesign
+**Formalization:** Phase 2.6 (v3.2) - See [CHANGELOG.md](../../CHANGELOG.md) for history
 
 ---
 
@@ -187,7 +187,7 @@ ERROR_HELP = {
 **Suggestions:**
 ```python
 "timeout": [
-    "The request to vscan.dev timed out (default: 30 seconds)",
+    "The request to vscan.dev timed out (see constants.py:API_TIMEOUT_SECONDS)",
     "This can happen with slow connections or vscan.dev server issues",
     "Try increasing retries: vscan scan --max-retries 5",
     "Check your internet connection",
@@ -325,8 +325,9 @@ ERROR_HELP = {
 
 ```python
 # Example in vscan_api.py
+# (timeout value from constants.py:API_TIMEOUT_SECONDS)
 try:
-    response = urllib.request.urlopen(request, timeout=30)
+    response = urllib.request.urlopen(request, timeout=API_TIMEOUT_SECONDS)
 except urllib.error.HTTPError as e:
     if e.code == 429:
         # Rate limit hit
@@ -426,6 +427,296 @@ def display_error(
             for suggestion in suggestions:
                 print(f"  • {suggestion}", file=sys.stderr)
 ```
+
+---
+
+## Retry Mechanism
+
+### Overview
+
+The retry mechanism (v2.2+) handles transient API failures gracefully through intelligent retry with exponential backoff. The system distinguishes between retryable transient errors and permanent failures to avoid unnecessary API calls.
+
+**Design Goals:**
+- Automatically recover from transient failures (network timeouts, rate limits, temporary server errors)
+- Fail fast on permanent errors (authentication failures, invalid requests, not found)
+- Respect server rate limit signals (Retry-After headers)
+- Prevent DoS through backoff ceiling and jitter
+- Maintain observability through retry statistics
+
+### Error Classification
+
+Not all errors should trigger retries. The system classifies errors into **retryable** (transient) and **non-retryable** (permanent) categories.
+
+**Retryable Errors** (Transient - safe to retry):
+
+| HTTP Code | Error Type | Reason | Max Retries |
+|-----------|------------|--------|-------------|
+| 408 | Request Timeout | Network/server timeout, may succeed on retry | 3 |
+| 429 | Too Many Requests | Rate limit hit, server explicitly allows retry | 3 |
+| 502 | Bad Gateway | Temporary proxy/gateway failure | 3 |
+| 503 | Service Unavailable | Server temporarily overloaded | 3 |
+| 504 | Gateway Timeout | Upstream timeout, may resolve | 3 |
+| - | ConnectionError | Network unavailable, may reconnect | 3 |
+| - | TimeoutError | Request timed out before completion | 3 |
+
+**Non-Retryable Errors** (Permanent - fail immediately):
+
+| HTTP Code | Error Type | Reason | Action |
+|-----------|------------|--------|--------|
+| 400 | Bad Request | Invalid request format, won't change | Fail fast |
+| 401 | Unauthorized | Authentication failed | Fail fast |
+| 403 | Forbidden | Access denied | Fail fast |
+| 404 | Not Found | Resource doesn't exist | Fail fast |
+| 422 | Unprocessable Entity | Validation failed | Fail fast |
+| 500 | Internal Server Error | Server-side bug, unlikely to resolve | Fail fast |
+
+**Implementation:**
+```python
+def _is_retryable_error(http_code: int, error_type: str) -> bool:
+    """Classify errors as retryable or permanent."""
+    retryable_codes = {408, 429, 502, 503, 504}
+    retryable_exceptions = {'ConnectionError', 'TimeoutError'}
+
+    return http_code in retryable_codes or error_type in retryable_exceptions
+```
+
+### Exponential Backoff with Jitter
+
+**Algorithm:** The retry mechanism uses exponential backoff with jitter to avoid thundering herd problems and reduce server load.
+
+**Formula:**
+```
+delay = min(base_delay * (2 ^ retry_count) * (0.8 + random(0, 0.4)), MAX_BACKOFF_DELAY)
+```
+
+Where:
+- **base_delay** = Configurable base delay (default: 2.0 seconds)
+- **retry_count** = Number of retries attempted (0-indexed)
+- **jitter** = Random factor between 0.8 and 1.2 (±20%)
+- **MAX_BACKOFF_DELAY** = See `constants.py:MAX_BACKOFF_DELAY` (prevents DoS)
+
+**Example Backoff Progression:**
+
+| Retry | Base Calculation | With Jitter Range | Actual Range |
+|-------|------------------|-------------------|--------------|
+| 0 | 2.0 × 2^0 = 2.0s | 2.0 × [0.8, 1.2] | 1.6s - 2.4s |
+| 1 | 2.0 × 2^1 = 4.0s | 4.0 × [0.8, 1.2] | 3.2s - 4.8s |
+| 2 | 2.0 × 2^2 = 8.0s | 8.0 × [0.8, 1.2] | 6.4s - 9.6s |
+| 3 | 2.0 × 2^3 = 16.0s | min(16.0 × [0.8, 1.2], 30) | 12.8s - 19.2s |
+| 4 | 2.0 × 2^4 = 32.0s | min(32.0 × [0.8, 1.2], 30) | 24.0s - 30.0s |
+| 5+ | Capped at 30.0s | min(*, 30) | 24.0s - 30.0s |
+
+**Implementation:**
+```python
+import random
+
+def _calculate_backoff_delay(retry_count: int, base_delay: float = 2.0) -> float:
+    """Calculate exponential backoff delay with jitter."""
+    delay = base_delay * (2 ** retry_count)
+    jitter = random.uniform(0.8, 1.2)  # ±20% randomization
+
+    return min(delay * jitter, MAX_BACKOFF_DELAY)  # Cap at 30s
+```
+
+**Why Jitter?**
+- Prevents synchronized retry storms (thundering herd)
+- Distributes load across time
+- Reduces server spike when multiple clients retry simultaneously
+
+**Why 30s Ceiling?**
+- Prevents excessive wait times for users
+- Mitigates DoS risk from malicious Retry-After headers
+- Balances recovery time vs user experience
+
+### Retry-After Header Handling
+
+**Server-Specified Delays:** When servers return a `Retry-After` header (typically with 429 or 503 responses), the system honors the server's requested delay while applying the same 30-second ceiling for security.
+
+**Priority:**
+1. **Retry-After header present** → Use server-specified delay (with 30s max)
+2. **No Retry-After header** → Use exponential backoff algorithm
+
+**Implementation:**
+```python
+def _get_retry_delay(response, retry_count: int, base_delay: float = 2.0) -> float:
+    """Get retry delay honoring Retry-After or using backoff."""
+    retry_after = response.getheader('Retry-After')
+
+    if retry_after:
+        try:
+            # Honor server's requested delay (capped at 30s for security)
+            delay = float(retry_after)
+            return min(delay, MAX_BACKOFF_DELAY)
+        except ValueError:
+            pass  # Invalid header, fall back to backoff
+
+    # Use exponential backoff
+    return _calculate_backoff_delay(retry_count, base_delay)
+```
+
+**Security Note:** Malicious servers could send `Retry-After: 9999` to cause denial of service. The 30-second ceiling prevents this attack vector.
+
+### Retry Statistics Tracking
+
+**Observability:** The system tracks detailed retry statistics for debugging and monitoring. Statistics are displayed in verbose mode and always included in JSON output.
+
+**Tracked Metrics:**
+
+| Metric | Description | Usage |
+|--------|-------------|-------|
+| `total_retries` | Total retry attempts across all requests | Measure retry frequency |
+| `successful_retries` | Retries that eventually succeeded | Success rate calculation |
+| `failed_after_retry` | Requests that failed despite retries | Identify persistent issues |
+| `rate_limit_hits` | Times 429 status encountered | Monitor rate limiting |
+| `server_error_retries` | Times 502/503/504 encountered | Server health indicator |
+| `timeout_retries` | Times request timed out | Network quality indicator |
+| `retry_delays_total` | Sum of all retry wait times | User impact measurement |
+
+**Implementation:**
+```python
+class RetryStats:
+    """Thread-safe retry statistics collection."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.total_retries = 0
+        self.successful_retries = 0
+        self.failed_after_retry = 0
+        self.rate_limit_hits = 0
+        self.server_error_retries = 0
+        self.timeout_retries = 0
+        self.retry_delays_total = 0.0
+
+    def record_retry(self, error_type: str, delay: float, success: bool):
+        """Thread-safe retry recording."""
+        with self._lock:
+            self.total_retries += 1
+            self.retry_delays_total += delay
+
+            if success:
+                self.successful_retries += 1
+            else:
+                self.failed_after_retry += 1
+
+            if error_type == '429':
+                self.rate_limit_hits += 1
+            elif error_type in {'502', '503', '504'}:
+                self.server_error_retries += 1
+            elif error_type == 'timeout':
+                self.timeout_retries += 1
+```
+
+**Display:**
+```bash
+# Default mode - hidden (clean output)
+$ vscan scan
+Scanned 66 extensions - 5 vulnerabilities found
+Cache hit rate: 71.4%
+
+# Verbose mode - shows retry statistics
+$ vscan scan --verbose
+Scanned 66 extensions - 5 vulnerabilities found
+Cache hit rate: 71.4%
+
+Retry Statistics:
+  Total retries: 5
+  Successful: 4 (80.0%)
+  Failed after retry: 1 (20.0%)
+  Rate limit hits: 2
+  Server errors: 3
+  Total retry delay: 18.4s
+```
+
+### Configuration Best Practices
+
+**Configurable Parameters:**
+
+| Parameter | Default | Range | Configuration Path | Purpose |
+|-----------|---------|-------|-------------------|---------|
+| `max_retries` | 3 | 0-5 | `scan.max_retries` | Balance reliability vs speed |
+| `retry_delay` | 2.0s | 0.5-10.0s | `scan.retry_delay` | Base backoff delay |
+| `request_timeout` | 30s | 10-60s | `scan.timeout` | When to give up on single request |
+
+**Configuration File (`~/.vscanrc`):**
+```ini
+[scan]
+max_retries = 3        # 0 disables retry, 5 maximum
+retry_delay = 2.0      # Base delay in seconds
+timeout = 30           # Request timeout in seconds
+```
+
+**CLI Override:**
+```bash
+# Disable retries (fail fast mode)
+vscan scan --max-retries 0
+
+# Aggressive retry (high reliability mode)
+vscan scan --max-retries 5 --retry-delay 3.0
+
+# Quick scan (minimal retry)
+vscan scan --max-retries 1 --retry-delay 1.0
+```
+
+**Recommendations:**
+
+**Default (3 retries):** Recommended for most users
+- ✅ Handles transient failures gracefully
+- ✅ Balances reliability and speed
+- ✅ Validated in production
+
+**Aggressive (5 retries):** For critical scans or poor network conditions
+- ✅ Maximum reliability
+- ⚠️ Slower on failures
+- Use when: Unstable network, CI/CD pipelines
+
+**Minimal (1 retry):** For fast scans or excellent network conditions
+- ✅ Faster on failures
+- ⚠️ May miss transient errors
+- Use when: Exploring, local network, time-sensitive
+
+**None (0 retries):** For debugging only
+- ✅ Immediate failure visibility
+- ❌ No transient error recovery
+- Use when: Testing error handling, debugging
+
+### Integration with Scan Workflow
+
+**Retry Flow in Scanner:**
+
+```
+Extension Scan Request
+   │
+   ├─> API Client: scan_extension_with_retry()
+   │      │
+   │      ├─> Attempt 1: POST /api/extensions/analyze
+   │      │      ├─> Success → Return result
+   │      │      └─> Failure → Check if retryable
+   │      │             ├─> Non-retryable → Fail fast
+   │      │             └─> Retryable → Continue
+   │      │
+   │      ├─> Wait: Calculate backoff delay (or use Retry-After)
+   │      │
+   │      ├─> Attempt 2: Retry request
+   │      │      ├─> Success → Update stats (successful_retry)
+   │      │      └─> Failure → Check if retryable
+   │      │
+   │      ├─> Wait: Exponential backoff (doubled)
+   │      │
+   │      ├─> Attempt 3: Final retry
+   │      │      ├─> Success → Update stats (successful_retry)
+   │      │      └─> Failure → Give up
+   │      │
+   │      └─> Update stats (failed_after_retry)
+   │      └─> Return error result
+   │
+   └─> Scanner: Log failure, continue to next extension
+```
+
+**Key Behaviors:**
+- ✅ Individual extension failures don't stop entire scan
+- ✅ Retry statistics aggregated across all extensions
+- ✅ Cache writes happen after successful retry
+- ✅ Failed extensions reported in scan summary
 
 ---
 

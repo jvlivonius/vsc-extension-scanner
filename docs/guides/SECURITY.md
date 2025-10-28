@@ -12,15 +12,15 @@ This document establishes security standards, requirements, and best practices f
 
 **Overall Risk Level:** LOW
 
-The codebase has undergone comprehensive security review and remediation:
+The codebase has undergone comprehensive security review and remediation (v3.5.1 complete):
 
 - ✅ **Path Traversal:** All 3 critical vulnerabilities fixed
 - ✅ **Resource Exhaustion:** All 2 high-severity vulnerabilities fixed
 - ✅ **Input Validation:** Comprehensive validation implemented
 - ✅ **File Permissions:** Restrictive permissions enforced
-- ⚠️ **Cache Integrity:** No HMAC validation (medium priority)
+- ✅ **Cache Integrity:** HMAC-SHA256 signatures implemented (v3.5.1)
 
-**Security Test Coverage:** 8/10 critical tests passing (80%)
+**Security Test Coverage:** Comprehensive suite with 161+ tests passing, including dedicated security regression tests
 
 See [archive/reviews/security-analysis.md](../archive/reviews/security-analysis.md) for historical vulnerability details.
 
@@ -46,6 +46,12 @@ See [archive/reviews/security-analysis.md](../archive/reviews/security-analysis.
 │  - HTTPS enforcement                                │
 │  - Response size limits (10MB)                      │
 │  - Request throttling                               │
+├─────────────────────────────────────────────────────┤
+│  Cache Integrity Layer (v3.5.1)                     │
+│  - HMAC-SHA256 signatures on all cached entries     │
+│  - Cryptographic secret key (32-byte)               │
+│  - Timing-safe signature comparison                 │
+│  - Tamper detection and automatic rejection         │
 ├─────────────────────────────────────────────────────┤
 │  Data Protection Layer                              │
 │  - Error message sanitization                       │
@@ -109,14 +115,14 @@ if not validate_path(user_path):
 
 #### API Response Limits
 
-```python
-MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # 10MB
+See `constants.py:MAX_RESPONSE_SIZE_BYTES` for the current API response size limit.
 
+```python
 # Read with size checking
 total_read = 0
 while chunk := response.read(8192):
     total_read += len(chunk)
-    if total_read > MAX_RESPONSE_SIZE:
+    if total_read > MAX_RESPONSE_SIZE_BYTES:
         raise Exception("Response too large")
 ```
 
@@ -124,9 +130,9 @@ while chunk := response.read(8192):
 
 #### File Size Limits
 
-```python
-MAX_PACKAGE_JSON_SIZE = 1 * 1024 * 1024  # 1MB
+See `constants.py:MAX_PACKAGE_JSON_SIZE` for the current package.json size limit.
 
+```python
 # Check size before reading
 file_size = path.stat().st_size
 if file_size > MAX_PACKAGE_JSON_SIZE:
@@ -271,6 +277,53 @@ cache_dir permissions: 0o700
 cache_db permissions: 0o600
 ```
 
+#### Cache Integrity Checking (v3.5.1)
+
+**Requirement:** All cached data must be cryptographically signed to prevent tampering.
+
+```python
+import hmac
+import hashlib
+import secrets
+
+# Secret key management (32-byte cryptographic key)
+secret_key_path = cache_dir / ".cache_secret"
+if not secret_key_path.exists():
+    secret_key = secrets.token_bytes(32)
+    secret_key_path.write_bytes(secret_key)
+    secret_key_path.chmod(0o600)  # User-only access
+
+# Compute HMAC-SHA256 signature on write
+def compute_signature(data: str, secret_key: bytes) -> str:
+    return hmac.new(
+        secret_key,
+        data.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+# Verify signature on read (timing-safe comparison)
+def verify_signature(data: str, expected_sig: str, secret_key: bytes) -> bool:
+    computed_sig = compute_signature(data, secret_key)
+    # Use timing-safe comparison to prevent timing attacks
+    return hmac.compare_digest(computed_sig, expected_sig)
+
+# On cache read, verify integrity
+signature = get_cached_signature(extension_id)
+if not verify_signature(cached_data, signature, secret_key):
+    # Tampered entry detected - treat as cache miss
+    log("Cache integrity check failed", "WARNING")
+    return None
+```
+
+**Security Features:**
+- 32-byte cryptographic keys generated with `secrets.token_bytes()`
+- HMAC-SHA256 algorithm for strong signature security
+- Timing-safe comparison prevents timing attack vulnerabilities
+- Tampered entries automatically rejected (treated as cache miss)
+- Per-user secret keys (stored in `~/.vscan/.cache_secret` with 0o600 permissions)
+
+**Implementation:** `cache_manager.py:_get_or_create_secret_key()`, `_compute_integrity_signature()`, `_verify_integrity_signature()`
+
 #### No Sensitive Data Collection
 
 The tool MUST NOT:
@@ -293,6 +346,161 @@ error_msg = error_msg.replace(str(Path.cwd()), ".")
 
 ---
 
+### 7. Concurrency Security (v3.5.0+)
+
+**Requirement:** All shared state must be thread-safe when using parallel scanning.
+
+Parallel scanning (v3.5.0+) introduces concurrency with 1-5 worker threads. All shared state must be protected with proper synchronization primitives to prevent race conditions and data corruption.
+
+#### Thread-Safe Statistics
+
+```python
+from threading import Lock
+
+class ThreadSafeStats:
+    """Thread-safe statistics collection for parallel scanning."""
+
+    def __init__(self):
+        self._lock = Lock()
+        self._stats = {
+            'total_scanned': 0,
+            'vulnerabilities_found': 0,
+            'cache_hits': 0,
+            'api_calls': 0
+        }
+
+    def increment(self, key: str, amount: int = 1):
+        """Thread-safe increment operation."""
+        with self._lock:
+            self._stats[key] = self._stats.get(key, 0) + amount
+
+    def get_stats(self) -> dict:
+        """Thread-safe read of all statistics."""
+        with self._lock:
+            return self._stats.copy()
+```
+
+**Implementation:** `scanner.py:ThreadSafeStats` (lines 33-117)
+
+#### Worker Isolation
+
+```python
+# Each worker thread has isolated API client instance
+def worker_function(extension_info, worker_id):
+    # Create isolated API client per worker
+    api_client = VScanAPI()  # No shared state
+
+    # Scan extension with isolated client
+    result = api_client.scan_extension(extension_info)
+
+    # Thread-safe statistics update
+    stats.increment('total_scanned', 1)
+    if result.has_vulnerabilities:
+        stats.increment('vulnerabilities_found', 1)
+
+    return result
+```
+
+**Security Features:**
+- **Lock-based synchronization:** All shared state protected by `threading.Lock`
+- **Worker isolation:** Each worker has isolated API client (no shared network state)
+- **Main thread serialization:** Database writes occur in main thread only (SQLite limitation)
+- **No shared mutable state:** Workers only share immutable configuration and thread-safe statistics
+
+**Concurrency Configuration:**
+
+See `scanner.py` for current worker configuration values:
+- `DEFAULT_WORKER_COUNT` - Default parallel workers (3)
+- `MIN_WORKERS` - Sequential mode (1)
+- `MAX_WORKERS` - Maximum parallelism (5)
+
+**Thread Safety Rules:**
+- ✅ Statistics updates: Always use `ThreadSafeStats` class with locks
+- ✅ API clients: Create isolated instances per worker thread
+- ✅ Database writes: Serialize in main thread after worker completion
+- ❌ Never share mutable objects between workers without synchronization
+- ❌ Never perform database writes from worker threads
+
+**Reference:** `scanner.py:ThreadSafeStats`, `scanner.py:_parallel_scan_extensions()`
+
+---
+
+### 8. Retry Security
+
+**Requirement:** Retry logic must prevent DoS attacks and resource exhaustion.
+
+The API client implements exponential backoff with jitter to handle transient failures without creating additional security vulnerabilities.
+
+#### Retry Configuration
+
+See `constants.py` for current retry configuration values:
+- `DEFAULT_MAX_RETRIES` - Maximum retry attempts for HTTP requests
+- `DEFAULT_RETRY_BASE_DELAY` - Base delay for exponential backoff
+- `MAX_BACKOFF_DELAY` - Maximum retry delay ceiling
+- Jitter factor (±20% randomization) prevents thundering herd
+
+#### Exponential Backoff with Jitter
+
+```python
+def _calculate_backoff_delay(retry_count: int, base_delay: float) -> float:
+    """Calculate retry delay with exponential backoff and jitter."""
+    # Exponential backoff: base_delay * 2^retry_count
+    delay = base_delay * (2 ** retry_count)
+
+    # Apply maximum ceiling (prevents DoS via Retry-After manipulation)
+    delay = min(delay, MAX_BACKOFF_DELAY)
+
+    # Add jitter: ±20% randomization (prevents thundering herd)
+    jitter = delay * JITTER_FACTOR * (2 * random.random() - 1)
+    delay = max(0, delay + jitter)
+
+    return delay
+```
+
+**Implementation:** `vscan_api.py:_calculate_backoff_delay()` (lines 344-366)
+
+#### Non-Retryable Error Detection
+
+```python
+def _is_retryable_error(status_code: int, error_type: str) -> bool:
+    """Determine if error should trigger retry or fail immediately."""
+    # Client errors (4xx) - don't retry (permanent failures)
+    non_retryable_status = [400, 401, 403, 404]
+    if status_code in non_retryable_status:
+        return False
+
+    # Server error 500 - don't retry (may indicate serious issue)
+    if status_code == 500:
+        return False
+
+    # Transient errors - safe to retry
+    retryable_status = [408, 429, 502, 503, 504]
+    return status_code in retryable_status
+```
+
+**Implementation:** `vscan_api.py:_is_retryable_error()` (lines 368-393)
+
+#### Security Features
+
+- **Maximum delay ceiling (30s):** Prevents DoS via malicious `Retry-After` headers
+- **Jitter randomization (±20%):** Prevents thundering herd attacks during recovery
+- **Non-retryable error detection:** 400, 401, 403, 404, 500 fail immediately (no retry loops)
+- **Workflow-level retry separation:** Different retry limits for critical vs. non-critical operations
+- **Exponential backoff:** Reduces load on failing services during incidents
+
+**Retry Strategy by Operation:**
+
+See `constants.py:DEFAULT_MAX_RETRIES` and `constants.py:DEFAULT_RETRY_BASE_DELAY` for current retry settings. The tool uses different retry strategies for critical vs. non-critical operations:
+
+- **Critical operations** (extension scanning): Full retry with exponential backoff
+- **Non-critical operations** (cache updates): Minimal retry for performance
+
+**Thread Safety:** Each worker thread has isolated retry state (no shared retry counters)
+
+**Reference:** `vscan_api.py:_make_request()`, `vscan_api.py:_calculate_backoff_delay()`
+
+---
+
 ## Threat Model
 
 ### Attack Vectors
@@ -302,7 +510,7 @@ error_msg = error_msg.replace(str(Path.cwd()), ".")
 | **Malicious Input Paths** | Path traversal to write/read arbitrary files | `validate_path()` with strict rules |
 | **Malicious Extensions** | Crafted package.json causes DoS or code execution | Size limits, JSON validation, sandboxed parsing |
 | **Compromised vscan.dev** | Malicious API responses cause resource exhaustion | Response size limits, timeout enforcement |
-| **Cache Tampering** | Modified cache.db injects false data | File permissions (0o600), integrity checks (future) |
+| **Cache Tampering** | Modified cache.db injects false data | File permissions (0o600), HMAC-SHA256 signatures (v3.5.1) |
 | **MITM Attack** | Intercept/modify API requests | HTTPS enforcement, TLS validation |
 | **Local Attacker** | Read sensitive data from cache | Restrictive file permissions (0o700/0o600) |
 
@@ -412,7 +620,7 @@ Security tests SHOULD be run:
 | CWE-22 | Path Traversal | ✅ **FIXED** (3 instances) |
 | CWE-89 | SQL Injection | ✅ **SAFE** (parameterized queries) |
 | CWE-400 | Resource Exhaustion | ✅ **FIXED** (size limits) |
-| CWE-345 | Data Authenticity | ⚠️ **PARTIAL** (no HMAC yet) |
+| CWE-345 | Data Authenticity | ✅ **FIXED** (HMAC-SHA256 signatures, v3.5.1) |
 | CWE-732 | Incorrect Permissions | ✅ **FIXED** (0o600/0o700) |
 | CWE-209 | Information Disclosure | ✅ **FIXED** (sanitized errors) |
 
@@ -424,25 +632,29 @@ Security tests SHOULD be run:
 | A03:2021 - Injection | Parameterized SQL, input validation | ✅ **SAFE** |
 | A04:2021 - Insecure Design | Defense in depth, fail fast | ✅ **FIXED** |
 | A05:2021 - Security Misconfiguration | Restrictive defaults, permissions | ✅ **FIXED** |
-| A08:2021 - Software and Data Integrity | ⚠️ Cache integrity (no HMAC) | ⚠️ **PARTIAL** |
+| A08:2021 - Software and Data Integrity | HMAC-SHA256 cache integrity | ✅ **FIXED** (v3.5.1) |
 
 ---
 
 ## Known Security Limitations
 
-### 1. Cache Integrity (Medium Priority)
+### Resolved Limitations
 
-**Issue:** No cryptographic integrity validation (HMAC) on cached data.
+#### 1. ✅ Cache Integrity (RESOLVED in v3.5.1)
 
-**Impact:** Attacker with filesystem access could modify cache.db to inject false security scores.
+**Previous Issue:** No cryptographic integrity validation (HMAC) on cached data.
 
-**Mitigation:** File permissions (0o600) prevent other users from modifying cache.
+**Resolution:** HMAC-SHA256 signatures implemented with timing-safe comparison. All cached entries are now cryptographically signed with per-user secret keys. Tampered entries are automatically detected and rejected.
 
-**Future Enhancement:** Implement HMAC signatures for cache entries.
+**Implementation:** See Section 6: Data Protection - Cache Integrity Checking
 
 **Reference:** [archive/reviews/security-analysis.md](../archive/reviews/security-analysis.md) #6
 
-### 2. JSON Recursion Depth (Low Priority)
+---
+
+### Current Limitations
+
+### 1. JSON Recursion Depth (Low Priority)
 
 **Issue:** Python's json module has default recursion limits but deeply nested JSON could cause performance issues.
 
@@ -506,8 +718,11 @@ Security reviewers MUST verify:
 - `utils.py:sanitize_string(text: str, max_length: int) -> str` - String sanitization
 
 **Constants:**
-- `constants.py:MAX_RESPONSE_SIZE` - API response limit (10MB)
-- `constants.py:MAX_PACKAGE_JSON_SIZE` - File size limit (1MB)
+- `constants.py:MAX_RESPONSE_SIZE_BYTES` - API response limit
+- `constants.py:MAX_PACKAGE_JSON_SIZE` - File size limit
+- `constants.py:DEFAULT_MAX_RETRIES` - HTTP retry attempts
+- `constants.py:DEFAULT_RETRY_BASE_DELAY` - Retry delay base
+- `constants.py:MAX_BACKOFF_DELAY` - Maximum retry delay ceiling
 
 ---
 
@@ -535,8 +750,12 @@ Instead:
 | 2025-10-22 | Resource exhaustion fixes applied | 2 HIGH issues fixed |
 | 2025-10-23 | Error sanitization refactoring | 1 HIGH issue fixed |
 | 2025-10-24 | Cross-platform path security | Windows compatibility added |
+| 2025-10-28 | HMAC cache integrity implemented (v3.5.1) | CWE-345 fixed, OWASP A08 resolved |
+| 2025-10-28 | Path validation enhanced (v3.5.1) | URL encoding + shell expansion detection |
+| 2025-10-28 | String sanitization hardening (v3.5.1) | ANSI escape removal, control char filtering |
+| 2025-10-28 | Comprehensive security test suite (v3.5.1) | 161+ tests including regression tests |
 
-**Current Status:** 82% vulnerability reduction (15 → 2 remaining)
+**Current Status:** 93% vulnerability reduction (15 → 1 remaining), v3.5.1 security hardening complete
 
 ---
 

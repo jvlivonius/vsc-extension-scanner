@@ -65,9 +65,11 @@ docs/
 │   ├── PRD.md            # Product requirements
 │   ├── STATUS.md         # Current sprint status
 │   └── v3.5.1-ROADMAP.md # Current roadmap
-├── specs/                # Feature specifications
 ├── contributing/         # Contributor guides
 └── archive/             # Historical documentation
+    ├── plans/           # Roadmaps and specifications
+    ├── summaries/       # Release notes
+    └── reviews/         # Analysis and reviews
 ```
 
 ## Key Patterns

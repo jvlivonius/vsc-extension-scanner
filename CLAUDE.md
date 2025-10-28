@@ -67,6 +67,10 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 **API Integration:**
 - [API_REFERENCE.md](docs/guides/API_REFERENCE.md) - vscan.dev endpoints, request/response formats, edge cases
 
+**Performance Optimization:**
+- [PERFORMANCE.md](docs/guides/PERFORMANCE.md) - Benchmarks, threading model, resource usage, optimization strategies
+- [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md) - Parallel processing architecture
+
 **Testing:**
 - [TESTING.md](docs/guides/TESTING.md) - Test patterns (AAA), fixtures, coverage goals (85% overall, 95% security)
 - [TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md) - Pre-release testing checklist
@@ -78,6 +82,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Documentation:**
 - [DOCUMENTATION_CONVENTIONS.md](docs/contributing/DOCUMENTATION_CONVENTIONS.md) - Naming conventions, structure, archive organization
+- [_CANONICAL_REFERENCES.md](docs/guides/_CANONICAL_REFERENCES.md) - Single source of truth index, prevent duplication
 
 **Error Codes:**
 - [ERROR_CODES.md](docs/guides/ERROR_CODES.md) - Error code reference and meanings
@@ -94,10 +99,10 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - [docs/archive/summaries/](docs/archive/summaries/) - Release notes (vX.Y.Z-release-notes.md format)
 - [docs/archive/reviews/](docs/archive/reviews/) - Decision rationale, architectural reviews, analysis
 
-**Feature Specifications:**
-- [docs/specs/html-reports.md](docs/specs/html-reports.md) - HTML report feature (v2.2)
-- [docs/specs/retry-mechanism.md](docs/specs/retry-mechanism.md) - Retry mechanism (v2.2)
-- [docs/specs/cli-ux.md](docs/specs/cli-ux.md) - CLI UX enhancement (v3.0)
+**Archived Feature Specifications:**
+- [docs/archive/plans/v2.2-html-reports-spec.md](docs/archive/plans/v2.2-html-reports-spec.md) - HTML report feature (v2.2)
+- [docs/archive/plans/v2.2-retry-mechanism-spec.md](docs/archive/plans/v2.2-retry-mechanism-spec.md) - Retry mechanism (v2.2)
+- [docs/archive/plans/v3.0-cli-ux-spec.md](docs/archive/plans/v3.0-cli-ux-spec.md) - CLI UX enhancement (v3.0)
 
 **Complete Index:**
 - [docs/README.md](docs/README.md) - Complete documentation navigation and index
@@ -137,8 +142,9 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - **Thread-safe:** All shared state must use locks (ThreadSafeStats class)
 - **Main thread only:** Database writes happen in main thread (SQLite limitation)
 - **Worker isolation:** Each worker has isolated API client instance
+- **Performance details:** See [PERFORMANCE.md](docs/guides/PERFORMANCE.md) for benchmarks and optimization
 
-→ **Full details:** See [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md), [SECURITY.md](docs/guides/SECURITY.md), [TESTING.md](docs/guides/TESTING.md)
+→ **Full details:** See [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md), [SECURITY.md](docs/guides/SECURITY.md), [TESTING.md](docs/guides/TESTING.md), [PERFORMANCE.md](docs/guides/PERFORMANCE.md)
 
 ---
 
@@ -249,6 +255,12 @@ python3 tests/test_db_integrity.py         # Database integrity tests
 
 # Run all tests
 python3 -m pytest tests/                   # Full test suite
+```
+
+**Documentation Quality:**
+```bash
+# Check documentation freshness and detect staleness
+./scripts/check_doc_freshness.sh              # Automated validation (6 checks)
 ```
 
 **Running the Tool:**
@@ -364,6 +376,9 @@ python3 tests/test_architecture.py         # Must show 0 layer violations
 
 # 4. Verify version consistency (if version changed)
 python3 scripts/bump_version.py --check    # All files must have matching versions
+
+# 5. Check documentation freshness (if docs changed)
+./scripts/check_doc_freshness.sh           # Must show "✓ All checks passed!"
 ```
 
 → **Full testing guide:** See [TESTING.md](docs/guides/TESTING.md) and [TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md)
@@ -376,7 +391,6 @@ The `docs/` directory is organized into:
 
 - **`docs/guides/`** - Timeless technical reference (**REQUIRED** reading for architecture, security, APIs)
 - **`docs/project/`** - Active project management (status, requirements, current roadmap)
-- **`docs/specs/`** - Shipped feature specifications
 - **`docs/contributing/`** - Contributor guides and checklists
 - **`docs/archive/`** - Historical documentation (version-based organization: plans/, summaries/, reviews/)
 

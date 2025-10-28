@@ -62,6 +62,10 @@ docs/archive/
 
 ### v2.2: HTML Reports & Retry Mechanism (2025-10)
 
+**Plans:**
+- [v2.2-html-reports-spec.md](plans/v2.2-html-reports-spec.md) - HTML report feature specification
+- [v2.2-retry-mechanism-spec.md](plans/v2.2-retry-mechanism-spec.md) - Retry mechanism specification
+
 **Reviews:**
 - [v2.2-retry-mechanism-analysis.md](reviews/v2.2-retry-mechanism-analysis.md) - Retry strategy analysis
 
@@ -82,6 +86,9 @@ docs/archive/
 ---
 
 ### v3.0: CLI UX Enhancement (2025-10-24)
+
+**Plans:**
+- [v3.0-cli-ux-spec.md](plans/v3.0-cli-ux-spec.md) - CLI UX enhancement specification
 
 **Summaries:**
 - [v3.0-release-notes.md](summaries/v3.0-release-notes.md) - CLI UX enhancement completion (formerly "Phase 5")
@@ -349,9 +356,10 @@ docs/archive/
 
 - **[docs/project/](../project/)** - Active project documentation (current status, roadmap, PRD)
 - **[docs/guides/](../guides/)** - Timeless technical guides (architecture, security, testing, APIs)
-- **[docs/specs/](../specs/)** - Shipped feature specifications
 - **[docs/contributing/](../contributing/)** - Contributor guides and checklists
 - **[docs/README.md](../README.md)** - Complete documentation index
+
+**Note:** Feature specifications are archived in this directory under `plans/` with version-based naming (e.g., `v2.2-html-reports-spec.md`).
 
 ---
 
