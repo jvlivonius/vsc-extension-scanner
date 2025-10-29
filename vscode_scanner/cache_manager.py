@@ -1127,15 +1127,17 @@ class CacheManager:
             with self._db_connection() as conn:
                 cursor = conn.cursor()
 
-                # Create placeholders for SQL IN clause
-                # nosec B608 - False positive: f-string builds placeholders, data is parameterized
+                # Create placeholders for SQL IN clause (safe: programmatically generated, not user input)
                 placeholders = ",".join("?" * len(validated_ids))
 
+                # nosec B608: Safe SQL - placeholders are programmatically generated ("?", "?", ...),
+                # actual extension IDs are passed as parameterized tuple (validated_ids).
+                # All IDs validated by validate_extension_id() before reaching this code.
                 cursor.execute(
                     f"""
                     DELETE FROM scan_cache
                     WHERE extension_id NOT IN ({placeholders})
-                """,
+                """,  # nosec B608
                     validated_ids,
                 )
 

@@ -70,6 +70,7 @@ setup(
             "black>=23.12.0",  # Code formatter
             "pylint>=3.0.0",  # Comprehensive linter
             "pylint-security",  # Pylint security plugin
+            "future>=0.18.3",  # Fixes CVE-2022-40899 (transitive dependency, pinned for security)
         ],
     },
     entry_points={

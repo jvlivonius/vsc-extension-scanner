@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel>=0.38.1"]  # wheel>=0.38.1 fixes CVE-2022-40898
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -42,6 +42,22 @@ Issues = "https://github.com/jvlivonius/vsc-extension-scanner/issues"
 
 [project.scripts]
 vscan = "vscode_scanner.vscan:cli_main"
+
+[project.optional-dependencies]
+test = [
+    "pyyaml>=6.0.0,<7.0.0",  # For architecture tests configuration
+    "pytest>=7.0.0",  # Test framework
+]
+dev = [
+    "bandit>=1.7.6",  # AST-based security scanner
+    "safety>=2.3.0",  # Dependency vulnerability scanner
+    "pip-audit>=2.4.0",  # PyPI package auditing
+    "pre-commit>=3.0.0",  # Pre-commit hooks framework
+    "black>=23.12.0",  # Code formatter
+    "pylint>=3.0.0",  # Comprehensive linter
+    "pylint-security",  # Pylint security plugin
+    "future>=0.18.3",  # Fixes CVE-2022-40899 (transitive dependency, pinned for security)
+]
 
 [tool.setuptools]
 packages = ["vscode_scanner"]

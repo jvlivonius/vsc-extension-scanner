@@ -38,9 +38,12 @@ from dataclasses import dataclass, asdict
 # Add parent directory to path to import vscode_scanner modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# pylint: disable=wrong-import-position  # Imports must follow sys.path modification
 from vscode_scanner.vscan_api import VscanAPIClient
 from vscode_scanner.cache_manager import CacheManager
 from vscode_scanner.constants import DEFAULT_REQUEST_DELAY
+
+# pylint: enable=wrong-import-position
 
 
 # ============================================================================
@@ -282,6 +285,7 @@ def categorize_error(error: Exception) -> Tuple[str, Optional[int]]:
     Returns:
         (error_type, http_status_code)
     """
+    # pylint: disable=too-many-return-statements  # Error categorization requires exhaustive branches
     import urllib.error
 
     if isinstance(error, urllib.error.HTTPError):
@@ -381,14 +385,14 @@ def run_parallel_scan(
 
 
 def setup_cache_50_50(
-    extensions: List[Dict[str, str]], cache_manager: CacheManager
+    extensions: List[Dict[str, str]], _cache_manager: CacheManager
 ) -> None:
     """
     Pre-populate cache with first 15 of 30 extensions for 50/50 mix test.
 
     Args:
         extensions: List of all extensions
-        cache_manager: Cache manager to populate
+        _cache_manager: Cache manager (unused in PoC, kept for API consistency)
     """
     print("  Setting up 50/50 cache (pre-scanning 15 extensions)...")
 
