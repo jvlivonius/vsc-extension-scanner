@@ -84,12 +84,12 @@ tests/
 ├── test_cli.py                        # Command-line interface and argument parsing
 ├── test_api.py                        # API client validation
 ├── test_security.py                   # Security vulnerability detection
-├── test_security_regression.py        # Security regression suite (v3.5.1+)
-├── test_path_validation.py            # Path traversal protection (v3.5.1+)
-├── test_string_sanitization.py        # String sanitization coverage (v3.5.1+)
-├── test_cache_integrity.py            # HMAC cache integrity (v3.5.1+)
-├── test_parallel_scanning.py          # Multi-threaded execution (v3.5.0+)
-├── test_transactional_cache.py        # Thread-safe cache operations (v3.5.0+)
+├── test_security_regression.py        # Security regression suite
+├── test_path_validation.py            # Path traversal protection
+├── test_string_sanitization.py        # String sanitization coverage
+├── test_cache_integrity.py            # HMAC cache integrity
+├── test_parallel_scanning.py          # Multi-threaded execution
+├── test_transactional_cache.py        # Thread-safe cache operations
 ├── test_performance.py                # Performance benchmarks and profiling
 ├── test_integration.py                # End-to-end workflow integration
 ├── test_integration_real_api.py       # Live API integration scenarios
@@ -301,7 +301,7 @@ def test_scan_and_report_workflow():
 
 ## Running Tests
 
-### Test Suite Runner (Recommended - v3.5.1+)
+### Test Suite Runner
 
 The unified test runner provides standardized execution with clear output.
 
@@ -628,7 +628,7 @@ def test_no_circular_dependencies():
 
 ### Overview
 
-Security testing is divided into multiple specialized test suites (v3.5.1):
+Security testing is divided into multiple specialized test suites:
 - **test_security.py** - Core security vulnerability tests
 - **test_path_validation.py** - Comprehensive path validation coverage
 - **test_string_sanitization.py** - String sanitization in all contexts
@@ -637,7 +637,7 @@ Security testing is divided into multiple specialized test suites (v3.5.1):
 
 **To see current test counts:** Run `pytest --collect-only -q tests/test_security*.py tests/test_path*.py tests/test_string*.py tests/test_cache*.py`
 
-### Path Validation Tests (v3.5.1)
+### Path Validation Tests
 
 ```python
 def test_path_traversal_blocked():
@@ -658,7 +658,7 @@ def test_path_traversal_blocked():
             validate_path(dangerous, path_type="output")
 ```
 
-### String Sanitization Tests (v3.5.1)
+### String Sanitization Tests
 
 ```python
 def test_string_sanitization_prevents_injection():
@@ -683,7 +683,7 @@ def test_string_sanitization_prevents_injection():
     assert "\x01" not in result
 ```
 
-### Cache Integrity Tests (v3.5.1)
+### Cache Integrity Tests
 
 ```python
 def test_cache_integrity_hmac_validation():
@@ -716,7 +716,7 @@ def test_cache_integrity_hmac_validation():
     assert cached is None, "Tampered cache entry should be rejected"
 ```
 
-### Security Regression Tests (v3.5.1)
+### Security Regression Tests
 
 ```python
 def test_all_fixed_vulnerabilities_stay_fixed():
@@ -727,13 +727,191 @@ def test_all_fixed_vulnerabilities_stay_fixed():
     # - CWE-345: Data authenticity (HMAC implementation)
     # - CWE-209: Information disclosure (error sanitization)
 
-    # Example: URL-encoded path traversal (fixed in v3.5.1)
+    # Example: URL-encoded path traversal
     from vscode_scanner.utils import validate_path
 
     url_encoded_traversal = "data/%2e%2e%2f/etc/passwd"
     with pytest.raises(ValueError):
         validate_path(url_encoded_traversal, path_type="output")
 ```
+
+### SQLite Security Tests
+
+**Purpose:** Custom security audit for SQLite database usage
+
+**Test File:** `tests/test_sqlite_security.py`
+
+**Coverage:**
+- File permissions (0o600 for cache.db, 0o600 for .cache_secret, 0o700 for cache directory)
+- SQL injection prevention (parameterized queries only)
+- HMAC timing-safe comparison (hmac.compare_digest)
+- Database schema integrity
+- HMAC signature integrity validation
+
+```python
+def test_sqlite_file_permissions():
+    """Verify cache database has user-only permissions (0o600)."""
+    cache = CacheManager()
+    file_stat = os.stat(cache.cache_db)
+    file_mode = stat.S_IMODE(file_stat.st_mode)
+    assert file_mode == 0o600, f"Cache DB permissions: {oct(file_mode)}"
+
+def test_no_sql_injection_patterns():
+    """Scan cache_manager.py for dangerous SQL patterns."""
+    dangerous_patterns = ['f"SELECT', 'f"INSERT', '% "SELECT']
+    # Verifies all queries use parameterized statements
+```
+
+**To run:** `python3 tests/test_sqlite_security.py`
+
+### Automated Security Tools
+
+**Three-Layer Security Automation:**
+
+#### 1. Pre-commit Hooks (Local Prevention)
+
+**Installation:**
+```bash
+pip install -e .               # Install security tools in [dev]
+pre-commit install             # Enable pre-commit hooks
+```
+
+**What it runs automatically:**
+- **Black** - Code formatting consistency
+- **Bandit** - AST-based Python security scanner
+- **Pylint Security** - Security-focused linting
+- **Security Tests** - All test_security*.py and test_sqlite_security.py
+
+**Manual execution:**
+```bash
+pre-commit run --all-files     # Test all hooks
+pre-commit run bandit          # Run specific hook
+```
+
+**Configuration:** `.pre-commit-config.yaml`
+
+#### 2. Bandit Security Scanner
+
+**Purpose:** AST-based static security vulnerability detection for Python
+
+**Installation:** `pip install bandit` (included in `[dev]` extras)
+
+**Usage:**
+```bash
+# Terminal output
+bandit -r vscode_scanner/ -ll
+
+# JSON report (for CI/CD)
+bandit -r vscode_scanner/ -ll -f json -o bandit-report.json
+```
+
+**What it detects:**
+- SQL injection vulnerabilities (B608)
+- Weak cryptography (B501-B507) - CRITICAL for HMAC validation
+- Unsafe `urllib` usage (B310) - CRITICAL for HTTP client security
+- Shell injection (B601-B611)
+- Hardcoded credentials (B105-B107)
+
+**Configuration:** `.bandit` file
+- Severity: medium or higher
+- Confidence: medium or higher
+- Excludes: tests/, node_modules/, .git/
+
+**Expected Result:** Zero critical vulnerabilities
+
+#### 3. Safety & pip-audit (Dependency Security)
+
+**Purpose:** Scan Python dependencies for known CVEs
+
+**Installation:**
+```bash
+pip install safety pip-audit   # Included in [dev] extras
+```
+
+**Safety Usage:**
+```bash
+# Quick check
+safety check
+
+# Detailed report
+pip freeze > requirements-scan.txt
+safety check --file requirements-scan.txt --full-report
+```
+
+**pip-audit Usage:**
+```bash
+# Quick check
+pip-audit
+
+# Detailed report
+pip-audit --desc --output json > pip-audit-report.json
+```
+
+**What they check:**
+- **Safety:** 50,000+ known vulnerabilities from Safety DB
+- **pip-audit:** OSV (Open Source Vulnerabilities) database
+- Both check: Rich (≥13.0.0) and Typer (≥0.9.0) dependencies
+
+**Expected Result:** No high/critical severity vulnerabilities
+
+#### 4. CI/CD Security Workflow
+
+**File:** `.github/workflows/security.yml`
+
+**Triggers:**
+- Every push to main/master/develop/claude/** branches
+- Every pull request
+- Weekly schedule (Monday 00:00 UTC)
+- Manual dispatch
+
+**What it runs:**
+```yaml
+jobs:
+  security-scan:
+    - Bandit security scan (AST analysis)
+    - Safety dependency check (CVE database)
+    - pip-audit package audit (OSV database)
+    - Security regression tests (95% coverage)
+    - Path validation tests
+    - String sanitization tests
+    - Cache integrity tests (HMAC)
+    - SQLite security tests (Phase 1)
+```
+
+**Artifacts:** Stores security reports for 90 days
+
+**Failure Conditions:**
+- Any security test fails
+- Bandit finds critical vulnerabilities
+- Safety finds high/critical CVEs
+- pip-audit finds high/critical vulnerabilities
+
+### Security Testing Best Practices
+
+**Before Every Commit:**
+```bash
+# Option 1: Pre-commit hooks (automatic)
+pre-commit run --all-files
+
+# Option 2: Manual execution
+bandit -r vscode_scanner/ -ll
+safety check
+pip-audit
+python3 tests/test_sqlite_security.py
+python3 tests/test_security_regression.py
+```
+
+**Tool Priority:**
+1. **Security Tests (test_security*.py)** - Highest authority, must pass
+2. **Bandit** - AST security analysis, zero critical required
+3. **Safety/pip-audit** - Dependency scanning, no high/critical CVEs
+4. **Pre-commit** - Prevention layer, catches issues early
+
+**Security Coverage Goals:**
+- **Overall:** 85% code coverage
+- **Security modules:** 95% coverage (utils.py, cache_manager.py)
+- **Security tools:** Zero critical findings
+- **Dependency CVEs:** Zero high/critical vulnerabilities
 
 ---
 
@@ -795,11 +973,11 @@ def test_cache_migration_memory_usage():
 
 ---
 
-## Parallel Scanning Tests (v3.5.0+)
+## Parallel Scanning Tests
 
 ### Overview
 
-Parallel scanning (v3.5.0) introduces multi-threaded execution with 1-5 worker threads. Tests ensure thread safety, performance gains, and correct behavior under concurrent operations.
+Parallel scanning introduces multi-threaded execution with 1-5 worker threads. Tests ensure thread safety, performance gains, and correct behavior under concurrent operations.
 
 Test files:
 - **test_parallel_scanning.py** - Parallel execution, performance, worker isolation
@@ -1462,7 +1640,7 @@ def test_cache_expiration(mock_time):
     assert result is None  # Expired
 ```
 
-### Mock Validation (v3.5.1+)
+### Mock Validation
 
 **Problem:** Mocks can drift from real API behavior, causing tests to pass while real integration fails.
 

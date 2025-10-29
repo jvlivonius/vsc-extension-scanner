@@ -6,15 +6,17 @@ This file provides backward compatibility for older pip versions.
 Modern builds use pyproject.toml instead.
 """
 
-from setuptools import setup, find_packages
 import os
 import re
+from setuptools import setup, find_packages
 
 # Read version without importing the package (avoids dependency issues during build)
 version_file = os.path.join(os.path.dirname(__file__), "vscode_scanner", "_version.py")
 with open(version_file, "r", encoding="utf-8") as f:
     version_content = f.read()
-    version_match = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', version_content, re.MULTILINE)
+    version_match = re.search(
+        r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', version_content, re.MULTILINE
+    )
     if version_match:
         __version__ = version_match.group(1)
     else:
@@ -59,6 +61,15 @@ setup(
         "test": [
             "pyyaml>=6.0.0,<7.0.0",  # For architecture tests configuration
             "pytest>=7.0.0",  # Test framework
+        ],
+        "dev": [
+            "bandit>=1.7.6",  # AST-based security scanner
+            "safety>=2.3.0",  # Dependency vulnerability scanner
+            "pip-audit>=2.4.0",  # PyPI package auditing
+            "pre-commit>=3.0.0",  # Pre-commit hooks framework
+            "black>=23.12.0",  # Code formatter
+            "pylint>=3.0.0",  # Comprehensive linter
+            "pylint-security",  # Pylint security plugin
         ],
     },
     entry_points={

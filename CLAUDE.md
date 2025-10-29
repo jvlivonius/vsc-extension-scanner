@@ -204,11 +204,12 @@ vsc-extension-scanner/
 │   └── utils.py           # Path validation, sanitization (Infrastructure)
 ├── scripts/
 │   └── bump_version.py    # Version management tool
-├── tests/                 # Test files (161+ tests, 100% passing)
-│   ├── test_security_regression.py  # Security test suite (v3.5.1)
-│   ├── test_path_validation.py      # Path validation tests (v3.5.1)
-│   ├── test_string_sanitization.py  # Sanitization tests (v3.5.1)
-│   ├── test_cache_integrity.py      # HMAC integrity tests (v3.5.1)
+├── tests/                 # Test files (169+ tests, 100% passing)
+│   ├── test_security_regression.py  # Security test suite
+│   ├── test_path_validation.py      # Path validation tests
+│   ├── test_string_sanitization.py  # Sanitization tests
+│   ├── test_cache_integrity.py      # HMAC integrity tests
+│   ├── test_sqlite_security.py      # SQLite security audit
 │   ├── test_display.py              # Display module tests
 │   ├── test_scanner.py              # Scanner module tests
 │   ├── test_cli.py                  # CLI module tests
@@ -237,10 +238,10 @@ vsc-extension-scanner/
 ```bash
 # Security tests (MUST pass before any commit)
 python3 tests/test_security.py              # Security vulnerability tests
-python3 tests/test_security_regression.py   # Comprehensive security suite (v3.5.1)
-python3 tests/test_path_validation.py       # Path validation coverage (v3.5.1)
-python3 tests/test_string_sanitization.py   # String sanitization coverage (v3.5.1)
-python3 tests/test_cache_integrity.py       # HMAC integrity tests (v3.5.1)
+python3 tests/test_security_regression.py   # Comprehensive security suite
+python3 tests/test_path_validation.py       # Path validation coverage
+python3 tests/test_string_sanitization.py   # String sanitization coverage
+python3 tests/test_cache_integrity.py       # HMAC integrity tests
 
 # Architecture & Core tests
 python3 tests/test_architecture.py          # Layer compliance (0 violations required)
@@ -364,12 +365,22 @@ python3 -m pdb -m vscode_scanner.vscan scan
 
 **Before Committing:**
 ```bash
+# 0. Pre-commit hooks (RECOMMENDED - Phase 1)
+# Install once: pip install -e .[dev] && pre-commit install
+pre-commit run --all-files                 # Runs security checks automatically
+
 # 1. Run ALL tests
 python3 tests/test_*.py                    # All tests must pass
 
-# 2. Verify security (CRITICAL)
+# 2. Verify security (CRITICAL - Phase 1 Enhanced)
 python3 tests/test_security.py             # Must show 0 vulnerabilities
 python3 tests/test_security_regression.py  # All security tests must pass
+python3 tests/test_sqlite_security.py      # SQLite security audit (Phase 1)
+
+# Phase 1 Security Tools (automated in pre-commit + CI/CD)
+bandit -r vscode_scanner/ -ll              # AST-based security scan
+safety check                               # Dependency vulnerabilities
+pip-audit                                  # PyPI package audit
 
 # 3. Check architecture compliance
 python3 tests/test_architecture.py         # Must show 0 layer violations
@@ -379,6 +390,23 @@ python3 scripts/bump_version.py --check    # All files must have matching versio
 
 # 5. Check documentation freshness (if docs changed)
 ./scripts/check_doc_freshness.sh           # Must show "✓ All checks passed!"
+```
+
+**Phase 1 Security Tools Setup (v3.5.1):**
+```bash
+# Install development tools (includes security tools)
+pip install -e .[dev]
+
+# Install pre-commit hooks (runs security checks automatically)
+pre-commit install
+
+# Test pre-commit hooks
+pre-commit run --all-files
+
+# Manual security scans (also run automatically in CI/CD)
+bandit -r vscode_scanner/ -ll              # AST security analysis
+safety check --full-report                 # Dependency vulnerabilities
+pip-audit --desc                           # PyPI package audit
 ```
 
 → **Full testing guide:** See [TESTING.md](docs/guides/TESTING.md) and [TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md)

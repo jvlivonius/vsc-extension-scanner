@@ -18,7 +18,15 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple, Union
 from datetime import datetime, timedelta
 
-from .utils import is_restricted_path, is_temp_directory, safe_mkdir, safe_touch, safe_chmod, sanitize_error_message, validate_path
+from .utils import (
+    is_restricted_path,
+    is_temp_directory,
+    safe_mkdir,
+    safe_touch,
+    safe_chmod,
+    sanitize_error_message,
+    validate_path,
+)
 from ._version import SCHEMA_VERSION
 from .constants import DEFAULT_CACHE_MAX_AGE_DAYS, CACHE_REPORT_MAX_AGE_DAYS
 from .types import CacheWarning, CacheError, CacheInfo
@@ -48,12 +56,15 @@ class CacheManager:
             # Blocks: URL encoding, dangerous chars, parent traversal, system directories
             # Expands: shell variables (~/, $HOME/, $USER/)
             try:
-                validate_path(cache_dir, allow_absolute=True, path_type="cache directory")
+                validate_path(
+                    cache_dir, allow_absolute=True, path_type="cache directory"
+                )
             except ValueError as e:
                 raise ValueError(f"[E200] {str(e)}")
 
             # Expand and resolve path (validation already expanded for checking)
             import os
+
             expanded = os.path.expandvars(os.path.expanduser(cache_dir))
             cache_path = Path(expanded).resolve()
 
@@ -120,20 +131,23 @@ class CacheManager:
         try:
             if secret_file.exists():
                 # Load existing key
-                with open(secret_file, 'rb') as f:
+                with open(secret_file, "rb") as f:
                     key = f.read()
                     if len(key) == 32:
                         return key
                     else:
                         # Invalid key size, regenerate
-                        print("[WARNING] Invalid cache secret key, regenerating...", file=sys.stderr)
+                        print(
+                            "[WARNING] Invalid cache secret key, regenerating...",
+                            file=sys.stderr,
+                        )
 
             # Generate new key
             key = secrets.token_bytes(32)  # 256 bits for HMAC-SHA256
 
             # Write with restrictive permissions
             safe_touch(secret_file, mode=0o600)
-            with open(secret_file, 'wb') as f:
+            with open(secret_file, "wb") as f:
                 f.write(key)
 
             return key
@@ -141,8 +155,14 @@ class CacheManager:
         except (OSError, IOError) as e:
             # Fallback to in-memory key (warnings only, don't fail)
             sanitized_error = sanitize_error_message(str(e), context="secret key")
-            print(f"[WARNING] Failed to persist cache secret key: {sanitized_error}", file=sys.stderr)
-            print("[WARNING] Using in-memory key (integrity checks won't persist across restarts)", file=sys.stderr)
+            print(
+                f"[WARNING] Failed to persist cache secret key: {sanitized_error}",
+                file=sys.stderr,
+            )
+            print(
+                "[WARNING] Using in-memory key (integrity checks won't persist across restarts)",
+                file=sys.stderr,
+            )
             return secrets.token_bytes(32)
 
     def _compute_integrity_signature(self, data: str) -> str:
@@ -160,11 +180,7 @@ class CacheManager:
             - Secret key is user-specific and stored with restrictive permissions
             - Signatures are 64 characters (32 bytes hex-encoded)
         """
-        signature = hmac.new(
-            self._secret_key,
-            data.encode('utf-8'),
-            hashlib.sha256
-        )
+        signature = hmac.new(self._secret_key, data.encode("utf-8"), hashlib.sha256)
         return signature.hexdigest()
 
     def _verify_integrity_signature(self, data: str, signature: str) -> bool:
@@ -252,18 +268,26 @@ class CacheManager:
             if result and result[0] == "ok":
                 return True
             else:
-                sanitized_result = sanitize_error_message(str(result), context="integrity check")
-                print(f"[WARNING] Cache database integrity check failed: {sanitized_result}",
-                      file=sys.stderr)
+                sanitized_result = sanitize_error_message(
+                    str(result), context="integrity check"
+                )
+                print(
+                    f"[WARNING] Cache database integrity check failed: {sanitized_result}",
+                    file=sys.stderr,
+                )
                 return False
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="integrity check")
-            print(f"[WARNING] Cache database integrity check error: {sanitized_error}",
-                  file=sys.stderr)
+            print(
+                f"[WARNING] Cache database integrity check error: {sanitized_error}",
+                file=sys.stderr,
+            )
             return False
 
-    def _handle_corrupted_database(self) -> List[Union[CacheWarning, CacheError, CacheInfo]]:
+    def _handle_corrupted_database(
+        self,
+    ) -> List[Union[CacheWarning, CacheError, CacheInfo]]:
         """
         Handle corrupted database by backing it up and creating a fresh one.
 
@@ -273,45 +297,56 @@ class CacheManager:
         import shutil
 
         messages = []
-        messages.append(CacheWarning(
-            message="Detected corrupted cache database",
-            context="database_integrity"
-        ))
+        messages.append(
+            CacheWarning(
+                message="Detected corrupted cache database",
+                context="database_integrity",
+            )
+        )
 
         try:
             # Create backup with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = self.cache_db.parent / f"cache.db.corrupted.{timestamp}"
 
-            messages.append(CacheInfo(
-                message=f"Backing up corrupted database to: {backup_path}",
-                context="database_backup"
-            ))
+            messages.append(
+                CacheInfo(
+                    message=f"Backing up corrupted database to: {backup_path}",
+                    context="database_backup",
+                )
+            )
             shutil.copy2(self.cache_db, backup_path)
 
             # Remove corrupted database
-            messages.append(CacheInfo(
-                message="Removing corrupted database...",
-                context="database_cleanup"
-            ))
+            messages.append(
+                CacheInfo(
+                    message="Removing corrupted database...", context="database_cleanup"
+                )
+            )
             self.cache_db.unlink()
 
-            messages.append(CacheInfo(
-                message="Creating fresh cache database...",
-                context="database_recovery"
-            ))
+            messages.append(
+                CacheInfo(
+                    message="Creating fresh cache database...",
+                    context="database_recovery",
+                )
+            )
 
         except (OSError, IOError) as e:
             sanitized_error = sanitize_error_message(str(e), context="database backup")
-            messages.append(CacheError(
-                message=f"Failed to handle corrupted database: {sanitized_error}",
-                context="database_recovery",
-                recoverable=False
-            ))
-            messages.append(CacheInfo(
-                message="Cache functionality may be impaired",
-                context="database_recovery"
-            ))
+            messages.append(
+                CacheError(
+                    message=f"Failed to handle corrupted database: {sanitized_error}",
+                    context="database_recovery",
+                    recoverable=False,
+                )
+            )
+            messages.append(
+                CacheInfo(
+                    message="Cache functionality may be impaired",
+                    context="database_recovery",
+                )
+            )
 
         return messages
 
@@ -333,7 +368,8 @@ class CacheManager:
             cursor = conn.cursor()
 
             # Create scan_cache table (v2.2 schema with integrity_signature field)
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS scan_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     extension_id TEXT NOT NULL,
@@ -350,46 +386,61 @@ class CacheManager:
                     integrity_signature TEXT,
                     UNIQUE(extension_id, version)
                 )
-            """)
+            """
+            )
 
             # Create metadata table for schema version and stats
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS metadata (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 )
-            """)
+            """
+            )
 
             # Create indexes for performance
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_extension
                 ON scan_cache(extension_id, version)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_scanned_at
                 ON scan_cache(scanned_at)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_risk_level
                 ON scan_cache(risk_level)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_security_score
                 ON scan_cache(security_score)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_vulnerabilities
                 ON scan_cache(vulnerabilities_count)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_publisher_verified
                 ON scan_cache(publisher_verified)
-            """)
+            """
+            )
 
             # Store schema version
             cursor.execute(
                 "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                ("schema_version", self.SCHEMA_VERSION)
+                ("schema_version", self.SCHEMA_VERSION),
             )
 
             conn.commit()
@@ -404,10 +455,12 @@ class CacheManager:
                 cursor = conn.cursor()
 
                 # Check if scan_cache table exists
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT name FROM sqlite_master
                     WHERE type='table' AND name='scan_cache'
-                """)
+                """
+                )
                 if not cursor.fetchone():
                     return False  # No table yet, fresh install
 
@@ -426,7 +479,9 @@ class CacheManager:
         try:
             with self._db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT value FROM metadata WHERE key = 'schema_version'")
+                cursor.execute(
+                    "SELECT value FROM metadata WHERE key = 'schema_version'"
+                )
                 row = cursor.fetchone()
                 return row[0] if row else "1.0"  # Default to 1.0 if not found
         except sqlite3.Error:
@@ -440,14 +495,17 @@ class CacheManager:
             cursor: Database cursor
             batch: List of tuples (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id)
         """
-        cursor.executemany("""
+        cursor.executemany(
+            """
             UPDATE scan_cache
             SET security_score = ?,
                 dependencies_count = ?,
                 publisher_verified = ?,
                 has_risk_factors = ?
             WHERE id = ?
-        """, batch)
+        """,
+            batch,
+        )
 
     def _migrate_v1_to_v2(self):
         """Migrate cache database from v1.0 to v2.0 schema."""
@@ -464,36 +522,50 @@ class CacheManager:
                     return
 
                 # Add new columns to existing table
-                cursor.execute("""
+                cursor.execute(
+                    """
                     ALTER TABLE scan_cache
                     ADD COLUMN security_score INTEGER
-                """)
-                cursor.execute("""
+                """
+                )
+                cursor.execute(
+                    """
                     ALTER TABLE scan_cache
                     ADD COLUMN dependencies_count INTEGER DEFAULT 0
-                """)
-                cursor.execute("""
+                """
+                )
+                cursor.execute(
+                    """
                     ALTER TABLE scan_cache
                     ADD COLUMN publisher_verified BOOLEAN DEFAULT 0
-                """)
-                cursor.execute("""
+                """
+                )
+                cursor.execute(
+                    """
                     ALTER TABLE scan_cache
                     ADD COLUMN has_risk_factors BOOLEAN DEFAULT 0
-                """)
+                """
+                )
 
                 # Create new indexes
-                cursor.execute("""
+                cursor.execute(
+                    """
                     CREATE INDEX IF NOT EXISTS idx_security_score
                     ON scan_cache(security_score)
-                """)
-                cursor.execute("""
+                """
+                )
+                cursor.execute(
+                    """
                     CREATE INDEX IF NOT EXISTS idx_vulnerabilities
                     ON scan_cache(vulnerabilities_count)
-                """)
-                cursor.execute("""
+                """
+                )
+                cursor.execute(
+                    """
                     CREATE INDEX IF NOT EXISTS idx_publisher_verified
                     ON scan_cache(publisher_verified)
-                """)
+                """
+                )
 
                 # Update existing rows with parsed data from scan_result JSON
                 # Use batch processing to avoid loading all entries into memory
@@ -525,13 +597,15 @@ class CacheManager:
                         has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
                         # Add to batch
-                        batch.append((
-                            security_score,
-                            dependencies_count,
-                            publisher_verified,
-                            has_risk_factors,
-                            row_id
-                        ))
+                        batch.append(
+                            (
+                                security_score,
+                                dependencies_count,
+                                publisher_verified,
+                                has_risk_factors,
+                                row_id,
+                            )
+                        )
 
                         # Process batch when it reaches batch_size
                         if len(batch) >= batch_size:
@@ -541,7 +615,11 @@ class CacheManager:
 
                         # Show progress every 10 entries or at the end
                         if idx % 10 == 0 or idx == total_rows:
-                            print(f"  Progress: {idx}/{total_rows} entries...", file=sys.stderr, end='\r')
+                            print(
+                                f"  Progress: {idx}/{total_rows} entries...",
+                                file=sys.stderr,
+                                end="\r",
+                            )
 
                     except (json.JSONDecodeError, Exception):
                         # Skip rows that can't be parsed
@@ -554,12 +632,14 @@ class CacheManager:
 
                 if total_rows > 0:
                     print()  # New line after progress
-                    print(f"Migration complete: {updated_count}/{total_rows} entries updated")
+                    print(
+                        f"Migration complete: {updated_count}/{total_rows} entries updated"
+                    )
 
                 # Update schema version
                 cursor.execute(
                     "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                    ("schema_version", "2.0")
+                    ("schema_version", "2.0"),
                 )
 
                 conn.commit()
@@ -585,22 +665,26 @@ class CacheManager:
                 print("Migrating cache schema (v2.0 → v2.1)...")
 
                 # Add new column to existing table
-                cursor.execute("""
+                cursor.execute(
+                    """
                     ALTER TABLE scan_cache
                     ADD COLUMN installed_at TIMESTAMP
-                """)
+                """
+                )
 
                 # Update schema version
                 cursor.execute(
                     "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                    ("schema_version", "2.1")
+                    ("schema_version", "2.1"),
                 )
 
                 conn.commit()
                 print("Migration complete (v2.0 → v2.1)")
 
         except sqlite3.Error as e:
-            sanitized_error = sanitize_error_message(str(e), context="cache migration v2.0→v2.1")
+            sanitized_error = sanitize_error_message(
+                str(e), context="cache migration v2.0→v2.1"
+            )
             print(f"Cache migration error: {sanitized_error}")
 
     def _migrate_v2_1_to_v2_2(self):
@@ -621,10 +705,12 @@ class CacheManager:
                 print("Adding HMAC integrity checking to cache entries...")
 
                 # Add new column to existing table
-                cursor.execute("""
+                cursor.execute(
+                    """
                     ALTER TABLE scan_cache
                     ADD COLUMN integrity_signature TEXT
-                """)
+                """
+                )
 
                 # Note: Existing entries will have NULL signatures
                 # They will be re-signed on next access or treated as unsigned (cache miss)
@@ -632,7 +718,7 @@ class CacheManager:
                 # Update schema version
                 cursor.execute(
                     "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                    ("schema_version", "2.2")
+                    ("schema_version", "2.2"),
                 )
 
                 conn.commit()
@@ -640,14 +726,16 @@ class CacheManager:
                 print("Note: Existing cache entries will be re-signed on next access")
 
         except sqlite3.Error as e:
-            sanitized_error = sanitize_error_message(str(e), context="cache migration v2.1→v2.2")
+            sanitized_error = sanitize_error_message(
+                str(e), context="cache migration v2.1→v2.2"
+            )
             print(f"Cache migration error: {sanitized_error}")
 
     def get_cached_result(
         self,
         extension_id: str,
         version: str,
-        max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS
+        max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS,
     ) -> Optional[Dict[str, Any]]:
         """
         Get cached scan result if exists and not expired.
@@ -668,13 +756,16 @@ class CacheManager:
                 cutoff = datetime.now() - timedelta(days=max_age_days)
                 cutoff_str = cutoff.isoformat()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT scan_result, scanned_at, integrity_signature
                     FROM scan_cache
                     WHERE extension_id = ?
                       AND version = ?
                       AND scanned_at >= ?
-                """, (extension_id, version, cutoff_str))
+                """,
+                    (extension_id, version, cutoff_str),
+                )
 
                 row = cursor.fetchone()
 
@@ -683,25 +774,33 @@ class CacheManager:
 
                     # Verify HMAC signature (v3.5.1 security hardening)
                     if integrity_signature:
-                        if not self._verify_integrity_signature(scan_result_json, integrity_signature):
+                        if not self._verify_integrity_signature(
+                            scan_result_json, integrity_signature
+                        ):
                             # Signature mismatch - cache entry has been tampered with
-                            print(f"[WARNING] Cache integrity check failed for {extension_id} v{version}",
-                                  file=sys.stderr)
-                            print("[WARNING] Cache entry rejected due to signature mismatch",
-                                  file=sys.stderr)
+                            print(
+                                f"[WARNING] Cache integrity check failed for {extension_id} v{version}",
+                                file=sys.stderr,
+                            )
+                            print(
+                                "[WARNING] Cache entry rejected due to signature mismatch",
+                                file=sys.stderr,
+                            )
                             return None  # Treat as cache miss - will trigger fresh scan
                     else:
                         # No signature (old cache entry from v2.1 or earlier)
                         # Treat as cache miss to force re-scan with signature
-                        print(f"[INFO] Unsigned cache entry for {extension_id} v{version} (will re-scan)",
-                              file=sys.stderr)
+                        print(
+                            f"[INFO] Unsigned cache entry for {extension_id} v{version} (will re-scan)",
+                            file=sys.stderr,
+                        )
                         return None
 
                     result = json.loads(scan_result_json)
 
                     # Add cache metadata
-                    result['_cache_hit'] = True
-                    result['_cached_at'] = scanned_at
+                    result["_cache_hit"] = True
+                    result["_cached_at"] = scanned_at
 
                     return result
 
@@ -713,12 +812,7 @@ class CacheManager:
             print(f"Cache read error: {sanitized_error}")
             return None
 
-    def save_result(
-        self,
-        extension_id: str,
-        version: str,
-        result: Dict[str, Any]
-    ):
+    def save_result(self, extension_id: str, version: str, result: Dict[str, Any]):
         """
         Save scan result to cache (v2 schema).
 
@@ -728,7 +822,7 @@ class CacheManager:
             result: Scan result dictionary to cache
         """
         # Don't cache failed scans
-        if result.get('scan_status') != 'success':
+        if result.get("scan_status") != "success":
             return
 
         try:
@@ -737,47 +831,68 @@ class CacheManager:
 
                 # Remove cache metadata before storing
                 result_to_store = result.copy()
-                result_to_store.pop('_cache_hit', None)
-                result_to_store.pop('_cached_at', None)
+                result_to_store.pop("_cache_hit", None)
+                result_to_store.pop("_cached_at", None)
 
                 scan_result_json = json.dumps(result_to_store)
                 scanned_at = datetime.now().isoformat()
 
                 # Extract indexed fields for v2 schema
-                risk_level = result_to_store.get('risk_level')
-                security_score = result_to_store.get('security_score')
+                risk_level = result_to_store.get("risk_level")
+                security_score = result_to_store.get("security_score")
 
                 # Vulnerabilities
-                vulnerabilities = result_to_store.get('vulnerabilities', {})
-                vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
+                vulnerabilities = result_to_store.get("vulnerabilities", {})
+                vuln_count = (
+                    vulnerabilities.get("count", 0)
+                    if isinstance(vulnerabilities, dict)
+                    else 0
+                )
 
                 # Dependencies
-                dependencies = result_to_store.get('dependencies', {})
-                dependencies_count = dependencies.get('total_count', 0)
+                dependencies = result_to_store.get("dependencies", {})
+                dependencies_count = dependencies.get("total_count", 0)
 
                 # Publisher verification
-                metadata = result_to_store.get('metadata', {})
-                publisher = metadata.get('publisher', {})
-                publisher_verified = 1 if publisher.get('verified') else 0
+                metadata = result_to_store.get("metadata", {})
+                publisher = metadata.get("publisher", {})
+                publisher_verified = 1 if publisher.get("verified") else 0
 
                 # Risk factors
-                risk_factors = result_to_store.get('risk_factors', [])
+                risk_factors = result_to_store.get("risk_factors", [])
                 has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
                 # Installation timestamp
-                installed_at = result_to_store.get('installed_at')
+                installed_at = result_to_store.get("installed_at")
 
                 # Compute HMAC signature for integrity checking (v3.5.1)
-                integrity_signature = self._compute_integrity_signature(scan_result_json)
+                integrity_signature = self._compute_integrity_signature(
+                    scan_result_json
+                )
 
                 # Insert or replace
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO scan_cache
                     (extension_id, version, scan_result, scanned_at, risk_level, security_score,
                      vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                      vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature))
+                """,
+                    (
+                        extension_id,
+                        version,
+                        scan_result_json,
+                        scanned_at,
+                        risk_level,
+                        security_score,
+                        vuln_count,
+                        dependencies_count,
+                        publisher_verified,
+                        has_risk_factors,
+                        installed_at,
+                        integrity_signature,
+                    ),
+                )
 
                 conn.commit()
 
@@ -799,7 +914,9 @@ class CacheManager:
         self._batch_cursor = self._batch_connection.cursor()
         self._batch_count = 0
 
-    def save_result_batch(self, extension_id: str, version: str, result: Dict[str, Any]):
+    def save_result_batch(
+        self, extension_id: str, version: str, result: Dict[str, Any]
+    ):
         """
         Save scan result to cache without committing (batch mode).
         Must call begin_batch() first.
@@ -810,7 +927,7 @@ class CacheManager:
             result: Scan result dictionary to cache
         """
         # Don't cache failed scans
-        if result.get('scan_status') != 'success':
+        if result.get("scan_status") != "success":
             return
 
         if self._batch_connection is None:
@@ -821,53 +938,74 @@ class CacheManager:
         try:
             # Remove cache metadata before storing
             result_to_store = result.copy()
-            result_to_store.pop('_cache_hit', None)
-            result_to_store.pop('_cached_at', None)
+            result_to_store.pop("_cache_hit", None)
+            result_to_store.pop("_cached_at", None)
 
             scan_result_json = json.dumps(result_to_store)
             scanned_at = datetime.now().isoformat()
 
             # Extract indexed fields for v2 schema
-            risk_level = result_to_store.get('risk_level')
-            security_score = result_to_store.get('security_score')
+            risk_level = result_to_store.get("risk_level")
+            security_score = result_to_store.get("security_score")
 
             # Vulnerabilities
-            vulnerabilities = result_to_store.get('vulnerabilities', {})
-            vuln_count = vulnerabilities.get('count', 0) if isinstance(vulnerabilities, dict) else 0
+            vulnerabilities = result_to_store.get("vulnerabilities", {})
+            vuln_count = (
+                vulnerabilities.get("count", 0)
+                if isinstance(vulnerabilities, dict)
+                else 0
+            )
 
             # Dependencies
-            dependencies = result_to_store.get('dependencies', {})
-            dependencies_count = dependencies.get('total_count', 0)
+            dependencies = result_to_store.get("dependencies", {})
+            dependencies_count = dependencies.get("total_count", 0)
 
             # Publisher verification
-            metadata = result_to_store.get('metadata', {})
-            publisher = metadata.get('publisher', {})
-            publisher_verified = 1 if publisher.get('verified') else 0
+            metadata = result_to_store.get("metadata", {})
+            publisher = metadata.get("publisher", {})
+            publisher_verified = 1 if publisher.get("verified") else 0
 
             # Risk factors
-            risk_factors = result_to_store.get('risk_factors', [])
+            risk_factors = result_to_store.get("risk_factors", [])
             has_risk_factors = 1 if len(risk_factors) > 0 else 0
 
             # Installation timestamp
-            installed_at = result_to_store.get('installed_at')
+            installed_at = result_to_store.get("installed_at")
 
             # Compute HMAC signature for integrity checking (v3.5.1)
             integrity_signature = self._compute_integrity_signature(scan_result_json)
 
             # Insert or replace
-            self._batch_cursor.execute("""
+            self._batch_cursor.execute(
+                """
                 INSERT OR REPLACE INTO scan_cache
                 (extension_id, version, scan_result, scanned_at, risk_level, security_score,
                  vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (extension_id, version, scan_result_json, scanned_at, risk_level, security_score,
-                  vuln_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature))
+            """,
+                (
+                    extension_id,
+                    version,
+                    scan_result_json,
+                    scanned_at,
+                    risk_level,
+                    security_score,
+                    vuln_count,
+                    dependencies_count,
+                    publisher_verified,
+                    has_risk_factors,
+                    installed_at,
+                    integrity_signature,
+                ),
+            )
 
             self._batch_count += 1
 
         except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
             # Log error and clean up batch connection
-            sanitized_error = sanitize_error_message(str(e), context="batch cache write")
+            sanitized_error = sanitize_error_message(
+                str(e), context="batch cache write"
+            )
             print(f"Cache write error: {sanitized_error}")
             # Clean up batch connection on error
             self._cleanup_batch_on_error()
@@ -907,7 +1045,9 @@ class CacheManager:
             self._batch_count = 0
             return count
 
-    def cleanup_old_entries(self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS) -> int:
+    def cleanup_old_entries(
+        self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS
+    ) -> int:
         """
         Remove cache entries older than max_age_days.
 
@@ -924,10 +1064,13 @@ class CacheManager:
                 cutoff = datetime.now() - timedelta(days=max_age_days)
                 cutoff_str = cutoff.isoformat()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     DELETE FROM scan_cache
                     WHERE scanned_at < ?
-                """, (cutoff_str,))
+                """,
+                    (cutoff_str,),
+                )
 
                 deleted_count = cursor.rowcount
                 conn.commit()
@@ -943,7 +1086,9 @@ class CacheManager:
             print(f"Cache cleanup error: {sanitized_error}")
             return 0
 
-    def cleanup_orphaned_entries(self, valid_extension_ids: List[str]) -> Tuple[int, List[CacheWarning]]:
+    def cleanup_orphaned_entries(
+        self, valid_extension_ids: List[str]
+    ) -> Tuple[int, List[CacheWarning]]:
         """
         Remove cache entries for extensions that are no longer installed.
 
@@ -963,14 +1108,18 @@ class CacheManager:
             from .utils import validate_extension_id
 
             # Validate all extension IDs before database operation (SQL injection prevention)
-            validated_ids = [eid for eid in valid_extension_ids if validate_extension_id(eid)]
+            validated_ids = [
+                eid for eid in valid_extension_ids if validate_extension_id(eid)
+            ]
 
             if len(validated_ids) != len(valid_extension_ids):
                 filtered_count = len(valid_extension_ids) - len(validated_ids)
-                warnings.append(CacheWarning(
-                    message=f"Filtered out {filtered_count} invalid extension IDs",
-                    context="cleanup_orphaned_entries"
-                ))
+                warnings.append(
+                    CacheWarning(
+                        message=f"Filtered out {filtered_count} invalid extension IDs",
+                        context="cleanup_orphaned_entries",
+                    )
+                )
 
             if not validated_ids:
                 return 0, warnings
@@ -979,12 +1128,16 @@ class CacheManager:
                 cursor = conn.cursor()
 
                 # Create placeholders for SQL IN clause
-                placeholders = ','.join('?' * len(validated_ids))
+                # nosec B608 - False positive: f-string builds placeholders, data is parameterized
+                placeholders = ",".join("?" * len(validated_ids))
 
-                cursor.execute(f"""
+                cursor.execute(
+                    f"""
                     DELETE FROM scan_cache
                     WHERE extension_id NOT IN ({placeholders})
-                """, validated_ids)
+                """,
+                    validated_ids,
+                )
 
                 deleted_count = cursor.rowcount
                 conn.commit()
@@ -1000,7 +1153,9 @@ class CacheManager:
             print(f"Cache orphan cleanup error: {sanitized_error}")
             return 0, warnings
 
-    def get_cache_stats(self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS) -> Dict[str, Any]:
+    def get_cache_stats(
+        self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS
+    ) -> Dict[str, Any]:
         """
         Get cache statistics including age information.
 
@@ -1019,36 +1174,54 @@ class CacheManager:
                 total_entries = cursor.fetchone()[0]
 
                 # Count by risk level
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT risk_level, COUNT(*)
                     FROM scan_cache
                     GROUP BY risk_level
-                """)
-                risk_breakdown = {row[0] or 'unknown': row[1] for row in cursor.fetchall()}
+                """
+                )
+                risk_breakdown = {
+                    row[0] or "unknown": row[1] for row in cursor.fetchall()
+                }
 
                 # Extensions with vulnerabilities
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT COUNT(*)
                     FROM scan_cache
                     WHERE vulnerabilities_count > 0
-                """)
+                """
+                )
                 with_vulnerabilities = cursor.fetchone()[0]
 
                 # Oldest entry
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT MIN(scanned_at)
                     FROM scan_cache
-                """)
+                """
+                )
                 oldest_entry_row = cursor.fetchone()
-                oldest_entry = oldest_entry_row[0] if oldest_entry_row and oldest_entry_row[0] else None
+                oldest_entry = (
+                    oldest_entry_row[0]
+                    if oldest_entry_row and oldest_entry_row[0]
+                    else None
+                )
 
                 # Newest entry
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT MAX(scanned_at)
                     FROM scan_cache
-                """)
+                """
+                )
                 newest_entry_row = cursor.fetchone()
-                newest_entry = newest_entry_row[0] if newest_entry_row and newest_entry_row[0] else None
+                newest_entry = (
+                    newest_entry_row[0]
+                    if newest_entry_row and newest_entry_row[0]
+                    else None
+                )
 
                 # Calculate average age of cache entries
                 now = datetime.now()
@@ -1071,37 +1244,39 @@ class CacheManager:
                 # Count stale entries (older than max_age_days)
                 cutoff = now - timedelta(days=max_age_days)
                 cutoff_str = cutoff.isoformat()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT COUNT(*)
                     FROM scan_cache
                     WHERE scanned_at < ?
-                """, (cutoff_str,))
+                """,
+                    (cutoff_str,),
+                )
                 stale_entries = cursor.fetchone()[0]
 
                 # Database size
-                db_size_bytes = self.cache_db.stat().st_size if self.cache_db.exists() else 0
+                db_size_bytes = (
+                    self.cache_db.stat().st_size if self.cache_db.exists() else 0
+                )
                 db_size_kb = db_size_bytes / 1024
 
                 return {
-                    'total_entries': total_entries,
-                    'risk_breakdown': risk_breakdown,
-                    'extensions_with_vulnerabilities': with_vulnerabilities,
-                    'oldest_entry': oldest_entry,
-                    'newest_entry': newest_entry,
-                    'average_age_days': avg_age_days,
-                    'stale_entries': stale_entries,
-                    'stale_threshold_days': max_age_days,
-                    'database_size_kb': round(db_size_kb, 2),
-                    'database_path': str(self.cache_db)
+                    "total_entries": total_entries,
+                    "risk_breakdown": risk_breakdown,
+                    "extensions_with_vulnerabilities": with_vulnerabilities,
+                    "oldest_entry": oldest_entry,
+                    "newest_entry": newest_entry,
+                    "average_age_days": avg_age_days,
+                    "stale_entries": stale_entries,
+                    "stale_threshold_days": max_age_days,
+                    "database_size_kb": round(db_size_kb, 2),
+                    "database_path": str(self.cache_db),
                 }
 
         except sqlite3.Error as e:
             sanitized_error = sanitize_error_message(str(e), context="cache stats")
             print(f"Cache stats error: {sanitized_error}")
-            return {
-                'error': sanitized_error,
-                'database_path': str(self.cache_db)
-            }
+            return {"error": sanitized_error, "database_path": str(self.cache_db)}
 
     def _should_vacuum(self, deleted_count: int = 0) -> bool:
         """
@@ -1172,21 +1347,25 @@ class CacheManager:
             with self._db_connection() as conn:
                 cursor = conn.cursor()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT extension_id, version, scanned_at, risk_level, vulnerabilities_count
                     FROM scan_cache
                     ORDER BY scanned_at DESC
-                """)
+                """
+                )
 
                 results = []
                 for row in cursor.fetchall():
-                    results.append({
-                        'extension_id': row[0],
-                        'version': row[1],
-                        'scanned_at': row[2],
-                        'risk_level': row[3],
-                        'vulnerabilities_count': row[4]
-                    })
+                    results.append(
+                        {
+                            "extension_id": row[0],
+                            "version": row[1],
+                            "scanned_at": row[2],
+                            "risk_level": row[3],
+                            "vulnerabilities_count": row[4],
+                        }
+                    )
 
                 return results
 
@@ -1195,7 +1374,9 @@ class CacheManager:
             print(f"Cache list error: {sanitized_error}")
             return []
 
-    def get_all_cached_results(self, max_age_days: int = CACHE_REPORT_MAX_AGE_DAYS) -> List[Dict[str, Any]]:
+    def get_all_cached_results(
+        self, max_age_days: int = CACHE_REPORT_MAX_AGE_DAYS
+    ) -> List[Dict[str, Any]]:
         """
         Get all cached scan results with full data.
 
@@ -1215,18 +1396,21 @@ class CacheManager:
                 cutoff = datetime.now() - timedelta(days=max_age_days)
                 cutoff_str = cutoff.isoformat()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT scan_result, scanned_at
                     FROM scan_cache
                     WHERE scanned_at >= ?
                     ORDER BY scanned_at DESC
-                """, (cutoff_str,))
+                """,
+                    (cutoff_str,),
+                )
 
                 results = []
                 for row in cursor.fetchall():
                     scan_result_json, scanned_at = row
                     result = json.loads(scan_result_json)
-                    result['_cached_at'] = scanned_at
+                    result["_cached_at"] = scanned_at
                     results.append(result)
 
                 return results

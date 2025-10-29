@@ -25,7 +25,7 @@ from .constants import (
     DEFAULT_WORKFLOW_RETRY_DELAY,
     RETRYABLE_STATUS_CODES,
     RETRYABLE_ERROR_PATTERNS,
-    WORKFLOW_RETRYABLE_ERROR_PATTERNS
+    WORKFLOW_RETRYABLE_ERROR_PATTERNS,
 )
 
 
@@ -33,7 +33,9 @@ class VscanAPIClient:
     """Client for vscan.dev API."""
 
     BASE_URL = "https://vscan.dev/api/extensions"
-    USER_AGENT = "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)"
+    USER_AGENT = (
+        "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)"
+    )
 
     def __init__(
         self,
@@ -43,7 +45,7 @@ class VscanAPIClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
         max_workflow_retries: int = DEFAULT_WORKFLOW_MAX_RETRIES,
-        workflow_retry_delay: float = DEFAULT_WORKFLOW_RETRY_DELAY
+        workflow_retry_delay: float = DEFAULT_WORKFLOW_RETRY_DELAY,
     ):
         """
         Initialize API client.
@@ -74,7 +76,7 @@ class VscanAPIClient:
             # Workflow-level retry statistics
             "total_workflow_retries": 0,
             "successful_workflow_retries": 0,
-            "failed_after_workflow_retries": 0
+            "failed_after_workflow_retries": 0,
         }
 
     def _throttle(self):
@@ -84,7 +86,9 @@ class VscanAPIClient:
             time.sleep(self.delay - elapsed)
         self.last_request_time = time.time()
 
-    def _is_retryable_error(self, error: Exception, status_code: Optional[int] = None) -> bool:
+    def _is_retryable_error(
+        self, error: Exception, status_code: Optional[int] = None
+    ) -> bool:
         """
         Determine if an error is retryable based on status code or error type.
 
@@ -121,7 +125,9 @@ class VscanAPIClient:
         # Default: not retryable (fail-safe)
         return False
 
-    def _calculate_backoff_delay(self, attempt: int, retry_after: Optional[int] = None) -> float:
+    def _calculate_backoff_delay(
+        self, attempt: int, retry_after: Optional[int] = None
+    ) -> float:
         """
         Calculate delay before next retry attempt using exponential backoff with jitter.
 
@@ -144,7 +150,7 @@ class VscanAPIClient:
 
         # Exponential backoff
         # attempt 0: 2s, attempt 1: 4s, attempt 2: 8s, attempt 3: 16s, attempt 4: 32s, etc.
-        backoff = self.retry_base_delay * (2 ** attempt)
+        backoff = self.retry_base_delay * (2**attempt)
 
         # Add jitter (±20% of backoff) to prevent thundering herd
         jitter = random.uniform(-0.2 * backoff, 0.2 * backoff)
@@ -153,7 +159,9 @@ class VscanAPIClient:
         # Apply ceiling after jitter and ensure minimum delay of 0.5s
         return max(min(total_delay, MAX_BACKOFF_DELAY), 0.5)
 
-    def _log_retry_attempt(self, attempt: int, max_attempts: int, error: str, delay: float):
+    def _log_retry_attempt(
+        self, attempt: int, max_attempts: int, error: str, delay: float
+    ):
         """
         Log retry attempt information (only in verbose mode).
 
@@ -165,6 +173,7 @@ class VscanAPIClient:
         """
         if self.verbose:
             from utils import log
+
             log(f"  Retry {attempt}/{max_attempts} after error: {error}", "WARNING")
             log(f"  Waiting {delay:.1f}s before retry...", "INFO")
 
@@ -173,7 +182,7 @@ class VscanAPIClient:
         url: str,
         method: str = "GET",
         data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
     ) -> Tuple[int, Dict[str, Any]]:
         """
         Make HTTP request with retry logic.
@@ -213,7 +222,7 @@ class VscanAPIClient:
                 if isinstance(e, urllib.error.HTTPError):
                     status_code = e.code
                     # Try to extract Retry-After header
-                    retry_after_header = e.headers.get('Retry-After')
+                    retry_after_header = e.headers.get("Retry-After")
                     if retry_after_header:
                         try:
                             retry_after = int(retry_after_header)
@@ -248,7 +257,7 @@ class VscanAPIClient:
         url: str,
         method: str = "GET",
         data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
     ) -> Tuple[int, Dict[str, Any]]:
         """
         Make HTTP request to vscan.dev API.
@@ -269,25 +278,26 @@ class VscanAPIClient:
         if timeout is None:
             timeout = self.timeout
 
-        headers = {
-            "User-Agent": self.USER_AGENT,
-            "Accept": "application/json"
-        }
+        headers = {"User-Agent": self.USER_AGENT, "Accept": "application/json"}
 
         if data is not None:
             headers["Content-Type"] = "application/json"
-            data_bytes = json.dumps(data).encode('utf-8')
+            data_bytes = json.dumps(data).encode("utf-8")
         else:
             data_bytes = None
 
-        req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
+        req = urllib.request.Request(
+            url, data=data_bytes, headers=headers, method=method
+        )
 
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as response:
+            with urllib.request.urlopen(
+                req, timeout=timeout
+            ) as response:  # nosec B310 - URL validated by validate_url()
                 status_code = response.getcode()
 
                 # Read response with size limit
-                raw_response = b''
+                raw_response = b""
                 chunk_size = 8192
                 total_read = 0
 
@@ -298,11 +308,13 @@ class VscanAPIClient:
 
                     total_read += len(chunk)
                     if total_read > MAX_RESPONSE_SIZE_BYTES:
-                        raise Exception(f"[E100] Response exceeds maximum size ({MAX_RESPONSE_SIZE_BYTES} bytes)")
+                        raise Exception(
+                            f"[E100] Response exceeds maximum size ({MAX_RESPONSE_SIZE_BYTES} bytes)"
+                        )
 
                     raw_response += chunk
 
-                raw_response = raw_response.decode('utf-8')
+                raw_response = raw_response.decode("utf-8")
 
                 try:
                     json_data = json.loads(raw_response)
@@ -313,7 +325,7 @@ class VscanAPIClient:
 
         except urllib.error.HTTPError as e:
             status_code = e.code
-            raw_response = e.read().decode('utf-8')
+            raw_response = e.read().decode("utf-8")
 
             try:
                 json_data = json.loads(raw_response)
@@ -328,14 +340,20 @@ class VscanAPIClient:
                 raise Exception(f"vscan.dev server error (HTTP {status_code})")
             else:
                 # Sanitize error message from API response
-                api_error = json_data.get('error', '')
-                sanitized_error = sanitize_error_message(api_error, context="API error") if api_error else "Unknown error"
+                api_error = json_data.get("error", "")
+                sanitized_error = (
+                    sanitize_error_message(api_error, context="API error")
+                    if api_error
+                    else "Unknown error"
+                )
                 raise Exception(f"HTTP error {status_code}: {sanitized_error}")
 
         except urllib.error.URLError as e:
-            error_msg = str(e.reason) if hasattr(e, 'reason') else str(e)
+            error_msg = str(e.reason) if hasattr(e, "reason") else str(e)
             if "timed out" in error_msg.lower():
-                raise Exception(f"Request timed out after {timeout}s. The extension may take longer to analyze.")
+                raise Exception(
+                    f"Request timed out after {timeout}s. The extension may take longer to analyze."
+                )
             # Sanitize network error message
             sanitized_error = sanitize_error_message(error_msg, context="network error")
             raise Exception(f"Network error: {sanitized_error}")
@@ -364,14 +382,20 @@ class VscanAPIClient:
         url = f"{self.BASE_URL}/analyze"
         payload = {"publisher": publisher, "name": name}
 
-        status_code, response = self._make_request_with_retry(url, method="POST", data=payload)
+        status_code, response = self._make_request_with_retry(
+            url, method="POST", data=payload
+        )
 
         if status_code in (200, 202) and "analysisId" in response:
             return response["analysisId"]
         else:
             # Sanitize error message from API response
-            api_message = response.get('message', '')
-            sanitized_msg = sanitize_error_message(api_message, context="submission error") if api_message else "Unknown error"
+            api_message = response.get("message", "")
+            sanitized_msg = (
+                sanitize_error_message(api_message, context="submission error")
+                if api_message
+                else "Unknown error"
+            )
             raise Exception(f"Failed to submit analysis: {sanitized_msg}")
 
     def check_status(self, analysis_id: str) -> Dict[str, Any]:
@@ -396,8 +420,12 @@ class VscanAPIClient:
             return response
         else:
             # Sanitize error message from API response
-            api_message = response.get('message', '')
-            sanitized_msg = sanitize_error_message(api_message, context="status check error") if api_message else "Unknown error"
+            api_message = response.get("message", "")
+            sanitized_msg = (
+                sanitize_error_message(api_message, context="status check error")
+                if api_message
+                else "Unknown error"
+            )
             raise Exception(f"Failed to check status: {sanitized_msg}")
 
     def get_results(self, analysis_id: str) -> Dict[str, Any]:
@@ -422,8 +450,12 @@ class VscanAPIClient:
             return response
         else:
             # Sanitize error message from API response
-            api_message = response.get('message', '')
-            sanitized_msg = sanitize_error_message(api_message, context="results retrieval error") if api_message else "Unknown error"
+            api_message = response.get("message", "")
+            sanitized_msg = (
+                sanitize_error_message(api_message, context="results retrieval error")
+                if api_message
+                else "Unknown error"
+            )
             raise Exception(f"Failed to retrieve results: {sanitized_msg}")
 
     def poll_until_complete(
@@ -431,7 +463,7 @@ class VscanAPIClient:
         analysis_id: str,
         poll_interval: float = 2.0,
         max_wait: int = 300,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
     ) -> str:
         """
         Poll status endpoint until analysis is complete.
@@ -505,7 +537,7 @@ class VscanAPIClient:
                 "id": publisher_info.get("name"),
                 "name": publisher_info.get("displayName"),
                 "verified": publisher_info.get("isVerified", False),
-                "domain": publisher_info.get("domain")
+                "domain": publisher_info.get("domain"),
             }
 
             # URLs
@@ -525,7 +557,7 @@ class VscanAPIClient:
                 "installs": stats.get("installCount"),
                 "updates": stats.get("updateCount"),
                 "rating": round(stats.get("averageRating", 0), 2),
-                "rating_count": stats.get("ratingCount")
+                "rating_count": stats.get("ratingCount"),
             }
 
             # Dates
@@ -574,7 +606,7 @@ class VscanAPIClient:
                 "sensitive_info": contributions.get("sensitiveInfo"),
                 "obfuscation": contributions.get("obfuscation"),
                 "consolidated_ast": contributions.get("consolidatedAst"),
-                "open_grep": contributions.get("openGrep")
+                "open_grep": contributions.get("openGrep"),
             }
 
             # Module risk levels
@@ -590,7 +622,7 @@ class VscanAPIClient:
                 "sensitive_info": module_risks.get("sensitiveInfo"),
                 "obfuscation": module_risks.get("obfuscation"),
                 "consolidated_ast": module_risks.get("consolidatedAst"),
-                "open_grep": module_risks.get("openGrep")
+                "open_grep": module_risks.get("openGrep"),
             }
 
             # Security notes
@@ -620,7 +652,7 @@ class VscanAPIClient:
             "high_risk_count": 0,
             "medium_risk_count": 0,
             "low_risk_count": 0,
-            "list": []
+            "list": [],
         }
 
         try:
@@ -636,7 +668,7 @@ class VscanAPIClient:
                 "high": vuln_summary.get("high", 0),
                 "moderate": vuln_summary.get("moderate", 0),
                 "low": vuln_summary.get("low", 0),
-                "info": vuln_summary.get("info", 0)
+                "info": vuln_summary.get("info", 0),
             }
 
             # Process dependency list
@@ -647,7 +679,7 @@ class VscanAPIClient:
                     "type": dep.get("type"),
                     "risk": dep.get("risk"),
                     "reason": dep.get("reason"),
-                    "vulnerabilities": dep.get("vulnerabilities", [])
+                    "vulnerabilities": dep.get("vulnerabilities", []),
                 }
 
                 dependencies_data["list"].append(dep_info)
@@ -668,7 +700,10 @@ class VscanAPIClient:
                     dependencies_data["low_risk_count"] += 1
 
                 # Count vulnerabilities
-                if dep.get("vulnerabilities") and len(dep.get("vulnerabilities", [])) > 0:
+                if (
+                    dep.get("vulnerabilities")
+                    and len(dep.get("vulnerabilities", [])) > 0
+                ):
                     dependencies_data["with_vulnerabilities"] += 1
 
             dependencies_data["total_count"] = len(deps_list)
@@ -697,11 +732,13 @@ class VscanAPIClient:
             factors = meta_module.get("riskFactors", [])
 
             for factor in factors:
-                risk_factors.append({
-                    "type": factor.get("type"),
-                    "description": factor.get("description"),
-                    "severity": factor.get("risk")
-                })
+                risk_factors.append(
+                    {
+                        "type": factor.get("type"),
+                        "description": factor.get("description"),
+                        "severity": factor.get("risk"),
+                    }
+                )
 
         except Exception as e:
             # Return empty list on error
@@ -714,7 +751,7 @@ class VscanAPIClient:
         publisher: str,
         name: str,
         progress_callback: Optional[callable] = None,
-        store_raw_response: bool = False
+        store_raw_response: bool = False,
     ) -> Dict[str, Any]:
         """
         Complete scan workflow: submit → poll → retrieve results.
@@ -752,10 +789,10 @@ class VscanAPIClient:
                 "high": 0,
                 "moderate": 0,
                 "low": 0,
-                "info": 0
+                "info": 0,
             },
             "vscan_url": f"https://vscan.dev/extension/{publisher}.{name}",
-            "analysis_timestamp": None
+            "analysis_timestamp": None,
         }
 
         try:
@@ -767,7 +804,7 @@ class VscanAPIClient:
                 analysis_id,
                 poll_interval=DEFAULT_POLL_INTERVAL,
                 max_wait=DEFAULT_MAX_WAIT_SECONDS,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
             )
 
             if final_status != "completed":
@@ -803,7 +840,7 @@ class VscanAPIClient:
                     "high": vuln_summary.get("high", 0),
                     "moderate": vuln_summary.get("moderate", 0),
                     "low": vuln_summary.get("low", 0),
-                    "info": vuln_summary.get("info", 0)
+                    "info": vuln_summary.get("info", 0),
                 }
 
             if "analysisTimestamp" in api_results:
@@ -865,7 +902,7 @@ class VscanAPIClient:
         publisher: str,
         name: str,
         progress_callback: Optional[callable] = None,
-        store_raw_response: bool = False
+        store_raw_response: bool = False,
     ) -> Dict[str, Any]:
         """
         Scan extension with workflow-level retry for transient errors.
@@ -886,23 +923,25 @@ class VscanAPIClient:
 
         for attempt in range(self.max_workflow_retries + 1):  # +1 for initial attempt
             # Call the regular scan_extension method
-            result = self.scan_extension(publisher, name, progress_callback, store_raw_response)
+            result = self.scan_extension(
+                publisher, name, progress_callback, store_raw_response
+            )
 
             # If scan succeeded, return immediately
-            if result['scan_status'] == 'success':
+            if result["scan_status"] == "success":
                 # If this was a retry (attempt > 0), increment successful retry counter
                 if attempt > 0:
-                    self.retry_stats['successful_workflow_retries'] += 1
+                    self.retry_stats["successful_workflow_retries"] += 1
                 return result
 
             # Scan failed - check if we should retry
             last_result = result
-            error_message = result.get('error', '')
+            error_message = result.get("error", "")
 
             # Check if this is the last attempt
             if attempt >= self.max_workflow_retries:
                 # All retries exhausted
-                self.retry_stats['failed_after_workflow_retries'] += 1
+                self.retry_stats["failed_after_workflow_retries"] += 1
                 return result
 
             # Check if error is workflow-retryable
@@ -911,16 +950,20 @@ class VscanAPIClient:
                 return result
 
             # This is a retryable error - increment counter and wait before retry
-            self.retry_stats['total_workflow_retries'] += 1
+            self.retry_stats["total_workflow_retries"] += 1
 
             # Calculate backoff delay (exponential: 5s, 10s for default config)
-            delay = self.workflow_retry_delay * (2 ** attempt)
+            delay = self.workflow_retry_delay * (2**attempt)
 
             # Log retry attempt if verbose
             if self.verbose:
                 from .utils import log
-                log(f"  Workflow retry {attempt + 1}/{self.max_workflow_retries} "
-                    f"after error: {error_message[:100]}", "WARNING")
+
+                log(
+                    f"  Workflow retry {attempt + 1}/{self.max_workflow_retries} "
+                    f"after error: {error_message[:100]}",
+                    "WARNING",
+                )
                 log(f"  Waiting {delay:.1f}s before workflow retry...", "INFO")
 
             # Wait before retrying
