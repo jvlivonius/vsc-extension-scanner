@@ -22,8 +22,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
-          pip install -e .
+          pip install -e .[test]
 
       - name: Run architecture tests
         run: python3 tests/test_architecture.py
@@ -50,8 +49,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .
-          pip install pytest || true
+          pip install -e .[test]
 
       - name: Run individual test files
         run: |
@@ -97,7 +95,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .
+          pip install -e .[test]
 
       - name: Run integration tests
         run: |
