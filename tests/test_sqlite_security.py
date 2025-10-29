@@ -56,7 +56,7 @@ def test_sqlite_file_permissions():
 
         if not db_path.exists():
             print("  ❌ FAIL: Cache database not created during initialization")
-            return False
+            assert False, "Cache database not created during initialization"
 
         # Get file permissions
         file_stat = os.stat(db_path)
@@ -67,13 +67,14 @@ def test_sqlite_file_permissions():
 
         if file_mode == expected_mode:
             print(f"  ✅ PASS: Cache DB has correct permissions: {oct(file_mode)}")
-            return True
         else:
             print(
                 f"  ❌ FAIL: Cache DB has insecure permissions: {oct(file_mode)} (expected {oct(expected_mode)})"
             )
             print(f"        File permissions allow unauthorized access!")
-            return False
+            assert (
+                False
+            ), f"Cache DB has insecure permissions: {oct(file_mode)} (expected {oct(expected_mode)})"
 
 
 def test_cache_directory_permissions():
@@ -105,13 +106,14 @@ def test_cache_directory_permissions():
 
         if dir_mode == expected_mode:
             print(f"  ✅ PASS: Cache directory has correct permissions: {oct(dir_mode)}")
-            return True
         else:
             print(
                 f"  ❌ FAIL: Cache directory has insecure permissions: {oct(dir_mode)} (expected {oct(expected_mode)})"
             )
             print(f"        Directory allows unauthorized access!")
-            return False
+            assert (
+                False
+            ), f"Cache directory has insecure permissions: {oct(dir_mode)} (expected {oct(expected_mode)})"
 
 
 def test_secret_key_file_permissions():
@@ -137,7 +139,7 @@ def test_secret_key_file_permissions():
 
         if not secret_file.exists():
             print("  ❌ FAIL: Secret key file not created")
-            return False
+            assert False, "Secret key file not created"
 
         # Get file permissions
         file_stat = os.stat(secret_file)
@@ -150,7 +152,6 @@ def test_secret_key_file_permissions():
             print(
                 f"  ✅ PASS: Secret key file has correct permissions: {oct(file_mode)}"
             )
-            return True
         else:
             print(
                 f"  ❌ FAIL: Secret key file has insecure permissions: {oct(file_mode)} (expected {oct(expected_mode)})"
@@ -158,7 +159,9 @@ def test_secret_key_file_permissions():
             print(
                 f"        Secret key is readable by other users - CRITICAL VULNERABILITY!"
             )
-            return False
+            assert (
+                False
+            ), f"Secret key file has insecure permissions: {oct(file_mode)} (expected {oct(expected_mode)})"
 
 
 def test_no_sql_injection_patterns():
@@ -222,13 +225,12 @@ def test_no_sql_injection_patterns():
     if not found_issues:
         print("  ✅ PASS: No SQL injection patterns detected")
         print("        All queries use parameterized statements")
-        return True
     else:
         print("  ❌ FAIL: Found dangerous SQL patterns:")
         for issue in found_issues:
             print(f"        - {issue}")
         print("        SQL queries MUST use parameterized statements (? placeholders)!")
-        return False
+        assert False, f"Found dangerous SQL patterns: {', '.join(found_issues)}"
 
 
 def test_hmac_timing_safe_comparison():
@@ -262,15 +264,16 @@ def test_hmac_timing_safe_comparison():
     if has_timing_safe and not ("signature ==" in source or "== signature" in source):
         print("  ✅ PASS: HMAC verification uses timing-safe hmac.compare_digest()")
         print("        Prevents timing attacks on signature verification")
-        return True
     elif not has_timing_safe:
         print("  ❌ FAIL: hmac.compare_digest() not found in signature verification")
         print("        Direct comparison (==) is vulnerable to timing attacks!")
-        return False
+        assert False, "hmac.compare_digest() not found in signature verification"
     else:
         print("  ❌ FAIL: Found direct signature comparison (==)")
         print("        Must use hmac.compare_digest() for timing safety!")
-        return False
+        assert (
+            False
+        ), "Found direct signature comparison - must use hmac.compare_digest()"
 
 
 def test_database_schema_validation():
@@ -325,12 +328,11 @@ def test_database_schema_validation():
                 f"  ✅ PASS: Database schema valid ({len(required_columns)} required columns)"
             )
             print("        All security columns present")
-            return True
         else:
             print("  ❌ FAIL: Missing required columns:")
             for col in missing_columns:
                 print(f"        - {col}")
-            return False
+            assert False, f"Missing required columns: {', '.join(missing_columns)}"
 
 
 def test_hmac_signature_integrity():
@@ -362,7 +364,7 @@ def test_hmac_signature_integrity():
 
         if not is_valid:
             print("  ❌ FAIL: Valid signature rejected")
-            return False
+            assert False, "Valid signature rejected"
 
         # Test 2: Invalid signature rejection
         invalid_signature = "0" * 64  # Invalid hex signature
@@ -370,7 +372,7 @@ def test_hmac_signature_integrity():
 
         if is_valid:
             print("  ❌ FAIL: Invalid signature accepted")
-            return False
+            assert False, "Invalid signature accepted"
 
         # Test 3: Modified data detection
         modified_data = '{"test": "modified", "security_score": 100}'
@@ -378,21 +380,20 @@ def test_hmac_signature_integrity():
 
         if is_valid:
             print("  ❌ FAIL: Modified data accepted with original signature")
-            return False
+            assert False, "Modified data accepted with original signature"
 
         # Test 4: Empty signature rejection
         is_valid = cache._verify_integrity_signature(test_data, "")
 
         if is_valid:
             print("  ❌ FAIL: Empty signature accepted")
-            return False
+            assert False, "Empty signature accepted"
 
         print("  ✅ PASS: HMAC signature integrity verified")
         print("        - Valid signatures accepted")
         print("        - Invalid signatures rejected")
         print("        - Modified data detected")
         print("        - Empty signatures rejected")
-        return True
 
 
 def test_parameterized_query_coverage():
@@ -479,7 +480,6 @@ def test_parameterized_query_coverage():
     if not issues:
         print(f"  ✅ PASS: All {len(execute_calls)} execute() calls are safe")
         print("        Parameterized queries or safe patterns without user input")
-        return True
     else:
         print(f"  ⚠️  WARNING: Found {len(issues)} queries to review:")
         for line_num, line, reason in issues[:5]:  # Show first 5
@@ -487,7 +487,7 @@ def test_parameterized_query_coverage():
             print(f"          {line[:80]}...")
         # Don't fail - these might be false positives, manual review needed
         print("        Manual review recommended (may be false positives)")
-        return True  # Don't fail on potential false positives
+        # Don't fail on potential false positives
 
 
 def run_all_tests():
@@ -516,9 +516,16 @@ def run_all_tests():
     results = []
     for test_name, test_func in tests:
         try:
-            result = test_func()
-            results.append((test_name, result))
+            test_func()
+            # If no exception raised, test passed (pytest convention)
+            results.append((test_name, True))
+        except AssertionError as e:
+            # Expected test failure
+            print(f"\n[TEST] {test_name}...")
+            print(f"  ❌ ASSERTION FAILED: {str(e)}")
+            results.append((test_name, False))
         except Exception as e:
+            # Unexpected exception
             print(f"\n[TEST] {test_name}...")
             print(f"  ❌ EXCEPTION: {str(e)}")
             results.append((test_name, False))

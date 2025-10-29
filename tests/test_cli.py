@@ -95,11 +95,18 @@ class TestScanCommand(unittest.TestCase):
 
         # Should fail because directory doesn't exist, but that's expected
         # Just verify the command structure works and proper error handling
+        # Check both stderr and output since Typer may output errors to either
+        error_text = ""
+        try:
+            error_text = result.stderr.lower()
+        except (ValueError, AttributeError):
+            error_text = result.output.lower()
+
         self.assertTrue(
-            "error" in result.stderr.lower()
-            or "nonexistent" in result.stderr.lower()
+            "error" in error_text
+            or "nonexistent" in error_text
             or result.exit_code == 2,
-            f"Expected error handling, got exit_code={result.exit_code}, stderr={result.stderr[:100]}",
+            f"Expected error handling, got exit_code={result.exit_code}, output={error_text[:100]}",
         )
 
     def test_scan_with_filters(self):
@@ -140,7 +147,12 @@ class TestScanCommand(unittest.TestCase):
         )
 
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("error", result.stderr.lower())
+        # Check both stderr and output since Typer may output errors to either
+        try:
+            error_text = result.stderr.lower()
+        except (ValueError, AttributeError):
+            error_text = result.output.lower()
+        self.assertIn("error", error_text)
 
     def test_scan_conflicting_cache_options(self):
         """Test scan with conflicting cache options."""
@@ -149,7 +161,12 @@ class TestScanCommand(unittest.TestCase):
         )
 
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("error", result.stderr.lower())
+        # Check both stderr and output since Typer may output errors to either
+        try:
+            error_text = result.stderr.lower()
+        except (ValueError, AttributeError):
+            error_text = result.output.lower()
+        self.assertIn("error", error_text)
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")

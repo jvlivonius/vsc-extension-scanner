@@ -156,6 +156,11 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             TestGroup.SECURITY,
             "Security regression suite",
         ),
+        TestFile(
+            Path("tests/test_sqlite_security.py"),
+            TestGroup.SECURITY,
+            "SQLite security audit",
+        ),
     ],
     TestGroup.ARCHITECTURE: [
         TestFile(
@@ -186,6 +191,32 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             Path("tests/test_db_integrity.py"),
             TestGroup.INTEGRATION,
             "Database integrity",
+        ),
+        TestFile(
+            Path("tests/test_api.py"),
+            TestGroup.INTEGRATION,
+            "API client tests",
+        ),
+        TestFile(
+            Path("tests/test_retry.py"),
+            TestGroup.INTEGRATION,
+            "Retry mechanism",
+        ),
+        TestFile(
+            Path("tests/test_retry_analysis.py"),
+            TestGroup.INTEGRATION,
+            "Retry analysis",
+        ),
+        TestFile(
+            Path("tests/test_workflow_retry.py"),
+            TestGroup.INTEGRATION,
+            "Workflow retry logic",
+        ),
+        TestFile(
+            Path("tests/test_performance.py"),
+            TestGroup.INTEGRATION,
+            "Performance benchmarks",
+            slow=True,
         ),
     ],
     TestGroup.REAL_API: [
@@ -325,6 +356,7 @@ class TestRunner:
                 capture_output=True,
                 text=True,
                 timeout=300,  # 5 minute timeout
+                check=False,  # We handle errors via exit codes
             )
 
             duration = time.time() - start_time
@@ -478,11 +510,11 @@ class TestRunner:
         # Special warnings for security/architecture
         if group == TestGroup.SECURITY:
             print(
-                f"{Colors.BOLD}⚠️  CRITICAL:{Colors.RESET} 0 vulnerabilities confirmed"
+                f"{Colors.BOLD}🛡️  Security Summary:{Colors.RESET} 0 vulnerabilities confirmed"
             )
         elif group == TestGroup.ARCHITECTURE:
             print(
-                f"{Colors.BOLD}⚠️  CRITICAL:{Colors.RESET} 0 layer violations detected"
+                f"{Colors.BOLD}🏗️  Architecture Summary:{Colors.RESET} 0 layer violations detected"
             )
 
         print()
@@ -561,7 +593,7 @@ class TestRunner:
             },
         }
 
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(output, f, indent=2)
 
         print(f"JSON output written to: {filepath}")
@@ -636,7 +668,7 @@ class TestRunner:
             indent="  "
         )
 
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(xml_str)
 
         print(f"JUnit XML output written to: {filepath}")

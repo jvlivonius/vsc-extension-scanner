@@ -20,6 +20,9 @@ class TestShouldUseRich(unittest.TestCase):
     """Test the should_use_rich() detection logic."""
 
     @patch("sys.stdout.isatty")
+    @patch.dict(
+        os.environ, {"CI": "", "GITHUB_ACTIONS": "", "TERM": "xterm"}, clear=False
+    )
     def test_use_rich_in_tty(self, mock_isatty):
         """Test that Rich is used in a TTY environment."""
         mock_isatty.return_value = True

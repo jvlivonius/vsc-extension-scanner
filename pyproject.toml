@@ -67,3 +67,10 @@ version = {attr = "vscode_scanner._version.__version__"}
 
 [tool.setuptools.package-data]
 vscode_scanner = ["*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
