@@ -94,12 +94,12 @@ class TestScanCommand(unittest.TestCase):
         )
 
         # Should fail because directory doesn't exist, but that's expected
-        # Just verify the command structure works
-        self.assertIn(
-            "error",
-            result.stdout.lower()
-            or "nonexistent" in result.stdout.lower()
+        # Just verify the command structure works and proper error handling
+        self.assertTrue(
+            "error" in result.stderr.lower()
+            or "nonexistent" in result.stderr.lower()
             or result.exit_code == 2,
+            f"Expected error handling, got exit_code={result.exit_code}, stderr={result.stderr[:100]}",
         )
 
     def test_scan_with_filters(self):
@@ -140,7 +140,7 @@ class TestScanCommand(unittest.TestCase):
         )
 
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("error", result.stdout.lower())
+        self.assertIn("error", result.stderr.lower())
 
     def test_scan_conflicting_cache_options(self):
         """Test scan with conflicting cache options."""
@@ -149,7 +149,7 @@ class TestScanCommand(unittest.TestCase):
         )
 
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("error", result.stdout.lower())
+        self.assertIn("error", result.stderr.lower())
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
