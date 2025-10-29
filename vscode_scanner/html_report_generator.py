@@ -16,7 +16,7 @@ from ._version import __version__
 class HTMLReportGenerator:
     """Generates comprehensive HTML security reports."""
 
-    def _safe_escape(self, value: Any, default: str = 'N/A', quote: bool = True) -> str:
+    def _safe_escape(self, value: Any, default: str = "N/A", quote: bool = True) -> str:
         """Safely escape HTML, handling None values."""
         if value is None:
             return default
@@ -25,11 +25,11 @@ class HTMLReportGenerator:
     def _get_gauge_color_class(self, score: int) -> str:
         """Get CSS class for gauge color based on score."""
         if score >= 75:
-            return 'gauge-success'
+            return "gauge-success"
         elif score >= 50:
-            return 'gauge-warning'
+            return "gauge-warning"
         else:
-            return 'gauge-danger'
+            return "gauge-danger"
 
     def generate_report(self, data: Dict[str, Any]) -> str:
         """
@@ -41,8 +41,8 @@ class HTMLReportGenerator:
         Returns:
             Complete HTML document as string
         """
-        summary = data.get('summary', {})
-        extensions = data.get('extensions', [])
+        summary = data.get("summary", {})
+        extensions = data.get("extensions", [])
 
         # Build HTML document
         html_doc = f"""<!DOCTYPE html>
@@ -68,23 +68,25 @@ class HTMLReportGenerator:
 
     def _generate_header(self, summary: Dict[str, Any]) -> str:
         """Generate report header with summary and charts."""
-        timestamp = summary.get('scan_timestamp', 'Unknown')
-        total = summary.get('total_extensions_scanned', 0)
-        duration = summary.get('scan_duration_seconds', 0)
-        vuln_found = summary.get('vulnerabilities_found', 0)
+        timestamp = summary.get("scan_timestamp", "Unknown")
+        total = summary.get("total_extensions_scanned", 0)
+        duration = summary.get("scan_duration_seconds", 0)
+        vuln_found = summary.get("vulnerabilities_found", 0)
 
-        critical_risk = summary.get('critical_risk_extensions', 0)
-        high_risk = summary.get('high_risk_extensions', 0)
-        medium_risk = summary.get('medium_risk_extensions', 0)
-        low_risk = summary.get('low_risk_extensions', 0)
+        critical_risk = summary.get("critical_risk_extensions", 0)
+        high_risk = summary.get("high_risk_extensions", 0)
+        medium_risk = summary.get("medium_risk_extensions", 0)
+        low_risk = summary.get("low_risk_extensions", 0)
 
-        cache_stats = summary.get('cache_statistics', {})
-        from_cache = cache_stats.get('from_cache', 0)
-        fresh_scans = cache_stats.get('fresh_scans', 0)
-        cache_hit_rate = cache_stats.get('cache_hit_rate', 0)
+        cache_stats = summary.get("cache_statistics", {})
+        from_cache = cache_stats.get("from_cache", 0)
+        fresh_scans = cache_stats.get("fresh_scans", 0)
+        cache_hit_rate = cache_stats.get("cache_hit_rate", 0)
 
         # Generate charts
-        pie_chart = self._generate_pie_chart_svg(critical_risk, high_risk, medium_risk, low_risk)
+        pie_chart = self._generate_pie_chart_svg(
+            critical_risk, high_risk, medium_risk, low_risk
+        )
 
         return f"""
         <header class="report-header">
@@ -237,44 +239,44 @@ class HTMLReportGenerator:
         table_rows = []
 
         for ext in extensions:
-            ext_id = ext.get('id', 'unknown')
-            name = ext.get('name', 'Unknown')
-            display_name = ext.get('display_name', name)
-            version = ext.get('version', 'unknown')
+            ext_id = ext.get("id", "unknown")
+            name = ext.get("name", "Unknown")
+            display_name = ext.get("display_name", name)
+            version = ext.get("version", "unknown")
 
-            publisher = ext.get('publisher', {})
-            pub_id = publisher.get('id', 'Unknown')
-            pub_name = publisher.get('name') or pub_id
-            pub_verified = publisher.get('verified', False)
+            publisher = ext.get("publisher", {})
+            pub_id = publisher.get("id", "Unknown")
+            pub_name = publisher.get("name") or pub_id
+            pub_verified = publisher.get("verified", False)
 
-            security = ext.get('security', {})
-            risk_level = security.get('risk_level', 'unknown')
-            score = security.get('score')
+            security = ext.get("security", {})
+            risk_level = security.get("risk_level", "unknown")
+            score = security.get("score")
             score_display = f"{score}" if score is not None else "N/A"
 
-            stats = ext.get('statistics', {})
-            installs = stats.get('installs')
-            installs_display = self._format_number(installs) if installs else 'N/A'
-            rating = stats.get('rating')
-            rating_count = stats.get('rating_count')
-            rating_display = f"{rating:.1f} ({rating_count})" if rating else 'N/A'
+            stats = ext.get("statistics", {})
+            installs = stats.get("installs")
+            installs_display = self._format_number(installs) if installs else "N/A"
+            rating = stats.get("rating")
+            rating_count = stats.get("rating_count")
+            rating_display = f"{rating:.1f} ({rating_count})" if rating else "N/A"
 
-            deps_count = security.get('dependencies_count', 0)
+            deps_count = security.get("dependencies_count", 0)
 
             # Calculate total vulnerabilities as sum of all severity levels
-            vulnerabilities = security.get('vulnerabilities', {})
+            vulnerabilities = security.get("vulnerabilities", {})
             vuln_count = (
-                vulnerabilities.get('critical', 0) +
-                vulnerabilities.get('high', 0) +
-                vulnerabilities.get('moderate', 0) +
-                vulnerabilities.get('low', 0)
+                vulnerabilities.get("critical", 0)
+                + vulnerabilities.get("high", 0)
+                + vulnerabilities.get("moderate", 0)
+                + vulnerabilities.get("low", 0)
             )
 
-            last_updated = ext.get('last_updated', 'N/A')
-            installed_at = ext.get('installed_at', 'N/A')
-            last_scanned_at = ext.get('last_scanned_at', 'N/A')
+            last_updated = ext.get("last_updated", "N/A")
+            installed_at = ext.get("installed_at", "N/A")
+            last_scanned_at = ext.get("last_scanned_at", "N/A")
 
-            scan_status = ext.get('scan_status', 'unknown')
+            scan_status = ext.get("scan_status", "unknown")
 
             # Generate detail view
             detail_view = self._generate_detail_view(ext)
@@ -283,17 +285,30 @@ class HTMLReportGenerator:
             risk_badge = f'<span class="risk-badge risk-{risk_level}">{risk_level.upper()}</span>'
 
             # Security gauge (using risk level colors)
-            gauge = self._generate_security_gauge(score, risk_level) if score is not None else 'N/A'
+            gauge = (
+                self._generate_security_gauge(score, risk_level)
+                if score is not None
+                else "N/A"
+            )
 
             # Publisher (verification now in separate column)
             pub_display = self._safe_escape(pub_name)
 
             # Vulnerability indicator
-            vuln_indicator = f' <span class="vuln-indicator" title="{vuln_count} vulnerabilities">⚠</span>' if vuln_count > 0 else ''
+            vuln_indicator = (
+                f' <span class="vuln-indicator" title="{vuln_count} vulnerabilities">⚠</span>'
+                if vuln_count > 0
+                else ""
+            )
 
-            row_class = "extension-row" if scan_status == 'success' else "extension-row scan-failed"
+            row_class = (
+                "extension-row"
+                if scan_status == "success"
+                else "extension-row scan-failed"
+            )
 
-            table_rows.append(f"""
+            table_rows.append(
+                f"""
             <tr class="{row_class}" data-risk="{risk_level}" data-name="{self._safe_escape(display_name.lower())}" data-publisher-name="{self._safe_escape(pub_name.lower())}" data-publisher-id="{self._safe_escape(pub_id.lower())}" data-verified="{str(pub_verified).lower()}" onclick="toggleDetails('{self._safe_escape(ext_id, quote=True)}', this)" style="cursor: pointer;">
                 <td class="col-name">
                     <div class="name-container">
@@ -323,7 +338,8 @@ class HTMLReportGenerator:
                     {detail_view}
                 </td>
             </tr>
-            """)
+            """
+            )
 
         return f"""
         <section class="overview-table">
@@ -380,71 +396,83 @@ class HTMLReportGenerator:
 
     def _generate_detail_view(self, ext: Dict[str, Any]) -> str:
         """Generate detailed extension information."""
-        ext_id = ext.get('id', 'unknown')
-        name = ext.get('display_name') or ext.get('name', 'Unknown')
-        version = ext.get('version', 'unknown')
-        description = ext.get('description') or 'No description available'
+        ext_id = ext.get("id", "unknown")
+        name = ext.get("display_name") or ext.get("name", "Unknown")
+        version = ext.get("version", "unknown")
+        description = ext.get("description") or "No description available"
 
         # Metadata section
-        license_text = ext.get('license') or 'N/A'
-        repo_url = ext.get('repository_url') or ''
-        homepage_url = ext.get('homepage_url') or ''
-        keywords = ext.get('keywords') or []
-        categories = ext.get('categories') or []
-        last_updated = ext.get('last_updated') or 'N/A'
-        installed_at = ext.get('installed_at') or 'N/A'
-        last_scanned_at = ext.get('last_scanned_at') or 'N/A'
+        license_text = ext.get("license") or "N/A"
+        repo_url = ext.get("repository_url") or ""
+        homepage_url = ext.get("homepage_url") or ""
+        keywords = ext.get("keywords") or []
+        categories = ext.get("categories") or []
+        last_updated = ext.get("last_updated") or "N/A"
+        installed_at = ext.get("installed_at") or "N/A"
+        last_scanned_at = ext.get("last_scanned_at") or "N/A"
 
         # Publisher section
-        publisher = ext.get('publisher', {})
-        pub_name = publisher.get('name') or 'Unknown'
-        pub_id = publisher.get('id') or 'Unknown'
-        pub_verified = publisher.get('verified', False)
-        pub_domain = publisher.get('domain') or 'N/A'
+        publisher = ext.get("publisher", {})
+        pub_name = publisher.get("name") or "Unknown"
+        pub_id = publisher.get("id") or "Unknown"
+        pub_verified = publisher.get("verified", False)
+        pub_domain = publisher.get("domain") or "N/A"
 
         # Security section
-        security = ext.get('security', {})
-        score = security.get('score')
-        risk_level = security.get('risk_level', 'unknown')
-        score_contributions = security.get('score_contributions', {})
-        risk_factors = security.get('risk_factors', [])
-        security_notes = security.get('security_notes', [])
-        vulnerabilities = security.get('vulnerabilities', {})
+        security = ext.get("security", {})
+        score = security.get("score")
+        risk_level = security.get("risk_level", "unknown")
+        score_contributions = security.get("score_contributions", {})
+        risk_factors = security.get("risk_factors", [])
+        security_notes = security.get("security_notes", [])
+        vulnerabilities = security.get("vulnerabilities", {})
 
         # Dependencies
-        dependencies_data = security.get('dependencies', {})
-        total_deps = dependencies_data.get('total_count', 0)
-        runtime_deps = dependencies_data.get('runtime_count', 0)
-        dev_deps = dependencies_data.get('dev_count', 0)
-        deps_with_vulns = dependencies_data.get('with_vulnerabilities', 0)
-        dep_list = dependencies_data.get('list', [])
+        dependencies_data = security.get("dependencies", {})
+        total_deps = dependencies_data.get("total_count", 0)
+        runtime_deps = dependencies_data.get("runtime_count", 0)
+        dev_deps = dependencies_data.get("dev_count", 0)
+        deps_with_vulns = dependencies_data.get("with_vulnerabilities", 0)
+        dep_list = dependencies_data.get("list", [])
 
         # Build sections
         # Links data
-        analysis_id = ext.get('raw_analysis_id') or ''
-        vscan_url = f"https://vscan.dev/?analysisId={analysis_id}" if analysis_id else ''
+        analysis_id = ext.get("raw_analysis_id") or ""
+        vscan_url = (
+            f"https://vscan.dev/?analysisId={analysis_id}" if analysis_id else ""
+        )
 
         # Get stats for Metadata section
-        stats = ext.get('statistics', {})
-        installs = stats.get('installs')
-        installs_display = self._format_number(installs) if installs else 'N/A'
-        rating = stats.get('rating')
-        rating_count = stats.get('rating_count')
-        rating_display = f"{rating:.1f} ({self._format_number(rating_count)} reviews)" if rating else 'N/A'
+        stats = ext.get("statistics", {})
+        installs = stats.get("installs")
+        installs_display = self._format_number(installs) if installs else "N/A"
+        rating = stats.get("rating")
+        rating_count = stats.get("rating_count")
+        rating_display = (
+            f"{rating:.1f} ({self._format_number(rating_count)} reviews)"
+            if rating
+            else "N/A"
+        )
 
-        marketplace_url = f"https://marketplace.visualstudio.com/items?itemName={ext_id}" if ext_id != 'unknown' else ''
+        marketplace_url = (
+            f"https://marketplace.visualstudio.com/items?itemName={ext_id}"
+            if ext_id != "unknown"
+            else ""
+        )
 
         # Build publisher display with optional domain link
         publisher_display = self._safe_escape(pub_name)
 
         # Add (ID) if different from name
-        if pub_id and pub_id != 'Unknown' and pub_id != pub_name:
+        if pub_id and pub_id != "Unknown" and pub_id != pub_name:
             publisher_display += f" ({self._safe_escape(pub_id)})"
 
         # Wrap in domain link if available
-        if pub_domain and pub_domain != 'N/A':
+        if pub_domain and pub_domain != "N/A":
             domain_clean = pub_domain
-            if not domain_clean.startswith('http://') and not domain_clean.startswith('https://'):
+            if not domain_clean.startswith("http://") and not domain_clean.startswith(
+                "https://"
+            ):
                 domain_url = f"https://{domain_clean}"
             else:
                 domain_url = domain_clean
@@ -492,41 +520,47 @@ class HTMLReportGenerator:
         """
 
         # Security section
-        score_html = self._generate_security_gauge(score) if score is not None else 'N/A'
+        score_html = (
+            self._generate_security_gauge(score) if score is not None else "N/A"
+        )
 
         # Module risk levels display (replacing score breakdown)
-        module_risk_levels = security.get('module_risk_levels', {})
-        module_risk_html = ''
+        module_risk_levels = security.get("module_risk_levels", {})
+        module_risk_html = ""
         if module_risk_levels:
             module_risk_html = '<div class="module-risk-levels">'
             for module, module_risk in module_risk_levels.items():
                 # Format module name (convert camelCase/snake_case to Title Case)
-                formatted_name = module.replace('_', ' ').replace('-', ' ').title()
-                risk_class = module_risk if module_risk in ['low', 'medium', 'high', 'critical'] else 'unknown'
-                module_risk_html += f'''
+                formatted_name = module.replace("_", " ").replace("-", " ").title()
+                risk_class = (
+                    module_risk
+                    if module_risk in ["low", "medium", "high", "critical"]
+                    else "unknown"
+                )
+                module_risk_html += f"""
                 <div class="module-risk-item">
                     <span class="module-risk-label">{self._safe_escape(formatted_name)}</span>
                     <span class="risk-badge risk-{risk_class}">{module_risk.upper()}</span>
                 </div>
-                '''
-            module_risk_html += '</div>'
+                """
+            module_risk_html += "</div>"
 
-        risk_factors_html = ''
+        risk_factors_html = ""
         if risk_factors:
             risk_factors_html = '<div class="risk-factors">'
             for rf in risk_factors:
-                severity = rf.get('severity', 'unknown')
-                rf_type = rf.get('type', 'Unknown')
-                rf_desc = rf.get('description', '')
+                severity = rf.get("severity", "unknown")
+                rf_type = rf.get("type", "Unknown")
+                rf_desc = rf.get("description", "")
                 risk_factors_html += f'<div class="risk-factor risk-factor-{severity}"><span class="rf-severity">[{severity.upper()}]</span> <strong>{self._safe_escape(rf_type)}</strong><br><span class="rf-desc">{self._safe_escape(rf_desc)}</span></div>'
-            risk_factors_html += '</div>'
+            risk_factors_html += "</div>"
 
-        security_notes_html = ''
+        security_notes_html = ""
         if security_notes:
             security_notes_html = '<div class="security-notes"><ul>'
             for note in security_notes:
-                security_notes_html += f'<li>{self._safe_escape(note)}</li>'
-            security_notes_html += '</ul></div>'
+                security_notes_html += f"<li>{self._safe_escape(note)}</li>"
+            security_notes_html += "</ul></div>"
 
         # Generate visualizations for the new two-column layout
         score_pie_chart = self._generate_score_pie_chart(score, risk_level)
@@ -566,47 +600,55 @@ class HTMLReportGenerator:
         """
 
         # Dependencies section
-        deps_html = ''
+        deps_html = ""
         if total_deps > 0:
-            runtime_list_html = ''
-            dev_list_html = ''
+            runtime_list_html = ""
+            dev_list_html = ""
 
             if runtime_deps > 0 and dep_list:
-                runtime_list = [d for d in dep_list if d.get('type') == 'runtime']
+                runtime_list = [d for d in dep_list if d.get("type") == "runtime"]
                 runtime_list_html = '<div class="dep-list-collapsible">'
                 runtime_list_html += f'<div class="dep-list-header" onclick="toggleDependencies(\'runtime-{self._safe_escape(ext_id, quote=True)}\')">'
                 runtime_list_html += '<button class="dep-toggle-btn">▶</button>'
-                runtime_list_html += '<strong>Runtime Dependencies (' + str(len(runtime_list)) + ')</strong>'
-                runtime_list_html += '</div>'
+                runtime_list_html += (
+                    "<strong>Runtime Dependencies ("
+                    + str(len(runtime_list))
+                    + ")</strong>"
+                )
+                runtime_list_html += "</div>"
                 runtime_list_html += f'<div class="dep-list-content" id="runtime-{self._safe_escape(ext_id, quote=True)}" style="display: none;">'
                 for dep in runtime_list:
-                    dep_name = dep.get('name') or 'Unknown'
-                    dep_version = dep.get('version') or ''
-                    dep_risk = dep.get('risk', 'unknown')
-                    dep_has_vuln = dep.get('has_vulnerabilities', False)
-                    vuln_icon = ' ⚠' if dep_has_vuln else ''
+                    dep_name = dep.get("name") or "Unknown"
+                    dep_version = dep.get("version") or ""
+                    dep_risk = dep.get("risk", "unknown")
+                    dep_has_vuln = dep.get("has_vulnerabilities", False)
+                    vuln_icon = " ⚠" if dep_has_vuln else ""
                     runtime_list_html += f'<div class="dep-item">• {self._safe_escape(dep_name)} v{self._safe_escape(dep_version)} <span class="dep-risk risk-{dep_risk}">{dep_risk}</span>{vuln_icon}</div>'
-                runtime_list_html += '</div>'
-                runtime_list_html += '</div>'
+                runtime_list_html += "</div>"
+                runtime_list_html += "</div>"
 
             if dev_deps > 0 and dep_list:
-                dev_list = [d for d in dep_list if d.get('type') == 'dev']
+                dev_list = [d for d in dep_list if d.get("type") == "dev"]
                 if dev_list:
-                    dev_list_html = '<div class="dep-list-collapsible" style="margin-top: 15px;">'
+                    dev_list_html = (
+                        '<div class="dep-list-collapsible" style="margin-top: 15px;">'
+                    )
                     dev_list_html += f'<div class="dep-list-header" onclick="toggleDependencies(\'dev-{self._safe_escape(ext_id, quote=True)}\')">'
                     dev_list_html += '<button class="dep-toggle-btn">▶</button>'
-                    dev_list_html += '<strong>Dev Dependencies (' + str(len(dev_list)) + ')</strong>'
-                    dev_list_html += '</div>'
+                    dev_list_html += (
+                        "<strong>Dev Dependencies (" + str(len(dev_list)) + ")</strong>"
+                    )
+                    dev_list_html += "</div>"
                     dev_list_html += f'<div class="dep-list-content" id="dev-{self._safe_escape(ext_id, quote=True)}" style="display: none;">'
                     for dep in dev_list:
-                        dep_name = dep.get('name') or 'Unknown'
-                        dep_version = dep.get('version') or ''
-                        dep_risk = dep.get('risk', 'unknown')
-                        dep_has_vuln = dep.get('has_vulnerabilities', False)
-                        vuln_icon = ' ⚠' if dep_has_vuln else ''
+                        dep_name = dep.get("name") or "Unknown"
+                        dep_version = dep.get("version") or ""
+                        dep_risk = dep.get("risk", "unknown")
+                        dep_has_vuln = dep.get("has_vulnerabilities", False)
+                        vuln_icon = " ⚠" if dep_has_vuln else ""
                         dev_list_html += f'<div class="dep-item">• {self._safe_escape(dep_name)} v{self._safe_escape(dep_version)} <span class="dep-risk risk-{dep_risk}">{dep_risk}</span>{vuln_icon}</div>'
-                    dev_list_html += '</div>'
-                    dev_list_html += '</div>'
+                    dev_list_html += "</div>"
+                    dev_list_html += "</div>"
 
             deps_html = f"""
         <div class="detail-section">
@@ -639,7 +681,7 @@ class HTMLReportGenerator:
 
     def _generate_footer(self, summary: Dict[str, Any]) -> str:
         """Generate report footer."""
-        timestamp = summary.get('scan_timestamp', 'Unknown')
+        timestamp = summary.get("scan_timestamp", "Unknown")
         return f"""
         <footer class="report-footer">
             <p>Generated by <strong>vscan</strong> v{__version__} on {self._safe_escape(timestamp)}</p>
@@ -647,7 +689,9 @@ class HTMLReportGenerator:
         </footer>
         """
 
-    def _generate_pie_chart_svg(self, critical: int, high: int, medium: int, low: int) -> str:
+    def _generate_pie_chart_svg(
+        self, critical: int, high: int, medium: int, low: int
+    ) -> str:
         """Generate bar chart for risk distribution."""
         total = critical + high + medium + low
         if total == 0:
@@ -671,20 +715,20 @@ class HTMLReportGenerator:
         </div>
         """
 
-    def _generate_security_gauge(self, score: int, risk_level: str = 'unknown') -> str:
+    def _generate_security_gauge(self, score: int, risk_level: str = "unknown") -> str:
         """Generate security score gauge (progress bar) using risk level colors."""
         if score is None:
-            return 'N/A'
+            return "N/A"
 
         # Determine color based on RISK LEVEL (not score)
         risk_color_map = {
-            'critical': 'gauge-critical',
-            'high': 'gauge-danger',
-            'medium': 'gauge-warning',
-            'low': 'gauge-success',
-            'unknown': 'gauge-unknown'
+            "critical": "gauge-critical",
+            "high": "gauge-danger",
+            "medium": "gauge-warning",
+            "low": "gauge-success",
+            "unknown": "gauge-unknown",
         }
-        color_class = risk_color_map.get(risk_level, 'gauge-unknown')
+        color_class = risk_color_map.get(risk_level, "gauge-unknown")
 
         return f"""
         <div class="security-gauge">
@@ -702,13 +746,13 @@ class HTMLReportGenerator:
 
         # Determine color based on RISK LEVEL (not score)
         risk_colors = {
-            'critical': '#8b0000',  # dark red
-            'high': '#dc3545',      # red
-            'medium': '#fd7e14',    # orange
-            'low': '#28a745',       # green
-            'unknown': '#6c757d'    # gray
+            "critical": "#8b0000",  # dark red
+            "high": "#dc3545",  # red
+            "medium": "#fd7e14",  # orange
+            "low": "#28a745",  # green
+            "unknown": "#6c757d",  # gray
         }
-        color = risk_colors.get(risk_level, '#6c757d')
+        color = risk_colors.get(risk_level, "#6c757d")
 
         # Calculate the circumference and stroke-dasharray for the circle
         # For a circle with radius 42, circumference = 2 * π * r ≈ 263.9
@@ -743,10 +787,10 @@ class HTMLReportGenerator:
 
     def _generate_vulnerability_grid(self, vulnerabilities: Dict[str, int]) -> str:
         """Generate colored grid visualization for vulnerabilities."""
-        critical = vulnerabilities.get('critical', 0)
-        high = vulnerabilities.get('high', 0)
-        moderate = vulnerabilities.get('moderate', 0)
-        low = vulnerabilities.get('low', 0)
+        critical = vulnerabilities.get("critical", 0)
+        high = vulnerabilities.get("high", 0)
+        moderate = vulnerabilities.get("moderate", 0)
+        low = vulnerabilities.get("low", 0)
 
         return f"""
         <div class="vuln-grid">
@@ -772,14 +816,14 @@ class HTMLReportGenerator:
     def _generate_mini_gauge(self, score: int) -> str:
         """Generate mini security score gauge."""
         if score is None:
-            return 'N/A'
+            return "N/A"
 
         if score >= 75:
-            color_class = 'gauge-success'
+            color_class = "gauge-success"
         elif score >= 50:
-            color_class = 'gauge-warning'
+            color_class = "gauge-warning"
         else:
-            color_class = 'gauge-danger'
+            color_class = "gauge-danger"
 
         return f"""
         <span class="mini-gauge">
@@ -2229,8 +2273,8 @@ def main():
             "cache_statistics": {
                 "from_cache": 2,
                 "fresh_scans": 1,
-                "cache_hit_rate": 66.7
-            }
+                "cache_hit_rate": 66.7,
+            },
         },
         "extensions": [
             {
@@ -2242,7 +2286,7 @@ def main():
                     "id": "ms-python",
                     "name": "Microsoft",
                     "verified": True,
-                    "domain": "microsoft.com"
+                    "domain": "microsoft.com",
                 },
                 "description": "Python language support with IntelliSense, debugging, linting, and more.",
                 "repository_url": "https://github.com/Microsoft/vscode-python",
@@ -2251,7 +2295,7 @@ def main():
                 "statistics": {
                     "installs": 187936883,
                     "rating": 4.19,
-                    "rating_count": 618
+                    "rating_count": 618,
                 },
                 "scan_status": "success",
                 "security": {
@@ -2263,7 +2307,7 @@ def main():
                         "high": 0,
                         "moderate": 0,
                         "low": 0,
-                        "info": 0
+                        "info": 0,
                     },
                     "risk_factors_count": 2,
                     "dependencies_count": 45,
@@ -2272,19 +2316,19 @@ def main():
                         "code_quality": 85,
                         "dependencies": 90,
                         "permissions": 75,
-                        "network": 80
+                        "network": 80,
                     },
                     "risk_factors": [
                         {
                             "type": "network-access",
                             "severity": "medium",
-                            "description": "Extension makes network requests"
+                            "description": "Extension makes network requests",
                         },
                         {
                             "type": "missing-privacy-policy",
                             "severity": "low",
-                            "description": "No privacy policy link found"
-                        }
+                            "description": "No privacy policy link found",
+                        },
                     ],
                     "dependencies": {
                         "total_count": 45,
@@ -2297,29 +2341,29 @@ def main():
                                 "version": "8.1.0",
                                 "type": "runtime",
                                 "risk_level": "low",
-                                "has_vulnerabilities": False
+                                "has_vulnerabilities": False,
                             },
                             {
                                 "name": "@types/node",
                                 "version": "18.0.0",
                                 "type": "runtime",
                                 "risk_level": "low",
-                                "has_vulnerabilities": False
-                            }
-                        ]
-                    }
+                                "has_vulnerabilities": False,
+                            },
+                        ],
+                    },
                 },
                 "vscan_url": "https://vscan.dev/extension/ms-python.python",
-                "keywords": ["python", "intellisense", "linting"]
+                "keywords": ["python", "intellisense", "linting"],
             }
-        ]
+        ],
     }
 
     generator = HTMLReportGenerator()
     html_output = generator.generate_report(test_data)
 
     # Write to file
-    with open('test_report.html', 'w', encoding='utf-8') as f:
+    with open("test_report.html", "w", encoding="utf-8") as f:
         f.write(html_output)
 
     print("HTML report generated: test_report.html")

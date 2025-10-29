@@ -27,6 +27,7 @@ class TestReportEmptyCache(unittest.TestCase):
     def test_display_warning_import(self):
         """Test that display_warning is properly imported."""
         from vscode_scanner.cli import display_warning
+
         self.assertIsNotNone(display_warning)
         self.assertTrue(callable(display_warning))
 
@@ -61,7 +62,6 @@ class TestReportEmptyCache(unittest.TestCase):
             self.assertEqual(count, 0)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests
     unittest.main(verbosity=2)

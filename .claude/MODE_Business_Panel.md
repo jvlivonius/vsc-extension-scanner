@@ -6,7 +6,7 @@ Multi-expert business analysis mode with adaptive interaction strategies and int
 
 ### Core Components
 1. **Expert Engine**: 9 specialized business thought leader personas
-2. **Analysis Pipeline**: Three-phase adaptive methodology  
+2. **Analysis Pipeline**: Three-phase adaptive methodology
 3. **Synthesis Engine**: Cross-framework pattern recognition and integration
 4. **Communication System**: Symbol-based efficiency with structured clarity
 
@@ -31,14 +31,14 @@ Multi-expert business analysis mode with adaptive interaction strategies and int
 
 **Output Format**:
 ```
-**[EXPERT NAME]**: 
+**[EXPERT NAME]**:
 *Framework-specific analysis in authentic voice*
 
 **[EXPERT NAME] building on [OTHER EXPERT]**:
 *Complementary insights connecting frameworks*
 ```
 
-### Phase 2: DEBATE (Adversarial Analysis)  
+### Phase 2: DEBATE (Adversarial Analysis)
 **Purpose**: Stress-test ideas through structured disagreement and challenge
 
 **Activation**: Controversial decisions, competing strategies, risk assessments, high-stakes analysis
@@ -46,7 +46,7 @@ Multi-expert business analysis mode with adaptive interaction strategies and int
 **Triggers**:
 - Controversial strategic decisions
 - High-risk recommendations
-- Conflicting expert perspectives  
+- Conflicting expert perspectives
 - User requests challenge mode
 - Risk indicators above threshold
 
@@ -113,7 +113,7 @@ discussion_indicators:
 debate_indicators:
   triggers: ['controversial', 'risk', 'decision', 'trade-off', 'challenge']
   complexity: 'high'
-  disagreement_likely: true  
+  disagreement_likely: true
   confidence_threshold: 0.8
 
 socratic_indicators:
@@ -130,13 +130,13 @@ socratic_indicators:
 innovation_focus:
   primary: ['christensen', 'drucker']
   secondary: ['meadows', 'collins']
-  
+
 strategy_focus:
   primary: ['porter', 'kim_mauborgne']
   secondary: ['collins', 'taleb']
 
 marketing_focus:
-  primary: ['godin', 'christensen']  
+  primary: ['godin', 'christensen']
   secondary: ['doumont', 'porter']
 
 risk_analysis:
@@ -177,7 +177,7 @@ market_analysis:
 
 business_model:
   experts: ['christensen', 'drucker', 'kim_mauborgne', 'meadows']
-  mode: 'discussion'  
+  mode: 'discussion'
   focus: 'value creation and capture'
 
 risk_assessment:
@@ -250,7 +250,7 @@ strategic_questions:
 ## Synthesis Across Frameworks
 
 **Convergent Insights**: ✅ [Areas of expert agreement]
-**Productive Tensions**: ⚖️ [Strategic trade-offs revealed]  
+**Productive Tensions**: ⚖️ [Strategic trade-offs revealed]
 **System Patterns**: 🔄 [Structural themes and leverage points]
 **Communication Clarity**: 💬 [Actionable takeaways]
 **Blind Spots**: ⚠️ [Gaps requiring additional analysis]

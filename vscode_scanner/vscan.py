@@ -23,7 +23,15 @@ from .extension_discovery import ExtensionDiscovery
 from .vscan_api import VscanAPIClient
 from .output_formatter import OutputFormatter
 from .cache_manager import CacheManager
-from .utils import log, setup_logging, validate_path, sanitize_string, show_error_help, get_error_type, safe_mkdir
+from .utils import (
+    log,
+    setup_logging,
+    validate_path,
+    sanitize_string,
+    show_error_help,
+    get_error_type,
+    safe_mkdir,
+)
 from ._version import __version__ as VERSION
 
 
@@ -40,7 +48,7 @@ def load_config_file() -> dict:
         return {}
 
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = json.load(f)
 
         # Validate that config is a dictionary
@@ -60,6 +68,7 @@ def load_config_file() -> dict:
 
 def bounded_int(min_val: int, max_val: int):
     """Create a validator for bounded integer values."""
+
     def validator(value):
         try:
             ivalue = int(value)
@@ -71,11 +80,13 @@ def bounded_int(min_val: int, max_val: int):
                 f"must be between {min_val} and {max_val}, got {ivalue}"
             )
         return ivalue
+
     return validator
 
 
 def bounded_float(min_val: float, max_val: float):
     """Create a validator for bounded float values."""
+
     def validator(value):
         try:
             fvalue = float(value)
@@ -87,6 +98,7 @@ def bounded_float(min_val: float, max_val: float):
                 f"must be between {min_val} and {max_val}, got {fvalue}"
             )
         return fvalue
+
     return validator
 
 
@@ -112,130 +124,123 @@ Configuration:
   Command-line arguments override config file settings
 
 For more information, see: https://github.com/your-repo/vsc-extension-scanner
-        """
+        """,
     )
 
     parser.add_argument(
-        '--extensions-dir', '-d',
+        "--extensions-dir",
+        "-d",
         type=str,
         default=None,
-        help='Path to VS Code extensions directory (default: auto-detect)'
+        help="Path to VS Code extensions directory (default: auto-detect)",
     )
 
     parser.add_argument(
-        '--output', '-o',
+        "--output",
+        "-o",
         type=str,
         default=None,
-        help='Output file path for results (.json or .html, default: stdout)'
+        help="Output file path for results (.json or .html, default: stdout)",
     )
 
     parser.add_argument(
-        '--delay', '-t',
+        "--delay",
+        "-t",
         type=bounded_float(0.1, 30.0),
         default=1.5,
-        help='Delay between API requests in seconds, 0.1-30.0 (default: 1.5)'
+        help="Delay between API requests in seconds, 0.1-30.0 (default: 1.5)",
     )
 
     parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help='Enable verbose output to stderr'
+        "--verbose", "-v", action="store_true", help="Enable verbose output to stderr"
     )
 
     # Retry-related arguments
     parser.add_argument(
-        '--max-retries',
+        "--max-retries",
         type=bounded_int(0, 10),
         default=3,
-        help='Maximum retry attempts for failed API requests, 0-10 (default: 3)'
+        help="Maximum retry attempts for failed API requests, 0-10 (default: 3)",
     )
 
     parser.add_argument(
-        '--retry-delay',
+        "--retry-delay",
         type=bounded_float(0.1, 60.0),
         default=2.0,
-        help='Base delay for exponential backoff in seconds, 0.1-60.0 (default: 2.0)'
+        help="Base delay for exponential backoff in seconds, 0.1-60.0 (default: 2.0)",
     )
 
     # Cache-related arguments
     parser.add_argument(
-        '--cache-dir',
+        "--cache-dir",
         type=str,
         default=None,
-        help='Cache directory path (default: ~/.vscan/)'
+        help="Cache directory path (default: ~/.vscan/)",
     )
 
     parser.add_argument(
-        '--cache-max-age',
+        "--cache-max-age",
         type=bounded_int(1, 365),
         default=7,
-        help='Maximum age of cached results in days, 1-365 (default: 7)'
+        help="Maximum age of cached results in days, 1-365 (default: 7)",
     )
 
     parser.add_argument(
-        '--refresh-cache',
-        action='store_true',
-        help='Force refresh of all cached results'
+        "--refresh-cache",
+        action="store_true",
+        help="Force refresh of all cached results",
     )
 
     parser.add_argument(
-        '--no-cache',
-        action='store_true',
-        help='Disable cache (always scan fresh)'
+        "--no-cache", action="store_true", help="Disable cache (always scan fresh)"
     )
 
     parser.add_argument(
-        '--clear-cache',
-        action='store_true',
-        help='Clear all cached results and exit'
+        "--clear-cache", action="store_true", help="Clear all cached results and exit"
     )
 
     parser.add_argument(
-        '--cache-stats',
-        action='store_true',
-        help='Show cache statistics and exit'
+        "--cache-stats", action="store_true", help="Show cache statistics and exit"
     )
 
     parser.add_argument(
-        '--detailed',
-        action='store_true',
-        help='Include detailed security analysis (dependencies, risk factors, score breakdown)'
+        "--detailed",
+        action="store_true",
+        help="Include detailed security analysis (dependencies, risk factors, score breakdown)",
     )
 
     # Filtering arguments
     parser.add_argument(
-        '--include-ids',
+        "--include-ids",
         type=str,
         default=None,
-        help='Comma-separated list of extension IDs to scan (e.g., "ms-python.python,esbenp.prettier-vscode")'
+        help='Comma-separated list of extension IDs to scan (e.g., "ms-python.python,esbenp.prettier-vscode")',
     )
 
     parser.add_argument(
-        '--exclude-ids',
+        "--exclude-ids",
         type=str,
         default=None,
-        help='Comma-separated list of extension IDs to exclude from scan'
+        help="Comma-separated list of extension IDs to exclude from scan",
     )
 
     parser.add_argument(
-        '--publisher',
+        "--publisher",
         type=str,
         default=None,
-        help='Only scan extensions from this publisher'
+        help="Only scan extensions from this publisher",
     )
 
     parser.add_argument(
-        '--min-risk-level',
+        "--min-risk-level",
         type=str,
-        choices=['low', 'medium', 'high', 'critical'],
+        choices=["low", "medium", "high", "critical"],
         default=None,
-        help='Only scan extensions with this minimum risk level or higher'
+        help="Only scan extensions with this minimum risk level or higher",
     )
 
     parser.add_argument(
-        '--version', '-V',
-        action='version',
-        version=f'%(prog)s {VERSION}'
+        "--version", "-V", action="version", version=f"%(prog)s {VERSION}"
     )
 
     # Parse command line arguments first
@@ -248,16 +253,16 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
         # Map config file keys to argument attributes
         # Only apply config values if CLI argument is at default value
         config_mappings = {
-            'delay': ('delay', 1.5),
-            'max_retries': ('max_retries', 3),
-            'retry_delay': ('retry_delay', 2.0),
-            'cache_max_age': ('cache_max_age', 7),
-            'cache_dir': ('cache_dir', None),
-            'output': ('output', None),
-            'extensions_dir': ('extensions_dir', None),
-            'exclude_ids': ('exclude_ids', None),
-            'publisher': ('publisher', None),
-            'detailed': ('detailed', False),
+            "delay": ("delay", 1.5),
+            "max_retries": ("max_retries", 3),
+            "retry_delay": ("retry_delay", 2.0),
+            "cache_max_age": ("cache_max_age", 7),
+            "cache_dir": ("cache_dir", None),
+            "output": ("output", None),
+            "extensions_dir": ("extensions_dir", None),
+            "exclude_ids": ("exclude_ids", None),
+            "publisher": ("publisher", None),
+            "detailed": ("detailed", False),
         }
 
         for config_key, (attr_name, default_value) in config_mappings.items():
@@ -269,22 +274,31 @@ For more information, see: https://github.com/your-repo/vsc-extension-scanner
                     config_value = config[config_key]
 
                     # Validate config value types
-                    if config_key in ['delay', 'retry_delay']:
+                    if config_key in ["delay", "retry_delay"]:
                         try:
                             config_value = float(config_value)
                         except (ValueError, TypeError):
-                            log(f"Warning: Invalid value for '{config_key}' in config.json, using default", "WARNING")
+                            log(
+                                f"Warning: Invalid value for '{config_key}' in config.json, using default",
+                                "WARNING",
+                            )
                             continue
 
-                    if config_key in ['max_retries', 'cache_max_age']:
+                    if config_key in ["max_retries", "cache_max_age"]:
                         try:
                             config_value = int(config_value)
                         except (ValueError, TypeError):
-                            log(f"Warning: Invalid value for '{config_key}' in config.json, using default", "WARNING")
+                            log(
+                                f"Warning: Invalid value for '{config_key}' in config.json, using default",
+                                "WARNING",
+                            )
                             continue
 
-                    if config_key == 'detailed' and not isinstance(config_value, bool):
-                        log(f"Warning: 'detailed' in config.json must be boolean, using default", "WARNING")
+                    if config_key == "detailed" and not isinstance(config_value, bool):
+                        log(
+                            f"Warning: 'detailed' in config.json must be boolean, using default",
+                            "WARNING",
+                        )
                         continue
 
                     setattr(args, attr_name, config_value)
@@ -316,29 +330,45 @@ def handle_cache_commands(args, cache_manager):
         log(f"Database size: {stats['database_size_kb']:.2f} KB", "INFO", force=True)
         log("", "INFO", force=True)
 
-        if stats['total_entries'] > 0:
+        if stats["total_entries"] > 0:
             # Cache age information
-            if stats.get('average_age_days') is not None:
-                log(f"Average cache age: {stats['average_age_days']} days", "INFO", force=True)
+            if stats.get("average_age_days") is not None:
+                log(
+                    f"Average cache age: {stats['average_age_days']} days",
+                    "INFO",
+                    force=True,
+                )
 
-            stale_count = stats.get('stale_entries', 0)
-            stale_threshold = stats.get('stale_threshold_days', args.cache_max_age)
+            stale_count = stats.get("stale_entries", 0)
+            stale_threshold = stats.get("stale_threshold_days", args.cache_max_age)
 
             if stale_count > 0:
-                stale_percent = round((stale_count / stats['total_entries']) * 100, 1)
-                log(f"Stale entries (>{stale_threshold} days): {stale_count} ({stale_percent}%)", "INFO", force=True)
+                stale_percent = round((stale_count / stats["total_entries"]) * 100, 1)
+                log(
+                    f"Stale entries (>{stale_threshold} days): {stale_count} ({stale_percent}%)",
+                    "INFO",
+                    force=True,
+                )
 
                 # Suggest refresh if many entries are stale
                 if stale_percent >= 50:
                     log("", "INFO", force=True)
-                    log("⚠️  Recommendation: Consider running with --refresh-cache to update stale entries", "WARNING", force=True)
+                    log(
+                        "⚠️  Recommendation: Consider running with --refresh-cache to update stale entries",
+                        "WARNING",
+                        force=True,
+                    )
 
             log("", "INFO", force=True)
             log("Risk breakdown:", "INFO", force=True)
-            for risk, count in stats['risk_breakdown'].items():
+            for risk, count in stats["risk_breakdown"].items():
                 log(f"  {risk}: {count}", "INFO", force=True)
             log("", "INFO", force=True)
-            log(f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}", "INFO", force=True)
+            log(
+                f"Extensions with vulnerabilities: {stats['extensions_with_vulnerabilities']}",
+                "INFO",
+                force=True,
+            )
 
         return 0
 
@@ -374,15 +404,19 @@ def apply_pre_scan_filters(extensions, args):
     exclude_ids = None
 
     if args.include_ids:
-        include_ids = set(id.strip() for id in args.include_ids.split(',') if id.strip())
+        include_ids = set(
+            id.strip() for id in args.include_ids.split(",") if id.strip()
+        )
 
     if args.exclude_ids:
-        exclude_ids = set(id.strip() for id in args.exclude_ids.split(',') if id.strip())
+        exclude_ids = set(
+            id.strip() for id in args.exclude_ids.split(",") if id.strip()
+        )
 
     # Apply filters with AND logic (all filters must match)
     def matches_filters(ext):
-        ext_id = ext.get('id', '')
-        publisher = ext.get('publisher', '')
+        ext_id = ext.get("id", "")
+        publisher = ext.get("publisher", "")
 
         # Include IDs filter (if specified, extension MUST be in the list)
         if include_ids and ext_id not in include_ids:
@@ -430,10 +464,16 @@ def show_filter_help(args, original_count):
 
         # Provide helpful suggestions
         if original_count > 0:
-            log(f"Tip: {original_count} extensions were found, but all were filtered out.", "INFO")
+            log(
+                f"Tip: {original_count} extensions were found, but all were filtered out.",
+                "INFO",
+            )
 
         if args.publisher:
-            log("Tip: Publisher names are case-insensitive but must match exactly.", "INFO")
+            log(
+                "Tip: Publisher names are case-insensitive but must match exactly.",
+                "INFO",
+            )
             log("     Run without filters to see available publishers.", "INFO")
 
 
@@ -455,7 +495,10 @@ def discover_extensions(args):
     discovery = ExtensionDiscovery(custom_dir=args.extensions_dir)
 
     extensions_dir = discovery.find_extensions_directory()
-    log(f"Found VS Code extensions directory: {sanitize_string(str(extensions_dir), max_length=150)}", "SUCCESS")
+    log(
+        f"Found VS Code extensions directory: {sanitize_string(str(extensions_dir), max_length=150)}",
+        "SUCCESS",
+    )
 
     extensions = discovery.discover_extensions()
     log(f"Discovered {len(extensions)} extensions", "SUCCESS")
@@ -500,41 +543,56 @@ def scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp):
         delay=args.delay,
         verbose=verbose,
         max_retries=args.max_retries,
-        retry_base_delay=args.retry_delay
+        retry_base_delay=args.retry_delay,
     )
 
     scan_results = []
     stats = {
-        'vulnerabilities_found': 0,
-        'successful_scans': 0,
-        'failed_scans': 0,
-        'cached_results': 0,
-        'fresh_scans': 0,
-        'api_client': api_client
+        "vulnerabilities_found": 0,
+        "successful_scans": 0,
+        "failed_scans": 0,
+        "cached_results": 0,
+        "fresh_scans": 0,
+        "api_client": api_client,
     }
 
     for idx, ext in enumerate(extensions, 1):
         progress_prefix = f"[{idx}/{len(extensions)}]"
-        extension_id = ext['id']
-        version = ext['version']
+        extension_id = ext["id"]
+        version = ext["version"]
 
         # Check cache first (unless refresh or no-cache is requested)
         cached_result = None
         if cache_manager and not args.refresh_cache:
             cached_result = cache_manager.get_cached_result(
-                extension_id,
-                version,
-                max_age_days=args.cache_max_age
+                extension_id, version, max_age_days=args.cache_max_age
             )
 
         if cached_result:
             # Use cached result
-            _process_cached_result(cached_result, ext, extension_id, version,
-                                   progress_prefix, verbose, stats, scan_results)
+            _process_cached_result(
+                cached_result,
+                ext,
+                extension_id,
+                version,
+                progress_prefix,
+                verbose,
+                stats,
+                scan_results,
+            )
         else:
             # Scan fresh from API
-            _scan_extension_fresh(ext, extension_id, version, progress_prefix,
-                                 api_client, cache_manager, verbose, stats, scan_results)
+            _scan_extension_fresh(
+                ext,
+                extension_id,
+                version,
+                progress_prefix,
+                api_client,
+                cache_manager,
+                verbose,
+                stats,
+                scan_results,
+            )
 
     log("", "INFO")
     return scan_results, stats
@@ -551,17 +609,23 @@ def _get_status_symbol(status: str) -> str:
         Unicode symbol for the status
     """
     symbols = {
-        'cached': '⚡',
-        'scanning': '🔍',
-        'success': '✓',
-        'warning': '⚠',
-        'error': '✗'
+        "cached": "⚡",
+        "scanning": "🔍",
+        "success": "✓",
+        "warning": "⚠",
+        "error": "✗",
     }
-    return symbols.get(status, '?')
+    return symbols.get(status, "?")
 
 
-def _print_scan_progress(extension_id: str, version: str, progress_prefix: str,
-                         status: str, message: str = "", verbose: bool = False):
+def _print_scan_progress(
+    extension_id: str,
+    version: str,
+    progress_prefix: str,
+    status: str,
+    message: str = "",
+    verbose: bool = False,
+):
     """
     Print standardized scan progress with consistent formatting.
 
@@ -578,46 +642,78 @@ def _print_scan_progress(extension_id: str, version: str, progress_prefix: str,
     if verbose:
         # Verbose mode: Append status on same line
         if message:
-            log(f" {symbol} {message}", status.upper() if status in ['warning', 'error'] else "SUCCESS")
+            log(
+                f" {symbol} {message}",
+                status.upper() if status in ["warning", "error"] else "SUCCESS",
+            )
         else:
             log(f" {symbol}", "SUCCESS")
     else:
         # Non-verbose mode: Only show problems (warnings/errors)
-        if status in ['warning', 'error']:
+        if status in ["warning", "error"]:
             log(f"{symbol} {extension_id}: {message}", status.upper())
 
 
-def _process_cached_result(cached_result, ext, extension_id, version,
-                           progress_prefix, verbose, stats, scan_results):
+def _process_cached_result(
+    cached_result,
+    ext,
+    extension_id,
+    version,
+    progress_prefix,
+    verbose,
+    stats,
+    scan_results,
+):
     """Process a cached scan result."""
-    log(f"{progress_prefix} {extension_id} v{version}... {_get_status_symbol('cached')} Cached",
-        "INFO", newline=False)
+    log(
+        f"{progress_prefix} {extension_id} v{version}... {_get_status_symbol('cached')} Cached",
+        "INFO",
+        newline=False,
+    )
 
     # Merge extension metadata with cached result
-    cached_result.update({
-        'id': ext['id'],
-        'version': ext['version'],
-        'path': ext['path']
-    })
+    cached_result.update(
+        {"id": ext["id"], "version": ext["version"], "path": ext["path"]}
+    )
 
     scan_results.append(cached_result)
-    stats['cached_results'] += 1
-    stats['successful_scans'] += 1
+    stats["cached_results"] += 1
+    stats["successful_scans"] += 1
 
-    vuln_count = cached_result.get('vulnerabilities', {}).get('count', 0)
+    vuln_count = cached_result.get("vulnerabilities", {}).get("count", 0)
     if vuln_count > 0:
-        stats['vulnerabilities_found'] += vuln_count
-        _print_scan_progress(extension_id, version, progress_prefix, 'warning',
-                           f"{vuln_count} vulnerability(ies) found", verbose)
+        stats["vulnerabilities_found"] += vuln_count
+        _print_scan_progress(
+            extension_id,
+            version,
+            progress_prefix,
+            "warning",
+            f"{vuln_count} vulnerability(ies) found",
+            verbose,
+        )
     else:
-        _print_scan_progress(extension_id, version, progress_prefix, 'success', "", verbose)
+        _print_scan_progress(
+            extension_id, version, progress_prefix, "success", "", verbose
+        )
 
 
-def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
-                          api_client, cache_manager, verbose, stats, scan_results):
+def _scan_extension_fresh(
+    ext,
+    extension_id,
+    version,
+    progress_prefix,
+    api_client,
+    cache_manager,
+    verbose,
+    stats,
+    scan_results,
+):
     """Scan an extension fresh from the API."""
-    log(f"{progress_prefix} Scanning {extension_id} v{version}... {_get_status_symbol('scanning')}",
-        "INFO", newline=False)
+    log(
+        f"{progress_prefix} Scanning {extension_id} v{version}... {_get_status_symbol('scanning')}",
+        "INFO",
+        newline=False,
+    )
 
     # Define progress callback
     def progress_callback(progress_pct, message):
@@ -627,61 +723,71 @@ def _scan_extension_fresh(ext, extension_id, version, progress_prefix,
 
     try:
         result = api_client.scan_extension(
-            ext['publisher'],
-            ext['name'],
-            progress_callback=progress_callback if verbose else None
+            ext["publisher"],
+            ext["name"],
+            progress_callback=progress_callback if verbose else None,
         )
 
         # Merge extension metadata with scan result
-        result.update({
-            'id': ext['id'],
-            'version': ext['version'],
-            'path': ext['path']
-        })
+        result.update({"id": ext["id"], "version": ext["version"], "path": ext["path"]})
 
         scan_results.append(result)
 
         # Save to cache if successful
-        if result.get('scan_status') == 'success' and cache_manager:
+        if result.get("scan_status") == "success" and cache_manager:
             cache_manager.save_result(extension_id, version, result)
 
         # Check for vulnerabilities
-        if result.get('scan_status') == 'success':
-            stats['successful_scans'] += 1
-            stats['fresh_scans'] += 1
+        if result.get("scan_status") == "success":
+            stats["successful_scans"] += 1
+            stats["fresh_scans"] += 1
 
-            vuln_count = result.get('vulnerabilities', {}).get('count', 0)
+            vuln_count = result.get("vulnerabilities", {}).get("count", 0)
             if vuln_count > 0:
-                stats['vulnerabilities_found'] += vuln_count
-                _print_scan_progress(extension_id, version, progress_prefix, 'warning',
-                                   f"{vuln_count} vulnerability(ies) found", verbose)
+                stats["vulnerabilities_found"] += vuln_count
+                _print_scan_progress(
+                    extension_id,
+                    version,
+                    progress_prefix,
+                    "warning",
+                    f"{vuln_count} vulnerability(ies) found",
+                    verbose,
+                )
             else:
-                _print_scan_progress(extension_id, version, progress_prefix, 'success', "", verbose)
+                _print_scan_progress(
+                    extension_id, version, progress_prefix, "success", "", verbose
+                )
         else:
-            stats['failed_scans'] += 1
-            error_msg = result.get('error', 'Unknown error')
-            _print_scan_progress(extension_id, version, progress_prefix, 'error', error_msg, verbose)
+            stats["failed_scans"] += 1
+            error_msg = result.get("error", "Unknown error")
+            _print_scan_progress(
+                extension_id, version, progress_prefix, "error", error_msg, verbose
+            )
 
     except Exception as e:
-        stats['failed_scans'] += 1
+        stats["failed_scans"] += 1
         error_msg = str(e)
-        _print_scan_progress(extension_id, version, progress_prefix, 'error', error_msg, verbose)
+        _print_scan_progress(
+            extension_id, version, progress_prefix, "error", error_msg, verbose
+        )
 
         # Show error help for first few errors (avoid spam)
-        if stats['failed_scans'] <= 3:
+        if stats["failed_scans"] <= 3:
             error_type = get_error_type(error_msg)
             if error_type != "unknown":
                 show_error_help(error_type, verbose)
 
-        scan_results.append({
-            'id': ext['id'],
-            'name': ext['name'],
-            'publisher': ext['publisher'],
-            'version': ext['version'],
-            'path': ext['path'],
-            'scan_status': 'error',
-            'error': error_msg
-        })
+        scan_results.append(
+            {
+                "id": ext["id"],
+                "name": ext["name"],
+                "publisher": ext["publisher"],
+                "version": ext["version"],
+                "path": ext["path"],
+                "scan_status": "error",
+                "error": error_msg,
+            }
+        )
 
 
 def apply_post_scan_filters(scan_results, args):
@@ -700,17 +806,12 @@ def apply_post_scan_filters(scan_results, args):
         return scan_results
 
     # Define risk level hierarchy
-    risk_hierarchy = {
-        'low': 0,
-        'medium': 1,
-        'high': 2,
-        'critical': 3
-    }
+    risk_hierarchy = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
     min_level = risk_hierarchy.get(args.min_risk_level, 0)
 
     def meets_risk_threshold(result):
-        risk_level = result.get('risk_level', 'low')
+        risk_level = result.get("risk_level", "low")
         result_level = risk_hierarchy.get(risk_level, 0)
         return result_level >= min_level
 
@@ -718,12 +819,17 @@ def apply_post_scan_filters(scan_results, args):
 
     if len(filtered) < len(scan_results):
         filtered_count = len(scan_results) - len(filtered)
-        log(f"Filtered out {filtered_count} extensions below '{args.min_risk_level}' risk level", "INFO")
+        log(
+            f"Filtered out {filtered_count} extensions below '{args.min_risk_level}' risk level",
+            "INFO",
+        )
 
     return filtered
 
 
-def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data):
+def generate_output(
+    scan_results, scan_duration, scan_timestamp, args, cache_stats_data
+):
     """
     Generate and write output (JSON or HTML).
 
@@ -740,7 +846,7 @@ def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_sta
     log("Step 3: Generating results...", "INFO")
 
     # Detect output format
-    is_html_output = args.output and args.output.endswith('.html')
+    is_html_output = args.output and args.output.endswith(".html")
 
     # For HTML output, always use detailed mode
     use_detailed = args.detailed or is_html_output
@@ -751,7 +857,7 @@ def generate_output(scan_results, scan_duration, scan_timestamp, args, cache_sta
         scan_timestamp,
         scan_duration,
         detailed=use_detailed,
-        cache_stats=cache_stats_data if not args.no_cache else None
+        cache_stats=cache_stats_data if not args.no_cache else None,
     )
 
     # Output results
@@ -784,16 +890,22 @@ def _write_output_file(output_path_str, results, is_html_output):
         html_gen = HTMLReportGenerator()
         html_content = html_gen.generate_report(results)
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        log(f"HTML report written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
+        log(
+            f"HTML report written to {sanitize_string(output_path_str, max_length=100)}",
+            "SUCCESS",
+        )
     else:
         # JSON output
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
 
-        log(f"Results written to {sanitize_string(output_path_str, max_length=100)}", "SUCCESS")
+        log(
+            f"Results written to {sanitize_string(output_path_str, max_length=100)}",
+            "SUCCESS",
+        )
 
 
 def print_summary(extensions, stats, scan_duration):
@@ -810,33 +922,41 @@ def print_summary(extensions, stats, scan_duration):
     log("Scan Complete!", "SUCCESS", force=True)
     log(f"Total extensions scanned: {len(extensions)}", "INFO", force=True)
     log(f"Successful scans: {stats['successful_scans']}", "INFO", force=True)
-    log(f"Failed scans: {stats['failed_scans']}",
-        "INFO" if stats['failed_scans'] == 0 else "WARNING", force=True)
+    log(
+        f"Failed scans: {stats['failed_scans']}",
+        "INFO" if stats["failed_scans"] == 0 else "WARNING",
+        force=True,
+    )
 
     # Cache statistics
-    if stats.get('cached_results', 0) > 0 or stats.get('fresh_scans', 0) > 0:
+    if stats.get("cached_results", 0) > 0 or stats.get("fresh_scans", 0) > 0:
         log("", "INFO", force=True)
         log("Cache Statistics:", "INFO", force=True)
         log(f"  From cache: {stats['cached_results']} (⚡ instant)", "INFO", force=True)
         log(f"  Fresh scans: {stats['fresh_scans']} (🔍 API calls)", "INFO", force=True)
         if len(extensions) > 0:
-            cache_hit_rate = (stats['cached_results'] / len(extensions)) * 100
+            cache_hit_rate = (stats["cached_results"] / len(extensions)) * 100
             log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
 
     # Retry statistics
-    if 'api_client' in stats:
-        retry_stats = stats['api_client'].get_retry_stats()
-        if retry_stats['total_retries'] > 0:
+    if "api_client" in stats:
+        retry_stats = stats["api_client"].get_retry_stats()
+        if retry_stats["total_retries"] > 0:
             log("", "INFO")
             log("Retry Statistics:", "INFO")
             log(f"  Total retry attempts: {retry_stats['total_retries']}", "INFO")
             log(f"  Successful retries: {retry_stats['successful_retries']}", "INFO")
-            log(f"  Failed after retries: {retry_stats['failed_after_retries']}",
-                "INFO" if retry_stats['failed_after_retries'] == 0 else "WARNING")
+            log(
+                f"  Failed after retries: {retry_stats['failed_after_retries']}",
+                "INFO" if retry_stats["failed_after_retries"] == 0 else "WARNING",
+            )
 
     log("", "INFO", force=True)
-    log(f"Vulnerabilities found: {stats['vulnerabilities_found']}",
-        "INFO" if stats['vulnerabilities_found'] == 0 else "WARNING", force=True)
+    log(
+        f"Vulnerabilities found: {stats['vulnerabilities_found']}",
+        "INFO" if stats["vulnerabilities_found"] == 0 else "WARNING",
+        force=True,
+    )
     log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
     if len(extensions) > 0:
         avg_time = scan_duration / len(extensions)
@@ -870,7 +990,9 @@ def main():
     setup_logging(verbose)
 
     # Initialize cache manager
-    cache_manager = CacheManager(cache_dir=args.cache_dir) if not args.no_cache else None
+    cache_manager = (
+        CacheManager(cache_dir=args.cache_dir) if not args.no_cache else None
+    )
 
     # Handle cache-only commands
     cache_exit_code = handle_cache_commands(args, cache_manager)
@@ -884,7 +1006,7 @@ def main():
     log("", "INFO")
 
     start_time = time.time()
-    scan_timestamp = datetime.utcnow().isoformat() + 'Z'
+    scan_timestamp = datetime.utcnow().isoformat() + "Z"
 
     # Step 1: Discover extensions
     try:
@@ -912,16 +1034,21 @@ def main():
             formatter = OutputFormatter()
             results = formatter.format_output([], scan_timestamp, 0)
             try:
-                _write_output_file(args.output, results, args.output.endswith('.html'))
+                _write_output_file(args.output, results, args.output.endswith(".html"))
             except Exception as e:
                 log(f"Error writing output file: {type(e).__name__}", "ERROR")
                 return 2
-            log(f"Empty results saved to {sanitize_string(args.output, max_length=100)}", "INFO")
+            log(
+                f"Empty results saved to {sanitize_string(args.output, max_length=100)}",
+                "INFO",
+            )
 
         return 0
 
     # Step 2: Scan extensions
-    scan_results, stats = scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp)
+    scan_results, stats = scan_extensions(
+        extensions, args, cache_manager, verbose, scan_timestamp
+    )
 
     # Apply post-scan filters (risk level)
     scan_results = apply_post_scan_filters(scan_results, args)
@@ -930,13 +1057,17 @@ def main():
     scan_duration = time.time() - start_time
 
     cache_stats_data = {
-        "from_cache": stats['cached_results'],
-        "fresh_scans": stats['fresh_scans'],
-        "cache_hit_rate": round((stats['cached_results'] / len(scan_results) * 100), 1) if len(scan_results) > 0 else 0.0
+        "from_cache": stats["cached_results"],
+        "fresh_scans": stats["fresh_scans"],
+        "cache_hit_rate": round((stats["cached_results"] / len(scan_results) * 100), 1)
+        if len(scan_results) > 0
+        else 0.0,
     }
 
     try:
-        results = generate_output(scan_results, scan_duration, scan_timestamp, args, cache_stats_data)
+        results = generate_output(
+            scan_results, scan_duration, scan_timestamp, args, cache_stats_data
+        )
     except Exception as e:
         error_msg = sanitize_string(str(e), max_length=200)
         log(f"Error generating output: {type(e).__name__}", "ERROR")
@@ -950,7 +1081,7 @@ def main():
     print_summary(extensions, stats, scan_duration)
 
     # Calculate and return exit code
-    return calculate_exit_code(stats['vulnerabilities_found'])
+    return calculate_exit_code(stats["vulnerabilities_found"])
 
 
 def cli_main():
@@ -961,6 +1092,7 @@ def cli_main():
     """
     try:
         from .cli import app
+
         app()
     except ImportError:
         # Fallback if cli module has issues

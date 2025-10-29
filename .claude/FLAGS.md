@@ -128,6 +128,6 @@ Behavioral flags for Claude Code to enable specific execution modes and tool sel
 
 **Safety First**: --safe-mode > --validate > optimization flags
 **Explicit Override**: User flags > auto-detection
-**Depth Hierarchy**: --ultrathink > --think-hard > --think  
+**Depth Hierarchy**: --ultrathink > --think-hard > --think
 **MCP Control**: --no-mcp overrides all individual MCP flags
 **Scope Precedence**: system > project > module > file

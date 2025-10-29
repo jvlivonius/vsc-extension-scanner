@@ -30,6 +30,7 @@ class SecurityTester:
 
     def test(self, name, should_fail=False):
         """Decorator for test methods."""
+
         def decorator(func):
             def wrapper():
                 try:
@@ -53,7 +54,9 @@ class SecurityTester:
                     else:
                         print(f"❌ ERROR: {name} - {e}")
                         self.tests_failed += 1
+
             return wrapper
+
         return decorator
 
     def run_all_tests(self):
@@ -105,7 +108,9 @@ class SecurityTester:
         print()
 
         if self.vulnerabilities_confirmed > 0:
-            print(f"⚠️  WARNING: {self.vulnerabilities_confirmed} VULNERABILITIES CONFIRMED")
+            print(
+                f"⚠️  WARNING: {self.vulnerabilities_confirmed} VULNERABILITIES CONFIRMED"
+            )
             print("See SECURITY_ANALYSIS.md for remediation guidance")
             return 1
         else:
@@ -117,17 +122,24 @@ class SecurityTester:
         print("Test 1.1: Checking if validate_path() is actually used...")
 
         # Search for usage of validate_path in code (v3.5.1: now used in multiple modules)
-        files_to_check = ['vscode_scanner/extension_discovery.py', 'vscode_scanner/cache_manager.py',
-                         'vscode_scanner/cli.py', 'vscode_scanner/config_manager.py']
+        files_to_check = [
+            "vscode_scanner/extension_discovery.py",
+            "vscode_scanner/cache_manager.py",
+            "vscode_scanner/cli.py",
+            "vscode_scanner/config_manager.py",
+        ]
         usage_found = False
         base_dir = Path(__file__).parent.parent
 
         for filename in files_to_check:
             filepath = base_dir / filename
             if filepath.exists():
-                with open(filepath, 'r') as f:
+                with open(filepath, "r") as f:
                     content = f.read()
-                    if 'validate_path(' in content and 'def validate_path' not in content:
+                    if (
+                        "validate_path(" in content
+                        and "def validate_path" not in content
+                    ):
                         usage_found = True
                         break
 
@@ -144,17 +156,24 @@ class SecurityTester:
         print("Test 1.2: Checking if sanitize_string() is actually used...")
 
         # Check in correct paths (v3.5.1: already extensively used)
-        files_to_check = ['vscode_scanner/vscan.py', 'vscode_scanner/extension_discovery.py',
-                          'vscode_scanner/scanner.py', 'vscode_scanner/output_formatter.py']
+        files_to_check = [
+            "vscode_scanner/vscan.py",
+            "vscode_scanner/extension_discovery.py",
+            "vscode_scanner/scanner.py",
+            "vscode_scanner/output_formatter.py",
+        ]
         usage_found = False
         base_dir = Path(__file__).parent.parent
 
         for filename in files_to_check:
             filepath = base_dir / filename
             if filepath.exists():
-                with open(filepath, 'r') as f:
+                with open(filepath, "r") as f:
                     content = f.read()
-                    if 'sanitize_string(' in content and 'def sanitize_string' not in content:
+                    if (
+                        "sanitize_string(" in content
+                        and "def sanitize_string" not in content
+                    ):
                         usage_found = True
                         break
 
@@ -223,11 +242,7 @@ class SecurityTester:
         """Test #3.1: Does validate_path() block system directory paths? (v3.5.1: now raises ValueError)"""
         print("Test 3.1: validate_path() handling of absolute system paths...")
 
-        system_paths = [
-            "/etc/passwd",
-            "/var/log/auth.log",
-            "/root/.ssh/id_rsa"
-        ]
+        system_paths = ["/etc/passwd", "/var/log/auth.log", "/root/.ssh/id_rsa"]
 
         vulnerable = False
         for path in system_paths:
@@ -302,6 +317,7 @@ class SecurityTester:
         try:
             # Create temporary cache in home directory (required by security fixes)
             import os
+
             tmpdir = os.path.join(os.path.expanduser("~"), ".vscan_test_temp")
             os.makedirs(tmpdir, exist_ok=True)
 
@@ -313,7 +329,7 @@ class SecurityTester:
                     "scan_status": "success",
                     "security_score": 85,
                     "risk_level": "low",
-                    "vulnerabilities": {"count": 0}
+                    "vulnerabilities": {"count": 0},
                 }
                 cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -326,11 +342,14 @@ class SecurityTester:
                 malicious_result["security_score"] = 100
                 malicious_result["risk_level"] = "low"
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE scan_cache
                     SET scan_result = ?
                     WHERE extension_id = 'test.extension'
-                """, (json.dumps(malicious_result),))
+                """,
+                    (json.dumps(malicious_result),),
+                )
                 conn.commit()
                 conn.close()
 
@@ -348,6 +367,7 @@ class SecurityTester:
             finally:
                 # Cleanup
                 import shutil
+
                 if os.path.exists(tmpdir):
                     shutil.rmtree(tmpdir)
 
@@ -367,10 +387,10 @@ class SecurityTester:
                     "name": "test",
                     "publisher": "test",
                     "version": "1.0.0",
-                    "description": "A" * (5 * 1024 * 1024)  # 5MB string
+                    "description": "A" * (5 * 1024 * 1024),  # 5MB string
                 }
 
-                with open(pkg_path, 'w') as f:
+                with open(pkg_path, "w") as f:
                     json.dump(large_data, f)
 
                 # Try to parse
@@ -410,7 +430,7 @@ class SecurityTester:
                     current["nested"] = {}
                     current = current["nested"]
 
-                with open(pkg_path, 'w') as f:
+                with open(pkg_path, "w") as f:
                     json.dump(nested, f)
 
                 # Try to parse
@@ -432,7 +452,6 @@ class SecurityTester:
             print(f"   ✅ Malicious JSON rejected: {type(e).__name__}")
             self.tests_passed += 1
 
-
     def test_extension_id_validation(self):
         """Test extension ID validation against SQL injection."""
         print("Test: Extension ID validation (SQL injection prevention)...")
@@ -445,7 +464,7 @@ class SecurityTester:
             "GitHub.copilot",
             "dbaeumer.vscode-eslint",
             "esbenp.prettier-vscode",
-            "redhat.java"
+            "redhat.java",
         ]
 
         # Invalid/malicious extension IDs
@@ -461,7 +480,7 @@ class SecurityTester:
             None,
             "publisher..name",
             "pub/lisher.name",
-            "pub\\lisher.name"
+            "pub\\lisher.name",
         ]
 
         all_passed = True

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Set, List, Dict, Optional
 
 # Get path to vscode_scanner package
-VSCODE_SCANNER_DIR = Path(__file__).parent.parent / 'vscode_scanner'
+VSCODE_SCANNER_DIR = Path(__file__).parent.parent / "vscode_scanner"
 
 
 def load_architecture_config() -> Dict:
@@ -36,7 +36,7 @@ def load_architecture_config() -> Dict:
         ValueError: If schema version is unsupported
         FileNotFoundError: If config file doesn't exist
     """
-    config_path = Path(__file__).parent / 'architecture_config.yaml'
+    config_path = Path(__file__).parent / "architecture_config.yaml"
 
     if not config_path.exists():
         raise FileNotFoundError(
@@ -44,15 +44,14 @@ def load_architecture_config() -> Dict:
             "Run: tests/architecture_config.yaml must exist"
         )
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # Validate schema version
-    schema_version = config.get('schema_version')
+    schema_version = config.get("schema_version")
     if schema_version != 1:
         raise ValueError(
-            f"Unsupported config schema version: {schema_version}\n"
-            f"Expected: 1"
+            f"Unsupported config schema version: {schema_version}\n" f"Expected: 1"
         )
 
     return config
@@ -62,16 +61,16 @@ def load_architecture_config() -> Dict:
 _CONFIG = load_architecture_config()
 
 # Extract module lists from config
-PRESENTATION_MODULES = _CONFIG['layers']['presentation']['modules']
-APPLICATION_MODULES = _CONFIG['layers']['application']['modules']
-INFRASTRUCTURE_MODULES = _CONFIG['layers']['infrastructure']['modules']
-SHARED_MODULES = _CONFIG['layers']['shared']['modules']
+PRESENTATION_MODULES = _CONFIG["layers"]["presentation"]["modules"]
+APPLICATION_MODULES = _CONFIG["layers"]["application"]["modules"]
+INFRASTRUCTURE_MODULES = _CONFIG["layers"]["infrastructure"]["modules"]
+SHARED_MODULES = _CONFIG["layers"]["shared"]["modules"]
 
 # Extract rules from config
-INFRASTRUCTURE_FORBIDDEN = _CONFIG['rules']['infrastructure_forbidden_imports']
-SHARED_FORBIDDEN = _CONFIG['rules']['shared_forbidden_imports']
-PURE_PRESENTATION = _CONFIG['rules']['pure_presentation_modules']
-EXPECTED_MODULE_COUNT = _CONFIG['expected_module_count']
+INFRASTRUCTURE_FORBIDDEN = _CONFIG["rules"]["infrastructure_forbidden_imports"]
+SHARED_FORBIDDEN = _CONFIG["rules"]["shared_forbidden_imports"]
+PURE_PRESENTATION = _CONFIG["rules"]["pure_presentation_modules"]
+EXPECTED_MODULE_COUNT = _CONFIG["expected_module_count"]
 
 
 def _parse_file(file_path: Path) -> Optional[ast.AST]:
@@ -85,7 +84,7 @@ def _parse_file(file_path: Path) -> Optional[ast.AST]:
         AST tree or None if parsing failed
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return ast.parse(f.read(), filename=str(file_path))
     except (SyntaxError, UnicodeDecodeError) as e:
         print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
@@ -114,15 +113,15 @@ def _extract_local_imports(tree: ast.AST) -> Set[str]:
             if node.level > 0 and node.module:
                 imports.add(node.module)
             # Handle absolute imports: from vscode_scanner.module import X
-            elif node.module and node.module.startswith('vscode_scanner'):
-                parts = node.module.split('.')
+            elif node.module and node.module.startswith("vscode_scanner"):
+                parts = node.module.split(".")
                 if len(parts) > 1:
                     imports.add(parts[1])
         elif isinstance(node, ast.Import):
             # Handle direct imports: import vscode_scanner.module
             for alias in node.names:
-                if alias.name.startswith('vscode_scanner.'):
-                    parts = alias.name.split('.')
+                if alias.name.startswith("vscode_scanner."):
+                    parts = alias.name.split(".")
                     if len(parts) > 1:
                         imports.add(parts[1])
 
@@ -151,16 +150,17 @@ def get_imports_from_file(file_path: Path) -> Set[str]:
 
 def get_all_modules() -> List[str]:
     """Get list of all Python modules in vscode_scanner/ (excluding __init__.py)."""
-    python_files = VSCODE_SCANNER_DIR.glob('*.py')
-    modules = [f.stem for f in python_files if f.name != '__init__.py']
+    python_files = VSCODE_SCANNER_DIR.glob("*.py")
+    modules = [f.stem for f in python_files if f.name != "__init__.py"]
     return sorted(modules)
 
 
 class TestArchitectureLayering(unittest.TestCase):
     """Test suite for architectural layer boundary validation."""
 
-    def _build_error_message(self, violations: List[Dict], header: str,
-                            fix_suggestions: List[str]) -> str:
+    def _build_error_message(
+        self, violations: List[Dict], header: str, fix_suggestions: List[str]
+    ) -> str:
         """
         Build formatted error message from violations.
 
@@ -179,14 +179,16 @@ class TestArchitectureLayering(unittest.TestCase):
 
         for v in violations:
             lines.append(f"  {v['module']}.py")
-            if 'layer' in v:
+            if "layer" in v:
                 lines.append(f" ({v['layer']} layer)")
             lines.append("\n")
 
-            if 'illegal_imports' in v:
-                lines.append(f"    Illegally imports: {', '.join(sorted(v['illegal_imports']))}\n")
+            if "illegal_imports" in v:
+                lines.append(
+                    f"    Illegally imports: {', '.join(sorted(v['illegal_imports']))}\n"
+                )
 
-            if 'reason' in v:
+            if "reason" in v:
                 lines.append(f"    Reason: {v['reason']}\n")
 
             lines.append("\n")
@@ -194,12 +196,15 @@ class TestArchitectureLayering(unittest.TestCase):
         # Add fix suggestions
         lines.append("\n".join(fix_suggestions))
 
-        return ''.join(lines)
+        return "".join(lines)
 
-    def _check_modules_for_violations(self, modules: List[str],
-                                     forbidden_modules: Set[str],
-                                     layer_name: str,
-                                     reason: str) -> List[Dict]:
+    def _check_modules_for_violations(
+        self,
+        modules: List[str],
+        forbidden_modules: Set[str],
+        layer_name: str,
+        reason: str,
+    ) -> List[Dict]:
         """
         Generic module checking pattern - reduces code duplication.
 
@@ -217,7 +222,7 @@ class TestArchitectureLayering(unittest.TestCase):
         violations = []
 
         for module_name in modules:
-            file_path = VSCODE_SCANNER_DIR / f'{module_name}.py'
+            file_path = VSCODE_SCANNER_DIR / f"{module_name}.py"
             if not file_path.exists():
                 continue
 
@@ -225,17 +230,25 @@ class TestArchitectureLayering(unittest.TestCase):
             violations_found = imports & forbidden_modules
 
             if violations_found:
-                violations.append({
-                    'module': module_name,
-                    'layer': layer_name,
-                    'illegal_imports': sorted(violations_found),
-                    'reason': reason
-                })
+                violations.append(
+                    {
+                        "module": module_name,
+                        "layer": layer_name,
+                        "illegal_imports": sorted(violations_found),
+                        "reason": reason,
+                    }
+                )
 
         return violations
 
-    def _find_cycle(self, node: str, visited: Set[str], rec_stack: Set[str],
-                   path: List[str], graph: Dict[str, Set[str]]) -> Optional[List[str]]:
+    def _find_cycle(
+        self,
+        node: str,
+        visited: Set[str],
+        rec_stack: Set[str],
+        path: List[str],
+        graph: Dict[str, Set[str]],
+    ) -> Optional[List[str]]:
         """
         Find cycle in dependency graph using DFS.
 
@@ -290,8 +303,8 @@ class TestArchitectureLayering(unittest.TestCase):
         violations = self._check_modules_for_violations(
             INFRASTRUCTURE_MODULES,
             forbidden_modules,
-            'Infrastructure',
-            'Infrastructure cannot import from Application or Presentation'
+            "Infrastructure",
+            "Infrastructure cannot import from Application or Presentation",
         )
 
         if violations:
@@ -299,12 +312,10 @@ class TestArchitectureLayering(unittest.TestCase):
                 "Fix: Infrastructure modules should return data/errors to callers.",
                 "Let Application/Presentation layers handle display logic.",
                 "",
-                "See: docs/guides/ARCHITECTURE.md for layer boundaries"
+                "See: docs/guides/ARCHITECTURE.md for layer boundaries",
             ]
             error_msg = self._build_error_message(
-                violations,
-                "ARCHITECTURE VIOLATIONS DETECTED",
-                fix_suggestions
+                violations, "ARCHITECTURE VIOLATIONS DETECTED", fix_suggestions
             )
             self.fail(error_msg)
 
@@ -321,13 +332,17 @@ class TestArchitectureLayering(unittest.TestCase):
 
         This test uses DFS to detect any cycles in the dependency graph.
         """
-        all_modules = (PRESENTATION_MODULES + APPLICATION_MODULES +
-                      INFRASTRUCTURE_MODULES + SHARED_MODULES)
+        all_modules = (
+            PRESENTATION_MODULES
+            + APPLICATION_MODULES
+            + INFRASTRUCTURE_MODULES
+            + SHARED_MODULES
+        )
 
         # Build dependency graph
         dependency_graph: Dict[str, Set[str]] = {}
         for module_name in all_modules:
-            file_path = VSCODE_SCANNER_DIR / f'{module_name}.py'
+            file_path = VSCODE_SCANNER_DIR / f"{module_name}.py"
             if file_path.exists():
                 imports = get_imports_from_file(file_path)
                 # Only track imports within our module set
@@ -346,9 +361,9 @@ class TestArchitectureLayering(unittest.TestCase):
                         "Consider:\n",
                         "  1. Moving shared code to utils.py\n",
                         "  2. Inverting the dependency\n",
-                        "  3. Creating a new shared module"
+                        "  3. Creating a new shared module",
                     ]
-                    self.fail(''.join(lines))
+                    self.fail("".join(lines))
 
     def test_presentation_layer_dependencies(self):
         """
@@ -366,7 +381,7 @@ class TestArchitectureLayering(unittest.TestCase):
 
         # Check pure presentation modules (loaded from config)
         for module_name in PURE_PRESENTATION:
-            file_path = VSCODE_SCANNER_DIR / f'{module_name}.py'
+            file_path = VSCODE_SCANNER_DIR / f"{module_name}.py"
             if not file_path.exists():
                 continue
 
@@ -374,21 +389,21 @@ class TestArchitectureLayering(unittest.TestCase):
             infrastructure_imports = imports & set(INFRASTRUCTURE_MODULES)
 
             if infrastructure_imports:
-                violations.append({
-                    'module': module_name,
-                    'illegal_imports': sorted(infrastructure_imports),
-                    'reason': 'Pure presentation modules should not import from Infrastructure'
-                })
+                violations.append(
+                    {
+                        "module": module_name,
+                        "illegal_imports": sorted(infrastructure_imports),
+                        "reason": "Pure presentation modules should not import from Infrastructure",
+                    }
+                )
 
         if violations:
             fix_suggestions = [
                 "Presentation layer should use Application layer as intermediary.",
-                "Move Infrastructure access to scanner.py or vscan.py."
+                "Move Infrastructure access to scanner.py or vscan.py.",
             ]
             error_msg = self._build_error_message(
-                violations,
-                "PRESENTATION LAYER VIOLATIONS",
-                fix_suggestions
+                violations, "PRESENTATION LAYER VIOLATIONS", fix_suggestions
             )
             self.fail(error_msg)
 
@@ -414,7 +429,7 @@ class TestArchitectureLayering(unittest.TestCase):
                 "\n\n❌ MODULE COUNT MISMATCH:\n\n",
                 f"  Expected: {expected_count} modules (per ARCHITECTURE.md)\n",
                 f"  Actual:   {actual_count} modules\n\n",
-                "  Current modules:\n"
+                "  Current modules:\n",
             ]
 
             for module in actual_modules:
@@ -432,12 +447,14 @@ class TestArchitectureLayering(unittest.TestCase):
 
                 lines.append(f"    - {module}.py ({layer})\n")
 
-            lines.extend([
-                "\nAction: Update docs/guides/ARCHITECTURE.md with current module count.\n",
-                "Also update module classifications if new modules exist."
-            ])
+            lines.extend(
+                [
+                    "\nAction: Update docs/guides/ARCHITECTURE.md with current module count.\n",
+                    "Also update module classifications if new modules exist.",
+                ]
+            )
 
-            self.fail(''.join(lines))
+            self.fail("".join(lines))
 
     def test_shared_modules_have_no_app_dependencies(self):
         """
@@ -456,17 +473,18 @@ class TestArchitectureLayering(unittest.TestCase):
         - Application modules
         - Presentation modules
         """
-        forbidden = set(PRESENTATION_MODULES + APPLICATION_MODULES +
-                       INFRASTRUCTURE_MODULES)
+        forbidden = set(
+            PRESENTATION_MODULES + APPLICATION_MODULES + INFRASTRUCTURE_MODULES
+        )
 
         # Check utils and constants specifically
-        critical_shared = ['utils', 'constants']
+        critical_shared = ["utils", "constants"]
 
         violations = self._check_modules_for_violations(
             critical_shared,
             forbidden,
-            'Shared',
-            'Shared modules must remain dependency-free'
+            "Shared",
+            "Shared modules must remain dependency-free",
         )
 
         if violations:
@@ -474,12 +492,10 @@ class TestArchitectureLayering(unittest.TestCase):
                 "Shared modules should only use standard library.",
                 "They must remain dependency-free to be truly shared.",
                 "",
-                "If you need application functionality, move code out of utils/constants."
+                "If you need application functionality, move code out of utils/constants.",
             ]
             error_msg = self._build_error_message(
-                violations,
-                "SHARED MODULE VIOLATIONS",
-                fix_suggestions
+                violations, "SHARED MODULE VIOLATIONS", fix_suggestions
             )
             self.fail(error_msg)
 
@@ -515,5 +531,5 @@ def main():
     print("\n" + "=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

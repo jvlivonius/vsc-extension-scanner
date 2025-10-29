@@ -56,7 +56,7 @@
 ### System & Architecture
 `cfg` config • `impl` implementation • `arch` architecture • `perf` performance • `ops` operations • `env` environment
 
-### Development Process  
+### Development Process
 `req` requirements • `deps` dependencies • `val` validation • `test` testing • `docs` documentation • `std` standards
 
 ### Quality & Analysis

@@ -77,8 +77,8 @@ class TestTask1PathValidationRegression(unittest.TestCase):
         """Test that all URL-encoded attack variants are blocked."""
         url_encoded_attacks = [
             "%2e%2e%2f",  # ../
-            "%2e%2e/",    # ../
-            "..%2f",      # ../
+            "%2e%2e/",  # ../
+            "..%2f",  # ../
             "%2e%2e%5c",  # ..\
             "test%00.txt",  # Null byte
             "test%0a.txt",  # Newline
@@ -126,10 +126,10 @@ class TestTask1PathValidationRegression(unittest.TestCase):
         """Test that all dangerous characters are blocked."""
         dangerous_paths = [
             "test\x00.txt",  # Null byte
-            "test | cat",    # Pipe
+            "test | cat",  # Pipe
             "test; rm -rf",  # Semicolon
             "test`whoami`.txt",  # Backtick
-            "test\n.txt",    # Newline
+            "test\n.txt",  # Newline
             # Note: ${...} is shell syntax, harmless in Python paths (not expanded by Python)
         ]
 
@@ -140,14 +140,14 @@ class TestTask1PathValidationRegression(unittest.TestCase):
     def test_shell_expansion_safe(self):
         """Test that shell expansion works safely and doesn't bypass security."""
         # Set env var to system directory
-        os.environ['MALICIOUS_PATH'] = '/etc'
+        os.environ["MALICIOUS_PATH"] = "/etc"
 
         try:
             # Should expand and then block
             with self.assertRaises(ValueError):
                 validate_path("$MALICIOUS_PATH/passwd", path_type="test")
         finally:
-            del os.environ['MALICIOUS_PATH']
+            del os.environ["MALICIOUS_PATH"]
 
     def test_validation_across_all_entry_points(self):
         """Test that validation works at all entry points."""
@@ -162,7 +162,7 @@ class TestTask1PathValidationRegression(unittest.TestCase):
 
         # Config manager
         with self.assertRaises(ValueError):
-            validate_config_value('cache', 'cache_dir', '/etc/vscan')
+            validate_config_value("cache", "cache_dir", "/etc/vscan")
 
 
 class TestTask2StringSanitizationRegression(unittest.TestCase):
@@ -194,7 +194,21 @@ class TestTask2StringSanitizationRegression(unittest.TestCase):
             # Should not contain escape character
             self.assertNotIn("\x1b", result)
             # Should contain only the text portion
-            self.assertTrue(any(word in result for word in ["red", "bold", "underline", "reverse", "up", "pos", "Clear", "text"]))
+            self.assertTrue(
+                any(
+                    word in result
+                    for word in [
+                        "red",
+                        "bold",
+                        "underline",
+                        "reverse",
+                        "up",
+                        "pos",
+                        "Clear",
+                        "text",
+                    ]
+                )
+            )
 
     def test_control_characters_removed_comprehensive(self):
         """Test that all dangerous control characters are removed."""
@@ -223,9 +237,9 @@ class TestTask2StringSanitizationRegression(unittest.TestCase):
         """Test that safe whitespace is always preserved."""
         test_cases = [
             ("line1\nline2", "line1\nline2"),  # Newline
-            ("col1\tcol2", "col1\tcol2"),      # Tab
-            ("text\r\n", "text\r\n"),           # CRLF
-            ("  spaces  ", "  spaces  "),       # Spaces
+            ("col1\tcol2", "col1\tcol2"),  # Tab
+            ("text\r\n", "text\r\n"),  # CRLF
+            ("  spaces  ", "  spaces  "),  # Spaces
         ]
 
         for input_text, expected in test_cases:
@@ -256,9 +270,9 @@ class TestTask2StringSanitizationRegression(unittest.TestCase):
         unicode_tests = [
             "Hello 世界",  # Chinese
             "Привет мир",  # Russian
-            "🚀 Rocket",   # Emoji
-            "café",        # Accented
-            "\u200b",      # Zero-width space (should be preserved, not dangerous)
+            "🚀 Rocket",  # Emoji
+            "café",  # Accented
+            "\u200b",  # Zero-width space (should be preserved, not dangerous)
         ]
 
         for text in unicode_tests:
@@ -304,7 +318,7 @@ class TestTask3CacheIntegrityRegression(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -324,11 +338,14 @@ class TestTask3CacheIntegrityRegression(unittest.TestCase):
             malicious_result = test_result.copy()
             malicious_result[field] = new_value
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE scan_cache
                 SET scan_result = ?
                 WHERE extension_id = 'test.extension'
-            """, (json.dumps(malicious_result),))
+            """,
+                (json.dumps(malicious_result),),
+            )
             conn.commit()
             conn.close()
 
@@ -344,7 +361,7 @@ class TestTask3CacheIntegrityRegression(unittest.TestCase):
             "scan_status": "success",
             "security_score": 90,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -355,7 +372,8 @@ class TestTask3CacheIntegrityRegression(unittest.TestCase):
         # Rotate key (simulate key change)
         secret_file = Path(self.test_dir) / ".cache_secret"
         import secrets
-        with open(secret_file, 'wb') as f:
+
+        with open(secret_file, "wb") as f:
             f.write(secrets.token_bytes(32))
 
         # Create new cache manager with new key
@@ -374,19 +392,31 @@ class TestTask3CacheIntegrityRegression(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
 
         conn = sqlite3.connect(cache.cache_db)
         cursor = conn.cursor()
         from datetime import datetime
-        cursor.execute("""
+
+        cursor.execute(
+            """
             INSERT INTO scan_cache
             (extension_id, version, scan_result, scanned_at, risk_level, security_score,
              vulnerabilities_count, integrity_signature)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, ("unsigned.extension", "1.0.0", json.dumps(test_result), datetime.now().isoformat(),
-              "low", 85, 0, None))
+        """,
+            (
+                "unsigned.extension",
+                "1.0.0",
+                json.dumps(test_result),
+                datetime.now().isoformat(),
+                "low",
+                85,
+                0,
+                None,
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -450,7 +480,7 @@ class TestSecurityIntegration(unittest.TestCase):
             "security_score": 85,
             "risk_level": "low",
             "vulnerabilities": {"count": 0},
-            "malicious_field": "../../../etc/passwd"
+            "malicious_field": "../../../etc/passwd",
         }
 
         # Should save successfully (path is just data, not used for file access)
@@ -484,7 +514,7 @@ class TestSecurityIntegration(unittest.TestCase):
                 "scan_status": "success",
                 "security_score": 85,
                 "risk_level": "low",
-                "vulnerabilities": {"count": 0}
+                "vulnerabilities": {"count": 0},
             }
 
             # This should not cause SQL injection (parameterized query)
@@ -513,7 +543,7 @@ class TestSecurityIntegration(unittest.TestCase):
             "security_score": 85,
             "risk_level": "low",
             "vulnerabilities": {"count": 0},
-            "display_name": "\x1b[31mMalicious Extension\x1b[0m"
+            "display_name": "\x1b[31mMalicious Extension\x1b[0m",
         }
 
         cache.save_result("test.extension", "1.0.0", test_result)
@@ -540,7 +570,7 @@ class TestSecurityIntegration(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -549,11 +579,14 @@ class TestSecurityIntegration(unittest.TestCase):
         cursor = conn.cursor()
         malicious_result = test_result.copy()
         malicious_result["security_score"] = 100
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE scan_cache
             SET scan_result = ?
             WHERE extension_id = 'test.extension'
-        """, (json.dumps(malicious_result),))
+        """,
+            (json.dumps(malicious_result),),
+        )
         conn.commit()
         conn.close()
 
@@ -583,11 +616,11 @@ class TestSecurityDocumentation(unittest.TestCase):
         """
         # Malicious extension display name
         malicious_output = (
-            "\x1b[2J"           # Clear screen
-            "\x1b[H"            # Move cursor to home
-            "\x1b[31m"          # Red color
+            "\x1b[2J"  # Clear screen
+            "\x1b[H"  # Move cursor to home
+            "\x1b[31m"  # Red color
             "[ERROR] Security check failed! System compromised!"
-            "\x1b[0m"           # Reset
+            "\x1b[0m"  # Reset
             "\n\n"
             "Your extensions are safe."  # Fake reassurance
         )
@@ -644,7 +677,7 @@ class TestSecurityDocumentation(unittest.TestCase):
                 "scan_status": "success",
                 "security_score": 15,  # Low score (malicious)
                 "risk_level": "critical",
-                "vulnerabilities": {"count": 25}
+                "vulnerabilities": {"count": 25},
             }
             cache.save_result("malicious.extension", "1.0.0", legitimate_result)
 
@@ -657,11 +690,14 @@ class TestSecurityDocumentation(unittest.TestCase):
             fake_result["risk_level"] = "low"
             fake_result["vulnerabilities"]["count"] = 0
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE scan_cache
                 SET scan_result = ?
                 WHERE extension_id = 'malicious.extension'
-            """, (json.dumps(fake_result),))
+            """,
+                (json.dumps(fake_result),),
+            )
             conn.commit()
             conn.close()
 
@@ -697,7 +733,7 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("SECURITY REGRESSION TEST SUITE (v3.5.1 Phase 1 Complete)")
     print("=" * 80)

@@ -59,14 +59,14 @@ class TestPathValidation(unittest.TestCase):
     def test_shell_expansion_env_vars(self):
         """Test that $HOME and other env vars expand and are validated."""
         # Set test environment variable
-        os.environ['TEST_PATH'] = '/tmp'
+        os.environ["TEST_PATH"] = "/tmp"
 
         try:
             # Should not raise - expands $TEST_PATH and validates
             result = validate_path("$TEST_PATH/results.json", path_type="output")
             self.assertTrue(result)
         finally:
-            del os.environ['TEST_PATH']
+            del os.environ["TEST_PATH"]
 
     def test_url_encoding_blocked(self):
         """Test that URL-encoded paths are blocked."""
@@ -212,7 +212,7 @@ class TestPathValidation(unittest.TestCase):
     def test_shell_expansion_with_system_dir(self):
         """Test that shell expansion doesn't bypass system directory blocking."""
         # Set env var to system directory
-        os.environ['EVIL_PATH'] = '/etc'
+        os.environ["EVIL_PATH"] = "/etc"
 
         try:
             # Should expand $EVIL_PATH to /etc and then block it
@@ -220,7 +220,7 @@ class TestPathValidation(unittest.TestCase):
                 validate_path("$EVIL_PATH/passwd", path_type="output")
             self.assertIn("system", str(cm.exception).lower())
         finally:
-            del os.environ['EVIL_PATH']
+            del os.environ["EVIL_PATH"]
 
     def test_path_type_parameter(self):
         """Test that path_type parameter is included in error messages."""
@@ -229,7 +229,7 @@ class TestPathValidation(unittest.TestCase):
             "output",
             "cache directory",
             "extensions directory",
-            "config file"
+            "config file",
         ]
 
         for path_type in path_types:
@@ -268,12 +268,12 @@ class TestPathValidationIntegration(unittest.TestCase):
 
         # URL-encoded path in config should be rejected
         with self.assertRaises(ValueError) as cm:
-            validate_config_value('scan', 'extensions_dir', '%2e%2e%2f')
+            validate_config_value("scan", "extensions_dir", "%2e%2e%2f")
         self.assertIn("URL-encoded", str(cm.exception))
 
         # System directory in config should be rejected
         with self.assertRaises(ValueError) as cm:
-            validate_config_value('cache', 'cache_dir', '/etc/vscan')
+            validate_config_value("cache", "cache_dir", "/etc/vscan")
         self.assertIn("system", str(cm.exception).lower())
 
 
@@ -295,7 +295,7 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 70)
     print("PATH VALIDATION TESTS (v3.5.1 Security Hardening)")
     print("=" * 70)

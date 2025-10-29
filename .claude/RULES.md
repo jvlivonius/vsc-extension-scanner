@@ -4,13 +4,13 @@ Actionable rules for enhanced Claude Code framework operation.
 
 ## Rule Priority System
 
-**🔴 CRITICAL**: Security, data safety, production breaks - Never compromise  
-**🟡 IMPORTANT**: Quality, maintainability, professionalism - Strong preference  
+**🔴 CRITICAL**: Security, data safety, production breaks - Never compromise
+**🟡 IMPORTANT**: Quality, maintainability, professionalism - Strong preference
 **🟢 RECOMMENDED**: Optimization, style, best practices - Apply when practical
 
 ### Conflict Resolution Hierarchy
 1. **Safety First**: Security/data rules always win
-2. **Scope > Features**: Build only what's asked > complete everything  
+2. **Scope > Features**: Build only what's asked > complete everything
 3. **Quality > Speed**: Except in genuine emergencies
 4. **Context Matters**: Prototype vs Production requirements differ
 
@@ -69,7 +69,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Resource Estimation**: Consider token usage and execution time during planning phase
 - **Efficiency Metrics**: Plan should specify expected parallelization gains (e.g., "3 parallel ops = 60% time saving")
 
-✅ **Right**: "Plan: 1) Parallel: [Read 5 files] 2) Sequential: analyze → 3) Parallel: [Edit all files]"  
+✅ **Right**: "Plan: 1) Parallel: [Read 5 files] 2) Sequential: analyze → 3) Parallel: [Edit all files]"
 ❌ **Wrong**: "Plan: Read file1 → Read file2 → Read file3 → analyze → edit file1 → edit file2"
 
 ## Implementation Completeness
@@ -82,8 +82,8 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Completion Mindset**: "Start it = Finish it" - no exceptions for feature delivery
 - **Real Code Only**: All generated code must be production-ready, not scaffolding
 
-✅ **Right**: `function calculate() { return price * tax; }`  
-❌ **Wrong**: `function calculate() { throw new Error("Not implemented"); }`  
+✅ **Right**: `function calculate() { return price * tax; }`
+❌ **Wrong**: `function calculate() { throw new Error("Not implemented"); }`
 ❌ **Wrong**: `// TODO: implement tax calculation`
 
 ## Scope Discipline
@@ -97,7 +97,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Think Before Build**: Understand → Plan → Build, not Build → Build more
 - **YAGNI Enforcement**: You Aren't Gonna Need It - no speculative features
 
-✅ **Right**: "Build login form" → Just login form  
+✅ **Right**: "Build login form" → Just login form
 ❌ **Wrong**: "Build login form" → Login + registration + password reset + 2FA
 
 ## Code Organization
@@ -111,7 +111,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **No Mixed Conventions**: Never mix camelCase/snake_case/kebab-case within same project
 - **Elegant Organization**: Clean, scalable structure that aids navigation and understanding
 
-✅ **Right**: `getUserData()`, `user_data.py`, `components/auth/`  
+✅ **Right**: `getUserData()`, `user_data.py`, `components/auth/`
 ❌ **Wrong**: `get_userData()`, `userdata.py`, `files/everything/`
 
 ## Workspace Hygiene
@@ -125,7 +125,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Version Control Hygiene**: Never leave temporary files that could be accidentally committed
 - **Resource Management**: Delete unused directories and files to prevent workspace bloat
 
-✅ **Right**: `rm temp_script.py` after use  
+✅ **Right**: `rm temp_script.py` after use
 ❌ **Wrong**: Leaving `debug.sh`, `test.log`, `temp/` directories
 
 ## Failure Investigation
@@ -140,8 +140,8 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Quality Integrity**: Never compromise system integrity to achieve short-term results
 - **Methodical Problem-Solving**: Understand → Diagnose → Fix → Verify, don't rush to solutions
 
-✅ **Right**: Analyze stack trace → identify root cause → fix properly  
-❌ **Wrong**: Comment out failing test to make build pass  
+✅ **Right**: Analyze stack trace → identify root cause → fix properly
+❌ **Wrong**: Comment out failing test to make build pass
 **Detection**: `grep -r "skip\|disable\|TODO" tests/`
 
 ## Professional Honesty
@@ -156,7 +156,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Realistic Assessments**: State "untested", "MVP", "needs validation" - not "production-ready"
 - **Professional Language**: Use technical terms, avoid sales/marketing superlatives
 
-✅ **Right**: "This approach has trade-offs: faster but uses more memory"  
+✅ **Right**: "This approach has trade-offs: faster but uses more memory"
 ❌ **Wrong**: "This magnificent solution is blazingly fast and 100% secure!"
 
 ## Git Workflow
@@ -171,8 +171,8 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Clean History**: Use descriptive commit messages, avoid "fix", "update", "changes"
 - **Non-Destructive Workflow**: Always preserve ability to rollback changes
 
-✅ **Right**: `git checkout -b feature/auth` → work → commit → PR  
-❌ **Wrong**: Work directly on main/master branch  
+✅ **Right**: `git checkout -b feature/auth` → work → commit → PR
+❌ **Wrong**: Work directly on main/master branch
 **Detection**: `git branch` should show feature branch, not main/master
 
 ## Tool Optimization
@@ -187,7 +187,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Efficiency First**: Choose speed and power over familiarity - use the fastest method available
 - **Tool Specialization**: Match tools to their designed purpose (e.g., playwright for web, context7 for docs)
 
-✅ **Right**: Use MultiEdit for 3+ file changes, parallel Read calls  
+✅ **Right**: Use MultiEdit for 3+ file changes, parallel Read calls
 ❌ **Wrong**: Sequential Edit calls, bash grep instead of Grep tool
 
 ## File Organization
@@ -203,7 +203,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Separation of Concerns**: Keep tests, scripts, docs, and source code properly separated
 - **Purpose-Based Organization**: Organize files by their intended function and audience
 
-✅ **Right**: `tests/auth.test.js`, `scripts/deploy.sh`, `claudedocs/analysis.md`  
+✅ **Right**: `tests/auth.test.js`, `scripts/deploy.sh`, `claudedocs/analysis.md`
 ❌ **Wrong**: `auth.test.js` next to `auth.js`, `debug.sh` in project root
 
 ## Safety Rules
@@ -214,7 +214,7 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Transaction-Safe**: Prefer batch operations with rollback capability
 - **Systematic Changes**: Plan → Execute → Verify for codebase modifications
 
-✅ **Right**: Check dependencies → follow patterns → execute safely  
+✅ **Right**: Check dependencies → follow patterns → execute safely
 ❌ **Wrong**: Ignore existing conventions, make unplanned changes
 
 ## Temporal Awareness
@@ -226,8 +226,8 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Version Context**: When discussing "latest" versions, always verify against current date
 - **Temporal Calculations**: Base all time math on verified current date, not assumptions
 
-✅ **Right**: "Checking env: Today is 2025-08-15, so the Q3 deadline is..."  
-❌ **Wrong**: "Since it's January 2025..." (without checking)  
+✅ **Right**: "Checking env: Today is 2025-08-15, so the Q3 deadline is..."
+❌ **Wrong**: "Since it's January 2025..." (without checking)
 **Detection**: Any date reference without prior env verification
 
 
@@ -259,7 +259,7 @@ Task type → Best tool:
 ├─ Multi-file edits → MultiEdit > individual Edits
 ├─ Complex analysis → Task agent > native reasoning
 ├─ Code search → Grep > bash grep
-├─ UI components → Magic MCP > manual coding  
+├─ UI components → Magic MCP > manual coding
 ├─ Documentation → Context7 MCP > web search
 └─ Browser testing → Playwright MCP > unit tests
 ```
@@ -268,7 +268,7 @@ Task type → Best tool:
 
 #### 🔴 CRITICAL (Never Compromise)
 - `git status && git branch` before starting
-- Read before Write/Edit operations  
+- Read before Write/Edit operations
 - Feature branches only, never main/master
 - Root cause analysis, never skip validation
 - Absolute paths, no auto-commit
@@ -280,7 +280,7 @@ Task type → Best tool:
 - Professional language (no marketing superlatives)
 - Clean workspace (remove temp files)
 
-#### 🟢 RECOMMENDED (Apply When Practical)  
+#### 🟢 RECOMMENDED (Apply When Practical)
 - Parallel operations over sequential
 - Descriptive naming conventions
 - MCP tools over basic alternatives

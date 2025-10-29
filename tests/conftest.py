@@ -39,7 +39,7 @@ def temp_cache_dir() -> Generator[Path, None, None]:
             # Use cache...
             # temp_cache_dir is automatically cleaned up
     """
-    tmpdir = tempfile.mkdtemp(prefix='vscan_test_cache_')
+    tmpdir = tempfile.mkdtemp(prefix="vscan_test_cache_")
     try:
         yield Path(tmpdir)
     finally:
@@ -61,7 +61,7 @@ def sample_extensions_dir() -> Path:
             extensions = discover_extensions(sample_extensions_dir)
             assert len(extensions) > 0
     """
-    fixtures_dir = Path(__file__).parent / 'fixtures' / 'sample_extensions'
+    fixtures_dir = Path(__file__).parent / "fixtures" / "sample_extensions"
 
     # Create fixtures directory if it doesn't exist
     if not fixtures_dir.exists():
@@ -91,29 +91,31 @@ def mock_vscan_api():
             result = perform_scan()
             assert result['extensions'][0]['security']['score'] == 85
     """
-    with mock.patch('vscode_scanner.vscan_api.VScanAPIClient.scan_extension') as mock_scan:
+    with mock.patch(
+        "vscode_scanner.vscan_api.VScanAPIClient.scan_extension"
+    ) as mock_scan:
         # Default mock response
         mock_scan.return_value = {
-            'security': {
-                'score': 85,
-                'risk_level': 'low',
-                'vulnerabilities': {
-                    'total': 0,
-                    'critical': 0,
-                    'high': 0,
-                    'moderate': 0,
-                    'low': 0
-                }
+            "security": {
+                "score": 85,
+                "risk_level": "low",
+                "vulnerabilities": {
+                    "total": 0,
+                    "critical": 0,
+                    "high": 0,
+                    "moderate": 0,
+                    "low": 0,
+                },
             },
-            'publisher': {
-                'id': 'test-publisher',
-                'name': 'Test Publisher',
-                'verified': True
+            "publisher": {
+                "id": "test-publisher",
+                "name": "Test Publisher",
+                "verified": True,
             },
-            'metadata': {
-                'display_name': 'Test Extension',
-                'description': 'A test extension'
-            }
+            "metadata": {
+                "display_name": "Test Extension",
+                "description": "A test extension",
+            },
         }
         yield mock_scan
 
@@ -134,7 +136,7 @@ def temp_output_file() -> Generator[Path, None, None]:
             assert temp_output_file.exists()
             # File is automatically cleaned up
     """
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
         temp_path = Path(f.name)
 
     try:
@@ -159,46 +161,42 @@ def mock_extension_data():
             assert formatted['name'] == 'test-extension'
     """
     return {
-        'name': 'test-extension',
-        'display_name': 'Test Extension',
-        'id': 'test-publisher.test-extension',
-        'version': '1.0.0',
-        'publisher': {
-            'id': 'test-publisher',
-            'name': 'Test Publisher',
-            'verified': True,
-            'domain': 'example.com',
-            'reputation': 100
+        "name": "test-extension",
+        "display_name": "Test Extension",
+        "id": "test-publisher.test-extension",
+        "version": "1.0.0",
+        "publisher": {
+            "id": "test-publisher",
+            "name": "Test Publisher",
+            "verified": True,
+            "domain": "example.com",
+            "reputation": 100,
         },
-        'security': {
-            'score': 85,
-            'risk_level': 'low',
-            'vulnerabilities': {
-                'total': 0,
-                'critical': 0,
-                'high': 0,
-                'moderate': 0,
-                'low': 0
+        "security": {
+            "score": 85,
+            "risk_level": "low",
+            "vulnerabilities": {
+                "total": 0,
+                "critical": 0,
+                "high": 0,
+                "moderate": 0,
+                "low": 0,
             },
-            'risk_factors': [],
-            'dependencies': {
-                'total_count': 5,
-                'with_vulnerabilities': 0,
-                'list': []
-            }
+            "risk_factors": [],
+            "dependencies": {"total_count": 5, "with_vulnerabilities": 0, "list": []},
         },
-        'metadata': {
-            'description': 'A test extension for unit tests',
-            'install_count': 1000,
-            'rating': 4.5,
-            'rating_count': 100,
-            'keywords': ['test', 'example'],
-            'repository_url': 'https://github.com/test/test-extension',
-            'homepage_url': 'https://github.com/test/test-extension',
-            'last_updated': '2025-10-24'
+        "metadata": {
+            "description": "A test extension for unit tests",
+            "install_count": 1000,
+            "rating": 4.5,
+            "rating_count": 100,
+            "keywords": ["test", "example"],
+            "repository_url": "https://github.com/test/test-extension",
+            "homepage_url": "https://github.com/test/test-extension",
+            "last_updated": "2025-10-24",
         },
-        'vscan_url': 'https://vscan.dev/extension/test-publisher.test-extension',
-        'scan_status': 'success'
+        "vscan_url": "https://vscan.dev/extension/test-publisher.test-extension",
+        "scan_status": "success",
     }
 
 
@@ -219,6 +217,7 @@ def reset_environment():
     """
     # Store original environment
     import os
+
     original_env = dict(os.environ)
 
     yield  # Run the test
@@ -234,12 +233,8 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "security: marks tests as security tests"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "security: marks tests as security tests")
     config.addinivalue_line(
         "markers", "architecture: marks tests as architecture tests"
     )

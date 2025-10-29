@@ -12,7 +12,14 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from .utils import log, sanitize_string, sanitize_error_message, is_restricted_path, is_temp_directory, validate_path
+from .utils import (
+    log,
+    sanitize_string,
+    sanitize_error_message,
+    is_restricted_path,
+    is_temp_directory,
+    validate_path,
+)
 from .constants import MAX_PACKAGE_JSON_SIZE
 
 
@@ -52,15 +59,21 @@ class ExtensionDiscovery:
         json_path = extensions_dir / "extensions.json"
 
         if not json_path.exists():
-            log("extensions.json not found, will scan all extension directories", "WARNING")
+            log(
+                "extensions.json not found, will scan all extension directories",
+                "WARNING",
+            )
             return {}
 
         try:
-            with open(json_path, 'r', encoding='utf-8') as f:
+            with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             if not isinstance(data, list):
-                log("extensions.json is not a list, will scan all extension directories", "WARNING")
+                log(
+                    "extensions.json is not a list, will scan all extension directories",
+                    "WARNING",
+                )
                 return {}
 
             installed = {}
@@ -69,42 +82,47 @@ class ExtensionDiscovery:
                     continue
 
                 # Extract extension ID
-                identifier = entry.get('identifier', {})
+                identifier = entry.get("identifier", {})
                 if not isinstance(identifier, dict):
                     continue
 
-                ext_id = identifier.get('id')
+                ext_id = identifier.get("id")
                 if not ext_id:
                     continue
 
                 # Extract version
-                version = entry.get('version')
+                version = entry.get("version")
                 if not version:
                     continue
 
                 # Extract relative location (directory name)
-                relative_location = entry.get('relativeLocation')
+                relative_location = entry.get("relativeLocation")
                 if not relative_location:
                     continue
 
                 # Extract installation timestamp
-                metadata = entry.get('metadata', {})
+                metadata = entry.get("metadata", {})
                 if not isinstance(metadata, dict):
                     continue
 
-                installed_timestamp = metadata.get('installedTimestamp')
+                installed_timestamp = metadata.get("installedTimestamp")
 
                 # Store extension metadata keyed by directory name
                 installed[relative_location] = {
-                    'id': ext_id.lower(),  # Lowercase for case-insensitive matching
-                    'version': version,
-                    'timestamp': int(installed_timestamp) if installed_timestamp and isinstance(installed_timestamp, (int, float)) else None
+                    "id": ext_id.lower(),  # Lowercase for case-insensitive matching
+                    "version": version,
+                    "timestamp": int(installed_timestamp)
+                    if installed_timestamp
+                    and isinstance(installed_timestamp, (int, float))
+                    else None,
                 }
 
             return installed
 
         except (json.JSONDecodeError, IOError) as e:
-            sanitized_error = sanitize_error_message(str(e), context="extensions.json parsing")
+            sanitized_error = sanitize_error_message(
+                str(e), context="extensions.json parsing"
+            )
             log(f"Failed to parse extensions.json: {sanitized_error}", "WARNING")
             return {}
 
@@ -123,19 +141,28 @@ class ExtensionDiscovery:
             # Blocks: URL encoding, dangerous chars, parent traversal, system directories
             # Expands: shell variables (~/, $HOME/, $USER/)
             try:
-                validate_path(self.custom_dir, allow_absolute=True, path_type="extensions directory")
+                validate_path(
+                    self.custom_dir,
+                    allow_absolute=True,
+                    path_type="extensions directory",
+                )
             except ValueError as e:
                 raise FileNotFoundError(f"[E300] {str(e)}")
 
             # Expand and resolve path (validation already expanded for checking)
             import os
+
             expanded = os.path.expandvars(os.path.expanduser(self.custom_dir))
             custom_path = Path(expanded).resolve()
 
             if not custom_path.exists():
-                raise FileNotFoundError(f"[E301] Custom extensions directory not found: {custom_path}")
+                raise FileNotFoundError(
+                    f"[E301] Custom extensions directory not found: {custom_path}"
+                )
             if not custom_path.is_dir():
-                raise FileNotFoundError(f"Custom extensions path is not a directory: {custom_path}")
+                raise FileNotFoundError(
+                    f"Custom extensions path is not a directory: {custom_path}"
+                )
 
             return custom_path
 
@@ -186,7 +213,7 @@ class ExtensionDiscovery:
                     continue
 
                 # Skip hidden directories
-                if ext_dir.name.startswith('.'):
+                if ext_dir.name.startswith("."):
                     continue
 
                 # Skip if not in installed extensions list (filters out old versions)
@@ -201,25 +228,40 @@ class ExtensionDiscovery:
                     if metadata:
                         # Add installation timestamp if available
                         if ext_dir.name in installed_extensions:
-                            timestamp = installed_extensions[ext_dir.name].get('timestamp')
+                            timestamp = installed_extensions[ext_dir.name].get(
+                                "timestamp"
+                            )
                             if timestamp:
                                 # Convert Unix ms to ISO format
                                 timestamp_sec = timestamp / 1000
                                 try:
-                                    installed_at = datetime.fromtimestamp(timestamp_sec).isoformat() + 'Z'
-                                    metadata['installed_at'] = installed_at
+                                    installed_at = (
+                                        datetime.fromtimestamp(
+                                            timestamp_sec
+                                        ).isoformat()
+                                        + "Z"
+                                    )
+                                    metadata["installed_at"] = installed_at
                                 except (ValueError, OSError) as e:
                                     # Invalid timestamp, skip installation date
-                                    log(f"Invalid timestamp for {metadata['id']}: {timestamp}", "WARNING")
+                                    log(
+                                        f"Invalid timestamp for {metadata['id']}: {timestamp}",
+                                        "WARNING",
+                                    )
 
                         extensions.append(metadata)
                 except Exception as e:
                     # Log warning but continue with other extensions
-                    log(f"Warning: Failed to parse extension at {sanitize_string(str(ext_dir), max_length=100)}: {sanitize_string(str(e), max_length=150)}", "WARNING")
+                    log(
+                        f"Warning: Failed to parse extension at {sanitize_string(str(ext_dir), max_length=100)}: {sanitize_string(str(e), max_length=150)}",
+                        "WARNING",
+                    )
                     continue
 
         except PermissionError as e:
-            raise Exception(f"Permission denied reading extensions directory: {sanitize_string(str(e), max_length=200)}")
+            raise Exception(
+                f"Permission denied reading extensions directory: {sanitize_string(str(e), max_length=200)}"
+            )
 
         return extensions
 
@@ -246,10 +288,12 @@ class ExtensionDiscovery:
             # Check file size first
             file_size = package_json_path.stat().st_size
             if file_size > MAX_PACKAGE_JSON_SIZE:
-                raise Exception(f"package.json too large: {file_size} bytes (max: {MAX_PACKAGE_JSON_SIZE})")
+                raise Exception(
+                    f"package.json too large: {file_size} bytes (max: {MAX_PACKAGE_JSON_SIZE})"
+                )
 
             # Read and parse
-            with open(package_json_path, 'r', encoding='utf-8') as f:
+            with open(package_json_path, "r", encoding="utf-8") as f:
                 content = f.read()
                 package_data = json.loads(content)
 
@@ -259,17 +303,21 @@ class ExtensionDiscovery:
 
         except json.JSONDecodeError as e:
             # Sanitize JSON decode error message
-            sanitized_error = sanitize_error_message(str(e), context="JSON parsing error")
+            sanitized_error = sanitize_error_message(
+                str(e), context="JSON parsing error"
+            )
             raise Exception(f"Invalid JSON in package.json: {sanitized_error}")
         except Exception as e:
             # Sanitize generic error message
-            sanitized_error = sanitize_error_message(str(e), context="file reading error")
+            sanitized_error = sanitize_error_message(
+                str(e), context="file reading error"
+            )
             raise Exception(f"Error reading package.json: {sanitized_error}")
 
         # Extract required fields
-        name = package_data.get('name')
-        publisher = package_data.get('publisher')
-        version = package_data.get('version')
+        name = package_data.get("name")
+        publisher = package_data.get("publisher")
+        version = package_data.get("version")
 
         if not name or not publisher:
             # Missing required fields
@@ -277,13 +325,13 @@ class ExtensionDiscovery:
 
         # Build extension metadata
         metadata = {
-            'name': name,
-            'publisher': publisher,
-            'version': version or 'unknown',
-            'id': f"{publisher}.{name}",
-            'display_name': package_data.get('displayName', name),
-            'description': package_data.get('description', ''),
-            'path': str(ext_dir)
+            "name": name,
+            "publisher": publisher,
+            "version": version or "unknown",
+            "id": f"{publisher}.{name}",
+            "display_name": package_data.get("displayName", name),
+            "description": package_data.get("description", ""),
+            "path": str(ext_dir),
         }
 
         return metadata
@@ -297,8 +345,11 @@ class ExtensionDiscovery:
         """
         try:
             extensions_dir = self.find_extensions_directory()
-            count = sum(1 for d in extensions_dir.iterdir()
-                       if d.is_dir() and not d.name.startswith('.'))
+            count = sum(
+                1
+                for d in extensions_dir.iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            )
             return count
         except Exception:
             return 0

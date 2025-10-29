@@ -16,8 +16,12 @@ from ._version import __version__
 from .scanner import run_scan
 from .cache_manager import CacheManager
 from .display import (
-    should_use_rich, create_cache_stats_table,
-    display_error, display_success, display_info, display_warning
+    should_use_rich,
+    create_cache_stats_table,
+    display_error,
+    display_success,
+    display_info,
+    display_warning,
 )
 from .utils import validate_path, safe_mkdir
 
@@ -27,7 +31,7 @@ app = typer.Typer(
     help="🔍 VS Code Extension Security Scanner - Audit installed extensions using vscan.dev",
     add_completion=False,
     rich_markup_mode="rich",
-    no_args_is_help=True
+    no_args_is_help=True,
 )
 
 # Create cache subcommand group
@@ -36,7 +40,7 @@ cache_app = typer.Typer(
     help="Manage scan result cache",
     add_completion=False,
     rich_markup_mode="rich",
-    no_args_is_help=True
+    no_args_is_help=True,
 )
 app.add_typer(cache_app, name="cache")
 
@@ -46,7 +50,7 @@ config_app = typer.Typer(
     help="Manage configuration file",
     add_completion=False,
     rich_markup_mode="rich",
-    no_args_is_help=True
+    no_args_is_help=True,
 )
 app.add_typer(config_app, name="config")
 
@@ -58,7 +62,9 @@ def bounded_int_validator(value: int, min_val: int, max_val: int, name: str) -> 
     return value
 
 
-def bounded_float_validator(value: float, min_val: float, max_val: float, name: str) -> float:
+def bounded_float_validator(
+    value: float, min_val: float, max_val: float, name: str
+) -> float:
     """Validate float is within bounds."""
     if value < min_val or value > max_val:
         raise typer.BadParameter(f"{name} must be between {min_val} and {max_val}")
@@ -70,95 +76,97 @@ def scan(
     # Output options
     output: Optional[Path] = typer.Option(
         None,
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output file path (.json, .html, or .csv)",
-        rich_help_panel="Options"
+        rich_help_panel="Options",
     ),
-
     # Display options
     quiet: bool = typer.Option(
         False,
-        "--quiet", "-q",
+        "--quiet",
+        "-q",
         help="Minimal output (only show single-line summary)",
-        rich_help_panel="Options"
+        rich_help_panel="Options",
     ),
     plain: bool = typer.Option(
         False,
         "--plain",
         help="Disable colors and rich formatting (for CI/scripts)",
-        rich_help_panel="Options"
+        rich_help_panel="Options",
     ),
     verbose: bool = typer.Option(
         False,
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         help="Show operational details (cache stats, retry stats, timing)",
-        rich_help_panel="Options"
+        rich_help_panel="Options",
     ),
-
     # Filtering options
     publisher: Optional[str] = typer.Option(
         None,
         "--publisher",
         help="Only scan extensions from this publisher (case-insensitive)",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     include_ids: Optional[str] = typer.Option(
         None,
         "--include-ids",
         help="Comma-separated list of extension IDs to scan",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     exclude_ids: Optional[str] = typer.Option(
         None,
         "--exclude-ids",
         help="Comma-separated list of extension IDs to exclude from scan",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     min_risk_level: Optional[str] = typer.Option(
         None,
         "--min-risk-level",
         help="Minimum risk level to include in results (low, medium, high, critical)",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     verified_only: bool = typer.Option(
         False,
         "--verified-only",
         help="Only show extensions from verified publishers",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     unverified_only: bool = typer.Option(
         False,
         "--unverified-only",
         help="Only show extensions from unverified publishers",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     with_vulnerabilities: bool = typer.Option(
         False,
         "--with-vulnerabilities",
         help="Only show extensions with known vulnerabilities",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
     without_vulnerabilities: bool = typer.Option(
         False,
         "--without-vulnerabilities",
         help="Only show extensions without vulnerabilities",
-        rich_help_panel="Filtering Options"
+        rich_help_panel="Filtering Options",
     ),
-
     # Advanced options
     extensions_dir: Optional[Path] = typer.Option(
         None,
-        "--extensions-dir", "-d",
+        "--extensions-dir",
+        "-d",
         help="Path to VS Code extensions directory (auto-detected if not specified)",
-        rich_help_panel="Advanced Options"
+        rich_help_panel="Advanced Options",
     ),
     delay: float = typer.Option(
         1.5,
-        "--delay", "-t",
+        "--delay",
+        "-t",
         min=0.1,
         max=30.0,
         help="Delay between API requests in seconds",
-        rich_help_panel="Advanced Options"
+        rich_help_panel="Advanced Options",
     ),
     max_retries: int = typer.Option(
         3,
@@ -166,7 +174,7 @@ def scan(
         min=0,
         max=10,
         help="Maximum retry attempts for failed API requests",
-        rich_help_panel="Advanced Options"
+        rich_help_panel="Advanced Options",
     ),
     retry_delay: float = typer.Option(
         2.0,
@@ -174,7 +182,7 @@ def scan(
         min=0.1,
         max=60.0,
         help="Base delay for exponential backoff on retries (seconds)",
-        rich_help_panel="Advanced Options"
+        rich_help_panel="Advanced Options",
     ),
     workers: int = typer.Option(
         3,
@@ -182,27 +190,26 @@ def scan(
         min=1,
         max=5,
         help="Number of concurrent workers (1-5, default: 3). Use 1 for sequential behavior.",
-        rich_help_panel="Advanced Options"
+        rich_help_panel="Advanced Options",
     ),
-
     # Cache options
     no_cache: bool = typer.Option(
         False,
         "--no-cache",
         help="Disable caching (always perform fresh scans)",
-        rich_help_panel="Cache Options"
+        rich_help_panel="Cache Options",
     ),
     refresh_cache: bool = typer.Option(
         False,
         "--refresh-cache",
         help="Force refresh of scanned extensions (ignore cached results for filtered extensions)",
-        rich_help_panel="Cache Options"
+        rich_help_panel="Cache Options",
     ),
     cache_dir: Optional[Path] = typer.Option(
         None,
         "--cache-dir",
         help="Custom cache directory path (default: ~/.vscan/)",
-        rich_help_panel="Cache Options"
+        rich_help_panel="Cache Options",
     ),
     cache_max_age: int = typer.Option(
         7,
@@ -210,7 +217,7 @@ def scan(
         min=1,
         max=365,
         help="Maximum age of cached results in days",
-        rich_help_panel="Cache Options"
+        rich_help_panel="Cache Options",
     ),
 ):
     """
@@ -254,42 +261,45 @@ def scan(
         sys.exit(2)
 
     if with_vulnerabilities and without_vulnerabilities:
-        display_error("Cannot use --with-vulnerabilities and --without-vulnerabilities together")
+        display_error(
+            "Cannot use --with-vulnerabilities and --without-vulnerabilities together"
+        )
         sys.exit(2)
 
     # Load configuration file (config values serve as defaults, CLI args override)
     from .config_manager import load_config
     from .types import ConfigWarning
+
     config, config_warnings = load_config()
 
     # Apply config values for parameters that are still at hardcoded defaults
     # Priority: hardcoded default < config file < CLI argument
-    if delay == 1.5 and config['scan']['delay'] is not None:
-        delay = config['scan']['delay']
-    if max_retries == 3 and config['scan']['max_retries'] is not None:
-        max_retries = config['scan']['max_retries']
-    if retry_delay == 2.0 and config['scan']['retry_delay'] is not None:
-        retry_delay = config['scan']['retry_delay']
-    if cache_max_age == 7 and config['cache']['cache_max_age'] is not None:
-        cache_max_age = config['cache']['cache_max_age']
-    if quiet is False and config['output']['quiet'] is not None:
-        quiet = config['output']['quiet']
-    if plain is False and config['output']['plain'] is not None:
-        plain = config['output']['plain']
-    if no_cache is False and config['cache']['no_cache'] is not None:
-        no_cache = config['cache']['no_cache']
-    if publisher is None and config['scan']['publisher'] is not None:
-        publisher = config['scan']['publisher']
-    if min_risk_level is None and config['scan']['min_risk_level'] is not None:
-        min_risk_level = config['scan']['min_risk_level']
-    if exclude_ids is None and config['scan']['exclude_ids'] is not None:
-        exclude_ids = config['scan']['exclude_ids']
-    if extensions_dir is None and config['scan']['extensions_dir'] is not None:
-        extensions_dir = Path(config['scan']['extensions_dir']).expanduser()
-    if cache_dir is None and config['cache']['cache_dir'] is not None:
-        cache_dir = Path(config['cache']['cache_dir']).expanduser()
-    if workers == 3 and config['scan'].get('workers') is not None:
-        workers = config['scan']['workers']
+    if delay == 1.5 and config["scan"]["delay"] is not None:
+        delay = config["scan"]["delay"]
+    if max_retries == 3 and config["scan"]["max_retries"] is not None:
+        max_retries = config["scan"]["max_retries"]
+    if retry_delay == 2.0 and config["scan"]["retry_delay"] is not None:
+        retry_delay = config["scan"]["retry_delay"]
+    if cache_max_age == 7 and config["cache"]["cache_max_age"] is not None:
+        cache_max_age = config["cache"]["cache_max_age"]
+    if quiet is False and config["output"]["quiet"] is not None:
+        quiet = config["output"]["quiet"]
+    if plain is False and config["output"]["plain"] is not None:
+        plain = config["output"]["plain"]
+    if no_cache is False and config["cache"]["no_cache"] is not None:
+        no_cache = config["cache"]["no_cache"]
+    if publisher is None and config["scan"]["publisher"] is not None:
+        publisher = config["scan"]["publisher"]
+    if min_risk_level is None and config["scan"]["min_risk_level"] is not None:
+        min_risk_level = config["scan"]["min_risk_level"]
+    if exclude_ids is None and config["scan"]["exclude_ids"] is not None:
+        exclude_ids = config["scan"]["exclude_ids"]
+    if extensions_dir is None and config["scan"]["extensions_dir"] is not None:
+        extensions_dir = Path(config["scan"]["extensions_dir"]).expanduser()
+    if cache_dir is None and config["cache"]["cache_dir"] is not None:
+        cache_dir = Path(config["cache"]["cache_dir"]).expanduser()
+    if workers == 3 and config["scan"].get("workers") is not None:
+        workers = config["scan"]["workers"]
 
     # Validate parameters
     try:
@@ -303,13 +313,18 @@ def scan(
         raise typer.Exit(code=2)
 
     # Validate risk level if provided
-    if min_risk_level and min_risk_level not in ['low', 'medium', 'high', 'critical']:
-        typer.echo("Error: min-risk-level must be one of: low, medium, high, critical", err=True)
+    if min_risk_level and min_risk_level not in ["low", "medium", "high", "critical"]:
+        typer.echo(
+            "Error: min-risk-level must be one of: low, medium, high, critical",
+            err=True,
+        )
         raise typer.Exit(code=2)
 
     # Validate conflicting options
     if no_cache and refresh_cache:
-        typer.echo("Error: --no-cache and --refresh-cache cannot be used together", err=True)
+        typer.echo(
+            "Error: --no-cache and --refresh-cache cannot be used together", err=True
+        )
         raise typer.Exit(code=2)
 
     # Validate paths BEFORE resolving to preserve relative/absolute distinction (v3.5.1)
@@ -322,14 +337,20 @@ def scan(
 
     if extensions_dir:
         try:
-            validate_path(str(extensions_dir), allow_absolute=True, path_type="extensions directory")
+            validate_path(
+                str(extensions_dir),
+                allow_absolute=True,
+                path_type="extensions directory",
+            )
         except ValueError as e:
             typer.echo(f"Error: {str(e)}", err=True)
             raise typer.Exit(code=2)
 
     if cache_dir:
         try:
-            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+            validate_path(
+                str(cache_dir), allow_absolute=True, path_type="cache directory"
+            )
         except ValueError as e:
             typer.echo(f"Error: {str(e)}", err=True)
             raise typer.Exit(code=2)
@@ -367,7 +388,7 @@ def scan(
             plain=plain,
             quiet=quiet,
             verbose=verbose,
-            workers=workers
+            workers=workers,
         )
         raise typer.Exit(code=exit_code)
     except (typer.Exit, SystemExit):
@@ -379,6 +400,7 @@ def scan(
     except Exception as e:
         typer.echo(f"\n\nUnexpected error: {e}", err=True)
         import traceback
+
         traceback.print_exc()
         raise typer.Exit(code=2)
 
@@ -397,7 +419,7 @@ def _format_cache_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
         Dictionary with formatted values ready for display
     """
     # Format database size
-    db_size_kb = stats.get('database_size_kb')
+    db_size_kb = stats.get("database_size_kb")
     if db_size_kb is not None:
         if db_size_kb < 1024:
             size_str = f"{db_size_kb:.2f} KB"
@@ -407,12 +429,14 @@ def _format_cache_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
         size_str = "N/A"
 
     return {
-        'database_path': stats.get('database_path', 'N/A'),
-        'total_entries': stats.get('total_entries', 0),
-        'database_size': size_str,
-        'age_distribution': stats.get('age_distribution', {}),
-        'risk_breakdown': stats.get('risk_breakdown', {}),
-        'extensions_with_vulnerabilities': stats.get('extensions_with_vulnerabilities', 0),
+        "database_path": stats.get("database_path", "N/A"),
+        "total_entries": stats.get("total_entries", 0),
+        "database_size": size_str,
+        "age_distribution": stats.get("age_distribution", {}),
+        "risk_breakdown": stats.get("risk_breakdown", {}),
+        "extensions_with_vulnerabilities": stats.get(
+            "extensions_with_vulnerabilities", 0
+        ),
     }
 
 
@@ -425,21 +449,21 @@ def _display_cache_stats_rich(formatted: Dict[str, Any]):
     console.print(f"[cyan]Database size:[/cyan] {formatted['database_size']}")
 
     # Age distribution
-    if formatted['age_distribution']:
+    if formatted["age_distribution"]:
         console.print()
         console.print("[cyan]Age Distribution:[/cyan]")
-        for category, count in formatted['age_distribution'].items():
+        for category, count in formatted["age_distribution"].items():
             console.print(f"  {category}: {count}")
 
     # Risk breakdown
-    if formatted['risk_breakdown']:
+    if formatted["risk_breakdown"]:
         console.print()
         console.print("[cyan]Risk Breakdown:[/cyan]")
-        for risk, count in formatted['risk_breakdown'].items():
+        for risk, count in formatted["risk_breakdown"].items():
             console.print(f"  {risk}: {count}")
 
     # Vulnerabilities
-    vuln_count = formatted['extensions_with_vulnerabilities']
+    vuln_count = formatted["extensions_with_vulnerabilities"]
     if vuln_count > 0:
         console.print()
         console.print(f"[yellow]Extensions with vulnerabilities:[/yellow] {vuln_count}")
@@ -453,19 +477,19 @@ def _display_cache_stats_plain(formatted: Dict[str, Any]):
     print(f"Total entries: {formatted['total_entries']}")
     print(f"Database size: {formatted['database_size']}")
 
-    if formatted['age_distribution']:
+    if formatted["age_distribution"]:
         print()
         print("Age Distribution:")
-        for category, count in formatted['age_distribution'].items():
+        for category, count in formatted["age_distribution"].items():
             print(f"  {category}: {count}")
 
-    if formatted['risk_breakdown']:
+    if formatted["risk_breakdown"]:
         print()
         print("Risk Breakdown:")
-        for risk, count in formatted['risk_breakdown'].items():
+        for risk, count in formatted["risk_breakdown"].items():
             print(f"  {risk}: {count}")
 
-    vuln_count = formatted['extensions_with_vulnerabilities']
+    vuln_count = formatted["extensions_with_vulnerabilities"]
     if vuln_count > 0:
         print()
         print(f"Extensions with vulnerabilities: {vuln_count}")
@@ -476,21 +500,17 @@ def _display_cache_stats_plain(formatted: Dict[str, Any]):
 @cache_app.command("stats")
 def cache_stats(
     cache_dir: Optional[Path] = typer.Option(
-        None,
-        "--cache-dir",
-        help="Custom cache directory path (default: ~/.vscan/)"
+        None, "--cache-dir", help="Custom cache directory path (default: ~/.vscan/)"
     ),
     cache_max_age: int = typer.Option(
         7,
         "--cache-max-age",
         min=1,
         max=365,
-        help="Age threshold in days for stale entries"
+        help="Age threshold in days for stale entries",
     ),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
+        False, "--plain", help="Disable colors and rich formatting"
     ),
 ):
     """
@@ -524,7 +544,9 @@ def cache_stats(
     # Validate cache directory path (v3.5.1)
     if cache_dir:
         try:
-            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+            validate_path(
+                str(cache_dir), allow_absolute=True, path_type="cache directory"
+            )
         except ValueError as e:
             typer.echo(f"Error: {str(e)}", err=True)
             raise typer.Exit(code=2)
@@ -537,6 +559,7 @@ def cache_stats(
 
         # Display any cache initialization messages
         from .types import CacheWarning, CacheError, CacheInfo
+
         init_messages = cache_manager.get_init_messages()
         for msg in init_messages:
             if isinstance(msg, CacheWarning):
@@ -570,19 +593,11 @@ def cache_stats(
 @cache_app.command("clear")
 def cache_clear(
     cache_dir: Optional[Path] = typer.Option(
-        None,
-        "--cache-dir",
-        help="Custom cache directory path (default: ~/.vscan/)"
+        None, "--cache-dir", help="Custom cache directory path (default: ~/.vscan/)"
     ),
-    force: bool = typer.Option(
-        False,
-        "--force", "-f",
-        help="Skip confirmation prompt"
-    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
+        False, "--plain", help="Disable colors and rich formatting"
     ),
 ):
     """
@@ -608,7 +623,9 @@ def cache_clear(
     # Validate cache directory path (v3.5.1)
     if cache_dir:
         try:
-            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+            validate_path(
+                str(cache_dir), allow_absolute=True, path_type="cache directory"
+            )
         except ValueError as e:
             typer.echo(f"Error: {str(e)}", err=True)
             raise typer.Exit(code=2)
@@ -631,6 +648,7 @@ def cache_clear(
 
         # Display any cache initialization messages
         from .types import CacheWarning, CacheError, CacheInfo
+
         init_messages = cache_manager.get_init_messages()
         for msg in init_messages:
             if isinstance(msg, CacheWarning):
@@ -664,18 +682,15 @@ def cache_clear(
 # Config Commands
 # =============================================================================
 
+
 @config_app.command("init")
 def config_init(
     force: bool = typer.Option(
-        False,
-        "--force", "-f",
-        help="Overwrite existing config file"
+        False, "--force", "-f", help="Overwrite existing config file"
     ),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
-    )
+        False, "--plain", help="Disable colors and rich formatting"
+    ),
 ):
     """
     Create a default configuration file at ~/.vscanrc.
@@ -701,7 +716,9 @@ def config_init(
         if use_rich:
             display_success(f"Created configuration file: {config_path}", use_rich=True)
             display_info("Edit this file to customize default settings", use_rich=True)
-            display_info("Run 'vscan config show' to see current configuration", use_rich=True)
+            display_info(
+                "Run 'vscan config show' to see current configuration", use_rich=True
+            )
         else:
             print(f"✓ Created configuration file: {config_path}")
             print("\nEdit this file to customize default settings.")
@@ -714,7 +731,9 @@ def config_init(
         raise
     except FileExistsError:
         if use_rich:
-            display_error(f"Config file already exists at {get_config_path()}", use_rich=True)
+            display_error(
+                f"Config file already exists at {get_config_path()}", use_rich=True
+            )
             display_info("Use --force to overwrite", use_rich=True)
         else:
             print(f"Error: Config file already exists at {get_config_path()}")
@@ -731,9 +750,7 @@ def config_init(
 @config_app.command("show")
 def config_show(
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
+        False, "--plain", help="Disable colors and rich formatting"
     )
 ):
     """
@@ -747,14 +764,21 @@ def config_show(
         [dim]# Show current configuration[/dim]
         $ vscan config show
     """
-    from .config_manager import load_config, get_config_path, get_default_value, config_exists
+    from .config_manager import (
+        load_config,
+        get_config_path,
+        get_default_value,
+        config_exists,
+    )
 
     use_rich = should_use_rich(plain_flag=plain)
     config_path = get_config_path()
 
     if not config_exists():
         if use_rich:
-            display_warning(f"No configuration file found at {config_path}", use_rich=True)
+            display_warning(
+                f"No configuration file found at {config_path}", use_rich=True
+            )
             display_info("Run 'vscan config init' to create one", use_rich=True)
         else:
             print(f"No configuration file found at {config_path}")
@@ -762,6 +786,7 @@ def config_show(
         raise typer.Exit(code=0)
 
     from .types import ConfigWarning
+
     config, config_warnings = load_config()
 
     # Display any config loading warnings
@@ -782,13 +807,15 @@ def config_show(
         console.print("[green]Status: Found ✓[/green]\n")
 
         # Create single table with all options
-        table = Table(title="Configuration Options", show_header=True, header_style="bold cyan")
+        table = Table(
+            title="Configuration Options", show_header=True, header_style="bold cyan"
+        )
         table.add_column("Key", style="cyan", no_wrap=True)
         table.add_column("Value", style="yellow")
         table.add_column("Source", style="dim")
 
         # Iterate through all sections and options
-        for section in ['scan', 'cache', 'output']:
+        for section in ["scan", "cache", "output"]:
             if section not in config:
                 continue
 
@@ -811,7 +838,9 @@ def config_show(
 
         console.print(table)
         console.print()
-        console.print("[dim]Use 'vscan config set <key> <value>' to change settings (e.g., 'vscan config set scan.delay 2.0')[/dim]")
+        console.print(
+            "[dim]Use 'vscan config set <key> <value>' to change settings (e.g., 'vscan config set scan.delay 2.0')[/dim]"
+        )
         console.print("[dim]CLI arguments always override config file values.[/dim]\n")
     else:
         print(f"\nConfiguration File: {config_path}")
@@ -822,7 +851,7 @@ def config_show(
         print("-" * 80)
 
         # Display all options in single table format
-        for section in ['scan', 'cache', 'output']:
+        for section in ["scan", "cache", "output"]:
             if section not in config:
                 continue
 
@@ -854,18 +883,12 @@ def config_show(
 @config_app.command("set")
 def config_set(
     key: str = typer.Argument(
-        ...,
-        help="Configuration key in format 'section.option' (e.g., scan.delay)"
+        ..., help="Configuration key in format 'section.option' (e.g., scan.delay)"
     ),
-    value: str = typer.Argument(
-        ...,
-        help="Configuration value"
-    ),
+    value: str = typer.Argument(..., help="Configuration value"),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
-    )
+        False, "--plain", help="Disable colors and rich formatting"
+    ),
 ):
     """
     Set a configuration value.
@@ -885,8 +908,11 @@ def config_set(
         $ vscan config set scan.publisher microsoft
     """
     from .config_manager import (
-        parse_config_key, validate_config_value, update_config_value,
-        create_default_config, config_exists
+        parse_config_key,
+        validate_config_value,
+        update_config_value,
+        create_default_config,
+        config_exists,
     )
 
     use_rich = should_use_rich(plain_flag=plain)
@@ -936,14 +962,11 @@ def config_set(
 @config_app.command("get")
 def config_get(
     key: str = typer.Argument(
-        ...,
-        help="Configuration key in format 'section.option' (e.g., scan.delay)"
+        ..., help="Configuration key in format 'section.option' (e.g., scan.delay)"
     ),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
-    )
+        False, "--plain", help="Disable colors and rich formatting"
+    ),
 ):
     """
     Get a specific configuration value.
@@ -959,14 +982,18 @@ def config_get(
         $ vscan config get scan.publisher
     """
     from .config_manager import (
-        parse_config_key, load_config, get_config_value,
-        get_default_value, config_exists
+        parse_config_key,
+        load_config,
+        get_config_value,
+        get_default_value,
+        config_exists,
     )
 
     use_rich = should_use_rich(plain_flag=plain)
 
     try:
         from .types import ConfigWarning
+
         section, option = parse_config_key(key)
         config, config_warnings = load_config()
 
@@ -994,8 +1021,11 @@ def config_get(
 
         if use_rich:
             from rich.console import Console
+
             console = Console()
-            console.print(f"\n[cyan]{key}[/cyan] = [yellow]{value_str}[/yellow] [dim]({source})[/dim]\n")
+            console.print(
+                f"\n[cyan]{key}[/cyan] = [yellow]{value_str}[/yellow] [dim]({source})[/dim]\n"
+            )
         else:
             print(f"\n{key} = {value_str} ({source})\n")
 
@@ -1022,16 +1052,10 @@ def config_get(
 
 @config_app.command("reset")
 def config_reset(
-    force: bool = typer.Option(
-        False,
-        "--force", "-f",
-        help="Skip confirmation prompt"
-    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
-    )
+        False, "--plain", help="Disable colors and rich formatting"
+    ),
 ):
     """
     Reset configuration to defaults by deleting the config file.
@@ -1062,8 +1086,7 @@ def config_reset(
     # Confirm before deleting unless --force is used
     if not force:
         confirm = typer.confirm(
-            f"This will delete your configuration file: {config_path}\n"
-            "Are you sure?"
+            f"This will delete your configuration file: {config_path}\n" "Are you sure?"
         )
         if not confirm:
             if use_rich:
@@ -1078,7 +1101,9 @@ def config_reset(
         if use_rich:
             display_success("Configuration file deleted", use_rich=True)
             display_info("All settings reset to defaults", use_rich=True)
-            display_info("Run 'vscan config init' to create a new config file", use_rich=True)
+            display_info(
+                "Run 'vscan config init' to create a new config file", use_rich=True
+            )
         else:
             print("✓ Configuration file deleted.")
             print("All settings reset to defaults.")
@@ -1122,26 +1147,20 @@ def _check_extensions_exist(extensions_dir: Optional[str] = None) -> Tuple[bool,
 @app.command("report")
 def report(
     output: Path = typer.Argument(
-        ...,
-        help="Output file path (.json, .html, or .csv)",
-        exists=False
+        ..., help="Output file path (.json, .html, or .csv)", exists=False
     ),
     cache_dir: Optional[Path] = typer.Option(
-        None,
-        "--cache-dir",
-        help="Custom cache directory path (default: ~/.vscan/)"
+        None, "--cache-dir", help="Custom cache directory path (default: ~/.vscan/)"
     ),
     cache_max_age: int = typer.Option(
         365,
         "--cache-max-age",
         min=1,
         max=365,
-        help="Maximum age of cached data to include (days)"
+        help="Maximum age of cached data to include (days)",
     ),
     plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting"
+        False, "--plain", help="Disable colors and rich formatting"
     ),
 ):
     """
@@ -1185,7 +1204,9 @@ def report(
     # Validate cache directory path (v3.5.1)
     if cache_dir:
         try:
-            validate_path(str(cache_dir), allow_absolute=True, path_type="cache directory")
+            validate_path(
+                str(cache_dir), allow_absolute=True, path_type="cache directory"
+            )
         except ValueError as e:
             typer.echo(f"Error: {str(e)}", err=True)
             raise typer.Exit(code=2)
@@ -1212,9 +1233,11 @@ def report(
     output_path = Path(output_str)
     output_format = output_path.suffix.lower()
 
-    if output_format not in ['.json', '.html', '.csv']:
+    if output_format not in [".json", ".html", ".csv"]:
         if use_rich:
-            display_error("Output file must have .json, .html, or .csv extension", use_rich=True)
+            display_error(
+                "Output file must have .json, .html, or .csv extension", use_rich=True
+            )
         else:
             print("Error: Output file must have .json, .html, or .csv extension")
         raise typer.Exit(code=2)
@@ -1222,15 +1245,21 @@ def report(
     try:
         # Notify user that we're using cache only
         if use_rich:
-            display_info("Generating report from cached data only (no new scans will be performed)", use_rich=True)
+            display_info(
+                "Generating report from cached data only (no new scans will be performed)",
+                use_rich=True,
+            )
         else:
-            print("ℹ Generating report from cached data only (no new scans will be performed)")
+            print(
+                "ℹ Generating report from cached data only (no new scans will be performed)"
+            )
 
         # Retrieve all cached results
         cache_manager = CacheManager(cache_dir=cache_dir_str)
 
         # Display any cache initialization messages
         from .types import CacheWarning, CacheError, CacheInfo
+
         init_messages = cache_manager.get_init_messages()
         for msg in init_messages:
             if isinstance(msg, CacheWarning):
@@ -1240,7 +1269,9 @@ def report(
             elif isinstance(msg, CacheInfo):
                 display_info(msg.message, use_rich=use_rich)
 
-        cached_results = cache_manager.get_all_cached_results(max_age_days=cache_max_age)
+        cached_results = cache_manager.get_all_cached_results(
+            max_age_days=cache_max_age
+        )
 
         if not cached_results:
             # Check if extensions exist on the system
@@ -1249,47 +1280,65 @@ def report(
             if not extensions_exist:
                 # No extensions installed - cannot generate report
                 if use_rich:
-                    display_warning("No VS Code extensions found. Cannot generate report.", use_rich=True)
+                    display_warning(
+                        "No VS Code extensions found. Cannot generate report.",
+                        use_rich=True,
+                    )
                 else:
-                    print("⚠ Warning: No VS Code extensions found. Cannot generate report.")
+                    print(
+                        "⚠ Warning: No VS Code extensions found. Cannot generate report."
+                    )
                 raise typer.Exit(code=1)
             else:
                 # Extensions exist but cache is empty - fail fast
                 if use_rich:
-                    display_error("Cache is empty. Run 'vscan scan' first to populate the cache.", use_rich=True)
-                    display_info(f"Found {extension_count} installed extensions ready to scan.", use_rich=True)
+                    display_error(
+                        "Cache is empty. Run 'vscan scan' first to populate the cache.",
+                        use_rich=True,
+                    )
+                    display_info(
+                        f"Found {extension_count} installed extensions ready to scan.",
+                        use_rich=True,
+                    )
                 else:
-                    print(f"✗ Error: Cache is empty. Run 'vscan scan' first to populate the cache.")
-                    print(f"ℹ Found {extension_count} installed extensions ready to scan.")
+                    print(
+                        f"✗ Error: Cache is empty. Run 'vscan scan' first to populate the cache."
+                    )
+                    print(
+                        f"ℹ Found {extension_count} installed extensions ready to scan."
+                    )
                 raise typer.Exit(code=2)
 
         # Show cache statistics
         if use_rich:
-            display_info(f"Found {len(cached_results)} cached extensions", use_rich=True)
+            display_info(
+                f"Found {len(cached_results)} cached extensions", use_rich=True
+            )
         else:
             print(f"ℹ Found {len(cached_results)} cached extensions")
 
         # Format output with all available data
         from datetime import datetime
+
         formatter = OutputFormatter()
         formatted_results = formatter.format_output(
             scan_results=cached_results,
             scan_timestamp=datetime.now().isoformat(),
             scan_duration=0.0,
             cache_stats={
-                'from_cache': len(cached_results),
-                'fresh_scans': 0,
-                'cache_hit_rate': 100.0  # All data from cache
-            }
+                "from_cache": len(cached_results),
+                "fresh_scans": 0,
+                "cache_hit_rate": 100.0,  # All data from cache
+            },
         )
 
         # Generate output based on format
-        if output_format == '.html':
+        if output_format == ".html":
             # Generate HTML report
             html_generator = HTMLReportGenerator()
             html_content = html_generator.generate_report(formatted_results)
 
-            with open(output_str, 'w', encoding='utf-8') as f:
+            with open(output_str, "w", encoding="utf-8") as f:
                 f.write(html_content)
 
             if use_rich:
@@ -1297,11 +1346,11 @@ def report(
             else:
                 print(f"✓ HTML report generated: {output_str}")
 
-        elif output_format == '.csv':
+        elif output_format == ".csv":
             # Generate CSV export
-            csv_content = formatter.format_csv(formatted_results.get('extensions', []))
+            csv_content = formatter.format_csv(formatted_results.get("extensions", []))
 
-            with open(output_str, 'w', encoding='utf-8', newline='') as f:
+            with open(output_str, "w", encoding="utf-8", newline="") as f:
                 f.write(csv_content)
 
             if use_rich:
@@ -1311,7 +1360,8 @@ def report(
 
         else:  # JSON
             import json
-            with open(output_str, 'w', encoding='utf-8') as f:
+
+            with open(output_str, "w", encoding="utf-8") as f:
                 json.dump(formatted_results, f, indent=2, ensure_ascii=False)
 
             if use_rich:
@@ -1336,9 +1386,7 @@ def report(
 def main(
     ctx: typer.Context,
     version: bool = typer.Option(
-        False,
-        "--version", "-V",
-        help="Show version information and exit"
+        False, "--version", "-V", help="Show version information and exit"
     ),
 ):
     """
@@ -1354,7 +1402,9 @@ def main(
         use_rich = should_use_rich(plain_flag=False)
         if use_rich:
             console = Console()
-            console.print(f"[bold cyan]vscan[/bold cyan] version [green]{__version__}[/green]")
+            console.print(
+                f"[bold cyan]vscan[/bold cyan] version [green]{__version__}[/green]"
+            )
         else:
             print(f"vscan version {__version__}")
         raise typer.Exit(code=0)

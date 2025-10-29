@@ -35,7 +35,7 @@ class VscanAPITester:
         url: str,
         method: str = "GET",
         data: Optional[Dict[str, Any]] = None,
-        timeout: int = 30
+        timeout: int = 30,
     ) -> Tuple[int, Dict[str, Any], str]:
         """
         Make HTTP request and return status code, JSON response, and raw response.
@@ -43,23 +43,22 @@ class VscanAPITester:
         Returns:
             Tuple of (status_code, json_data, raw_response_text)
         """
-        headers = {
-            "User-Agent": self.USER_AGENT,
-            "Accept": "application/json"
-        }
+        headers = {"User-Agent": self.USER_AGENT, "Accept": "application/json"}
 
         if data is not None:
             headers["Content-Type"] = "application/json"
-            data_bytes = json.dumps(data).encode('utf-8')
+            data_bytes = json.dumps(data).encode("utf-8")
         else:
             data_bytes = None
 
-        req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
+        req = urllib.request.Request(
+            url, data=data_bytes, headers=headers, method=method
+        )
 
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 status_code = response.getcode()
-                raw_response = response.read().decode('utf-8')
+                raw_response = response.read().decode("utf-8")
 
                 try:
                     json_data = json.loads(raw_response)
@@ -70,7 +69,7 @@ class VscanAPITester:
 
         except urllib.error.HTTPError as e:
             status_code = e.code
-            raw_response = e.read().decode('utf-8')
+            raw_response = e.read().decode("utf-8")
 
             try:
                 json_data = json.loads(raw_response)
@@ -160,8 +159,15 @@ class VscanAPITester:
                 self.log(f"Security Score: {score.get('score')}/100")
                 self.log(f"Risk Level: {score.get('riskLevel')}")
 
-            if "analysisModules" in response and "dependencies" in response["analysisModules"]:
-                vuln_summary = response["analysisModules"]["dependencies"].get("vulnerabilities", {}).get("summary", {})
+            if (
+                "analysisModules" in response
+                and "dependencies" in response["analysisModules"]
+            ):
+                vuln_summary = (
+                    response["analysisModules"]["dependencies"]
+                    .get("vulnerabilities", {})
+                    .get("summary", {})
+                )
                 self.log(f"Vulnerabilities: {json.dumps(vuln_summary)}")
 
             return response
@@ -170,10 +176,7 @@ class VscanAPITester:
             return None
 
     def poll_until_complete(
-        self,
-        analysis_id: str,
-        poll_interval: int = 2,
-        max_wait: int = 300
+        self, analysis_id: str, poll_interval: int = 2, max_wait: int = 300
     ) -> Optional[str]:
         """
         Poll status endpoint until analysis is complete.
@@ -199,7 +202,9 @@ class VscanAPITester:
             status = status_response.get("status")
             progress = status_response.get("progress", 0)
 
-            self.log(f"Status: {status}, Progress: {progress}%, Elapsed: {elapsed:.1f}s")
+            self.log(
+                f"Status: {status}, Progress: {progress}%, Elapsed: {elapsed:.1f}s"
+            )
 
             if status == "completed":
                 self.log(f"✓ Analysis completed in {elapsed:.1f}s", "SUCCESS")
@@ -213,10 +218,7 @@ class VscanAPITester:
             time.sleep(poll_interval)
 
     def test_extension(
-        self,
-        publisher: str,
-        name: str,
-        wait_for_completion: bool = True
+        self, publisher: str, name: str, wait_for_completion: bool = True
     ) -> Dict[str, Any]:
         """
         Test complete workflow for a single extension.
@@ -238,7 +240,7 @@ class VscanAPITester:
             "risk_level": None,
             "vulnerabilities": None,
             "success": False,
-            "error": None
+            "error": None,
         }
 
         # Step 1: Submit analysis
@@ -297,10 +299,8 @@ def main():
     test_cases = [
         # Well-known Microsoft extension
         ("ms-python", "python"),
-
         # Popular third-party extension
         ("esbenp", "prettier-vscode"),
-
         # Another Microsoft extension (from user's example)
         ("ms-azuretools", "vscode-docker"),
     ]
@@ -330,7 +330,7 @@ def main():
         print(f"  Security Score: {result['security_score']}", file=sys.stderr)
         print(f"  Risk Level: {result['risk_level']}", file=sys.stderr)
         print(f"  Vulnerabilities: {result['vulnerabilities']}", file=sys.stderr)
-        if result['error']:
+        if result["error"]:
             print(f"  Error: {result['error']}", file=sys.stderr)
 
     # Output JSON results to stdout

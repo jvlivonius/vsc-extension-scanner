@@ -13,4 +13,4 @@ __description__ = "Security scanner for VS Code extensions using vscan.dev"
 # Make key components available at package level
 from .vscan import main
 
-__all__ = ['main', '__version__', 'SCHEMA_VERSION']
+__all__ = ["main", "__version__", "SCHEMA_VERSION"]

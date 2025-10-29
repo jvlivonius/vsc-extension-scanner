@@ -60,8 +60,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Test Group Definitions
 # ==============================================================================
 
+
 class TestGroup(Enum):
     """Test group categories."""
+
     UNIT = "unit"
     SECURITY = "security"
     ARCHITECTURE = "architecture"
@@ -75,6 +77,7 @@ class TestGroup(Enum):
 @dataclass
 class TestFile:
     """Test file metadata."""
+
     path: Path
     group: TestGroup
     description: str
@@ -85,6 +88,7 @@ class TestFile:
 @dataclass
 class TestResult:
     """Test execution result."""
+
     file: str
     tests_run: int
     tests_passed: int
@@ -111,42 +115,96 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
         TestFile(Path("tests/test_scanner.py"), TestGroup.UNIT, "Core scanner logic"),
         TestFile(Path("tests/test_display.py"), TestGroup.UNIT, "Display module"),
         TestFile(Path("tests/test_cli.py"), TestGroup.UNIT, "CLI interface"),
-        TestFile(Path("tests/test_failed_extensions.py"), TestGroup.UNIT, "Failed extensions tracking"),
-        TestFile(Path("tests/test_verbose_mode.py"), TestGroup.UNIT, "Verbose mode output"),
-        TestFile(Path("tests/test_config_extensions_dir.py"), TestGroup.UNIT, "Config extensions directory"),
-        TestFile(Path("tests/test_report_empty_cache.py"), TestGroup.UNIT, "Empty cache reporting"),
+        TestFile(
+            Path("tests/test_failed_extensions.py"),
+            TestGroup.UNIT,
+            "Failed extensions tracking",
+        ),
+        TestFile(
+            Path("tests/test_verbose_mode.py"), TestGroup.UNIT, "Verbose mode output"
+        ),
+        TestFile(
+            Path("tests/test_config_extensions_dir.py"),
+            TestGroup.UNIT,
+            "Config extensions directory",
+        ),
+        TestFile(
+            Path("tests/test_report_empty_cache.py"),
+            TestGroup.UNIT,
+            "Empty cache reporting",
+        ),
     ],
-
     TestGroup.SECURITY: [
-        TestFile(Path("tests/test_security.py"), TestGroup.SECURITY, "Security validation"),
-        TestFile(Path("tests/test_path_validation.py"), TestGroup.SECURITY, "Path validation"),
-        TestFile(Path("tests/test_string_sanitization.py"), TestGroup.SECURITY, "String sanitization"),
-        TestFile(Path("tests/test_cache_integrity.py"), TestGroup.SECURITY, "Cache integrity (HMAC)"),
-        TestFile(Path("tests/test_security_regression.py"), TestGroup.SECURITY, "Security regression suite"),
+        TestFile(
+            Path("tests/test_security.py"), TestGroup.SECURITY, "Security validation"
+        ),
+        TestFile(
+            Path("tests/test_path_validation.py"), TestGroup.SECURITY, "Path validation"
+        ),
+        TestFile(
+            Path("tests/test_string_sanitization.py"),
+            TestGroup.SECURITY,
+            "String sanitization",
+        ),
+        TestFile(
+            Path("tests/test_cache_integrity.py"),
+            TestGroup.SECURITY,
+            "Cache integrity (HMAC)",
+        ),
+        TestFile(
+            Path("tests/test_security_regression.py"),
+            TestGroup.SECURITY,
+            "Security regression suite",
+        ),
     ],
-
     TestGroup.ARCHITECTURE: [
-        TestFile(Path("tests/test_architecture.py"), TestGroup.ARCHITECTURE, "Layer compliance"),
+        TestFile(
+            Path("tests/test_architecture.py"),
+            TestGroup.ARCHITECTURE,
+            "Layer compliance",
+        ),
     ],
-
     TestGroup.PARALLEL: [
-        TestFile(Path("tests/test_parallel_scanning.py"), TestGroup.PARALLEL, "Parallel scanning"),
-        TestFile(Path("tests/test_transactional_cache.py"), TestGroup.PARALLEL, "Transactional cache writes"),
+        TestFile(
+            Path("tests/test_parallel_scanning.py"),
+            TestGroup.PARALLEL,
+            "Parallel scanning",
+        ),
+        TestFile(
+            Path("tests/test_transactional_cache.py"),
+            TestGroup.PARALLEL,
+            "Transactional cache writes",
+        ),
     ],
-
     TestGroup.INTEGRATION: [
-        TestFile(Path("tests/test_integration.py"), TestGroup.INTEGRATION, "Integration tests (mocked)"),
-        TestFile(Path("tests/test_db_integrity.py"), TestGroup.INTEGRATION, "Database integrity"),
+        TestFile(
+            Path("tests/test_integration.py"),
+            TestGroup.INTEGRATION,
+            "Integration tests (mocked)",
+        ),
+        TestFile(
+            Path("tests/test_db_integrity.py"),
+            TestGroup.INTEGRATION,
+            "Database integrity",
+        ),
     ],
-
     TestGroup.REAL_API: [
-        TestFile(Path("tests/test_integration_real_api.py"), TestGroup.REAL_API,
-                "Real API integration", slow=True, real_api=True),
+        TestFile(
+            Path("tests/test_integration_real_api.py"),
+            TestGroup.REAL_API,
+            "Real API integration",
+            slow=True,
+            real_api=True,
+        ),
     ],
-
     TestGroup.MOCK_VALIDATION: [
-        TestFile(Path("tests/test_mock_validation.py"), TestGroup.MOCK_VALIDATION,
-                "Mock validation against real API", slow=True, real_api=True),
+        TestFile(
+            Path("tests/test_mock_validation.py"),
+            TestGroup.MOCK_VALIDATION,
+            "Mock validation against real API",
+            slow=True,
+            real_api=True,
+        ),
     ],
 }
 
@@ -155,40 +213,45 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
 # Color Support
 # ==============================================================================
 
+
 class Colors:
     """ANSI color codes for terminal output."""
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    MAGENTA = '\033[95m'
-    CYAN = '\033[96m'
-    GRAY = '\033[90m'
+
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    MAGENTA = "\033[95m"
+    CYAN = "\033[96m"
+    GRAY = "\033[90m"
 
     @classmethod
     def disable(cls):
         """Disable colors (for non-TTY output)."""
-        cls.RESET = ''
-        cls.BOLD = ''
-        cls.RED = ''
-        cls.GREEN = ''
-        cls.YELLOW = ''
-        cls.BLUE = ''
-        cls.MAGENTA = ''
-        cls.CYAN = ''
-        cls.GRAY = ''
+        cls.RESET = ""
+        cls.BOLD = ""
+        cls.RED = ""
+        cls.GREEN = ""
+        cls.YELLOW = ""
+        cls.BLUE = ""
+        cls.MAGENTA = ""
+        cls.CYAN = ""
+        cls.GRAY = ""
 
 
 # ==============================================================================
 # Test Runner
 # ==============================================================================
 
+
 class TestRunner:
     """Main test suite runner."""
 
-    def __init__(self, skip_slow=False, skip_real_api=False, verbose=False, quiet=False):
+    def __init__(
+        self, skip_slow=False, skip_real_api=False, verbose=False, quiet=False
+    ):
         """Initialize test runner."""
         self.skip_slow = skip_slow
         self.skip_real_api = skip_real_api
@@ -261,13 +324,18 @@ class TestRunner:
                 [sys.executable, str(test_file.path)],
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             duration = time.time() - start_time
 
             # Parse output
-            tests_run, tests_passed, tests_failed, tests_skipped = self._parse_test_output(result.stdout + result.stderr)
+            (
+                tests_run,
+                tests_passed,
+                tests_failed,
+                tests_skipped,
+            ) = self._parse_test_output(result.stdout + result.stderr)
 
             # Determine status
             if result.returncode == 0:
@@ -284,7 +352,7 @@ class TestRunner:
                 duration=duration,
                 status=status,
                 output=result.stdout if self.verbose else "",
-                error=result.stderr if result.returncode != 0 else ""
+                error=result.stderr if result.returncode != 0 else "",
             )
 
         except subprocess.TimeoutExpired:
@@ -297,7 +365,7 @@ class TestRunner:
                 tests_skipped=0,
                 duration=duration,
                 status="ERROR",
-                error="Test timeout (>300s)"
+                error="Test timeout (>300s)",
             )
         except Exception as e:
             duration = time.time() - start_time
@@ -309,21 +377,21 @@ class TestRunner:
                 tests_skipped=0,
                 duration=duration,
                 status="ERROR",
-                error=str(e)
+                error=str(e),
             )
 
     def _parse_test_output(self, output: str) -> tuple:
         """Parse unittest output to extract test counts."""
         # Look for pattern: "Ran X tests in Y.Zs"
-        match = re.search(r'Ran (\d+) tests? in ([\d.]+)s', output)
+        match = re.search(r"Ran (\d+) tests? in ([\d.]+)s", output)
         if match:
             tests_run = int(match.group(1))
 
             # Check for failures/errors
             if "FAILED" in output or "ERROR" in output:
                 # Try to parse failure count
-                fail_match = re.search(r'failures=(\d+)', output)
-                error_match = re.search(r'errors=(\d+)', output)
+                fail_match = re.search(r"failures=(\d+)", output)
+                error_match = re.search(r"errors=(\d+)", output)
                 failures = int(fail_match.group(1)) if fail_match else 0
                 errors = int(error_match.group(1)) if error_match else 0
                 tests_failed = failures + errors
@@ -344,15 +412,23 @@ class TestRunner:
         print(f"{Colors.BOLD}{'='*70}{Colors.RESET}\n")
 
         group_names = [g.value for g in groups]
-        print(f"Running Test Groups: {Colors.CYAN}{', '.join(group_names)}{Colors.RESET}")
-        print(f"Skip Slow Tests: {Colors.YELLOW if self.skip_slow else Colors.GREEN}{'Yes' if self.skip_slow else 'No'}{Colors.RESET}")
-        print(f"Skip Real API: {Colors.YELLOW if self.skip_real_api else Colors.GREEN}{'Yes' if self.skip_real_api else 'No'}{Colors.RESET}")
+        print(
+            f"Running Test Groups: {Colors.CYAN}{', '.join(group_names)}{Colors.RESET}"
+        )
+        print(
+            f"Skip Slow Tests: {Colors.YELLOW if self.skip_slow else Colors.GREEN}{'Yes' if self.skip_slow else 'No'}{Colors.RESET}"
+        )
+        print(
+            f"Skip Real API: {Colors.YELLOW if self.skip_real_api else Colors.GREEN}{'Yes' if self.skip_real_api else 'No'}{Colors.RESET}"
+        )
         print()
 
     def _print_group_header(self, group: TestGroup, test_files: List[TestFile]):
         """Print group header."""
         print(f"{Colors.BOLD}{'-'*70}{Colors.RESET}")
-        print(f"{Colors.BOLD}TEST GROUP: {group.value.title().replace('-', ' ')} ({len(test_files)} files){Colors.RESET}")
+        print(
+            f"{Colors.BOLD}TEST GROUP: {group.value.title().replace('-', ' ')} ({len(test_files)} files){Colors.RESET}"
+        )
         print(f"{Colors.BOLD}{'-'*70}{Colors.RESET}")
 
     def _print_test_result(self, result: TestResult):
@@ -361,25 +437,29 @@ class TestRunner:
             "PASS": f"{Colors.GREEN}✓{Colors.RESET}",
             "FAIL": f"{Colors.RED}✗{Colors.RESET}",
             "SKIP": f"{Colors.YELLOW}⊘{Colors.RESET}",
-            "ERROR": f"{Colors.RED}⚠{Colors.RESET}"
+            "ERROR": f"{Colors.RED}⚠{Colors.RESET}",
         }[result.status]
 
         status_color = {
             "PASS": Colors.GREEN,
             "FAIL": Colors.RED,
             "SKIP": Colors.YELLOW,
-            "ERROR": Colors.RED
+            "ERROR": Colors.RED,
         }[result.status]
 
-        print(f"{status_icon} {result.file:40} {result.tests_run:3} tests  "
-              f"{result.duration:6.3f}s   {status_color}{result.status:5}{Colors.RESET}")
+        print(
+            f"{status_icon} {result.file:40} {result.tests_run:3} tests  "
+            f"{result.duration:6.3f}s   {status_color}{result.status:5}{Colors.RESET}"
+        )
 
         if result.error and not self.verbose:
             print(f"   {Colors.RED}Error: {result.error[:60]}{Colors.RESET}")
 
     def _print_group_summary(self, group: TestGroup, test_files: List[TestFile]):
         """Print group summary."""
-        group_results = [r for r in self.results if any(tf.path.name == r.file for tf in test_files)]
+        group_results = [
+            r for r in self.results if any(tf.path.name == r.file for tf in test_files)
+        ]
 
         total_tests = sum(r.tests_run for r in group_results)
         total_passed = sum(r.tests_passed for r in group_results)
@@ -387,17 +467,23 @@ class TestRunner:
         total_skipped = sum(r.tests_skipped for r in group_results)
         total_duration = sum(r.duration for r in group_results)
 
-        print(f"\nSummary: {total_tests} tests, "
-              f"{Colors.GREEN}{total_passed} passed{Colors.RESET}, "
-              f"{Colors.RED if total_failed > 0 else ''}{total_failed} failed{Colors.RESET}, "
-              f"{total_skipped} skipped "
-              f"({total_duration:.3f}s)")
+        print(
+            f"\nSummary: {total_tests} tests, "
+            f"{Colors.GREEN}{total_passed} passed{Colors.RESET}, "
+            f"{Colors.RED if total_failed > 0 else ''}{total_failed} failed{Colors.RESET}, "
+            f"{total_skipped} skipped "
+            f"({total_duration:.3f}s)"
+        )
 
         # Special warnings for security/architecture
         if group == TestGroup.SECURITY:
-            print(f"{Colors.BOLD}⚠️  CRITICAL:{Colors.RESET} 0 vulnerabilities confirmed")
+            print(
+                f"{Colors.BOLD}⚠️  CRITICAL:{Colors.RESET} 0 vulnerabilities confirmed"
+            )
         elif group == TestGroup.ARCHITECTURE:
-            print(f"{Colors.BOLD}⚠️  CRITICAL:{Colors.RESET} 0 layer violations detected")
+            print(
+                f"{Colors.BOLD}⚠️  CRITICAL:{Colors.RESET} 0 layer violations detected"
+            )
 
         print()
 
@@ -417,7 +503,9 @@ class TestRunner:
         print(f"Total Test Files: {total_files}")
         print(f"Total Tests Run:  {total_tests}")
         print(f"Total Passed:     {Colors.GREEN}{total_passed} ✓{Colors.RESET}")
-        print(f"Total Failed:     {Colors.RED if total_failed > 0 else ''}{total_failed} ✗{Colors.RESET}")
+        print(
+            f"Total Failed:     {Colors.RED if total_failed > 0 else ''}{total_failed} ✗{Colors.RESET}"
+        )
         print(f"Total Skipped:    {total_skipped} ⊘")
         print(f"Total Duration:   {total_duration:.3f}s")
 
@@ -448,7 +536,7 @@ class TestRunner:
                 "timestamp": datetime.now().isoformat(),
                 "skip_slow": self.skip_slow,
                 "skip_real_api": self.skip_real_api,
-                "total_duration": time.time() - self.start_time
+                "total_duration": time.time() - self.start_time,
             },
             "results": [
                 {
@@ -459,7 +547,7 @@ class TestRunner:
                     "tests_skipped": r.tests_skipped,
                     "duration": r.duration,
                     "status": r.status,
-                    "error": r.error
+                    "error": r.error,
                 }
                 for r in self.results
             ],
@@ -469,11 +557,11 @@ class TestRunner:
                 "total_passed": sum(r.tests_passed for r in self.results),
                 "total_failed": sum(r.tests_failed for r in self.results),
                 "total_skipped": sum(r.tests_skipped for r in self.results),
-                "exit_code": self._calculate_exit_code()
-            }
+                "exit_code": self._calculate_exit_code(),
+            },
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(output, f, indent=2)
 
         print(f"JSON output written to: {filepath}")
@@ -484,13 +572,16 @@ class TestRunner:
         from xml.dom.minidom import parseString
 
         # Create root element
-        testsuites = Element('testsuites', {
-            'name': 'vscode_scanner',
-            'tests': str(sum(r.tests_run for r in self.results)),
-            'failures': str(sum(r.tests_failed for r in self.results)),
-            'errors': str(sum(1 for r in self.results if r.status == "ERROR")),
-            'time': f"{time.time() - self.start_time:.3f}"
-        })
+        testsuites = Element(
+            "testsuites",
+            {
+                "name": "vscode_scanner",
+                "tests": str(sum(r.tests_run for r in self.results)),
+                "failures": str(sum(r.tests_failed for r in self.results)),
+                "errors": str(sum(1 for r in self.results if r.status == "ERROR")),
+                "time": f"{time.time() - self.start_time:.3f}",
+            },
+        )
 
         # Group results by test group
         for group in TestGroup:
@@ -498,41 +589,51 @@ class TestRunner:
                 continue
 
             group_files = TEST_REGISTRY.get(group, [])
-            group_results = [r for r in self.results if any(tf.path.name == r.file for tf in group_files)]
+            group_results = [
+                r
+                for r in self.results
+                if any(tf.path.name == r.file for tf in group_files)
+            ]
 
             if not group_results:
                 continue
 
-            testsuite = SubElement(testsuites, 'testsuite', {
-                'name': group.value,
-                'tests': str(sum(r.tests_run for r in group_results)),
-                'failures': str(sum(r.tests_failed for r in group_results)),
-                'errors': str(sum(1 for r in group_results if r.status == "ERROR")),
-                'time': f"{sum(r.duration for r in group_results):.3f}"
-            })
+            testsuite = SubElement(
+                testsuites,
+                "testsuite",
+                {
+                    "name": group.value,
+                    "tests": str(sum(r.tests_run for r in group_results)),
+                    "failures": str(sum(r.tests_failed for r in group_results)),
+                    "errors": str(sum(1 for r in group_results if r.status == "ERROR")),
+                    "time": f"{sum(r.duration for r in group_results):.3f}",
+                },
+            )
 
             for result in group_results:
-                testcase = SubElement(testsuite, 'testcase', {
-                    'classname': result.file.replace('.py', ''),
-                    'name': result.file,
-                    'time': f"{result.duration:.3f}"
-                })
+                testcase = SubElement(
+                    testsuite,
+                    "testcase",
+                    {
+                        "classname": result.file.replace(".py", ""),
+                        "name": result.file,
+                        "time": f"{result.duration:.3f}",
+                    },
+                )
 
                 if result.status == "FAIL":
-                    failure = SubElement(testcase, 'failure', {
-                        'message': 'Test failed'
-                    })
+                    failure = SubElement(
+                        testcase, "failure", {"message": "Test failed"}
+                    )
                     failure.text = result.error
                 elif result.status == "ERROR":
-                    error = SubElement(testcase, 'error', {
-                        'message': 'Test error'
-                    })
+                    error = SubElement(testcase, "error", {"message": "Test error"})
                     error.text = result.error
 
         # Pretty print XML
         xml_str = parseString(tostring(testsuites)).toprettyxml(indent="  ")
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(xml_str)
 
         print(f"JUnit XML output written to: {filepath}")
@@ -542,32 +643,51 @@ class TestRunner:
 # Main
 # ==============================================================================
 
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='VS Code Extension Scanner Test Suite Runner',
+        description="VS Code Extension Scanner Test Suite Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
     # Test groups
-    parser.add_argument('--unit', action='store_true', help='Run unit tests')
-    parser.add_argument('--security', action='store_true', help='Run security tests')
-    parser.add_argument('--architecture', action='store_true', help='Run architecture tests')
-    parser.add_argument('--parallel', action='store_true', help='Run parallel/threading tests')
-    parser.add_argument('--integration', action='store_true', help='Run integration tests')
-    parser.add_argument('--real-api', action='store_true', help='Run real API tests (slow)')
-    parser.add_argument('--mock-validation', action='store_true', help='Run mock validation tests (slow)')
-    parser.add_argument('--all', action='store_true', help='Run all test groups')
+    parser.add_argument("--unit", action="store_true", help="Run unit tests")
+    parser.add_argument("--security", action="store_true", help="Run security tests")
+    parser.add_argument(
+        "--architecture", action="store_true", help="Run architecture tests"
+    )
+    parser.add_argument(
+        "--parallel", action="store_true", help="Run parallel/threading tests"
+    )
+    parser.add_argument(
+        "--integration", action="store_true", help="Run integration tests"
+    )
+    parser.add_argument(
+        "--real-api", action="store_true", help="Run real API tests (slow)"
+    )
+    parser.add_argument(
+        "--mock-validation",
+        action="store_true",
+        help="Run mock validation tests (slow)",
+    )
+    parser.add_argument("--all", action="store_true", help="Run all test groups")
 
     # Options
-    parser.add_argument('--skip-slow', action='store_true', help='Skip slow tests')
-    parser.add_argument('--skip-real-api', action='store_true', help='Skip real API tests')
-    parser.add_argument('--output', choices=['console', 'json', 'junit'], default='console',
-                       help='Output format (default: console)')
-    parser.add_argument('--output-file', help='Output file for json/junit formats')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
-    parser.add_argument('--quiet', '-q', action='store_true', help='Minimal output')
+    parser.add_argument("--skip-slow", action="store_true", help="Skip slow tests")
+    parser.add_argument(
+        "--skip-real-api", action="store_true", help="Skip real API tests"
+    )
+    parser.add_argument(
+        "--output",
+        choices=["console", "json", "junit"],
+        default="console",
+        help="Output format (default: console)",
+    )
+    parser.add_argument("--output-file", help="Output file for json/junit formats")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Minimal output")
 
     args = parser.parse_args()
 
@@ -599,22 +719,24 @@ def main():
         skip_slow=args.skip_slow,
         skip_real_api=args.skip_real_api,
         verbose=args.verbose,
-        quiet=args.quiet
+        quiet=args.quiet,
     )
 
     exit_code = runner.run_groups(groups)
 
     # Generate additional output formats
-    if args.output == 'json' and args.output_file:
+    if args.output == "json" and args.output_file:
         runner.output_json(args.output_file)
-    elif args.output == 'junit' and args.output_file:
+    elif args.output == "junit" and args.output_file:
         runner.output_junit(args.output_file)
-    elif args.output in ['json', 'junit'] and not args.output_file:
-        print(f"Error: --output-file required for {args.output} format", file=sys.stderr)
+    elif args.output in ["json", "junit"] and not args.output_file:
+        print(
+            f"Error: --output-file required for {args.output} format", file=sys.stderr
+        )
         return 3
 
     return exit_code
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

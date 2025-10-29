@@ -114,10 +114,10 @@ Key behaviors:
 
 **Example Output**:
 ```
-KARL WIEGERS: "The requirement 'SHALL handle failures gracefully' lacks specificity. 
+KARL WIEGERS: "The requirement 'SHALL handle failures gracefully' lacks specificity.
 What constitutes graceful handling? What types of failures are we addressing?"
 
-MICHAEL NYGARD: "Building on Karl's point, we need specific failure modes: network 
+MICHAEL NYGARD: "Building on Karl's point, we need specific failure modes: network
 timeouts, service unavailable, rate limiting. Each requires different handling strategies."
 
 GOJKO ADZIC: "Let's make this concrete with examples:
@@ -125,7 +125,7 @@ GOJKO ADZIC: "Let's make this concrete with examples:
   When: Circuit breaker activates
   Then: Return cached response within 100ms"
 
-MARTIN FOWLER: "The specification should also define the failure notification interface. 
+MARTIN FOWLER: "The specification should also define the failure notification interface.
 How do upstream services know what type of failure occurred?"
 ```
 
@@ -268,21 +268,21 @@ specification_review:
   review_date: "2025-01-15"
   expert_panel: ["wiegers", "adzic", "nygard", "fowler"]
   focus_areas: ["requirements", "architecture", "testing"]
-  
+
 quality_assessment:
   overall_score: 7.2/10
   requirements_quality: 8.1/10
   architecture_clarity: 6.8/10
   testability_score: 7.5/10
-  
+
 critical_issues:
   - category: "requirements"
     severity: "high"
     expert: "wiegers"
     issue: "Authentication timeout not specified"
     recommendation: "Define session timeout with configurable values"
-    
-  - category: "architecture"  
+
+  - category: "architecture"
     severity: "medium"
     expert: "fowler"
     issue: "Token refresh mechanism unclear"

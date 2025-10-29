@@ -24,7 +24,7 @@ def get_version_file():
 def read_current_version():
     """Read the current version from _version.py."""
     version_file = get_version_file()
-    content = version_file.read_text(encoding='utf-8')
+    content = version_file.read_text(encoding="utf-8")
 
     match = re.search(r'__version__\s*=\s*"([^"]+)"', content)
     if not match:
@@ -36,7 +36,7 @@ def read_current_version():
 def read_schema_version():
     """Read the schema version from _version.py."""
     version_file = get_version_file()
-    content = version_file.read_text(encoding='utf-8')
+    content = version_file.read_text(encoding="utf-8")
 
     match = re.search(r'SCHEMA_VERSION\s*=\s*"([^"]+)"', content)
     if not match:
@@ -48,20 +48,18 @@ def read_schema_version():
 def set_version(new_version):
     """Update the version in _version.py."""
     version_file = get_version_file()
-    content = version_file.read_text(encoding='utf-8')
+    content = version_file.read_text(encoding="utf-8")
 
     # Validate version format (basic semver)
-    if not re.match(r'^\d+\.\d+\.\d+$', new_version):
+    if not re.match(r"^\d+\.\d+\.\d+$", new_version):
         raise ValueError(f"Invalid version format: {new_version}. Expected: X.Y.Z")
 
     # Update version
     new_content = re.sub(
-        r'__version__\s*=\s*"[^"]+"',
-        f'__version__ = "{new_version}"',
-        content
+        r'__version__\s*=\s*"[^"]+"', f'__version__ = "{new_version}"', content
     )
 
-    version_file.write_text(new_content, encoding='utf-8')
+    version_file.write_text(new_content, encoding="utf-8")
     print(f"✓ Updated version to {new_version} in {version_file}")
 
 
@@ -99,10 +97,13 @@ def check_consistency():
         if not full_path.exists():
             continue
 
-        content = full_path.read_text(encoding='utf-8')
+        content = full_path.read_text(encoding="utf-8")
 
         # Check if file imports from _version
-        if "from vscode_scanner._version import" in content or "from ._version import" in content:
+        if (
+            "from vscode_scanner._version import" in content
+            or "from ._version import" in content
+        ):
             print(f"  ✓ {file_path}: Uses centralized version")
         else:
             # Check for hardcoded versions
@@ -116,7 +117,7 @@ def check_consistency():
     # Check pyproject.toml
     pyproject = root / "pyproject.toml"
     if pyproject.exists():
-        content = pyproject.read_text(encoding='utf-8')
+        content = pyproject.read_text(encoding="utf-8")
         if 'dynamic = ["version"]' in content:
             print(f"  ✓ pyproject.toml: Uses dynamic versioning")
         elif re.search(r'version\s*=\s*"[\d.]+"', content):
@@ -130,23 +131,23 @@ def check_consistency():
     # Documentation files that should have consistent version numbers
     doc_checks = {
         "README.md": [
-            (r'\*\*Version:\*\*\s+(\d+\.\d+\.\d+)', "version badge"),
-            (r'Version.*?(\d+\.\d+\.\d+)', "version number"),
+            (r"\*\*Version:\*\*\s+(\d+\.\d+\.\d+)", "version badge"),
+            (r"Version.*?(\d+\.\d+\.\d+)", "version number"),
         ],
         "CLAUDE.md": [
-            (r'Current Status:.*?v(\d+\.\d+\.\d+)', "Current Status section"),
-            (r'\*\*Current Status:\*\*.*?v(\d+\.\d+\.\d+)', "Current Status field"),
+            (r"Current Status:.*?v(\d+\.\d+\.\d+)", "Current Status section"),
+            (r"\*\*Current Status:\*\*.*?v(\d+\.\d+\.\d+)", "Current Status field"),
         ],
         "docs/project/STATUS.md": [
-            (r'\*\*Current Version:\*\*\s+(\d+\.\d+\.\d+)', "Current Version field"),
-            (r'Current Version:\s+(\d+\.\d+\.\d+)', "Current Version line"),
+            (r"\*\*Current Version:\*\*\s+(\d+\.\d+\.\d+)", "Current Version field"),
+            (r"Current Version:\s+(\d+\.\d+\.\d+)", "Current Version line"),
         ],
         "docs/project/PRD.md": [
-            (r'\*\*Version:\*\*\s+(\d+\.\d+\.\d+)', "Version field"),
-            (r'Version:\s+(\d+\.\d+\.\d+)', "Version line"),
+            (r"\*\*Version:\*\*\s+(\d+\.\d+\.\d+)", "Version field"),
+            (r"Version:\s+(\d+\.\d+\.\d+)", "Version line"),
         ],
         "DISTRIBUTION.md": [
-            (r'vscode_extension_scanner-(\d+\.\d+\.\d+)', "version in examples"),
+            (r"vscode_extension_scanner-(\d+\.\d+\.\d+)", "version in examples"),
         ],
     }
 
@@ -156,7 +157,7 @@ def check_consistency():
             print(f"  ⚠ {doc_file}: File not found (skipping)")
             continue
 
-        content = full_path.read_text(encoding='utf-8')
+        content = full_path.read_text(encoding="utf-8")
         file_has_issue = False
 
         for pattern, description in patterns:

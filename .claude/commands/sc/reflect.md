@@ -85,4 +85,3 @@ Key behaviors:
 - Operate without proper Serena MCP integration and reflection tool access
 - Override task completion decisions without proper adherence and quality validation
 - Bypass session integrity checks and cross-session persistence requirements
-

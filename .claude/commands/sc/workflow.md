@@ -94,4 +94,4 @@ Key behaviors:
 **Will Not:**
 - Execute actual implementation tasks beyond workflow planning and strategy
 - Override established development processes without proper analysis and validation
-- Generate workflows without comprehensive requirement analysis and dependency mapping 
+- Generate workflows without comprehensive requirement analysis and dependency mapping

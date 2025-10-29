@@ -91,4 +91,3 @@ Key behaviors:
 - Apply risky improvements without proper analysis and user confirmation
 - Make architectural changes without understanding full system impact
 - Override established coding standards or project-specific conventions
-

@@ -17,7 +17,7 @@ from rich.progress import (
     BarColumn,
     TaskProgressColumn,
     TimeRemainingColumn,
-    TimeElapsedColumn
+    TimeElapsedColumn,
 )
 from rich.table import Table
 from rich.panel import Panel
@@ -29,26 +29,26 @@ from rich.layout import Layout
 
 # Color scheme
 COLORS = {
-    'critical': 'red',
-    'high': 'red',
-    'medium': 'yellow',
-    'low': 'green',
-    'unknown': 'dim',
-    'success': 'green',
-    'warning': 'yellow',
-    'error': 'red',
-    'info': 'cyan',
-    'cached': 'cyan',
-    'scanning': 'blue'
+    "critical": "red",
+    "high": "red",
+    "medium": "yellow",
+    "low": "green",
+    "unknown": "dim",
+    "success": "green",
+    "warning": "yellow",
+    "error": "red",
+    "info": "cyan",
+    "cached": "cyan",
+    "scanning": "blue",
 }
 
 # Risk level emojis and labels
 RISK_DISPLAY = {
-    'critical': ('🔴', 'CRIT'),
-    'high': ('🔴', 'HIGH'),
-    'medium': ('🟡', 'MED'),
-    'low': ('🟢', 'LOW'),
-    'unknown': ('⚪', '???')
+    "critical": ("🔴", "CRIT"),
+    "high": ("🔴", "HIGH"),
+    "medium": ("🟡", "MED"),
+    "low": ("🟢", "LOW"),
+    "unknown": ("⚪", "???"),
 }
 
 
@@ -100,11 +100,13 @@ def create_scan_progress() -> Optional[Progress]:
         TaskProgressColumn(),
         TimeElapsedColumn(),
         TimeRemainingColumn(),
-        expand=True
+        expand=True,
     )
 
 
-def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Optional[Table]:
+def create_results_table(
+    scan_results: List[Dict], show_all: bool = False
+) -> Optional[Table]:
     """
     Create a Rich table for scan results.
 
@@ -126,20 +128,16 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     table.add_column("Vulns", justify="right", width=6)
 
     # Define risk hierarchy for sorting (higher number = higher priority)
-    risk_hierarchy = {
-        'critical': 3,
-        'high': 2,
-        'medium': 1,
-        'low': 0,
-        'unknown': -1
-    }
+    risk_hierarchy = {"critical": 3, "high": 2, "medium": 1, "low": 0, "unknown": -1}
 
     # Sort results by risk level (descending) then by vulnerability count (descending)
     def sort_key(result):
-        security = result.get('security', {})
-        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
-        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
-        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+        security = result.get("security", {})
+        risk_level = (
+            security.get("risk_level") or result.get("risk_level", "unknown")
+        ).lower()
+        vulns = security.get("vulnerabilities") or result.get("vulnerabilities", {})
+        vuln_count = vulns.get("count", 0) if isinstance(vulns, dict) else 0
 
         risk_priority = risk_hierarchy.get(risk_level, -1)
         return (-risk_priority, -vuln_count)  # Negative for descending order
@@ -153,45 +151,53 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
     for result in results_to_show:
         # Get security data (handle both flat and nested structures)
         # OutputFormatter nests data in 'security' dict, but raw results are flat
-        security = result.get('security', {})
-        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
-        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
-        score = security.get('score') or result.get('security_score', 0)
+        security = result.get("security", {})
+        risk_level = (
+            security.get("risk_level") or result.get("risk_level", "unknown")
+        ).lower()
+        vulns = security.get("vulnerabilities") or result.get("vulnerabilities", {})
+        score = security.get("score") or result.get("security_score", 0)
 
         # Format risk level
-        emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY['unknown'])
+        emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY["unknown"])
         risk_display = f"{emoji} {label}"
 
         # Get vulnerability count
-        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+        vuln_count = vulns.get("count", 0) if isinstance(vulns, dict) else 0
 
         # Format extension name and version separately
-        ext_name = result.get('display_name') or result.get('name', 'Unknown')
-        ext_version = result.get('version', 'N/A')
+        ext_name = result.get("display_name") or result.get("name", "Unknown")
+        ext_version = result.get("version", "N/A")
 
         # Format security score
         score_display = f"{score}/100" if score else "N/A"
 
         # Get publisher information (handle both nested and flat structures)
-        metadata = result.get('metadata', {})
-        publisher_info = metadata.get('publisher', {})
+        metadata = result.get("metadata", {})
+        publisher_info = metadata.get("publisher", {})
 
         # Extract publisher name (handle dict or string)
-        publisher_name = publisher_info.get('name') if isinstance(publisher_info, dict) else None
+        publisher_name = (
+            publisher_info.get("name") if isinstance(publisher_info, dict) else None
+        )
         if not publisher_name:
             # Fallback to top-level publisher field
-            pub_field = result.get('publisher', 'Unknown')
+            pub_field = result.get("publisher", "Unknown")
             if isinstance(pub_field, dict):
-                publisher_name = pub_field.get('name', 'Unknown')
+                publisher_name = pub_field.get("name", "Unknown")
             else:
-                publisher_name = pub_field if pub_field else 'Unknown'
+                publisher_name = pub_field if pub_field else "Unknown"
 
         # Get verification status (check metadata first, then top-level publisher)
-        is_verified = publisher_info.get('verified', False) if isinstance(publisher_info, dict) else False
+        is_verified = (
+            publisher_info.get("verified", False)
+            if isinstance(publisher_info, dict)
+            else False
+        )
         if not is_verified:
-            pub_field = result.get('publisher', {})
+            pub_field = result.get("publisher", {})
             if isinstance(pub_field, dict):
-                is_verified = pub_field.get('verified', False)
+                is_verified = pub_field.get("verified", False)
 
         # Format publisher display with verification indicator
         if is_verified:
@@ -206,7 +212,7 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
             publisher_display,
             risk_display,
             score_display,
-            str(vuln_count)
+            str(vuln_count),
         )
 
     # Add "more" row if needed
@@ -218,7 +224,7 @@ def create_results_table(scan_results: List[Dict], show_all: bool = False) -> Op
             "",  # Risk column
             "",  # Score column
             "",  # Vulns column
-            style="dim"
+            style="dim",
         )
 
     return table
@@ -238,20 +244,16 @@ def display_results_plain(scan_results: List[Dict]) -> None:
         return
 
     # Define risk hierarchy for sorting (same as create_results_table)
-    risk_hierarchy = {
-        'critical': 3,
-        'high': 2,
-        'medium': 1,
-        'low': 0,
-        'unknown': -1
-    }
+    risk_hierarchy = {"critical": 3, "high": 2, "medium": 1, "low": 0, "unknown": -1}
 
     # Sort results by risk level (descending) then by vulnerability count (descending)
     def sort_key(result):
-        security = result.get('security', {})
-        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
-        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
-        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+        security = result.get("security", {})
+        risk_level = (
+            security.get("risk_level") or result.get("risk_level", "unknown")
+        ).lower()
+        vulns = security.get("vulnerabilities") or result.get("vulnerabilities", {})
+        vuln_count = vulns.get("count", 0) if isinstance(vulns, dict) else 0
 
         risk_priority = risk_hierarchy.get(risk_level, -1)
         return (-risk_priority, -vuln_count)  # Negative for descending order
@@ -259,58 +261,70 @@ def display_results_plain(scan_results: List[Dict]) -> None:
     sorted_results = sorted(scan_results, key=sort_key)
 
     # Print header
-    print(f"\nScan Results ({len(scan_results)} extension{'s' if len(scan_results) != 1 else ''}):")
+    print(
+        f"\nScan Results ({len(scan_results)} extension{'s' if len(scan_results) != 1 else ''}):"
+    )
     print("=" * 60)
     print()
 
     # Display each extension
     for result in sorted_results:
         # Get security data (handle both flat and nested structures)
-        security = result.get('security', {})
-        risk_level = (security.get('risk_level') or result.get('risk_level', 'unknown')).lower()
-        vulns = security.get('vulnerabilities') or result.get('vulnerabilities', {})
-        score = security.get('score') or result.get('security_score', 0)
+        security = result.get("security", {})
+        risk_level = (
+            security.get("risk_level") or result.get("risk_level", "unknown")
+        ).lower()
+        vulns = security.get("vulnerabilities") or result.get("vulnerabilities", {})
+        score = security.get("score") or result.get("security_score", 0)
 
         # Get risk display (emoji and label)
-        emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY['unknown'])
+        emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY["unknown"])
 
         # Get vulnerability count
-        vuln_count = vulns.get('count', 0) if isinstance(vulns, dict) else 0
+        vuln_count = vulns.get("count", 0) if isinstance(vulns, dict) else 0
         vuln_text = "vuln" if vuln_count == 1 else "vulns"
 
         # Format extension name and version
-        ext_name = result.get('display_name') or result.get('name', 'Unknown')
-        ext_version = result.get('version', 'N/A')
+        ext_name = result.get("display_name") or result.get("name", "Unknown")
+        ext_version = result.get("version", "N/A")
 
         # Format security score
         score_display = f"{score}/100" if score else "N/A"
 
         # Get publisher information (handle both nested and flat structures)
-        metadata = result.get('metadata', {})
-        publisher_info = metadata.get('publisher', {})
+        metadata = result.get("metadata", {})
+        publisher_info = metadata.get("publisher", {})
 
         # Extract publisher name (handle dict or string)
-        publisher_name = publisher_info.get('name') if isinstance(publisher_info, dict) else None
+        publisher_name = (
+            publisher_info.get("name") if isinstance(publisher_info, dict) else None
+        )
         if not publisher_name:
             # Fallback to top-level publisher field
-            pub_field = result.get('publisher', 'Unknown')
+            pub_field = result.get("publisher", "Unknown")
             if isinstance(pub_field, dict):
-                publisher_name = pub_field.get('name', 'Unknown')
+                publisher_name = pub_field.get("name", "Unknown")
             else:
-                publisher_name = pub_field if pub_field else 'Unknown'
+                publisher_name = pub_field if pub_field else "Unknown"
 
         # Get verification status
-        is_verified = publisher_info.get('verified', False) if isinstance(publisher_info, dict) else False
+        is_verified = (
+            publisher_info.get("verified", False)
+            if isinstance(publisher_info, dict)
+            else False
+        )
         if not is_verified:
-            pub_field = result.get('publisher', {})
+            pub_field = result.get("publisher", {})
             if isinstance(pub_field, dict):
-                is_verified = pub_field.get('verified', False)
+                is_verified = pub_field.get("verified", False)
 
         # Format publisher display with verification indicator
         publisher_display = f"{publisher_name} ✓" if is_verified else publisher_name
 
         # Print extension line
-        print(f"{emoji} {ext_name} v{ext_version} ({publisher_display}) - {label.upper()} - Score: {score_display} - {vuln_count} {vuln_text}")
+        print(
+            f"{emoji} {ext_name} v{ext_version} ({publisher_display}) - {label.upper()} - Score: {score_display} - {vuln_count} {vuln_text}"
+        )
 
     print()
     print("=" * 60)
@@ -334,8 +348,8 @@ def create_cache_stats_table(stats: Dict) -> Optional[Table]:
     table.add_column("Details", style="dim")
 
     # Basic stats
-    from_cache = stats.get('from_cache', 0)
-    fresh_scans = stats.get('fresh_scans', 0)
+    from_cache = stats.get("from_cache", 0)
+    fresh_scans = stats.get("fresh_scans", 0)
     total = from_cache + fresh_scans
     cache_hit_rate = (from_cache / total * 100) if total > 0 else 0
 
@@ -364,8 +378,8 @@ def create_retry_stats_table(retry_stats: Dict) -> Optional[Table]:
     """
 
     # Check if any retries occurred
-    http_retries = retry_stats.get('total_retries', 0)
-    workflow_retries = retry_stats.get('total_workflow_retries', 0)
+    http_retries = retry_stats.get("total_retries", 0)
+    workflow_retries = retry_stats.get("total_workflow_retries", 0)
 
     if http_retries == 0 and workflow_retries == 0:
         return None  # Don't show table if no retries
@@ -378,52 +392,60 @@ def create_retry_stats_table(retry_stats: Dict) -> Optional[Table]:
 
     # HTTP-level retries
     if http_retries > 0:
-        successful_http = retry_stats.get('successful_retries', 0)
-        failed_http = retry_stats.get('failed_after_retries', 0)
+        successful_http = retry_stats.get("successful_retries", 0)
+        failed_http = retry_stats.get("failed_after_retries", 0)
 
         # Calculate success rate for color coding
         success_rate = (successful_http / http_retries * 100) if http_retries > 0 else 0
-        count_style = "green" if success_rate >= 80 else "yellow" if success_rate >= 50 else "red"
+        count_style = (
+            "green" if success_rate >= 80 else "yellow" if success_rate >= 50 else "red"
+        )
 
         table.add_row(
             "HTTP Retries",
             f"[{count_style}]{http_retries}[/{count_style}]",
-            f"✓ {successful_http} succeeded"
+            f"✓ {successful_http} succeeded",
         )
 
         if failed_http > 0:
             table.add_row(
-                "Failed (HTTP)",
-                f"[red]{failed_http}[/red]",
-                "✗ After all retries"
+                "Failed (HTTP)", f"[red]{failed_http}[/red]", "✗ After all retries"
             )
 
     # Workflow-level retries
     if workflow_retries > 0:
-        successful_workflow = retry_stats.get('successful_workflow_retries', 0)
-        failed_workflow = retry_stats.get('failed_after_workflow_retries', 0)
+        successful_workflow = retry_stats.get("successful_workflow_retries", 0)
+        failed_workflow = retry_stats.get("failed_after_workflow_retries", 0)
 
         # Calculate success rate for color coding
-        success_rate = (successful_workflow / workflow_retries * 100) if workflow_retries > 0 else 0
-        count_style = "green" if success_rate >= 80 else "yellow" if success_rate >= 50 else "red"
+        success_rate = (
+            (successful_workflow / workflow_retries * 100)
+            if workflow_retries > 0
+            else 0
+        )
+        count_style = (
+            "green" if success_rate >= 80 else "yellow" if success_rate >= 50 else "red"
+        )
 
         table.add_row(
             "Workflow Retries",
             f"[{count_style}]{workflow_retries}[/{count_style}]",
-            f"✓ {successful_workflow} recovered"
+            f"✓ {successful_workflow} recovered",
         )
 
         if failed_workflow > 0:
             table.add_row(
                 "Failed (Workflow)",
                 f"[red]{failed_workflow}[/red]",
-                "✗ Need manual rescan"
+                "✗ Need manual rescan",
             )
 
     return table
 
 
-def create_filter_summary_table(args, original_count: int, filtered_count: int) -> Optional[Table]:
+def create_filter_summary_table(
+    args, original_count: int, filtered_count: int
+) -> Optional[Table]:
     """
     Create a table showing active filters and their effect.
 
@@ -519,7 +541,10 @@ class ScanDashboard:
         progress_pct = (self.current / self.total * 100) if self.total > 0 else 0
 
         # Header
-        content.append(f"Status: Scanning ({self.current}/{self.total} complete)\n", style="bold white")
+        content.append(
+            f"Status: Scanning ({self.current}/{self.total} complete)\n",
+            style="bold white",
+        )
 
         # Progress bar (text-based)
         bar_width = 40
@@ -548,8 +573,12 @@ class ScanDashboard:
         # Cache stats
         content.append("💾 Cache Performance:\n", style="cyan")
         total_processed = self.cached_count + self.fresh_count
-        cache_pct = (self.cached_count / total_processed * 100) if total_processed > 0 else 0
-        content.append(f"   ⚡ From Cache: {self.cached_count} ({cache_pct:.0f}%)\n", style="green")
+        cache_pct = (
+            (self.cached_count / total_processed * 100) if total_processed > 0 else 0
+        )
+        content.append(
+            f"   ⚡ From Cache: {self.cached_count} ({cache_pct:.0f}%)\n", style="green"
+        )
         content.append(f"   🔍 Fresh Scans: {self.fresh_count}\n", style="blue")
 
         # Elapsed time
@@ -558,10 +587,18 @@ class ScanDashboard:
         elapsed_sec = int(elapsed % 60)
         content.append(f"\n⏱  Elapsed: {elapsed_min}m {elapsed_sec}s", style="dim")
 
-        return Panel(content, title="VS Code Security Scan", border_style="blue", expand=False)
+        return Panel(
+            content, title="VS Code Security Scan", border_style="blue", expand=False
+        )
 
 
-def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] = None, use_rich: bool = True, verbose: bool = False) -> None:
+def display_summary(
+    results: Dict,
+    duration: float,
+    retry_stats: Optional[Dict] = None,
+    use_rich: bool = True,
+    verbose: bool = False,
+) -> None:
     """
     Display final scan summary.
 
@@ -572,17 +609,19 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
         use_rich: Whether to use Rich formatting
         verbose: Show operational details (timing, retry stats)
     """
-    summary = results.get('summary', {})
+    summary = results.get("summary", {})
 
-    total = summary.get('total_extensions_scanned', 0)
-    vulns = summary.get('vulnerabilities_found', 0)
+    total = summary.get("total_extensions_scanned", 0)
+    vulns = summary.get("vulnerabilities_found", 0)
 
     if use_rich:
         console = Console()
 
         # Create summary panel
         content = Text()
-        content.append(f"✓ Successfully scanned {total} extensions\n", style="green bold")
+        content.append(
+            f"✓ Successfully scanned {total} extensions\n", style="green bold"
+        )
 
         if vulns > 0:
             content.append(f"⚠ Found {vulns} vulnerabilities\n", style="yellow bold")
@@ -593,29 +632,40 @@ def display_summary(results: Dict, duration: float, retry_stats: Optional[Dict] 
 
         # Retry stats (only in verbose mode, if any retries occurred)
         if verbose and retry_stats:
-            http_retries = retry_stats.get('total_retries', 0)
-            workflow_retries = retry_stats.get('total_workflow_retries', 0)
-            successful_http = retry_stats.get('successful_retries', 0)
-            successful_workflow = retry_stats.get('successful_workflow_retries', 0)
-            failed = retry_stats.get('failed_after_retries', 0) + retry_stats.get('failed_after_workflow_retries', 0)
+            http_retries = retry_stats.get("total_retries", 0)
+            workflow_retries = retry_stats.get("total_workflow_retries", 0)
+            successful_http = retry_stats.get("successful_retries", 0)
+            successful_workflow = retry_stats.get("successful_workflow_retries", 0)
+            failed = retry_stats.get("failed_after_retries", 0) + retry_stats.get(
+                "failed_after_workflow_retries", 0
+            )
 
             if http_retries > 0 or workflow_retries > 0:
                 total_successful = successful_http + successful_workflow
                 if failed > 0:
-                    content.append(f"🔄 Retries: {total_successful} successful, {failed} failed\n", style="yellow")
+                    content.append(
+                        f"🔄 Retries: {total_successful} successful, {failed} failed\n",
+                        style="yellow",
+                    )
                 else:
-                    content.append(f"🔄 Retries: {total_successful} successful\n", style="green")
+                    content.append(
+                        f"🔄 Retries: {total_successful} successful\n", style="green"
+                    )
 
         # Duration (only in verbose mode)
         if verbose:
             duration_min = int(duration // 60)
             duration_sec = int(duration % 60)
             if duration_min > 0:
-                content.append(f"⏱  Duration: {duration_min}m {duration_sec}s\n", style="dim")
+                content.append(
+                    f"⏱  Duration: {duration_min}m {duration_sec}s\n", style="dim"
+                )
             else:
                 content.append(f"⏱  Duration: {duration:.1f}s\n", style="dim")
 
-        panel = Panel(content, title="Scan Complete", border_style="green", expand=False)
+        panel = Panel(
+            content, title="Scan Complete", border_style="green", expand=False
+        )
         console.print(panel)
     else:
         # Plain output (fallback)
@@ -690,7 +740,9 @@ def display_success(message: str, use_rich: bool = True) -> None:
         print(f"✓ {message}")
 
 
-def display_failed_extensions(failed_extensions: List[Dict], use_rich: bool = True) -> None:
+def display_failed_extensions(
+    failed_extensions: List[Dict], use_rich: bool = True
+) -> None:
     """
     Display failed extensions with error details.
 
@@ -716,7 +768,9 @@ def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
 
     # Warning header
     count = len(failed_extensions)
-    console.print(f"\n[yellow]⚠ Failed to Scan ({count} extension{'s' if count != 1 else ''})[/yellow]\n")
+    console.print(
+        f"\n[yellow]⚠ Failed to Scan ({count} extension{'s' if count != 1 else ''})[/yellow]\n"
+    )
 
     # Create table
     table = Table(show_header=True, header_style="bold yellow")
@@ -724,12 +778,14 @@ def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
     table.add_column("Error", style="red")
 
     for ext in failed_extensions:
-        table.add_row(ext['name'], ext['error_message'])
+        table.add_row(ext["name"], ext["error_message"])
 
     console.print(table)
 
     # Suggestion
-    console.print("\n[dim]Suggestion: Re-run with --delay 3.0 or --max-retries 5[/dim]\n")
+    console.print(
+        "\n[dim]Suggestion: Re-run with --delay 3.0 or --max-retries 5[/dim]\n"
+    )
 
 
 def _display_failed_extensions_plain(failed_extensions: List[Dict]) -> None:

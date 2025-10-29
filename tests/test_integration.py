@@ -33,7 +33,7 @@ class MockVscanAPI:
 
     def scan_extension(self, publisher, name, version, progress_callback=None):
         """Mock scan_extension method."""
-        self.calls.append(('scan', publisher, name, version))
+        self.calls.append(("scan", publisher, name, version))
         self.scan_count += 1
 
         # Simulate API response
@@ -55,7 +55,7 @@ class MockVscanAPI:
                 "critical": 0,
                 "high": 0,
                 "moderate": 0,
-                "low": 0
+                "low": 0,
             },
             "dependencies_count": 5,
             "risk_factors_count": 1,
@@ -66,19 +66,17 @@ class MockVscanAPI:
                 "publisher": {
                     "verified": True,
                     "domain": "example.com",
-                    "reputation": 95
+                    "reputation": 95,
                 }
             },
-            "dependencies": {
-                "total_count": 5
-            },
+            "dependencies": {"total_count": 5},
             "risk_factors": [
                 {
                     "type": "network_access",
                     "severity": "low",
-                    "description": "Extension makes network requests"
+                    "description": "Extension makes network requests",
                 }
-            ]
+            ],
         }
 
 
@@ -93,10 +91,10 @@ def create_mock_extension(tmpdir, publisher, name, version):
         "version": version,
         "displayName": f"{name.title()} Extension",
         "description": f"Mock extension {name}",
-        "engines": {"vscode": "^1.60.0"}
+        "engines": {"vscode": "^1.60.0"},
     }
 
-    with open(ext_dir / "package.json", 'w') as f:
+    with open(ext_dir / "package.json", "w") as f:
         json.dump(package_json, f)
 
     return ext_dir
@@ -136,14 +134,12 @@ def test_full_scan_workflow():
         results = []
         for ext in extensions:
             result = mock_api.scan_extension(
-                ext['publisher'],
-                ext['name'],
-                ext['version']
+                ext["publisher"], ext["name"], ext["version"]
             )
             results.append(result)
 
             # Cache the result
-            cache.save_result(ext['id'], ext['version'], result)
+            cache.save_result(ext["id"], ext["version"], result)
 
         assert len(results) == 3, "Expected 3 scan results"
         assert mock_api.scan_count == 3, "Expected 3 API calls"
@@ -156,11 +152,7 @@ def test_full_scan_workflow():
             results,
             scan_timestamp=scan_timestamp,
             scan_duration=10.5,
-            cache_stats={
-                "from_cache": 0,
-                "fresh_scans": 3,
-                "cache_hit_rate": 0.0
-            }
+            cache_stats={"from_cache": 0, "fresh_scans": 3, "cache_hit_rate": 0.0},
         )
 
         assert output["schema_version"] == "2.1", "Expected schema version 2.1"
@@ -195,11 +187,9 @@ def test_cache_hit_workflow():
             "risk_level": "low",
             "vulnerabilities": {"count": 0},
             "scan_status": "success",
-            "metadata": {
-                "publisher": {"verified": True}
-            },
+            "metadata": {"publisher": {"verified": True}},
             "dependencies": {"total_count": 5},
-            "risk_factors": []
+            "risk_factors": [],
         }
 
         cache.save_result("ms-python.python", "1.0.0", test_result)
@@ -296,17 +286,17 @@ def test_output_modes():
                 "critical": 0,
                 "high": 0,
                 "moderate": 0,
-                "low": 0
+                "low": 0,
             },
             "dependencies_count": 5,
             "risk_factors_count": 1,
             "scan_status": "success",
             "metadata": {
                 "description": "Python support",
-                "publisher": {"verified": True, "domain": "microsoft.com"}
+                "publisher": {"verified": True, "domain": "microsoft.com"},
             },
             "dependencies": {"total_count": 5},
-            "risk_factors": [{"type": "network", "severity": "low"}]
+            "risk_factors": [{"type": "network", "severity": "low"}],
         }
     ]
 
@@ -319,7 +309,7 @@ def test_output_modes():
         results,
         scan_timestamp=scan_timestamp,
         scan_duration=5.0,
-        cache_stats=cache_stats
+        cache_stats=cache_stats,
     )
 
     assert output["output_mode"] == "detailed"
@@ -360,7 +350,7 @@ def test_error_handling():
         bad_ext_dir.mkdir()
 
         # Create invalid JSON
-        with open(bad_ext_dir / "package.json", 'w') as f:
+        with open(bad_ext_dir / "package.json", "w") as f:
             f.write("{ invalid json }")
 
         discovery = ExtensionDiscovery(custom_dir=str(extensions_dir))
@@ -375,10 +365,7 @@ def test_error_handling():
         cache = CacheManager(cache_dir=str(cache_dir))
 
         # Try to save result with missing required fields
-        invalid_result = {
-            "name": "test",
-            "scan_status": "error"  # Failed scan
-        }
+        invalid_result = {"name": "test", "scan_status": "error"}  # Failed scan
 
         # Should not raise error, just skip caching
         cache.save_result("test.extension", "1.0.0", invalid_result)
@@ -412,7 +399,7 @@ def test_cache_cleanup():
                 "vulnerabilities": {"count": 0},
                 "metadata": {"publisher": {"verified": True}},
                 "dependencies": {"total_count": 0},
-                "risk_factors": []
+                "risk_factors": [],
             }
             cache.save_result(f"test.extension{i}", "1.0.0", result)
 
@@ -442,17 +429,19 @@ def test_extension_metadata_parsing():
         extensions_dir.mkdir()
 
         # Create extension with full metadata
-        ext_dir = create_mock_extension(extensions_dir, "microsoft", "python", "2024.10.0")
+        ext_dir = create_mock_extension(
+            extensions_dir, "microsoft", "python", "2024.10.0"
+        )
 
         # Add additional metadata
-        with open(ext_dir / "package.json", 'r') as f:
+        with open(ext_dir / "package.json", "r") as f:
             package = json.load(f)
 
         package["displayName"] = "Python"
         package["description"] = "Python language support"
         package["repository"] = {"url": "https://github.com/microsoft/vscode-python"}
 
-        with open(ext_dir / "package.json", 'w') as f:
+        with open(ext_dir / "package.json", "w") as f:
             json.dump(package, f)
 
         # Discover and parse
@@ -496,11 +485,13 @@ def main():
     except AssertionError as e:
         print(f"\n✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
     except Exception as e:
         print(f"\n✗ UNEXPECTED ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

@@ -27,7 +27,7 @@
 ## Examples
 ```
 Standard: "I'll analyze this code structure"
-Introspective: "🧠 Reasoning: Why did I choose structural analysis over functional? 
+Introspective: "🧠 Reasoning: Why did I choose structural analysis over functional?
                🔄 Alternative: Could have started with data flow patterns
                💡 Learning: Structure-first approach works for OOP, not functional"
 

@@ -40,7 +40,7 @@ def test_normal_database():
             "security_score": 85,
             "risk_level": "low",
             "vulnerabilities": {"count": 0},
-            "scan_status": "success"
+            "scan_status": "success",
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -73,15 +73,15 @@ def test_corrupted_database():
             "security_score": 85,
             "risk_level": "low",
             "vulnerabilities": {"count": 0},
-            "scan_status": "success"
+            "scan_status": "success",
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
         print(f"✓ Created normal database at {db_path}")
 
         # Corrupt the database by truncating it
-        with open(db_path, 'wb') as f:
-            f.write(b'CORRUPTED DATABASE FILE')
+        with open(db_path, "wb") as f:
+            f.write(b"CORRUPTED DATABASE FILE")
 
         print("✓ Corrupted database file")
 
@@ -121,10 +121,10 @@ def test_invalid_sqlite_header():
 
         # Create a file with invalid SQLite header
         db_path = cache_dir / "cache.db"
-        with open(db_path, 'wb') as f:
+        with open(db_path, "wb") as f:
             # SQLite databases should start with "SQLite format 3\000"
             # Write something else instead
-            f.write(b'INVALID SQLITE HEADER' + b'\x00' * 100)
+            f.write(b"INVALID SQLITE HEADER" + b"\x00" * 100)
 
         print(f"✓ Created database file with invalid header at {db_path}")
 
@@ -134,7 +134,9 @@ def test_invalid_sqlite_header():
 
         # Should have created backup and new database
         backup_files = list(cache_dir.glob("cache.db.corrupted.*"))
-        assert len(backup_files) > 0, f"Backup should be created, found: {list(cache_dir.glob('*'))}"
+        assert (
+            len(backup_files) > 0
+        ), f"Backup should be created, found: {list(cache_dir.glob('*'))}"
         print(f"✓ Backup created: {backup_files[0].name}")
 
         # Verify new database is functional
@@ -167,6 +169,7 @@ def main():
     except Exception as e:
         print(f"\n✗ UNEXPECTED ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

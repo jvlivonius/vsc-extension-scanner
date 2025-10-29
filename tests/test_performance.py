@@ -47,24 +47,32 @@ class TestDatabaseBatchCommitPerformance(unittest.TestCase):
         # Create mock results
         mock_results = []
         for i in range(NUM_RESULTS):
-            mock_results.append({
-                'name': f'test-ext-{i}',
-                'publisher': 'test-publisher',
-                'scan_status': 'success',
-                'security_score': 85,
-                'risk_level': 'low',
-                'vulnerabilities': {'total': 0, 'critical': 0, 'high': 0, 'moderate': 0, 'low': 0},
-                'metadata': {'version': '1.0.0'},
-                'security': {},
-                'dependencies': {}
-            })
+            mock_results.append(
+                {
+                    "name": f"test-ext-{i}",
+                    "publisher": "test-publisher",
+                    "scan_status": "success",
+                    "security_score": 85,
+                    "risk_level": "low",
+                    "vulnerabilities": {
+                        "total": 0,
+                        "critical": 0,
+                        "high": 0,
+                        "moderate": 0,
+                        "low": 0,
+                    },
+                    "metadata": {"version": "1.0.0"},
+                    "security": {},
+                    "dependencies": {},
+                }
+            )
 
         # Test 1: Individual commits (old way)
         cache_individual = CacheManager(cache_dir=self.test_cache_dir + "/individual")
 
         start_individual = time.time()
         for i, result in enumerate(mock_results):
-            cache_individual.save_result(f'test.ext-{i}', '1.0.0', result)
+            cache_individual.save_result(f"test.ext-{i}", "1.0.0", result)
         individual_duration = time.time() - start_individual
 
         # Test 2: Batch commits (new way)
@@ -73,7 +81,7 @@ class TestDatabaseBatchCommitPerformance(unittest.TestCase):
         start_batch = time.time()
         cache_batch.begin_batch()
         for i, result in enumerate(mock_results):
-            cache_batch.save_result_batch(f'test.ext-{i}', '1.0.0', result)
+            cache_batch.save_result_batch(f"test.ext-{i}", "1.0.0", result)
 
             # Commit every 10 (as in scanner.py)
             if (i + 1) % 10 == 0:
@@ -85,7 +93,9 @@ class TestDatabaseBatchCommitPerformance(unittest.TestCase):
         batch_duration = time.time() - start_batch
 
         # Calculate improvement
-        improvement_pct = ((individual_duration - batch_duration) / individual_duration) * 100
+        improvement_pct = (
+            (individual_duration - batch_duration) / individual_duration
+        ) * 100
 
         print(f"\n{'='*60}")
         print(f"Database Batch Commit Performance Test")
@@ -104,7 +114,7 @@ class TestDatabaseBatchCommitPerformance(unittest.TestCase):
         self.assertGreater(
             improvement_pct,
             10.0,
-            f"Batch commits should be >10% faster, got {improvement_pct:.1f}%"
+            f"Batch commits should be >10% faster, got {improvement_pct:.1f}%",
         )
 
         # Ideally should be >50% faster per plan
@@ -126,17 +136,23 @@ class TestCacheReadPerformance(unittest.TestCase):
         self.cache.begin_batch()
         for i in range(100):
             result = {
-                'name': f'ext-{i}',
-                'publisher': 'test',
-                'scan_status': 'success',
-                'security_score': 80,
-                'risk_level': 'low',
-                'vulnerabilities': {'total': 0, 'critical': 0, 'high': 0, 'moderate': 0, 'low': 0},
-                'metadata': {'version': '1.0.0'},
-                'security': {},
-                'dependencies': {}
+                "name": f"ext-{i}",
+                "publisher": "test",
+                "scan_status": "success",
+                "security_score": 80,
+                "risk_level": "low",
+                "vulnerabilities": {
+                    "total": 0,
+                    "critical": 0,
+                    "high": 0,
+                    "moderate": 0,
+                    "low": 0,
+                },
+                "metadata": {"version": "1.0.0"},
+                "security": {},
+                "dependencies": {},
             }
-            self.cache.save_result_batch(f'test.ext-{i}', '1.0.0', result)
+            self.cache.save_result_batch(f"test.ext-{i}", "1.0.0", result)
         self.cache.commit_batch()
 
     def tearDown(self):
@@ -154,7 +170,7 @@ class TestCacheReadPerformance(unittest.TestCase):
 
         results = []
         for i in range(100):
-            result = self.cache.get_cached_result(f'test.ext-{i}', '1.0.0')
+            result = self.cache.get_cached_result(f"test.ext-{i}", "1.0.0")
             results.append(result)
 
         duration = time.time() - start
@@ -175,9 +191,7 @@ class TestCacheReadPerformance(unittest.TestCase):
 
         # Assert performance target met
         self.assertLess(
-            duration,
-            1.0,
-            f"Cache reads took {duration:.3f}s, expected <1.0s"
+            duration, 1.0, f"Cache reads took {duration:.3f}s, expected <1.0s"
         )
 
 
@@ -205,17 +219,26 @@ class TestVACUUMEffect(unittest.TestCase):
         cache.begin_batch()
         for i in range(100):
             result = {
-                'name': f'large-ext-{i}',
-                'publisher': 'test',
-                'scan_status': 'success',
-                'security_score': 80,
-                'risk_level': 'low',
-                'vulnerabilities': {'total': 0, 'critical': 0, 'high': 0, 'moderate': 0, 'low': 0},
-                'metadata': {'version': '1.0.0', 'description': 'x' * 1000},  # Large metadata
-                'security': {},
-                'dependencies': {}
+                "name": f"large-ext-{i}",
+                "publisher": "test",
+                "scan_status": "success",
+                "security_score": 80,
+                "risk_level": "low",
+                "vulnerabilities": {
+                    "total": 0,
+                    "critical": 0,
+                    "high": 0,
+                    "moderate": 0,
+                    "low": 0,
+                },
+                "metadata": {
+                    "version": "1.0.0",
+                    "description": "x" * 1000,
+                },  # Large metadata
+                "security": {},
+                "dependencies": {},
             }
-            cache.save_result_batch(f'test.ext-{i}', '1.0.0', result)
+            cache.save_result_batch(f"test.ext-{i}", "1.0.0", result)
         cache.commit_batch()
 
         # Get file size before clear
@@ -247,7 +270,7 @@ class TestVACUUMEffect(unittest.TestCase):
         self.assertLess(
             size_after,
             size_before * 0.5,
-            f"VACUUM should reduce file size by >50%, got {reduction_pct:.1f}%"
+            f"VACUUM should reduce file size by >50%, got {reduction_pct:.1f}%",
         )
 
 
@@ -279,9 +302,9 @@ class TestBatchErrorCleanup(unittest.TestCase):
 
         # Trigger error with invalid data (non-serializable object)
         invalid_result = {
-            'name': 'test',
-            'scan_status': 'success',
-            'invalid': object()  # This will cause json.dumps to fail
+            "name": "test",
+            "scan_status": "success",
+            "invalid": object(),  # This will cause json.dumps to fail
         }
 
         # Should raise exception and clean up
@@ -289,9 +312,15 @@ class TestBatchErrorCleanup(unittest.TestCase):
             cache.save_result_batch("test.ext", "1.0", invalid_result)
 
         # Verify cleanup occurred
-        self.assertIsNone(cache._batch_connection, "Batch connection should be None after error")
-        self.assertIsNone(cache._batch_cursor, "Batch cursor should be None after error")
-        self.assertEqual(cache._batch_count, 0, "Batch count should be reset to 0 after error")
+        self.assertIsNone(
+            cache._batch_connection, "Batch connection should be None after error"
+        )
+        self.assertIsNone(
+            cache._batch_cursor, "Batch cursor should be None after error"
+        )
+        self.assertEqual(
+            cache._batch_count, 0, "Batch count should be reset to 0 after error"
+        )
 
         print(f"\n{'='*60}")
         print(f"Batch Error Cleanup Test")
@@ -304,10 +333,10 @@ class TestBatchErrorCleanup(unittest.TestCase):
 
 def run_all_benchmarks():
     """Run all performance benchmark tests."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("VS Code Extension Scanner - Performance Benchmarks")
     print("Phase 2: Performance Improvements Verification")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Run tests
     suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
@@ -315,18 +344,20 @@ def run_all_benchmarks():
     result = runner.run(suite)
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Benchmark Summary")
-    print("="*60)
+    print("=" * 60)
     print(f"Tests run:     {result.testsRun}")
-    print(f"Successes:     {result.testsRun - len(result.failures) - len(result.errors)}")
+    print(
+        f"Successes:     {result.testsRun - len(result.failures) - len(result.errors)}"
+    )
     print(f"Failures:      {len(result.failures)}")
     print(f"Errors:        {len(result.errors)}")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     return result.wasSuccessful()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_all_benchmarks()
     sys.exit(0 if success else 1)

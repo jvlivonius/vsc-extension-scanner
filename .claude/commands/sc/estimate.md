@@ -84,4 +84,3 @@ Key behaviors:
 - Guarantee estimate accuracy without proper scope analysis and validation
 - Provide estimates without appropriate domain expertise and complexity assessment
 - Override historical benchmarks without clear justification and analysis
-

@@ -241,7 +241,7 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 70)
     print("STRING SANITIZATION TESTS (v3.5.1 Security Hardening)")
     print("=" * 70)

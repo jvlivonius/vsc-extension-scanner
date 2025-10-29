@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from typer.testing import CliRunner
     from vscode_scanner import cli
+
     TYPER_AVAILABLE = True
 except ImportError:
     TYPER_AVAILABLE = False
@@ -78,28 +79,45 @@ class TestScanCommand(unittest.TestCase):
     def test_scan_basic(self):
         """Test basic scan command - just verify it doesn't crash."""
         # Since we can't easily mock the scanner, just test validation
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--publisher", "test",
-            "--no-cache",
-            "--plain", "--quiet",
-            "--extensions-dir", "/nonexistent"
-        ])
+        result = self.runner.invoke(
+            cli.app,
+            [
+                "scan",
+                "--publisher",
+                "test",
+                "--no-cache",
+                "--plain",
+                "--quiet",
+                "--extensions-dir",
+                "/nonexistent",
+            ],
+        )
 
         # Should fail because directory doesn't exist, but that's expected
         # Just verify the command structure works
-        self.assertIn("error", result.stdout.lower() or "nonexistent" in result.stdout.lower() or result.exit_code == 2)
+        self.assertIn(
+            "error",
+            result.stdout.lower()
+            or "nonexistent" in result.stdout.lower()
+            or result.exit_code == 2,
+        )
 
     def test_scan_with_filters(self):
         """Test scan command accepts filter arguments."""
         # Just test that the arguments are accepted
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--publisher", "microsoft",
-            "--min-risk-level", "high",
-            "--include-ids", "test.extension",
-            "--help"
-        ])
+        result = self.runner.invoke(
+            cli.app,
+            [
+                "scan",
+                "--publisher",
+                "microsoft",
+                "--min-risk-level",
+                "high",
+                "--include-ids",
+                "test.extension",
+                "--help",
+            ],
+        )
 
         # Help should work regardless of other args
         self.assertEqual(result.exit_code, 0)
@@ -107,11 +125,9 @@ class TestScanCommand(unittest.TestCase):
 
     def test_scan_with_output(self):
         """Test scan command accepts output parameter."""
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--output", "/tmp/test.json",
-            "--help"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--output", "/tmp/test.json", "--help"]
+        )
 
         # Help should work
         self.assertEqual(result.exit_code, 0)
@@ -119,23 +135,18 @@ class TestScanCommand(unittest.TestCase):
 
     def test_scan_invalid_risk_level(self):
         """Test scan with invalid risk level."""
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--min-risk-level", "invalid",
-            "--plain", "--quiet"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--min-risk-level", "invalid", "--plain", "--quiet"]
+        )
 
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("error", result.stdout.lower())
 
     def test_scan_conflicting_cache_options(self):
         """Test scan with conflicting cache options."""
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--no-cache",
-            "--refresh-cache",
-            "--plain", "--quiet"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--no-cache", "--refresh-cache", "--plain", "--quiet"]
+        )
 
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("error", result.stdout.lower())
@@ -159,11 +170,9 @@ class TestCacheStatsCommand(unittest.TestCase):
     def test_cache_stats_with_custom_age(self):
         """Test cache stats accepts custom max age parameter."""
         # Test that parameter is accepted
-        result = self.runner.invoke(cli.app, [
-            "cache", "stats",
-            "--cache-max-age", "14",
-            "--help"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["cache", "stats", "--cache-max-age", "14", "--help"]
+        )
         self.assertEqual(result.exit_code, 0)
 
 
@@ -184,11 +193,7 @@ class TestCacheClearCommand(unittest.TestCase):
     def test_cache_clear_force_flag(self):
         """Test cache clear accepts --force flag."""
         # Test that --force flag is accepted (with help to avoid actual clear)
-        result = self.runner.invoke(cli.app, [
-            "cache", "clear",
-            "--force",
-            "--help"
-        ])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--force", "--help"])
         self.assertEqual(result.exit_code, 0)
 
 
@@ -203,55 +208,43 @@ class TestParameterValidation(unittest.TestCase):
     def test_delay_bounds(self):
         """Test delay parameter bounds."""
         # Test too small
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--delay", "0.05",
-            "--plain", "--quiet"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--delay", "0.05", "--plain", "--quiet"]
+        )
         self.assertNotEqual(result.exit_code, 0)
 
         # Test too large
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--delay", "100",
-            "--plain", "--quiet"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--delay", "100", "--plain", "--quiet"]
+        )
         self.assertNotEqual(result.exit_code, 0)
 
     def test_max_retries_bounds(self):
         """Test max-retries parameter bounds."""
         # Test negative
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--max-retries", "-1",
-            "--plain", "--quiet"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--max-retries", "-1", "--plain", "--quiet"]
+        )
         self.assertNotEqual(result.exit_code, 0)
 
         # Test too large
-        result = self.runner.invoke(cli.app, [
-            "scan",
-            "--max-retries", "100",
-            "--plain", "--quiet"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["scan", "--max-retries", "100", "--plain", "--quiet"]
+        )
         self.assertNotEqual(result.exit_code, 0)
 
     def test_cache_max_age_bounds(self):
         """Test cache-max-age parameter bounds."""
         # Test zero
-        result = self.runner.invoke(cli.app, [
-            "cache-stats",
-            "--cache-max-age", "0",
-            "--plain"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["cache-stats", "--cache-max-age", "0", "--plain"]
+        )
         self.assertNotEqual(result.exit_code, 0)
 
         # Test too large
-        result = self.runner.invoke(cli.app, [
-            "cache-stats",
-            "--cache-max-age", "1000",
-            "--plain"
-        ])
+        result = self.runner.invoke(
+            cli.app, ["cache-stats", "--cache-max-age", "1000", "--plain"]
+        )
         self.assertNotEqual(result.exit_code, 0)
 
 
@@ -280,5 +273,5 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(run_tests())

@@ -48,14 +48,14 @@ def log(message: str, level: str = "INFO", newline: bool = True, force: bool = F
         "ERROR": "[ERROR]",
         "WARNING": "[WARNING]",
         "SUCCESS": "[✓]",
-        "INFO": ""
+        "INFO": "",
     }
 
     prefix = prefixes.get(level, f"[{level}]")
 
     # Format and print message
     output = f"{prefix} {message}".strip() if prefix else message
-    end = '\n' if newline else ''
+    end = "\n" if newline else ""
     print(output, file=sys.stderr, end=end, flush=True)
 
 
@@ -83,8 +83,15 @@ def get_restricted_paths():
     elif system == "Darwin":  # macOS
         # macOS system directories
         return [
-            "/etc", "/sys", "/boot", "/dev", "/proc", "/var", "/root",
-            "/System", "/Library/System"
+            "/etc",
+            "/sys",
+            "/boot",
+            "/dev",
+            "/proc",
+            "/var",
+            "/root",
+            "/System",
+            "/Library/System",
         ]
     else:  # Linux and other Unix-like
         # Unix/Linux system directories
@@ -141,7 +148,9 @@ def is_restricted_path(path_str: str) -> bool:
         return True
 
 
-def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path") -> bool:
+def validate_path(
+    path: str, allow_absolute: bool = True, path_type: str = "path"
+) -> bool:
     """
     Validate that a path doesn't contain dangerous patterns.
 
@@ -176,14 +185,14 @@ def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path
         raise ValueError(f"{path_type.capitalize()} path cannot be empty")
 
     # Block URL-encoded paths (security: prevent encoded traversal like %2e%2e%2f)
-    if '%' in path:
+    if "%" in path:
         raise ValueError(
             f"URL-encoded paths are not allowed. "
             f"Found '%' character in {path_type} path: {path}"
         )
 
     # Block dangerous characters that enable command injection
-    dangerous_chars = ['\0', '|', ';', '`', '\n', '\r']
+    dangerous_chars = ["\0", "|", ";", "`", "\n", "\r"]
     for char in dangerous_chars:
         if char in path:
             raise ValueError(
@@ -192,7 +201,7 @@ def validate_path(path: str, allow_absolute: bool = True, path_type: str = "path
             )
 
     # Block parent directory traversal attempts
-    if '..' in path:
+    if ".." in path:
         raise ValueError(
             f"Parent directory traversal (..) not allowed in {path_type} path: {path}"
         )
@@ -263,29 +272,32 @@ def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
     # Pattern: ESC[ followed by any characters and a letter (CSI sequences)
     # Also removes other ESC sequences (OSC, etc.)
     import re
-    text = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', text)  # CSI sequences (colors, cursor movement)
-    text = re.sub(r'\x1b\][^\x07]*\x07', '', text)  # OSC sequences (window title, etc.)
-    text = re.sub(r'\x1b[^[]', '', text)  # Other ESC sequences
+
+    text = re.sub(
+        r"\x1b\[[0-9;]*[a-zA-Z]", "", text
+    )  # CSI sequences (colors, cursor movement)
+    text = re.sub(r"\x1b\][^\x07]*\x07", "", text)  # OSC sequences (window title, etc.)
+    text = re.sub(r"\x1b[^[]", "", text)  # Other ESC sequences
 
     # Remove dangerous control characters
     # Keep: \n (newline), \t (tab), \r (carriage return) - these are safe for display
     # Remove: \x00 (null), \x07 (bell), \x08 (backspace), \x7f (delete), etc.
     dangerous_control_chars = [
-        '\x00',  # Null byte
-        '\x07',  # Bell (can be annoying/used for timing attacks)
-        '\x08',  # Backspace (terminal manipulation)
-        '\x0b',  # Vertical tab
-        '\x0c',  # Form feed
-        '\x1b',  # Escape (if any remain after regex)
-        '\x7f',  # Delete
+        "\x00",  # Null byte
+        "\x07",  # Bell (can be annoying/used for timing attacks)
+        "\x08",  # Backspace (terminal manipulation)
+        "\x0b",  # Vertical tab
+        "\x0c",  # Form feed
+        "\x1b",  # Escape (if any remain after regex)
+        "\x7f",  # Delete
     ]
 
     for char in dangerous_control_chars:
-        text = text.replace(char, '')
+        text = text.replace(char, "")
 
     # Remove any remaining control characters except \n, \t, \r
     # Control characters are 0x00-0x1F and 0x7F
-    text = ''.join(char for char in text if ord(char) >= 0x20 or char in '\n\t\r')
+    text = "".join(char for char in text if ord(char) >= 0x20 or char in "\n\t\r")
 
     # Truncate if too long (prevents DoS via extremely long strings)
     if len(text) > max_length:
@@ -324,11 +336,15 @@ def sanitize_error_message(error_msg: str, context: str = "error") -> str:
         sanitized = sanitized[:max_length] + "..."
 
     # Remove null bytes and control characters
-    sanitized = ''.join(char for char in sanitized if char == '\n' or char >= ' ')
-    sanitized = sanitized.replace('\x00', '')
+    sanitized = "".join(char for char in sanitized if char == "\n" or char >= " ")
+    sanitized = sanitized.replace("\x00", "")
 
     # If message is too generic or empty after sanitization, use context
-    if not sanitized.strip() or sanitized.strip() in ['Unknown error', 'Error', 'Failed']:
+    if not sanitized.strip() or sanitized.strip() in [
+        "Unknown error",
+        "Error",
+        "Failed",
+    ]:
         return f"An {context} occurred"
 
     return sanitized.strip()
@@ -365,13 +381,13 @@ def validate_extension_id(ext_id: str) -> bool:
         return False
 
     # Pattern: publisher.name where both parts are alphanumeric + dots/hyphens/underscores
-    pattern = r'^[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$'
+    pattern = r"^[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$"
 
     if not re.match(pattern, ext_id):
         return False
 
     # Ensure exactly one dot (publisher.name format)
-    parts = ext_id.split('.')
+    parts = ext_id.split(".")
     if len(parts) != 2:
         return False
 
@@ -419,7 +435,7 @@ def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
     if len(text) <= max_length:
         return text
 
-    return text[:max_length - len(suffix)] + suffix
+    return text[: max_length - len(suffix)] + suffix
 
 
 def _safe_chmod(path: PathLib, mode: int):
@@ -492,8 +508,8 @@ ERROR_HELP = {
         "suggestions": [
             "Wait a few minutes before trying again",
             "Use --delay to slow down requests (e.g., --delay 3.0)",
-            "The service may be experiencing high traffic"
-        ]
+            "The service may be experiencing high traffic",
+        ],
     },
     "timeout": {
         "message": "Request timed out.",
@@ -501,49 +517,49 @@ ERROR_HELP = {
             "Try --max-retries 5 for more retry attempts",
             "Use --retry-delay 3.0 for longer backoff delays",
             "The extension may be large and take longer to analyze",
-            "Check your internet connection"
-        ]
+            "Check your internet connection",
+        ],
     },
     "not_found": {
         "message": "Extension not found on vscan.dev.",
         "suggestions": [
             "The extension may be too new or not yet indexed",
             "Verify the extension ID is correct",
-            "Try scanning again later"
-        ]
+            "Try scanning again later",
+        ],
     },
     "network": {
         "message": "Network error occurred.",
         "suggestions": [
             "Check your internet connection",
             "Verify firewall settings allow HTTPS to vscan.dev",
-            "Try again in a few moments"
-        ]
+            "Try again in a few moments",
+        ],
     },
     "permission": {
         "message": "Permission denied.",
         "suggestions": [
             "Check file/directory permissions",
             "Ensure you have write access to the output location",
-            "Try running with appropriate permissions"
-        ]
+            "Try running with appropriate permissions",
+        ],
     },
     "invalid_json": {
         "message": "Invalid JSON in extension file.",
         "suggestions": [
             "The extension may be corrupted",
             "Try reinstalling the extension",
-            "The package.json file may be malformed"
-        ]
+            "The package.json file may be malformed",
+        ],
     },
     "no_extensions": {
         "message": "VS Code extensions directory not found.",
         "suggestions": [
             "Ensure VS Code is installed",
             "Use --extensions-dir to specify custom location",
-            "Check that VS Code extensions are installed"
-        ]
-    }
+            "Check that VS Code extensions are installed",
+        ],
+    },
 }
 
 
@@ -564,7 +580,7 @@ def show_error_help(error_type: str):
     # Show all suggestions
     log("", "INFO", force=True)
     log("Suggestions:", "INFO", force=True)
-    for suggestion in help_info['suggestions']:
+    for suggestion in help_info["suggestions"]:
         log(f"  • {suggestion}", "INFO", force=True)
 
 
@@ -614,13 +630,13 @@ def main():
 
     print(f"\nPath validation:")
     try:
-        result = validate_path('/home/user/.vscode')
+        result = validate_path("/home/user/.vscode")
         print(f"  /home/user/.vscode -> {result}")
     except ValueError as e:
         print(f"  /home/user/.vscode -> ERROR: {e}")
 
     try:
-        result = validate_path('../../../etc/passwd')
+        result = validate_path("../../../etc/passwd")
         print(f"  ../../../etc/passwd -> {result}")
     except ValueError as e:
         print(f"  ../../../etc/passwd -> ERROR: {e}")

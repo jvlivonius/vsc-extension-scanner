@@ -79,7 +79,7 @@ from .constants import (
     MIN_RETRY_DELAY,
     MAX_RETRY_DELAY,
     MIN_CACHE_AGE_DAYS,
-    MAX_CACHE_AGE_DAYS
+    MAX_CACHE_AGE_DAYS,
 )
 
 # Configuration schema version
@@ -128,52 +128,52 @@ cache_max_age = {DEFAULT_CACHE_MAX_AGE_DAYS}           # Cache expiration in day
 
 # Default configuration values
 DEFAULT_CONFIG = {
-    'scan': {
-        'delay': DEFAULT_REQUEST_DELAY,
-        'max_retries': DEFAULT_MAX_RETRIES,
-        'retry_delay': DEFAULT_RETRY_BASE_DELAY,
-        'max_workflow_retries': DEFAULT_WORKFLOW_MAX_RETRIES,
-        'workflow_retry_delay': DEFAULT_WORKFLOW_RETRY_DELAY,
-        'workers': 3,
-        'publisher': None,
-        'min_risk_level': None,
-        'exclude_ids': None,
-        'extensions_dir': None,
+    "scan": {
+        "delay": DEFAULT_REQUEST_DELAY,
+        "max_retries": DEFAULT_MAX_RETRIES,
+        "retry_delay": DEFAULT_RETRY_BASE_DELAY,
+        "max_workflow_retries": DEFAULT_WORKFLOW_MAX_RETRIES,
+        "workflow_retry_delay": DEFAULT_WORKFLOW_RETRY_DELAY,
+        "workers": 3,
+        "publisher": None,
+        "min_risk_level": None,
+        "exclude_ids": None,
+        "extensions_dir": None,
     },
-    'cache': {
-        'cache_dir': None,
-        'cache_max_age': DEFAULT_CACHE_MAX_AGE_DAYS,
-        'no_cache': False,
+    "cache": {
+        "cache_dir": None,
+        "cache_max_age": DEFAULT_CACHE_MAX_AGE_DAYS,
+        "no_cache": False,
     },
-    'output': {
-        'plain': False,
-        'quiet': False,
-    }
+    "output": {
+        "plain": False,
+        "quiet": False,
+    },
 }
 
 # Configuration schema for validation
 CONFIG_SCHEMA = {
-    'scan': {
-        'delay': ('float', MIN_DELAY_SECONDS, MAX_DELAY_SECONDS),
-        'max_retries': ('int', MIN_RETRIES, MAX_RETRIES),
-        'retry_delay': ('float', MIN_RETRY_DELAY, MAX_RETRY_DELAY),
-        'max_workflow_retries': ('int', MIN_RETRIES, MAX_RETRIES),
-        'workflow_retry_delay': ('float', MIN_RETRY_DELAY, MAX_RETRY_DELAY),
-        'workers': ('int', 1, 5),
-        'publisher': ('string', None, None),
-        'min_risk_level': ('choice', ['low', 'medium', 'high', 'critical'], None),
-        'exclude_ids': ('string', None, None),
-        'extensions_dir': ('path', None, None),
+    "scan": {
+        "delay": ("float", MIN_DELAY_SECONDS, MAX_DELAY_SECONDS),
+        "max_retries": ("int", MIN_RETRIES, MAX_RETRIES),
+        "retry_delay": ("float", MIN_RETRY_DELAY, MAX_RETRY_DELAY),
+        "max_workflow_retries": ("int", MIN_RETRIES, MAX_RETRIES),
+        "workflow_retry_delay": ("float", MIN_RETRY_DELAY, MAX_RETRY_DELAY),
+        "workers": ("int", 1, 5),
+        "publisher": ("string", None, None),
+        "min_risk_level": ("choice", ["low", "medium", "high", "critical"], None),
+        "exclude_ids": ("string", None, None),
+        "extensions_dir": ("path", None, None),
     },
-    'cache': {
-        'cache_dir': ('path', None, None),
-        'cache_max_age': ('int', MIN_CACHE_AGE_DAYS, MAX_CACHE_AGE_DAYS),
-        'no_cache': ('bool', None, None),
+    "cache": {
+        "cache_dir": ("path", None, None),
+        "cache_max_age": ("int", MIN_CACHE_AGE_DAYS, MAX_CACHE_AGE_DAYS),
+        "no_cache": ("bool", None, None),
     },
-    'output': {
-        'plain': ('bool', None, None),
-        'quiet': ('bool', None, None),
-    }
+    "output": {
+        "plain": ("bool", None, None),
+        "quiet": ("bool", None, None),
+    },
 }
 
 
@@ -210,38 +210,44 @@ def load_config() -> Tuple[Dict[str, Dict[str, Any]], List[ConfigWarning]]:
     # Load config file
     parser = ConfigParser()
     try:
-        parser.read(config_path, encoding='utf-8')
+        parser.read(config_path, encoding="utf-8")
     except Exception as e:
-        warnings.append(ConfigWarning(
-            message=f"Failed to read config file {config_path}: {e}",
-            context="load_config"
-        ))
+        warnings.append(
+            ConfigWarning(
+                message=f"Failed to read config file {config_path}: {e}",
+                context="load_config",
+            )
+        )
         return result, warnings
 
     # Check schema version for future migrations
     schema_version = 1  # Default to v1 if not specified
-    if parser.has_section('_meta'):
+    if parser.has_section("_meta"):
         try:
-            schema_version = parser.getint('_meta', 'schema_version', fallback=1)
+            schema_version = parser.getint("_meta", "schema_version", fallback=1)
         except ValueError:
-            warnings.append(ConfigWarning(
-                message="Invalid schema_version in config file, using v1",
-                context="load_config"
-            ))
+            warnings.append(
+                ConfigWarning(
+                    message="Invalid schema_version in config file, using v1",
+                    context="load_config",
+                )
+            )
 
     # Handle schema migrations if needed
     if schema_version != CONFIG_SCHEMA_VERSION:
-        warnings.append(ConfigWarning(
-            message=f"Config schema version mismatch: found v{schema_version}, expected v{CONFIG_SCHEMA_VERSION}. Using compatibility mode.",
-            context="load_config"
-        ))
+        warnings.append(
+            ConfigWarning(
+                message=f"Config schema version mismatch: found v{schema_version}, expected v{CONFIG_SCHEMA_VERSION}. Using compatibility mode.",
+                context="load_config",
+            )
+        )
         # Future: Add migration logic here when schema v2 is introduced
         # For now, we only have v1, so this is just a placeholder
 
     # Merge config file values with defaults
     for section in parser.sections():
         # Skip internal sections
-        if section.startswith('_'):
+        if section.startswith("_"):
             continue
         if section not in result:
             continue  # Skip unknown sections
@@ -251,13 +257,17 @@ def load_config() -> Tuple[Dict[str, Dict[str, Any]], List[ConfigWarning]]:
                 continue  # Skip unknown options
 
             try:
-                value = _parse_config_value(section, option, parser.get(section, option))
+                value = _parse_config_value(
+                    section, option, parser.get(section, option)
+                )
                 result[section][option] = value
             except ValueError as e:
-                warnings.append(ConfigWarning(
-                    message=f"Invalid value for {section}.{option}: {e}",
-                    context="load_config"
-                ))
+                warnings.append(
+                    ConfigWarning(
+                        message=f"Invalid value for {section}.{option}: {e}",
+                        context="load_config",
+                    )
+                )
                 # Keep default value on error
 
     return result, warnings
@@ -285,24 +295,24 @@ def _parse_config_value(section: str, option: str, value_str: str) -> Any:
     value_type = type_info[0]
 
     # Strip inline comments (anything after #)
-    if '#' in value_str:
-        value_str = value_str.split('#')[0]
+    if "#" in value_str:
+        value_str = value_str.split("#")[0]
 
     # Handle None/empty values
-    if value_str.strip() == '' or value_str.strip().lower() == 'none':
+    if value_str.strip() == "" or value_str.strip().lower() == "none":
         return None
 
     # Parse based on type
-    if value_type == 'bool':
+    if value_type == "bool":
         value_lower = value_str.strip().lower()
-        if value_lower in ('true', 'yes', '1', 'on'):
+        if value_lower in ("true", "yes", "1", "on"):
             return True
-        elif value_lower in ('false', 'no', '0', 'off'):
+        elif value_lower in ("false", "no", "0", "off"):
             return False
         else:
             raise ValueError(f"Invalid boolean value: {value_str}")
 
-    elif value_type == 'int':
+    elif value_type == "int":
         try:
             value = int(value_str.strip())
             min_val, max_val = type_info[1], type_info[2]
@@ -314,7 +324,7 @@ def _parse_config_value(section: str, option: str, value_str: str) -> Any:
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid integer value: {value_str}")
 
-    elif value_type == 'float':
+    elif value_type == "float":
         try:
             value = float(value_str.strip())
             min_val, max_val = type_info[1], type_info[2]
@@ -326,14 +336,16 @@ def _parse_config_value(section: str, option: str, value_str: str) -> Any:
         except (ValueError, TypeError):
             raise ValueError(f"Invalid float value: {value_str}")
 
-    elif value_type == 'choice':
+    elif value_type == "choice":
         value = value_str.strip().lower()
         choices = type_info[1]
         if value not in choices:
-            raise ValueError(f"Invalid choice: {value}. Must be one of: {', '.join(choices)}")
+            raise ValueError(
+                f"Invalid choice: {value}. Must be one of: {', '.join(choices)}"
+            )
         return value
 
-    elif value_type == 'path':
+    elif value_type == "path":
         # Validate path using unified validation (v3.5.1)
         # Blocks: URL encoding, dangerous chars, parent traversal, system directories
         # Expands: shell variables (~/, $HOME/, $USER/)
@@ -341,7 +353,7 @@ def _parse_config_value(section: str, option: str, value_str: str) -> Any:
         validate_path(path_value, allow_absolute=True, path_type=option)
         return path_value
 
-    elif value_type == 'string':
+    elif value_type == "string":
         return value_str.strip()
 
     else:
@@ -366,10 +378,10 @@ def parse_config_key(key: str) -> Tuple[str, str]:
     Raises:
         ValueError: If key format is invalid
     """
-    if '.' not in key:
+    if "." not in key:
         raise ValueError("Key must be in format 'section.option'")
 
-    parts = key.split('.', 1)
+    parts = key.split(".", 1)
     section, option = parts[0], parts[1]
 
     if not is_valid_config_key(section, option):
@@ -396,7 +408,9 @@ def validate_config_value(section: str, option: str, value_str: str) -> Any:
     return _parse_config_value(section, option, value_str)
 
 
-def get_config_value(config: Dict[str, Dict[str, Any]], section: str, option: str) -> Any:
+def get_config_value(
+    config: Dict[str, Dict[str, Any]], section: str, option: str
+) -> Any:
     """
     Get a configuration value.
 
@@ -438,7 +452,7 @@ def create_default_config(force: bool = False) -> Path:
     if config_path.exists() and not force:
         raise FileExistsError(f"Config file already exists: {config_path}")
 
-    config_path.write_text(DEFAULT_CONFIG_TEMPLATE, encoding='utf-8')
+    config_path.write_text(DEFAULT_CONFIG_TEMPLATE, encoding="utf-8")
     return config_path
 
 
@@ -463,7 +477,7 @@ def update_config_value(section: str, option: str, value: Any) -> None:
     # Load existing config or create new
     parser = ConfigParser()
     if config_path.exists():
-        parser.read(config_path, encoding='utf-8')
+        parser.read(config_path, encoding="utf-8")
 
     # Add section if needed
     if section not in parser:
@@ -473,7 +487,7 @@ def update_config_value(section: str, option: str, value: Any) -> None:
     parser.set(section, option, str(value))
 
     # Write back
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         parser.write(f)
 
 

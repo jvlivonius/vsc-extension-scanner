@@ -55,7 +55,7 @@ Query: "search term"
 → Returns: Ranked results with snippets
 ```
 
-### Domain-Specific Search  
+### Domain-Specific Search
 ```
 Query: "search term"
 Domains: ["arxiv.org", "github.com"]
@@ -128,15 +128,15 @@ Extract: true
 Initial_Search:
   query: "core topic"
   depth: broad
-  
+
 Follow_Up_1:
   query: "entities from initial"
   depth: targeted
-  
+
 Follow_Up_2:
   query: "relationships discovered"
   depth: deep
-  
+
 Synthesis:
   combine: all_findings
   resolve: contradictions
@@ -147,13 +147,13 @@ Synthesis:
 Simple_Query:
   - Direct search terms
   - Single concept focus
-  
+
 Complex_Query:
   - Multiple search variations
   - Boolean operators
   - Domain restrictions
   - Time filters
-  
+
 Iterative_Query:
   - Start broad
   - Refine based on results
@@ -167,12 +167,12 @@ High_Credibility:
   - Government sources
   - Established media
   - Official documentation
-  
+
 Medium_Credibility:
   - Industry publications
   - Expert blogs
   - Community resources
-  
+
 Low_Credibility:
   - User forums
   - Social media
@@ -206,11 +206,11 @@ Low_Credibility:
 Planning_Only:
   - Direct query execution
   - No refinement needed
-  
+
 Intent_Planning:
   - Clarify search intent
   - Generate focused queries
-  
+
 Unified:
   - Present search plan
   - Adjust based on feedback

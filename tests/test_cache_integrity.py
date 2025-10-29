@@ -55,7 +55,7 @@ class TestCacheIntegrity(unittest.TestCase):
         self.assertTrue(secret_file.exists())
 
         # Check that secret key is 32 bytes (256 bits)
-        with open(secret_file, 'rb') as f:
+        with open(secret_file, "rb") as f:
             key = f.read()
             self.assertEqual(len(key), 32)
 
@@ -114,7 +114,9 @@ class TestCacheIntegrity(unittest.TestCase):
 
         # Invalid signature should fail verification
         invalid_signature = "0" * 64  # Wrong signature
-        self.assertFalse(cache._verify_integrity_signature(test_data, invalid_signature))
+        self.assertFalse(
+            cache._verify_integrity_signature(test_data, invalid_signature)
+        )
 
     def test_signature_verification_empty(self):
         """Test that empty/None signatures are rejected."""
@@ -136,7 +138,7 @@ class TestCacheIntegrity(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
 
         # Save result
@@ -145,11 +147,13 @@ class TestCacheIntegrity(unittest.TestCase):
         # Check that signature was stored in database
         conn = sqlite3.connect(cache.cache_db)
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT scan_result, integrity_signature
             FROM scan_cache
             WHERE extension_id = 'test.extension'
-        """)
+        """
+        )
         row = cursor.fetchone()
         conn.close()
 
@@ -161,7 +165,9 @@ class TestCacheIntegrity(unittest.TestCase):
         self.assertEqual(len(integrity_signature), 64)
 
         # Signature should match the data
-        self.assertTrue(cache._verify_integrity_signature(scan_result_json, integrity_signature))
+        self.assertTrue(
+            cache._verify_integrity_signature(scan_result_json, integrity_signature)
+        )
 
     def test_cache_poisoning_detection(self):
         """Test that cache poisoning is detected via signature mismatch."""
@@ -172,7 +178,7 @@ class TestCacheIntegrity(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -185,11 +191,14 @@ class TestCacheIntegrity(unittest.TestCase):
         malicious_result["security_score"] = 100
         malicious_result["vulnerabilities"]["count"] = 10  # Hide vulnerabilities
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE scan_cache
             SET scan_result = ?
             WHERE extension_id = 'test.extension'
-        """, (json.dumps(malicious_result),))
+        """,
+            (json.dumps(malicious_result),),
+        )
         conn.commit()
         conn.close()
 
@@ -208,19 +217,31 @@ class TestCacheIntegrity(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
 
         conn = sqlite3.connect(cache.cache_db)
         cursor = conn.cursor()
         from datetime import datetime
-        cursor.execute("""
+
+        cursor.execute(
+            """
             INSERT INTO scan_cache
             (extension_id, version, scan_result, scanned_at, risk_level, security_score,
              vulnerabilities_count, integrity_signature)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, ("test.extension", "1.0.0", json.dumps(test_result), datetime.now().isoformat(),
-              "low", 85, 0, None))  # NULL signature
+        """,
+            (
+                "test.extension",
+                "1.0.0",
+                json.dumps(test_result),
+                datetime.now().isoformat(),
+                "low",
+                85,
+                0,
+                None,
+            ),
+        )  # NULL signature
         conn.commit()
         conn.close()
 
@@ -238,7 +259,7 @@ class TestCacheIntegrity(unittest.TestCase):
             "scan_status": "success",
             "security_score": 90,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
 
         # Save in batch mode
@@ -249,11 +270,13 @@ class TestCacheIntegrity(unittest.TestCase):
         # Check that signature was stored
         conn = sqlite3.connect(cache.cache_db)
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT integrity_signature
             FROM scan_cache
             WHERE extension_id = 'batch.extension'
-        """)
+        """
+        )
         row = cursor.fetchone()
         conn.close()
 
@@ -277,7 +300,9 @@ class TestCacheIntegrity(unittest.TestCase):
         # Both should use timing-safe comparison (hmac.compare_digest)
         # This test mainly verifies the code path is correct
         self.assertTrue(cache._verify_integrity_signature(test_data, correct_signature))
-        self.assertFalse(cache._verify_integrity_signature(test_data, incorrect_signature))
+        self.assertFalse(
+            cache._verify_integrity_signature(test_data, incorrect_signature)
+        )
 
 
 class TestCacheIntegrationWithSecurity(unittest.TestCase):
@@ -303,7 +328,7 @@ class TestCacheIntegrationWithSecurity(unittest.TestCase):
             "scan_status": "success",
             "security_score": 85,
             "risk_level": "low",
-            "vulnerabilities": {"count": 0}
+            "vulnerabilities": {"count": 0},
         }
         cache.save_result("test.extension", "1.0.0", test_result)
 
@@ -316,11 +341,14 @@ class TestCacheIntegrationWithSecurity(unittest.TestCase):
         malicious_result["security_score"] = 100
         malicious_result["risk_level"] = "low"
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE scan_cache
             SET scan_result = ?
             WHERE extension_id = 'test.extension'
-        """, (json.dumps(malicious_result),))
+        """,
+            (json.dumps(malicious_result),),
+        )
         conn.commit()
         conn.close()
 
@@ -342,7 +370,7 @@ class TestCacheIntegrationWithSecurity(unittest.TestCase):
             "scan_status": "success",
             "security_score": 75,
             "risk_level": "medium",
-            "vulnerabilities": {"count": 2}
+            "vulnerabilities": {"count": 2},
         }
 
         # Save result
@@ -377,7 +405,7 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 70)
     print("CACHE INTEGRITY TESTS (v3.5.1 Security Hardening)")
     print("=" * 70)

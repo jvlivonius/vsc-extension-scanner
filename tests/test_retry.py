@@ -27,18 +27,16 @@ class TestRetryMechanism(unittest.TestCase):
             delay=0.1,  # Short delay for testing
             verbose=False,
             max_retries=3,
-            retry_base_delay=0.1  # Short delay for testing
+            retry_base_delay=0.1,  # Short delay for testing
         )
 
     def test_successful_request_no_retries(self):
         """Test 1: Successful request should not trigger any retries."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             mock_request.return_value = (200, {"analysisId": "test-123"})
 
             result = self.client._make_request_with_retry(
-                "https://test.com/api",
-                method="POST",
-                data={"test": "data"}
+                "https://test.com/api", method="POST", data={"test": "data"}
             )
 
             # Should only be called once (no retries)
@@ -48,22 +46,21 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify retry stats
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 0)
-            self.assertEqual(stats['successful_retries'], 0)
-            self.assertEqual(stats['failed_after_retries'], 0)
+            self.assertEqual(stats["total_retries"], 0)
+            self.assertEqual(stats["successful_retries"], 0)
+            self.assertEqual(stats["failed_after_retries"], 0)
 
     def test_single_retry_success(self):
         """Test 2: Single retry should succeed after one failure."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # First call fails with 503, second succeeds
             mock_request.side_effect = [
                 Exception("vscan.dev server error (HTTP 503)"),
-                (200, {"analysisId": "test-456"})
+                (200, {"analysisId": "test-456"}),
             ]
 
             result = self.client._make_request_with_retry(
-                "https://test.com/api",
-                method="GET"
+                "https://test.com/api", method="GET"
             )
 
             # Should be called twice (1 original + 1 retry)
@@ -72,22 +69,21 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify retry stats
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 1)
+            self.assertEqual(stats["total_retries"], 1)
 
     def test_multiple_retries_success(self):
         """Test 3: Multiple retries should eventually succeed."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # First 3 calls fail, 4th succeeds
             mock_request.side_effect = [
                 Exception("vscan.dev server error (HTTP 502)"),
                 Exception("vscan.dev server error (HTTP 503)"),
                 Exception("vscan.dev server error (HTTP 504)"),
-                (200, {"status": "completed"})
+                (200, {"status": "completed"}),
             ]
 
             result = self.client._make_request_with_retry(
-                "https://test.com/api",
-                method="GET"
+                "https://test.com/api", method="GET"
             )
 
             # Should be called 4 times (1 original + 3 retries)
@@ -96,18 +92,17 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify retry stats
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 3)
+            self.assertEqual(stats["total_retries"], 3)
 
     def test_max_retries_exceeded(self):
         """Test 4: Should fail after max retries exceeded."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # All calls fail
             mock_request.side_effect = Exception("vscan.dev server error (HTTP 503)")
 
             with self.assertRaises(Exception) as context:
                 self.client._make_request_with_retry(
-                    "https://test.com/api",
-                    method="GET"
+                    "https://test.com/api", method="GET"
                 )
 
             self.assertIn("503", str(context.exception))
@@ -117,19 +112,18 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify retry stats
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 3)
-            self.assertEqual(stats['failed_after_retries'], 1)
+            self.assertEqual(stats["total_retries"], 3)
+            self.assertEqual(stats["failed_after_retries"], 1)
 
     def test_non_retryable_error(self):
         """Test 5: Non-retryable errors should fail immediately."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # 404 is not retryable
             mock_request.side_effect = Exception("Extension not found on vscan.dev")
 
             with self.assertRaises(Exception) as context:
                 self.client._make_request_with_retry(
-                    "https://test.com/api",
-                    method="GET"
+                    "https://test.com/api", method="GET"
                 )
 
             self.assertIn("not found", str(context.exception))
@@ -139,21 +133,19 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify no retries attempted
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 0)
+            self.assertEqual(stats["total_retries"], 0)
 
     def test_rate_limiting_retry(self):
         """Test 6: Rate limiting (HTTP 429) should trigger retry."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # First call hits rate limit, second succeeds
             mock_request.side_effect = [
                 Exception("Rate limit exceeded. Please try again later."),
-                (200, {"analysisId": "test-789"})
+                (200, {"analysisId": "test-789"}),
             ]
 
             result = self.client._make_request_with_retry(
-                "https://test.com/api",
-                method="POST",
-                data={"test": "data"}
+                "https://test.com/api", method="POST", data={"test": "data"}
             )
 
             # Should be called twice (1 original + 1 retry)
@@ -162,7 +154,7 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify retry stats
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 1)
+            self.assertEqual(stats["total_retries"], 1)
 
     def test_server_errors_retry(self):
         """Test 7: Server errors (502, 503, 504) should trigger retries."""
@@ -177,12 +169,12 @@ class TestRetryMechanism(unittest.TestCase):
             with self.subTest(error=error_msg):
                 client = VscanAPIClient(max_retries=2, retry_base_delay=0.05)
 
-                with patch.object(client, '_make_request') as mock_request:
+                with patch.object(client, "_make_request") as mock_request:
                     if should_retry:
                         # Should retry and eventually succeed
                         mock_request.side_effect = [
                             Exception(error_msg),
-                            (200, {"result": "ok"})
+                            (200, {"result": "ok"}),
                         ]
                         result = client._make_request_with_retry("https://test.com/api")
                         self.assertEqual(result[0], 200)
@@ -196,17 +188,15 @@ class TestRetryMechanism(unittest.TestCase):
 
     def test_timeout_errors_retry(self):
         """Test 8: Timeout errors should trigger retries."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # Simulate timeout then success
-            timeout_error = Exception("Request timed out after 30s. The extension may take longer to analyze.")
-            mock_request.side_effect = [
-                timeout_error,
-                (200, {"status": "completed"})
-            ]
+            timeout_error = Exception(
+                "Request timed out after 30s. The extension may take longer to analyze."
+            )
+            mock_request.side_effect = [timeout_error, (200, {"status": "completed"})]
 
             result = self.client._make_request_with_retry(
-                "https://test.com/api",
-                method="GET"
+                "https://test.com/api", method="GET"
             )
 
             # Should be called twice (1 original + 1 retry)
@@ -215,32 +205,28 @@ class TestRetryMechanism(unittest.TestCase):
 
             # Verify retry stats
             stats = self.client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 1)
+            self.assertEqual(stats["total_retries"], 1)
 
     def test_retry_after_header_respect(self):
         """Test 9: Retry-After header should be respected."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             # Create HTTPError with Retry-After header
             http_error = urllib.error.HTTPError(
                 url="https://test.com/api",
                 code=429,
                 msg="Too Many Requests",
                 hdrs={"Retry-After": "5"},
-                fp=None
+                fp=None,
             )
             http_error.read = lambda: b'{"error": "rate limited"}'
             http_error.headers = {"Retry-After": "5"}
 
-            mock_request.side_effect = [
-                http_error,
-                (200, {"result": "success"})
-            ]
+            mock_request.side_effect = [http_error, (200, {"result": "success"})]
 
             # Mock time.sleep to avoid actual delay
-            with patch('time.sleep') as mock_sleep:
+            with patch("time.sleep") as mock_sleep:
                 result = self.client._make_request_with_retry(
-                    "https://test.com/api",
-                    method="GET"
+                    "https://test.com/api", method="GET"
                 )
 
                 # Verify retry occurred
@@ -315,18 +301,18 @@ class TestRetryMechanism(unittest.TestCase):
         client = VscanAPIClient(max_retries=2, retry_base_delay=0.05)
 
         # Scenario 1: Successful retry
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.side_effect = [
                 Exception("vscan.dev server error (HTTP 503)"),
-                (200, {"result": "ok"})
+                (200, {"result": "ok"}),
             ]
             client._make_request_with_retry("https://test.com/api")
 
         stats = client.get_retry_stats()
-        self.assertEqual(stats['total_retries'], 1)
+        self.assertEqual(stats["total_retries"], 1)
 
         # Scenario 2: Failed after retries
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.side_effect = Exception("vscan.dev server error (HTTP 503)")
             try:
                 client._make_request_with_retry("https://test.com/api")
@@ -334,14 +320,14 @@ class TestRetryMechanism(unittest.TestCase):
                 pass
 
         stats = client.get_retry_stats()
-        self.assertEqual(stats['total_retries'], 3)  # 1 + 2 more
-        self.assertEqual(stats['failed_after_retries'], 1)
+        self.assertEqual(stats["total_retries"], 3)  # 1 + 2 more
+        self.assertEqual(stats["failed_after_retries"], 1)
 
     def test_retry_with_zero_max_retries(self):
         """Test that retries are disabled when max_retries=0."""
         client = VscanAPIClient(max_retries=0)
 
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.side_effect = Exception("vscan.dev server error (HTTP 503)")
 
             with self.assertRaises(Exception):
@@ -352,7 +338,7 @@ class TestRetryMechanism(unittest.TestCase):
 
             # No retries should be tracked
             stats = client.get_retry_stats()
-            self.assertEqual(stats['total_retries'], 0)
+            self.assertEqual(stats["total_retries"], 0)
 
 
 class TestRetryIntegration(unittest.TestCase):
@@ -362,11 +348,11 @@ class TestRetryIntegration(unittest.TestCase):
         """Test submit_analysis uses retry wrapper."""
         client = VscanAPIClient(max_retries=2, retry_base_delay=0.05)
 
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             # First call fails, second succeeds
             mock_request.side_effect = [
                 Exception("vscan.dev server error (HTTP 503)"),
-                (202, {"analysisId": "test-integration-123"})
+                (202, {"analysisId": "test-integration-123"}),
             ]
 
             result = client.submit_analysis("test-publisher", "test-extension")
@@ -379,11 +365,11 @@ class TestRetryIntegration(unittest.TestCase):
         """Test check_status uses retry wrapper."""
         client = VscanAPIClient(max_retries=2, retry_base_delay=0.05)
 
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             # First call fails, second succeeds
             mock_request.side_effect = [
                 Exception("Request timed out after 30s"),
-                (200, {"status": "completed", "progress": 100})
+                (200, {"status": "completed", "progress": 100}),
             ]
 
             result = client.check_status("test-analysis-id")
@@ -396,11 +382,11 @@ class TestRetryIntegration(unittest.TestCase):
         """Test get_results uses retry wrapper."""
         client = VscanAPIClient(max_retries=2, retry_base_delay=0.05)
 
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             # First call fails, second succeeds
             mock_request.side_effect = [
                 Exception("vscan.dev server error (HTTP 502)"),
-                (200, {"securityScore": {"score": 85}})
+                (200, {"securityScore": {"score": 85}}),
             ]
 
             result = client.get_results("test-analysis-id")

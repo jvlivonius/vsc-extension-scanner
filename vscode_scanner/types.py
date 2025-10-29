@@ -28,6 +28,7 @@ class CacheWarning:
             context="cleanup_invalid_entries"
         )
     """
+
     message: str
     context: str
 
@@ -52,6 +53,7 @@ class CacheError:
             recoverable=False
         )
     """
+
     message: str
     context: str
     recoverable: bool
@@ -75,6 +77,7 @@ class CacheInfo:
             context="database_recovery"
         )
     """
+
     message: str
     context: str
 
@@ -97,5 +100,6 @@ class ConfigWarning:
             context="load_config"
         )
     """
+
     message: str
     context: str

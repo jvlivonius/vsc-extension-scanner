@@ -43,12 +43,14 @@ from vscode_scanner import config_manager
 # Mark all tests as integration tests
 try:
     import pytest
+
     integration = pytest.mark.integration
     slow = pytest.mark.slow
 except ImportError:
     # If pytest not available, create dummy decorators
     def integration(func):
         return func
+
     def slow(func):
         return func
 
@@ -59,10 +61,10 @@ class TestRealAPIIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up fixtures once for all tests in this class."""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("WARNING: Running real API integration tests")
         print("These tests make actual calls to vscan.dev API")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
     def setUp(self):
         """Create temporary directories for each test."""
@@ -75,23 +77,23 @@ class TestRealAPIIntegration(unittest.TestCase):
         # Create a few test extensions (well-known, stable extensions)
         self.test_extensions = [
             {
-                'publisher': 'ms-python',
-                'name': 'python',
-                'id': 'ms-python.python',
-                'version': '2023.1.0'
+                "publisher": "ms-python",
+                "name": "python",
+                "id": "ms-python.python",
+                "version": "2023.1.0",
             },
             {
-                'publisher': 'esbenp',
-                'name': 'prettier-vscode',
-                'id': 'esbenp.prettier-vscode',
-                'version': '9.0.0'
+                "publisher": "esbenp",
+                "name": "prettier-vscode",
+                "id": "esbenp.prettier-vscode",
+                "version": "9.0.0",
             },
             {
-                'publisher': 'dbaeumer',
-                'name': 'vscode-eslint',
-                'id': 'dbaeumer.vscode-eslint',
-                'version': '2.4.0'
-            }
+                "publisher": "dbaeumer",
+                "name": "vscode-eslint",
+                "id": "dbaeumer.vscode-eslint",
+                "version": "2.4.0",
+            },
         ]
 
         # Create mock extension directories
@@ -99,10 +101,10 @@ class TestRealAPIIntegration(unittest.TestCase):
             ext_dir = self.extensions_dir / f"{ext['id']}-{ext['version']}"
             ext_dir.mkdir()
             package_json = {
-                "name": ext['name'],
-                "publisher": ext['publisher'],
-                "version": ext['version'],
-                "displayName": f"{ext['name']} extension"
+                "name": ext["name"],
+                "publisher": ext["publisher"],
+                "version": ext["version"],
+                "displayName": f"{ext['name']} extension",
             }
             (ext_dir / "package.json").write_text(json.dumps(package_json))
 
@@ -120,10 +122,10 @@ class TestRealAPIIntegration(unittest.TestCase):
 
         extensions = [
             {
-                'id': ext['id'],
-                'name': ext['name'],
-                'version': ext['version'],
-                'publisher': ext['publisher']
+                "id": ext["id"],
+                "name": ext["name"],
+                "version": ext["version"],
+                "publisher": ext["publisher"],
             }
             for ext in self.test_extensions
         ]
@@ -135,7 +137,7 @@ class TestRealAPIIntegration(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=3
+            workers=3,
         )
 
         # Run real scan
@@ -143,19 +145,19 @@ class TestRealAPIIntegration(unittest.TestCase):
             extensions,
             args,
             cache_manager,
-            '2025-10-26T00:00:00Z',
+            "2025-10-26T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         # Verify results
         self.assertEqual(len(results), 3, "Should scan all 3 extensions")
-        self.assertGreater(stats['successful_scans'], 0, "Should have successful scans")
+        self.assertGreater(stats["successful_scans"], 0, "Should have successful scans")
 
         # Verify cache was populated
         for ext in extensions:
-            cached = cache_manager.get_cached_result(ext['id'], ext['version'])
-            if stats['successful_scans'] > 0:
+            cached = cache_manager.get_cached_result(ext["id"], ext["version"])
+            if stats["successful_scans"] > 0:
                 # At least one extension should be cached
                 # (may fail if API is down for all)
                 pass
@@ -174,12 +176,14 @@ class TestRealAPIIntegration(unittest.TestCase):
 
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        extensions = [{
-            'id': 'ms-python.python',
-            'name': 'python',
-            'version': '2023.1.0',
-            'publisher': 'ms-python'
-        }]
+        extensions = [
+            {
+                "id": "ms-python.python",
+                "name": "python",
+                "version": "2023.1.0",
+                "publisher": "ms-python",
+            }
+        ]
 
         args = SimpleNamespace(
             delay=2.0,
@@ -188,7 +192,7 @@ class TestRealAPIIntegration(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=1  # Sequential for predictability
+            workers=1,  # Sequential for predictability
         )
 
         # First scan - should hit API
@@ -197,9 +201,9 @@ class TestRealAPIIntegration(unittest.TestCase):
             extensions,
             args,
             cache_manager,
-            '2025-10-26T00:00:00Z',
+            "2025-10-26T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         # Second scan - should use cache
@@ -208,20 +212,18 @@ class TestRealAPIIntegration(unittest.TestCase):
             extensions,
             args,
             cache_manager,
-            '2025-10-26T00:00:00Z',
+            "2025-10-26T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         # Verify second scan used cache
-        self.assertEqual(stats2['cached_results'], 1,
-                        "Second scan should use cache")
-        self.assertEqual(stats2['fresh_scans'], 0,
-                        "Second scan should not hit API")
+        self.assertEqual(stats2["cached_results"], 1, "Second scan should use cache")
+        self.assertEqual(stats2["fresh_scans"], 0, "Second scan should not hit API")
 
         # Verify results are consistent
         if len(results1) > 0 and len(results2) > 0:
-            self.assertEqual(results1[0]['id'], results2[0]['id'])
+            self.assertEqual(results1[0]["id"], results2[0]["id"])
 
         print(f"✓ First scan: {stats1['fresh_scans']} API call(s)")
         print(f"✓ Second scan: {stats2['cached_results']} cached")
@@ -239,10 +241,10 @@ class TestRealAPIIntegration(unittest.TestCase):
 
         extensions = [
             {
-                'id': ext['id'],
-                'name': ext['name'],
-                'version': ext['version'],
-                'publisher': ext['publisher']
+                "id": ext["id"],
+                "name": ext["name"],
+                "version": ext["version"],
+                "publisher": ext["publisher"],
             }
             for ext in self.test_extensions[:2]  # Use 2 extensions for speed
         ]
@@ -254,7 +256,7 @@ class TestRealAPIIntegration(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=1  # Sequential
+            workers=1,  # Sequential
         )
 
         print("  Running sequential scan...")
@@ -262,9 +264,9 @@ class TestRealAPIIntegration(unittest.TestCase):
             extensions,
             args_seq,
             cache_manager_seq,
-            '2025-10-26T00:00:00Z',
+            "2025-10-26T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         # Parallel scan
@@ -279,7 +281,7 @@ class TestRealAPIIntegration(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=3  # Parallel
+            workers=3,  # Parallel
         )
 
         print("  Running parallel scan...")
@@ -287,19 +289,23 @@ class TestRealAPIIntegration(unittest.TestCase):
             extensions,
             args_par,
             cache_manager_par,
-            '2025-10-26T00:00:00Z',
+            "2025-10-26T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         # Compare results (order-independent)
-        self.assertEqual(len(seq_results), len(par_results),
-                        "Sequential and parallel should scan same number")
+        self.assertEqual(
+            len(seq_results),
+            len(par_results),
+            "Sequential and parallel should scan same number",
+        )
 
-        seq_ids = sorted([r['id'] for r in seq_results])
-        par_ids = sorted([r['id'] for r in par_results])
-        self.assertEqual(seq_ids, par_ids,
-                        "Sequential and parallel should scan same extensions")
+        seq_ids = sorted([r["id"] for r in seq_results])
+        par_ids = sorted([r["id"] for r in par_results])
+        self.assertEqual(
+            seq_ids, par_ids, "Sequential and parallel should scan same extensions"
+        )
 
         print(f"✓ Sequential: {len(seq_results)} results")
         print(f"✓ Parallel: {len(par_results)} results")
@@ -325,15 +331,16 @@ delay = 2.0
 
         # Parse config file directly
         import configparser
+
         parser = configparser.ConfigParser()
         parser.read(config_path)
 
         # Verify settings loaded
-        workers = parser.get('scan', 'workers')
-        delay = parser.get('scan', 'delay')
+        workers = parser.get("scan", "workers")
+        delay = parser.get("scan", "delay")
 
-        self.assertEqual(workers, '5')
-        self.assertEqual(delay, '2.0')
+        self.assertEqual(workers, "5")
+        self.assertEqual(delay, "2.0")
 
         print("✓ Config file loaded successfully")
         print(f"  workers: {workers}")
@@ -350,17 +357,17 @@ delay = 2.0
         # Mix valid and invalid extensions
         extensions = [
             {
-                'id': 'ms-python.python',
-                'name': 'python',
-                'version': '2023.1.0',
-                'publisher': 'ms-python'
+                "id": "ms-python.python",
+                "name": "python",
+                "version": "2023.1.0",
+                "publisher": "ms-python",
             },
             {
-                'id': 'invalid.nonexistent',
-                'name': 'nonexistent',
-                'version': '999.999.999',
-                'publisher': 'invalid'
-            }
+                "id": "invalid.nonexistent",
+                "name": "nonexistent",
+                "version": "999.999.999",
+                "publisher": "invalid",
+            },
         ]
 
         args = SimpleNamespace(
@@ -370,7 +377,7 @@ delay = 2.0
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=2
+            workers=2,
         )
 
         # Should handle error gracefully
@@ -378,9 +385,9 @@ delay = 2.0
             extensions,
             args,
             cache_manager,
-            '2025-10-26T00:00:00Z',
+            "2025-10-26T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         # Verify scan completed (didn't crash)
@@ -388,8 +395,7 @@ delay = 2.0
         self.assertIsNotNone(stats)
 
         # At least one should fail (the invalid one)
-        self.assertGreater(stats['failed_scans'], 0,
-                          "Invalid extension should fail")
+        self.assertGreater(stats["failed_scans"], 0, "Invalid extension should fail")
 
         # But valid extension might succeed
         # (depending on API availability)
@@ -397,8 +403,10 @@ delay = 2.0
         print(f"✓ Handled errors gracefully")
         print(f"  Successful: {stats['successful_scans']}")
         print(f"  Failed: {stats['failed_scans']}")
-        if stats['failed_extensions']:
-            print(f"  Failed extensions: {[e['id'] for e in stats['failed_extensions']]}")
+        if stats["failed_extensions"]:
+            print(
+                f"  Failed extensions: {[e['id'] for e in stats['failed_extensions']]}"
+            )
 
 
 class TestRealAPIEndToEnd(unittest.TestCase):
@@ -428,22 +436,24 @@ class TestRealAPIEndToEnd(unittest.TestCase):
             "name": "python",
             "publisher": "ms-python",
             "version": "2023.1.0",
-            "displayName": "Python"
+            "displayName": "Python",
         }
         (ext_dir / "package.json").write_text(json.dumps(package_json))
 
         # Create extensions.json (required for discovery)
         extensions_json = Path(extensions_dir) / "extensions.json"
-        extensions_json.write_text(json.dumps([
-            {
-                "identifier": {"id": "ms-python.python"},
-                "version": "2023.1.0",
-                "location": {"$mid": 1, "path": str(ext_dir)},
-                "metadata": {
-                    "installedTimestamp": 1234567890000
-                }
-            }
-        ]))
+        extensions_json.write_text(
+            json.dumps(
+                [
+                    {
+                        "identifier": {"id": "ms-python.python"},
+                        "version": "2023.1.0",
+                        "location": {"$mid": 1, "path": str(ext_dir)},
+                        "metadata": {"installedTimestamp": 1234567890000},
+                    }
+                ]
+            )
+        )
 
         output_file = Path(self.test_dir) / "results.json"
         cache_dir = Path(self.test_dir) / "cache"
@@ -456,7 +466,7 @@ class TestRealAPIEndToEnd(unittest.TestCase):
                 output=str(output_file),
                 workers=3,
                 cache_dir=str(cache_dir),
-                quiet=True
+                quiet=True,
             )
         except TypeError:
             # If parallel parameter exists
@@ -465,7 +475,7 @@ class TestRealAPIEndToEnd(unittest.TestCase):
                 output=str(output_file),
                 workers=3,
                 cache_dir=str(cache_dir),
-                quiet=True
+                quiet=True,
             )
 
         # Verify scan completed
@@ -475,11 +485,11 @@ class TestRealAPIEndToEnd(unittest.TestCase):
         self.assertTrue(output_file.exists(), "Output file should be created")
 
         # Verify output file is valid JSON
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             output_data = json.load(f)
 
-        self.assertIn('summary', output_data)
-        self.assertIn('extensions', output_data)
+        self.assertIn("summary", output_data)
+        self.assertIn("extensions", output_data)
 
         print(f"✓ End-to-end scan completed (exit code: {exit_code})")
         print(f"✓ Output written to {output_file}")
@@ -487,9 +497,9 @@ class TestRealAPIEndToEnd(unittest.TestCase):
 
 def run_tests():
     """Run all tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Real API Integration Test Suite")
-    print("="*70)
+    print("=" * 70)
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -502,22 +512,24 @@ def run_tests():
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     if result.wasSuccessful():
         print("All integration tests PASSED ✓")
     else:
         print("Some integration tests FAILED ✗")
-    print("="*70)
+    print("=" * 70)
 
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     print("\nWARNING: These tests make real API calls to vscan.dev")
     print("Press Ctrl+C within 3 seconds to cancel...")
     try:
         import time
+
         time.sleep(3)
     except KeyboardInterrupt:
         print("\nCancelled by user")

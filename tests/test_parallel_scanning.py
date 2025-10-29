@@ -21,12 +21,13 @@ from types import SimpleNamespace
 
 # Add parent directory to path for imports
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from vscode_scanner.scanner import (
     _scan_extensions,
     _scan_single_extension_worker,
-    run_scan
+    run_scan,
 )
 from vscode_scanner.cache_manager import CacheManager
 
@@ -43,26 +44,26 @@ class TestParallelScanningBasic(unittest.TestCase):
         # Sample extensions for testing
         self.extensions = [
             {
-                'id': 'test.extension1',
-                'name': 'extension1',
-                'version': '1.0.0',
-                'publisher': 'test',
-                'display_name': 'Test Extension 1'
+                "id": "test.extension1",
+                "name": "extension1",
+                "version": "1.0.0",
+                "publisher": "test",
+                "display_name": "Test Extension 1",
             },
             {
-                'id': 'test.extension2',
-                'name': 'extension2',
-                'version': '1.0.0',
-                'publisher': 'test',
-                'display_name': 'Test Extension 2'
+                "id": "test.extension2",
+                "name": "extension2",
+                "version": "1.0.0",
+                "publisher": "test",
+                "display_name": "Test Extension 2",
             },
             {
-                'id': 'test.extension3',
-                'name': 'extension3',
-                'version': '1.0.0',
-                'publisher': 'test',
-                'display_name': 'Test Extension 3'
-            }
+                "id": "test.extension3",
+                "name": "extension3",
+                "version": "1.0.0",
+                "publisher": "test",
+                "display_name": "Test Extension 3",
+            },
         ]
 
         # Mock args
@@ -73,7 +74,7 @@ class TestParallelScanningBasic(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=3
+            workers=3,
         )
 
     def tearDown(self):
@@ -84,13 +85,13 @@ class TestParallelScanningBasic(unittest.TestCase):
         """Test that parallel scan completes successfully."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             # Mock successful API responses
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
-                'scan_status': 'success',
-                'security': {'score': 85},
-                'vulnerabilities': {'count': 0}
+                "scan_status": "success",
+                "security": {"score": 85},
+                "vulnerabilities": {"count": 0},
             }
             mock_api_class.return_value = mock_api
 
@@ -98,33 +99,36 @@ class TestParallelScanningBasic(unittest.TestCase):
                 self.extensions,
                 self.args,
                 cache_manager,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
             # Verify results
             self.assertEqual(len(results), 3)
-            self.assertEqual(stats['successful_scans'], 3)
-            self.assertEqual(stats['failed_scans'], 0)
-            self.assertEqual(stats['fresh_scans'], 3)
+            self.assertEqual(stats["successful_scans"], 3)
+            self.assertEqual(stats["failed_scans"], 0)
+            self.assertEqual(stats["fresh_scans"], 3)
 
     def test_worker_count_validation(self):
         """Test that worker count is capped at 2-5 range."""
         # Simply test the capping logic directly
         test_cases = [
-            (1, 2),   # Too low, should cap to 2
-            (2, 2),   # Valid minimum
-            (3, 3),   # Valid default
-            (5, 5),   # Valid maximum
+            (1, 2),  # Too low, should cap to 2
+            (2, 2),  # Valid minimum
+            (3, 3),  # Valid default
+            (5, 5),  # Valid maximum
             (10, 5),  # Too high, should cap to 5
         ]
 
         for input_workers, expected_workers in test_cases:
             # Test the capping logic: min(max(workers, 2), 5)
             capped = min(max(input_workers, 2), 5)
-            self.assertEqual(capped, expected_workers,
-                           f"Worker count {input_workers} should cap to {expected_workers}, got {capped}")
+            self.assertEqual(
+                capped,
+                expected_workers,
+                f"Worker count {input_workers} should cap to {expected_workers}, got {capped}",
+            )
 
 
 class TestWorkerIsolation(unittest.TestCase):
@@ -137,10 +141,10 @@ class TestWorkerIsolation(unittest.TestCase):
         self.cache_dir.mkdir()
 
         self.extension = {
-            'id': 'test.extension',
-            'name': 'extension',
-            'version': '1.0.0',
-            'publisher': 'test'
+            "id": "test.extension",
+            "name": "extension",
+            "version": "1.0.0",
+            "publisher": "test",
         }
 
         self.args = SimpleNamespace(
@@ -150,7 +154,7 @@ class TestWorkerIsolation(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=3
+            workers=3,
         )
 
     def tearDown(self):
@@ -161,33 +165,36 @@ class TestWorkerIsolation(unittest.TestCase):
         """Test that each worker creates its own API client."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
-                'scan_status': 'success',
-                'security': {'score': 85}
+                "scan_status": "success",
+                "security": {"score": 85},
             }
             mock_api_class.return_value = mock_api
 
             # Call worker function
             result, from_cache, should_cache = _scan_single_extension_worker(
-                self.extension,
-                cache_manager,
-                self.args
+                self.extension, cache_manager, self.args
             )
 
             # Verify API client was created
             mock_api_class.assert_called_once()
             self.assertFalse(from_cache)
             self.assertTrue(should_cache)  # Successful scans should be cached
-            self.assertEqual(result['scan_status'], 'success')
+            self.assertEqual(result["scan_status"], "success")
 
     def test_multiple_workers_get_separate_clients(self):
         """Test that multiple workers each get their own API client."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
         extensions = [
-            {'id': f'test.ext{i}', 'name': f'ext{i}', 'version': '1.0.0', 'publisher': 'test'}
+            {
+                "id": f"test.ext{i}",
+                "name": f"ext{i}",
+                "version": "1.0.0",
+                "publisher": "test",
+            }
             for i in range(5)
         ]
 
@@ -198,23 +205,21 @@ class TestWorkerIsolation(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=3
+            workers=3,
         )
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
-            mock_api.scan_extension_with_retry.return_value = {
-                'scan_status': 'success'
-            }
+            mock_api.scan_extension_with_retry.return_value = {"scan_status": "success"}
             mock_api_class.return_value = mock_api
 
             _scan_extensions(
                 extensions,
                 args,
                 cache_manager,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
             # Verify multiple API clients were created (one per extension)
@@ -239,7 +244,12 @@ class TestThreadSafety(unittest.TestCase):
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
         extensions = [
-            {'id': f'test.ext{i}', 'name': f'ext{i}', 'version': '1.0.0', 'publisher': 'test'}
+            {
+                "id": f"test.ext{i}",
+                "name": f"ext{i}",
+                "version": "1.0.0",
+                "publisher": "test",
+            }
             for i in range(10)
         ]
 
@@ -250,14 +260,14 @@ class TestThreadSafety(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=5
+            workers=5,
         )
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
-                'scan_status': 'success',
-                'security': {'score': 85}
+                "scan_status": "success",
+                "security": {"score": 85},
             }
             mock_api_class.return_value = mock_api
 
@@ -266,13 +276,13 @@ class TestThreadSafety(unittest.TestCase):
                 extensions,
                 args,
                 cache_manager,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
             self.assertEqual(len(results), 10)
-            self.assertEqual(stats['successful_scans'], 10)
+            self.assertEqual(stats["successful_scans"], 10)
 
     def test_concurrent_cache_reads(self):
         """Test that concurrent cache reads work correctly."""
@@ -281,13 +291,18 @@ class TestThreadSafety(unittest.TestCase):
         # Pre-populate cache
         for i in range(10):
             cache_manager.save_result(
-                f'test.ext{i}',
-                '1.0.0',
-                {'scan_status': 'success', 'security': {'score': 85}}
+                f"test.ext{i}",
+                "1.0.0",
+                {"scan_status": "success", "security": {"score": 85}},
             )
 
         extensions = [
-            {'id': f'test.ext{i}', 'name': f'ext{i}', 'version': '1.0.0', 'publisher': 'test'}
+            {
+                "id": f"test.ext{i}",
+                "name": f"ext{i}",
+                "version": "1.0.0",
+                "publisher": "test",
+            }
             for i in range(10)
         ]
 
@@ -298,7 +313,7 @@ class TestThreadSafety(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=5
+            workers=5,
         )
 
         # Should read from cache without errors
@@ -306,14 +321,14 @@ class TestThreadSafety(unittest.TestCase):
             extensions,
             args,
             cache_manager,
-            '2025-10-25T00:00:00Z',
+            "2025-10-25T00:00:00Z",
             use_rich=False,
-            quiet=True
+            quiet=True,
         )
 
         self.assertEqual(len(results), 10)
-        self.assertEqual(stats['cached_results'], 10)
-        self.assertEqual(stats['fresh_scans'], 0)
+        self.assertEqual(stats["cached_results"], 10)
+        self.assertEqual(stats["fresh_scans"], 0)
 
 
 class TestErrorHandling(unittest.TestCase):
@@ -334,9 +349,24 @@ class TestErrorHandling(unittest.TestCase):
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
         extensions = [
-            {'id': 'test.ext1', 'name': 'ext1', 'version': '1.0.0', 'publisher': 'test'},
-            {'id': 'test.ext2', 'name': 'ext2', 'version': '1.0.0', 'publisher': 'test'},
-            {'id': 'test.ext3', 'name': 'ext3', 'version': '1.0.0', 'publisher': 'test'},
+            {
+                "id": "test.ext1",
+                "name": "ext1",
+                "version": "1.0.0",
+                "publisher": "test",
+            },
+            {
+                "id": "test.ext2",
+                "name": "ext2",
+                "version": "1.0.0",
+                "publisher": "test",
+            },
+            {
+                "id": "test.ext3",
+                "name": "ext3",
+                "version": "1.0.0",
+                "publisher": "test",
+            },
         ]
 
         args = SimpleNamespace(
@@ -346,16 +376,16 @@ class TestErrorHandling(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=3
+            workers=3,
         )
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             # First call succeeds, second fails, third succeeds
             mock_api.scan_extension_with_retry.side_effect = [
-                {'scan_status': 'success'},
+                {"scan_status": "success"},
                 Exception("Network error"),
-                {'scan_status': 'success'}
+                {"scan_status": "success"},
             ]
             mock_api_class.return_value = mock_api
 
@@ -363,23 +393,29 @@ class TestErrorHandling(unittest.TestCase):
                 extensions,
                 args,
                 cache_manager,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
             # Scan should complete with mixed results
             self.assertEqual(len(results), 2)  # Only successful results
-            self.assertEqual(stats['successful_scans'], 2)
-            self.assertEqual(stats['failed_scans'], 1)
-            self.assertEqual(len(stats['failed_extensions']), 1)
+            self.assertEqual(stats["successful_scans"], 2)
+            self.assertEqual(stats["failed_scans"], 1)
+            self.assertEqual(len(stats["failed_extensions"]), 1)
 
     def test_failed_extensions_tracked(self):
         """Test that failed extensions are properly tracked."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
         extensions = [
-            {'id': 'test.failing', 'name': 'failing', 'version': '1.0.0', 'publisher': 'test', 'display_name': 'Failing Extension'},
+            {
+                "id": "test.failing",
+                "name": "failing",
+                "version": "1.0.0",
+                "publisher": "test",
+                "display_name": "Failing Extension",
+            },
         ]
 
         args = SimpleNamespace(
@@ -389,10 +425,10 @@ class TestErrorHandling(unittest.TestCase):
             cache_max_age=7,
             refresh_cache=False,
             no_cache=False,
-            workers=2
+            workers=2,
         )
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.side_effect = Exception("API timeout")
             mock_api_class.return_value = mock_api
@@ -401,16 +437,16 @@ class TestErrorHandling(unittest.TestCase):
                 extensions,
                 args,
                 cache_manager,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
             # Verify failed extension is tracked
-            self.assertEqual(stats['failed_scans'], 1)
-            self.assertEqual(len(stats['failed_extensions']), 1)
-            self.assertEqual(stats['failed_extensions'][0]['id'], 'test.failing')
-            self.assertIn('error_type', stats['failed_extensions'][0])
+            self.assertEqual(stats["failed_scans"], 1)
+            self.assertEqual(len(stats["failed_extensions"]), 1)
+            self.assertEqual(stats["failed_extensions"][0]["id"], "test.failing")
+            self.assertIn("error_type", stats["failed_extensions"][0])
 
 
 class TestResultConsistency(unittest.TestCase):
@@ -427,30 +463,36 @@ class TestResultConsistency(unittest.TestCase):
     def test_parallel_sequential_consistency(self):
         """Test that parallel and sequential produce same results (order-independent)."""
         extensions = [
-            {'id': f'test.ext{i}', 'name': f'ext{i}', 'version': '1.0.0', 'publisher': 'test'}
+            {
+                "id": f"test.ext{i}",
+                "name": f"ext{i}",
+                "version": "1.0.0",
+                "publisher": "test",
+            }
             for i in range(5)
         ]
 
         # Mock responses
         mock_responses = {
-            'test.ext0': {'scan_status': 'success', 'security': {'score': 90}},
-            'test.ext1': {'scan_status': 'success', 'security': {'score': 85}},
-            'test.ext2': {'scan_status': 'success', 'security': {'score': 75}},
-            'test.ext3': {'scan_status': 'success', 'security': {'score': 95}},
-            'test.ext4': {'scan_status': 'success', 'security': {'score': 80}},
+            "test.ext0": {"scan_status": "success", "security": {"score": 90}},
+            "test.ext1": {"scan_status": "success", "security": {"score": 85}},
+            "test.ext2": {"scan_status": "success", "security": {"score": 75}},
+            "test.ext3": {"scan_status": "success", "security": {"score": 95}},
+            "test.ext4": {"scan_status": "success", "security": {"score": 80}},
         }
 
         def mock_scan(publisher, name):
             ext_id = f"{publisher}.{name}"
-            return mock_responses.get(ext_id, {'scan_status': 'error'})
+            return mock_responses.get(ext_id, {"scan_status": "error"})
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.side_effect = mock_scan
             mock_api_class.return_value = mock_api
 
             # Run sequential scan
             from vscode_scanner.scanner import _scan_extensions
+
             cache_dir_seq = Path(self.temp_dir) / "cache_seq"
             cache_dir_seq.mkdir()
             cache_manager_seq = CacheManager(cache_dir=str(cache_dir_seq))
@@ -462,19 +504,19 @@ class TestResultConsistency(unittest.TestCase):
                 cache_max_age=7,
                 refresh_cache=False,
                 no_cache=False,
-                workers=1
+                workers=1,
             )
 
             seq_results, seq_stats = _scan_extensions(
                 extensions,
                 args_seq,
                 cache_manager_seq,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.side_effect = mock_scan
             mock_api_class.return_value = mock_api
@@ -491,26 +533,26 @@ class TestResultConsistency(unittest.TestCase):
                 cache_max_age=7,
                 refresh_cache=False,
                 no_cache=False,
-                workers=3
+                workers=3,
             )
 
             par_results, par_stats = _scan_extensions(
                 extensions,
                 args_par,
                 cache_manager_par,
-                '2025-10-25T00:00:00Z',
+                "2025-10-25T00:00:00Z",
                 use_rich=False,
-                quiet=True
+                quiet=True,
             )
 
         # Results should be the same (order-independent)
         self.assertEqual(len(seq_results), len(par_results))
-        self.assertEqual(seq_stats['successful_scans'], par_stats['successful_scans'])
-        self.assertEqual(seq_stats['failed_scans'], par_stats['failed_scans'])
+        self.assertEqual(seq_stats["successful_scans"], par_stats["successful_scans"])
+        self.assertEqual(seq_stats["failed_scans"], par_stats["failed_scans"])
 
         # Compare results by ID (order doesn't matter)
-        seq_ids = sorted([r['id'] for r in seq_results])
-        par_ids = sorted([r['id'] for r in par_results])
+        seq_ids = sorted([r["id"] for r in seq_results])
+        par_ids = sorted([r["id"] for r in par_results])
         self.assertEqual(seq_ids, par_ids)
 
 
@@ -531,7 +573,7 @@ class TestIntegration(unittest.TestCase):
                 "name": f"ext{i}",
                 "publisher": "test",
                 "version": "1.0.0",
-                "displayName": f"Test Extension {i}"
+                "displayName": f"Test Extension {i}",
             }
             (ext_dir / "package.json").write_text(json.dumps(package_json))
 
@@ -543,17 +585,17 @@ class TestIntegration(unittest.TestCase):
         """Test end-to-end parallel scan from discovery to results."""
         cache_dir = Path(self.temp_dir) / "cache"
 
-        with patch('vscode_scanner.scanner.VscanAPIClient') as mock_api_class:
+        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
-                'scan_status': 'success',
-                'security': {'score': 85},
-                'vulnerabilities': {'count': 0}
+                "scan_status": "success",
+                "security": {"score": 85},
+                "vulnerabilities": {"count": 0},
             }
             mock_api.get_retry_stats.return_value = {
-                'total_retries': 0,
-                'successful_retries': 0,
-                'failed_after_retries': 0
+                "total_retries": 0,
+                "successful_retries": 0,
+                "failed_after_retries": 0,
             }
             mock_api_class.return_value = mock_api
 
@@ -563,7 +605,7 @@ class TestIntegration(unittest.TestCase):
                 parallel=True,
                 workers=3,
                 cache_dir=str(cache_dir),
-                quiet=True
+                quiet=True,
             )
 
             # Should succeed (exit code 0 = no vulnerabilities)
@@ -586,7 +628,7 @@ class TestThreadSafeStats(unittest.TestCase):
         def increment_worker():
             """Worker function that increments stats."""
             for _ in range(increments_per_thread):
-                stats.increment('test_counter')
+                stats.increment("test_counter")
 
         # Run concurrent increments
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -596,9 +638,12 @@ class TestThreadSafeStats(unittest.TestCase):
 
         # Verify count is exactly what we expect (no race conditions)
         expected_count = num_threads * increments_per_thread
-        actual_count = stats.get('test_counter')
-        self.assertEqual(actual_count, expected_count,
-                        f"Expected {expected_count} but got {actual_count}. Race condition detected!")
+        actual_count = stats.get("test_counter")
+        self.assertEqual(
+            actual_count,
+            expected_count,
+            f"Expected {expected_count} but got {actual_count}. Race condition detected!",
+        )
 
     def test_append_failed_thread_safety(self):
         """Test that concurrent list appends are thread-safe."""
@@ -612,11 +657,13 @@ class TestThreadSafeStats(unittest.TestCase):
         def append_worker(thread_id):
             """Worker function that appends failed extensions."""
             for i in range(appends_per_thread):
-                stats.append_failed({
-                    'id': f'thread{thread_id}.ext{i}',
-                    'name': f'Extension {i}',
-                    'error_type': 'test_error'
-                })
+                stats.append_failed(
+                    {
+                        "id": f"thread{thread_id}.ext{i}",
+                        "name": f"Extension {i}",
+                        "error_type": "test_error",
+                    }
+                )
 
         # Run concurrent appends
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -625,15 +672,19 @@ class TestThreadSafeStats(unittest.TestCase):
                 future.result()
 
         # Verify all items were appended
-        failed_extensions = stats.get('failed_extensions')
+        failed_extensions = stats.get("failed_extensions")
         expected_count = num_threads * appends_per_thread
-        self.assertEqual(len(failed_extensions), expected_count,
-                        f"Expected {expected_count} failed extensions but got {len(failed_extensions)}")
+        self.assertEqual(
+            len(failed_extensions),
+            expected_count,
+            f"Expected {expected_count} failed extensions but got {len(failed_extensions)}",
+        )
 
         # Verify all IDs are unique (no lost updates)
-        ids = [ext['id'] for ext in failed_extensions]
-        self.assertEqual(len(ids), len(set(ids)),
-                        "Duplicate IDs found - race condition detected!")
+        ids = [ext["id"] for ext in failed_extensions]
+        self.assertEqual(
+            len(ids), len(set(ids)), "Duplicate IDs found - race condition detected!"
+        )
 
     def test_mixed_operations_thread_safety(self):
         """Test that mixed concurrent operations are thread-safe."""
@@ -648,14 +699,13 @@ class TestThreadSafeStats(unittest.TestCase):
             """Worker function that performs mixed operations."""
             for i in range(operations_per_thread):
                 # Mix of different operations
-                stats.increment('successful_scans')
-                stats.increment('vulnerabilities_found')
+                stats.increment("successful_scans")
+                stats.increment("vulnerabilities_found")
                 if i % 5 == 0:
-                    stats.append_failed({
-                        'id': f'thread{thread_id}.fail{i}',
-                        'error_type': 'test'
-                    })
-                stats.increment('cached_results')
+                    stats.append_failed(
+                        {"id": f"thread{thread_id}.fail{i}", "error_type": "test"}
+                    )
+                stats.increment("cached_results")
 
         # Run concurrent mixed operations
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -668,30 +718,30 @@ class TestThreadSafeStats(unittest.TestCase):
         expected_scans = num_threads * operations_per_thread
         expected_failed = num_threads * (operations_per_thread // 5)
 
-        self.assertEqual(stats_dict['successful_scans'], expected_scans)
-        self.assertEqual(stats_dict['vulnerabilities_found'], expected_scans)
-        self.assertEqual(stats_dict['cached_results'], expected_scans)
-        self.assertEqual(len(stats_dict['failed_extensions']), expected_failed)
+        self.assertEqual(stats_dict["successful_scans"], expected_scans)
+        self.assertEqual(stats_dict["vulnerabilities_found"], expected_scans)
+        self.assertEqual(stats_dict["cached_results"], expected_scans)
+        self.assertEqual(len(stats_dict["failed_extensions"]), expected_failed)
 
     def test_to_dict_immutability(self):
         """Test that to_dict() returns immutable copy."""
         from vscode_scanner.scanner import ThreadSafeStats
 
         stats = ThreadSafeStats()
-        stats.increment('test_counter', 10)
+        stats.increment("test_counter", 10)
 
         # Get a copy
         dict1 = stats.to_dict()
 
         # Modify stats
-        stats.increment('test_counter', 5)
+        stats.increment("test_counter", 5)
 
         # Get another copy
         dict2 = stats.to_dict()
 
         # First copy should not be affected
-        self.assertEqual(dict1['test_counter'], 10)
-        self.assertEqual(dict2['test_counter'], 15)
+        self.assertEqual(dict1["test_counter"], 10)
+        self.assertEqual(dict2["test_counter"], 15)
 
     def test_set_operation_thread_safety(self):
         """Test that set operations are thread-safe."""
@@ -702,7 +752,7 @@ class TestThreadSafeStats(unittest.TestCase):
 
         def set_worker(value):
             """Worker function that sets a value."""
-            stats.set('api_client', f'client_{value}')
+            stats.set("api_client", f"client_{value}")
 
         # Run concurrent sets (last one wins, but should not corrupt)
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -711,9 +761,9 @@ class TestThreadSafeStats(unittest.TestCase):
                 future.result()
 
         # Value should be one of the set values (not corrupted)
-        value = stats.get('api_client')
+        value = stats.get("api_client")
         self.assertIsNotNone(value)
-        self.assertTrue(value.startswith('client_'))
+        self.assertTrue(value.startswith("client_"))
 
     def test_real_world_parallel_scan_stats(self):
         """Test ThreadSafeStats in a realistic parallel scan scenario."""
@@ -734,21 +784,20 @@ class TestThreadSafeStats(unittest.TestCase):
 
                 # Random success/failure
                 if random.random() > 0.1:  # 90% success rate
-                    stats.increment('successful_scans')
+                    stats.increment("successful_scans")
                     if random.random() > 0.7:  # 30% have vulnerabilities
-                        stats.increment('vulnerabilities_found')
+                        stats.increment("vulnerabilities_found")
                 else:
-                    stats.increment('failed_scans')
-                    stats.append_failed({
-                        'id': f'worker{worker_id}.ext{i}',
-                        'error_type': 'timeout'
-                    })
+                    stats.increment("failed_scans")
+                    stats.append_failed(
+                        {"id": f"worker{worker_id}.ext{i}", "error_type": "timeout"}
+                    )
 
                 # Random cache hit
                 if random.random() > 0.5:
-                    stats.increment('cached_results')
+                    stats.increment("cached_results")
                 else:
-                    stats.increment('fresh_scans')
+                    stats.increment("fresh_scans")
 
         # Run parallel scan simulation
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -758,17 +807,22 @@ class TestThreadSafeStats(unittest.TestCase):
 
         # Verify stats consistency
         stats_dict = stats.to_dict()
-        total_scans = stats_dict['successful_scans'] + stats_dict['failed_scans']
-        total_cache = stats_dict['cached_results'] + stats_dict['fresh_scans']
+        total_scans = stats_dict["successful_scans"] + stats_dict["failed_scans"]
+        total_cache = stats_dict["cached_results"] + stats_dict["fresh_scans"]
 
         expected_total = num_workers * extensions_per_worker
 
-        self.assertEqual(total_scans, expected_total,
-                        "Total scans don't match expected count")
-        self.assertEqual(total_cache, expected_total,
-                        "Total cache stats don't match expected count")
-        self.assertEqual(stats_dict['failed_scans'], len(stats_dict['failed_extensions']),
-                        "Failed scans count doesn't match failed extensions list")
+        self.assertEqual(
+            total_scans, expected_total, "Total scans don't match expected count"
+        )
+        self.assertEqual(
+            total_cache, expected_total, "Total cache stats don't match expected count"
+        )
+        self.assertEqual(
+            stats_dict["failed_scans"],
+            len(stats_dict["failed_extensions"]),
+            "Failed scans count doesn't match failed extensions list",
+        )
 
 
 def run_tests():
@@ -794,5 +848,5 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(run_tests())

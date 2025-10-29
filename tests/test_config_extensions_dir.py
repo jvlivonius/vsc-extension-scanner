@@ -16,6 +16,7 @@ from pathlib import Path
 
 # Add parent directory to path for imports
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from vscode_scanner.config_manager import (
@@ -26,7 +27,7 @@ from vscode_scanner.config_manager import (
     delete_config,
     get_config_path,
     CONFIG_SCHEMA,
-    DEFAULT_CONFIG
+    DEFAULT_CONFIG,
 )
 
 
@@ -35,16 +36,16 @@ class TestExtensionsDirConfigSchema(unittest.TestCase):
 
     def test_extensions_dir_in_default_config(self):
         """Test extensions_dir exists in DEFAULT_CONFIG."""
-        self.assertIn('scan', DEFAULT_CONFIG)
-        self.assertIn('extensions_dir', DEFAULT_CONFIG['scan'])
-        self.assertIsNone(DEFAULT_CONFIG['scan']['extensions_dir'])
+        self.assertIn("scan", DEFAULT_CONFIG)
+        self.assertIn("extensions_dir", DEFAULT_CONFIG["scan"])
+        self.assertIsNone(DEFAULT_CONFIG["scan"]["extensions_dir"])
 
     def test_extensions_dir_in_config_schema(self):
         """Test extensions_dir exists in CONFIG_SCHEMA."""
-        self.assertIn('scan', CONFIG_SCHEMA)
-        self.assertIn('extensions_dir', CONFIG_SCHEMA['scan'])
-        schema_entry = CONFIG_SCHEMA['scan']['extensions_dir']
-        self.assertEqual(schema_entry[0], 'path')
+        self.assertIn("scan", CONFIG_SCHEMA)
+        self.assertIn("extensions_dir", CONFIG_SCHEMA["scan"])
+        schema_entry = CONFIG_SCHEMA["scan"]["extensions_dir"]
+        self.assertEqual(schema_entry[0], "path")
         self.assertIsNone(schema_entry[1])  # No min constraint
         self.assertIsNone(schema_entry[2])  # No max constraint
 
@@ -59,10 +60,11 @@ class TestExtensionsDirConfigOperations(unittest.TestCase):
 
         # Create temporary config file
         self.temp_dir = tempfile.mkdtemp()
-        self.temp_config = Path(self.temp_dir) / '.vscanrc'
+        self.temp_config = Path(self.temp_dir) / ".vscanrc"
 
         # Monkey-patch get_config_path to use temp file
         import vscode_scanner.config_manager as cm
+
         self.original_get_config_path = cm.get_config_path
         cm.get_config_path = lambda: self.temp_config
 
@@ -70,6 +72,7 @@ class TestExtensionsDirConfigOperations(unittest.TestCase):
         """Clean up test environment."""
         # Restore original get_config_path
         import vscode_scanner.config_manager as cm
+
         cm.get_config_path = self.original_get_config_path
 
         # Clean up temp files
@@ -84,12 +87,12 @@ class TestExtensionsDirConfigOperations(unittest.TestCase):
         create_default_config(force=True)
 
         # Set extensions_dir
-        test_path = '~/custom/extensions'
-        update_config_value('scan', 'extensions_dir', test_path)
+        test_path = "~/custom/extensions"
+        update_config_value("scan", "extensions_dir", test_path)
 
         # Load config and verify
         config, warnings = load_config()
-        self.assertEqual(config['scan']['extensions_dir'], test_path)
+        self.assertEqual(config["scan"]["extensions_dir"], test_path)
         self.assertEqual(len(warnings), 0)
 
     def test_extensions_dir_with_absolute_path(self):
@@ -97,12 +100,12 @@ class TestExtensionsDirConfigOperations(unittest.TestCase):
         create_default_config(force=True)
 
         # Set absolute path
-        test_path = '/absolute/path/to/extensions'
-        update_config_value('scan', 'extensions_dir', test_path)
+        test_path = "/absolute/path/to/extensions"
+        update_config_value("scan", "extensions_dir", test_path)
 
         # Load and verify
         config, warnings = load_config()
-        self.assertEqual(config['scan']['extensions_dir'], test_path)
+        self.assertEqual(config["scan"]["extensions_dir"], test_path)
 
     def test_extensions_dir_defaults_to_none(self):
         """Test extensions_dir defaults to None when not set."""
@@ -112,19 +115,19 @@ class TestExtensionsDirConfigOperations(unittest.TestCase):
         config, warnings = load_config()
 
         # Should be None (triggering auto-detect)
-        self.assertIsNone(config['scan']['extensions_dir'])
+        self.assertIsNone(config["scan"]["extensions_dir"])
 
     def test_extensions_dir_with_spaces(self):
         """Test extensions_dir with spaces in path."""
         create_default_config(force=True)
 
         # Set path with spaces
-        test_path = '~/my documents/vscode extensions'
-        update_config_value('scan', 'extensions_dir', test_path)
+        test_path = "~/my documents/vscode extensions"
+        update_config_value("scan", "extensions_dir", test_path)
 
         # Load and verify
         config, warnings = load_config()
-        self.assertEqual(config['scan']['extensions_dir'], test_path)
+        self.assertEqual(config["scan"]["extensions_dir"], test_path)
 
 
 class TestExtensionsDirCLIIntegration(unittest.TestCase):
@@ -134,10 +137,11 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
         """Set up test environment."""
         # Create temporary config
         self.temp_dir = tempfile.mkdtemp()
-        self.temp_config = Path(self.temp_dir) / '.vscanrc'
+        self.temp_config = Path(self.temp_dir) / ".vscanrc"
 
         # Monkey-patch config path
         import vscode_scanner.config_manager as cm
+
         self.original_get_config_path = cm.get_config_path
         cm.get_config_path = lambda: self.temp_config
 
@@ -145,6 +149,7 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
         """Clean up test environment."""
         # Restore original
         import vscode_scanner.config_manager as cm
+
         cm.get_config_path = self.original_get_config_path
 
         # Clean up
@@ -157,8 +162,8 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
         """Test CLI loads extensions_dir from config file."""
         # Create config with extensions_dir
         create_default_config(force=True)
-        test_path = '~/test/extensions'
-        update_config_value('scan', 'extensions_dir', test_path)
+        test_path = "~/test/extensions"
+        update_config_value("scan", "extensions_dir", test_path)
 
         # Load config (simulating CLI behavior)
         config, warnings = load_config()
@@ -167,8 +172,11 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
         extensions_dir_cli = None  # No CLI argument provided
         extensions_dir_final = extensions_dir_cli
 
-        if extensions_dir_final is None and config['scan']['extensions_dir'] is not None:
-            extensions_dir_final = Path(config['scan']['extensions_dir']).expanduser()
+        if (
+            extensions_dir_final is None
+            and config["scan"]["extensions_dir"] is not None
+        ):
+            extensions_dir_final = Path(config["scan"]["extensions_dir"]).expanduser()
 
         # Should use config value with expanded path
         self.assertIsNotNone(extensions_dir_final)
@@ -178,19 +186,22 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
         """Test CLI argument overrides config file."""
         # Create config with extensions_dir
         create_default_config(force=True)
-        config_path = '~/config/extensions'
-        update_config_value('scan', 'extensions_dir', config_path)
+        config_path = "~/config/extensions"
+        update_config_value("scan", "extensions_dir", config_path)
 
         # Load config
         config, warnings = load_config()
 
         # Simulate CLI with argument (overrides config)
-        cli_path = Path('~/cli/extensions')
+        cli_path = Path("~/cli/extensions")
         extensions_dir_cli = cli_path
         extensions_dir_final = extensions_dir_cli
 
-        if extensions_dir_final is None and config['scan']['extensions_dir'] is not None:
-            extensions_dir_final = Path(config['scan']['extensions_dir']).expanduser()
+        if (
+            extensions_dir_final is None
+            and config["scan"]["extensions_dir"] is not None
+        ):
+            extensions_dir_final = Path(config["scan"]["extensions_dir"]).expanduser()
 
         # Should use CLI argument, not config
         self.assertEqual(extensions_dir_final, cli_path)
@@ -198,18 +209,18 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
     def test_path_expansion_tilde(self):
         """Test that ~ is expanded to home directory."""
         create_default_config(force=True)
-        test_path = '~/my/extensions'
-        update_config_value('scan', 'extensions_dir', test_path)
+        test_path = "~/my/extensions"
+        update_config_value("scan", "extensions_dir", test_path)
 
         # Load config
         config, warnings = load_config()
 
         # Simulate CLI path expansion
-        if config['scan']['extensions_dir'] is not None:
-            expanded_path = Path(config['scan']['extensions_dir']).expanduser()
+        if config["scan"]["extensions_dir"] is not None:
+            expanded_path = Path(config["scan"]["extensions_dir"]).expanduser()
 
         # Should expand ~ to actual home directory
-        self.assertNotIn('~', str(expanded_path))
+        self.assertNotIn("~", str(expanded_path))
         self.assertTrue(str(expanded_path).startswith(str(Path.home())))
 
 
@@ -219,15 +230,17 @@ class TestExtensionsDirValidation(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
-        self.temp_config = Path(self.temp_dir) / '.vscanrc'
+        self.temp_config = Path(self.temp_dir) / ".vscanrc"
 
         import vscode_scanner.config_manager as cm
+
         self.original_get_config_path = cm.get_config_path
         cm.get_config_path = lambda: self.temp_config
 
     def tearDown(self):
         """Clean up test environment."""
         import vscode_scanner.config_manager as cm
+
         cm.get_config_path = self.original_get_config_path
 
         if self.temp_config.exists():
@@ -240,12 +253,12 @@ class TestExtensionsDirValidation(unittest.TestCase):
         create_default_config(force=True)
 
         # Set non-existent path (should succeed - lazy validation)
-        nonexistent_path = '/this/path/does/not/exist/extensions'
+        nonexistent_path = "/this/path/does/not/exist/extensions"
         try:
-            update_config_value('scan', 'extensions_dir', nonexistent_path)
+            update_config_value("scan", "extensions_dir", nonexistent_path)
             config, warnings = load_config()
             # Should succeed - validation happens at scan time, not config time
-            self.assertEqual(config['scan']['extensions_dir'], nonexistent_path)
+            self.assertEqual(config["scan"]["extensions_dir"], nonexistent_path)
         except Exception as e:
             self.fail(f"Should allow non-existent path (lazy validation): {e}")
 
@@ -254,16 +267,16 @@ class TestExtensionsDirValidation(unittest.TestCase):
         create_default_config(force=True)
 
         # Manually set empty string in config file
-        with open(self.temp_config, 'a') as f:
-            f.write('\nextensions_dir = \n')
+        with open(self.temp_config, "a") as f:
+            f.write("\nextensions_dir = \n")
 
         # Load config
         config, warnings = load_config()
 
         # Empty string should be treated as None
-        self.assertIsNone(config['scan']['extensions_dir'])
+        self.assertIsNone(config["scan"]["extensions_dir"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests
     unittest.main(verbosity=2)

@@ -7,15 +7,15 @@
 /sc:business-panel @strategy_doc.pdf
 
 # Output: Discussion mode with Porter, Collins, Meadows, Doumont
-# Analysis focuses on competitive positioning, organizational capability, 
+# Analysis focuses on competitive positioning, organizational capability,
 # system dynamics, and communication clarity
 ```
 
-### Example 2: Innovation Assessment  
+### Example 2: Innovation Assessment
 ```bash
 /sc:business-panel "We're developing AI-powered customer service" --experts "christensen,drucker,godin"
 
-# Output: Discussion mode focusing on jobs-to-be-done, customer value, 
+# Output: Discussion mode focusing on jobs-to-be-done, customer value,
 # and remarkability/tribe building
 ```
 
@@ -67,7 +67,7 @@
 # Technical analysis followed by business expert panel review
 ```
 
-### Combined with /improve  
+### Combined with /improve
 ```bash
 /improve @strategy_doc.md --business-panel --iterative
 
@@ -90,7 +90,7 @@ strategy_planning:
   rationale: "Competitive analysis, blue ocean opportunities, execution excellence, systems thinking"
 
 innovation_management:
-  experts: ['christensen', 'drucker', 'godin', 'meadows']  
+  experts: ['christensen', 'drucker', 'godin', 'meadows']
   rationale: "Disruption theory, systematic innovation, remarkability, systems approach"
 
 organizational_development:
@@ -115,11 +115,11 @@ business_model_design:
 comprehensive_audit:
   experts: "all"
   mode: "discussion → debate → synthesis"
-  
+
 strategic_validation:
   experts: ['porter', 'collins', 'taleb']
   mode: "debate"
-  
+
 learning_facilitation:
   experts: ['drucker', 'meadows', 'doumont']
   mode: "socratic"
@@ -139,13 +139,13 @@ quick_assessment:
 # Output:
 ## 🎯 Strategic Assessment
 **💰 Financial Impact**: [Key economic drivers]
-**🏆 Competitive Position**: [Advantage analysis]  
+**🏆 Competitive Position**: [Advantage analysis]
 **📈 Growth Opportunities**: [Expansion potential]
 **⚠️ Risk Factors**: [Critical threats]
 **🧩 Synthesis**: [Integrated recommendation]
 ```
 
-### Framework-by-Framework Format  
+### Framework-by-Framework Format
 ```bash
 /sc:business-panel @doc.pdf --verbose
 
@@ -153,7 +153,7 @@ quick_assessment:
 ## 📚 CHRISTENSEN - Disruption Analysis
 [Detailed jobs-to-be-done and disruption assessment]
 
-## 📊 PORTER - Competitive Strategy  
+## 📊 PORTER - Competitive Strategy
 [Five forces and value chain analysis]
 
 ## 🧩 Cross-Framework Synthesis
@@ -169,7 +169,7 @@ quick_assessment:
 **🔨 Innovation Questions** (Christensen):
 - What job is this being hired to do?
 
-**⚔️ Competitive Questions** (Porter):  
+**⚔️ Competitive Questions** (Porter):
 - What are the sustainable advantages?
 
 **🧭 Management Questions** (Drucker):
@@ -182,7 +182,7 @@ quick_assessment:
 ```yaml
 workflow_stages:
   stage_1: "/sc:business-panel @market_research.pdf --mode discussion"
-  stage_2: "/sc:business-panel @competitive_analysis.md --mode debate"  
+  stage_2: "/sc:business-panel @competitive_analysis.md --mode debate"
   stage_3: "/sc:business-panel 'synthesize findings' --mode socratic"
   stage_4: "/design strategy --business-panel --experts 'porter,kim_mauborgne'"
 ```
@@ -196,7 +196,7 @@ workflow_stages:
 ```
 
 ### Risk Management Review
-```yaml  
+```yaml
 workflow_stages:
   stage_1: "/sc:business-panel @risk_register.pdf --experts 'taleb,meadows,porter'"
   stage_2: "/sc:business-panel 'challenge risk assumptions' --mode debate"
@@ -211,7 +211,7 @@ workflow_stages:
 /sc:business-panel @doc.pdf --christensen-focus "disruption-potential"
 /sc:business-panel @doc.pdf --porter-focus "competitive-moats"
 
-# Adjust expert interaction style  
+# Adjust expert interaction style
 /sc:business-panel @doc.pdf --interaction "collaborative" # softer debate mode
 /sc:business-panel @doc.pdf --interaction "challenging" # stronger debate mode
 ```
@@ -232,7 +232,7 @@ workflow_stages:
 # Quick analysis for time constraints
 /sc:business-panel @doc.pdf --quick --experts-max 3
 
-# Comprehensive analysis for important decisions  
+# Comprehensive analysis for important decisions
 /sc:business-panel @doc.pdf --comprehensive --all-experts
 
 # Resource-aware analysis
@@ -249,7 +249,7 @@ authenticity_validation:
   interaction_realism: "Expert dynamics reflect professional patterns"
 
 business_relevance:
-  strategic_focus: "Analysis addresses real strategic concerns"  
+  strategic_focus: "Analysis addresses real strategic concerns"
   actionable_insights: "Recommendations are implementable"
   evidence_based: "Conclusions supported by framework logic"
 
@@ -268,7 +268,7 @@ response_time:
 
 token_efficiency:
   discussion_mode: "8-15K tokens"
-  debate_mode: "10-20K tokens"  
+  debate_mode: "10-20K tokens"
   socratic_mode: "12-25K tokens"
   synthesis_only: "3-8K tokens"
 

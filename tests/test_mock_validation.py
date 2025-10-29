@@ -33,17 +33,20 @@ from tests.fixtures.canonical_mock import (
     CanonicalVscanAPIMock,
     REQUIRED_SUCCESS_FIELDS,
     REQUIRED_ERROR_FIELDS,
-    CRITICAL_FIELDS
+    CRITICAL_FIELDS,
 )
 
 # Mark tests appropriately
 try:
     import pytest
+
     integration = pytest.mark.integration
     slow = pytest.mark.slow
 except ImportError:
+
     def integration(func):
         return func
+
     def slow(func):
         return func
 
@@ -71,9 +74,9 @@ class TestRealAPIStructure(unittest.TestCase):
 
         WARNING: This test makes a real API call and takes ~10 seconds.
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("REAL API STRUCTURE DOCUMENTATION TEST")
-        print("="*70)
+        print("=" * 70)
         print("\nCalling real vscan.dev API...")
         print("Extension: ms-python.python (stable, well-known)")
 
@@ -81,8 +84,7 @@ class TestRealAPIStructure(unittest.TestCase):
         api_client = VscanAPIClient(delay=2.0, max_retries=3, timeout=30)
 
         result = api_client.scan_extension_with_retry(
-            publisher="ms-python",
-            name="python"
+            publisher="ms-python", name="python"
         )
 
         # Store for other tests
@@ -90,9 +92,9 @@ class TestRealAPIStructure(unittest.TestCase):
 
         print(f"\nAPI Response Status: {result.get('scan_status')}")
         print(f"Fields Returned: {len(result.keys())}")
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("FIELD INVENTORY:")
-        print("-"*70)
+        print("-" * 70)
 
         # Document all top-level fields
         for field in sorted(result.keys()):
@@ -101,11 +103,14 @@ class TestRealAPIStructure(unittest.TestCase):
             value_preview = str(value)[:50] if value else "None"
             print(f"  {field:25} {value_type:12} {value_preview}")
 
-        print("-"*70)
+        print("-" * 70)
 
         # Verify scan succeeded
-        self.assertEqual(result['scan_status'], 'success',
-                        "Real API scan should succeed for ms-python.python")
+        self.assertEqual(
+            result["scan_status"],
+            "success",
+            "Real API scan should succeed for ms-python.python",
+        )
 
         # Verify all required fields are present
         actual_fields = set(result.keys())
@@ -118,23 +123,23 @@ class TestRealAPIStructure(unittest.TestCase):
             print(f"\n✓ EXTRA FIELDS: {extra_fields}")
 
         # Document field types
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("FIELD TYPE VALIDATION:")
-        print("-"*70)
+        print("-" * 70)
 
         field_types = {
-            'name': str,
-            'publisher': str,
-            'scan_status': str,
-            'metadata': dict,
-            'security': dict,
-            'dependencies': dict,
-            'risk_factors': list,
-            'security_score': (int, type(None)),
-            'risk_level': (str, type(None)),
-            'vulnerabilities': dict,
-            'vscan_url': str,
-            'has_errors': bool
+            "name": str,
+            "publisher": str,
+            "scan_status": str,
+            "metadata": dict,
+            "security": dict,
+            "dependencies": dict,
+            "risk_factors": list,
+            "security_score": (int, type(None)),
+            "risk_level": (str, type(None)),
+            "vulnerabilities": dict,
+            "vscan_url": str,
+            "has_errors": bool,
         }
 
         for field, expected_type in field_types.items():
@@ -149,25 +154,25 @@ class TestRealAPIStructure(unittest.TestCase):
                 print(f"  {status} {field:25} {type(actual_value).__name__}")
 
         # Verify nested structures
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("NESTED STRUCTURE VALIDATION:")
-        print("-"*70)
+        print("-" * 70)
 
-        if 'vulnerabilities' in result:
-            vuln = result['vulnerabilities']
+        if "vulnerabilities" in result:
+            vuln = result["vulnerabilities"]
             print(f"  vulnerabilities.count: {vuln.get('count')}")
             print(f"  vulnerabilities.critical: {vuln.get('critical')}")
             print(f"  vulnerabilities.high: {vuln.get('high')}")
 
-        if 'metadata' in result:
-            meta = result['metadata']
+        if "metadata" in result:
+            meta = result["metadata"]
             print(f"  metadata fields: {list(meta.keys())[:5]}")
 
-        if 'security' in result:
-            sec = result['security']
+        if "security" in result:
+            sec = result["security"]
             print(f"  security fields: {list(sec.keys())}")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
 
     @integration
     @slow
@@ -178,24 +183,27 @@ class TestRealAPIStructure(unittest.TestCase):
         api_client = VscanAPIClient(delay=1.0, max_retries=1, timeout=15)
 
         result = api_client.scan_extension_with_retry(
-            publisher="invalid-publisher",
-            name="nonexistent-extension-12345"
+            publisher="invalid-publisher", name="nonexistent-extension-12345"
         )
 
         print(f"Error Response Status: {result.get('scan_status')}")
         print(f"Error Message: {result.get('error', 'N/A')[:100]}")
 
         # Should be error status
-        self.assertEqual(result['scan_status'], 'error',
-                        "Invalid extension should return error status")
+        self.assertEqual(
+            result["scan_status"],
+            "error",
+            "Invalid extension should return error status",
+        )
 
         # Should have error message
-        self.assertIsNotNone(result.get('error'),
-                            "Error response should have error message")
+        self.assertIsNotNone(
+            result.get("error"), "Error response should have error message"
+        )
 
         # Should still have required structure
-        self.assertIn('vulnerabilities', result)
-        self.assertIn('metadata', result)
+        self.assertIn("vulnerabilities", result)
+        self.assertIn("metadata", result)
 
 
 class TestCanonicalMockValidation(unittest.TestCase):
@@ -204,96 +212,97 @@ class TestCanonicalMockValidation(unittest.TestCase):
     def test_canonical_success_structure(self):
         """Verify canonical success mock has all required fields."""
         mock_result = CanonicalVscanAPIMock.get_success_response(
-            publisher="test-publisher",
-            name="test-extension"
+            publisher="test-publisher", name="test-extension"
         )
 
         # Check all required fields present
         actual_fields = set(mock_result.keys())
         missing_fields = REQUIRED_SUCCESS_FIELDS - actual_fields
 
-        self.assertEqual(len(missing_fields), 0,
-                        f"Canonical mock missing required fields: {missing_fields}")
+        self.assertEqual(
+            len(missing_fields),
+            0,
+            f"Canonical mock missing required fields: {missing_fields}",
+        )
 
-        print(f"\n✓ Canonical success mock has all {len(REQUIRED_SUCCESS_FIELDS)} required fields")
+        print(
+            f"\n✓ Canonical success mock has all {len(REQUIRED_SUCCESS_FIELDS)} required fields"
+        )
 
     def test_canonical_error_structure(self):
         """Verify canonical error mock has all required fields."""
         mock_result = CanonicalVscanAPIMock.get_error_response(
-            publisher="test-publisher",
-            name="test-extension"
+            publisher="test-publisher", name="test-extension"
         )
 
         # Check all required fields present
         actual_fields = set(mock_result.keys())
         missing_fields = REQUIRED_ERROR_FIELDS - actual_fields
 
-        self.assertEqual(len(missing_fields), 0,
-                        f"Canonical error mock missing required fields: {missing_fields}")
+        self.assertEqual(
+            len(missing_fields),
+            0,
+            f"Canonical error mock missing required fields: {missing_fields}",
+        )
 
-        print(f"\n✓ Canonical error mock has all {len(REQUIRED_ERROR_FIELDS)} required fields")
+        print(
+            f"\n✓ Canonical error mock has all {len(REQUIRED_ERROR_FIELDS)} required fields"
+        )
 
     def test_canonical_field_types(self):
         """Verify canonical mock field types match expected types."""
-        mock_result = CanonicalVscanAPIMock.get_success_response(
-            "test", "extension"
-        )
+        mock_result = CanonicalVscanAPIMock.get_success_response("test", "extension")
 
         # Verify critical field types
-        self.assertIsInstance(mock_result['scan_status'], str)
-        self.assertEqual(mock_result['scan_status'], 'success')
+        self.assertIsInstance(mock_result["scan_status"], str)
+        self.assertEqual(mock_result["scan_status"], "success")
 
-        self.assertIsInstance(mock_result['metadata'], dict)
-        self.assertIsInstance(mock_result['security'], dict)
-        self.assertIsInstance(mock_result['dependencies'], dict)
-        self.assertIsInstance(mock_result['risk_factors'], list)
-        self.assertIsInstance(mock_result['vulnerabilities'], dict)
+        self.assertIsInstance(mock_result["metadata"], dict)
+        self.assertIsInstance(mock_result["security"], dict)
+        self.assertIsInstance(mock_result["dependencies"], dict)
+        self.assertIsInstance(mock_result["risk_factors"], list)
+        self.assertIsInstance(mock_result["vulnerabilities"], dict)
 
-        self.assertIsInstance(mock_result['security_score'], int)
-        self.assertIsInstance(mock_result['risk_level'], str)
+        self.assertIsInstance(mock_result["security_score"], int)
+        self.assertIsInstance(mock_result["risk_level"], str)
 
         print("\n✓ All canonical mock field types are correct")
 
     def test_canonical_nested_structure(self):
         """Verify canonical mock nested structures."""
-        mock_result = CanonicalVscanAPIMock.get_success_response(
-            "test", "extension"
-        )
+        mock_result = CanonicalVscanAPIMock.get_success_response("test", "extension")
 
         # Verify vulnerabilities structure
-        vuln = mock_result['vulnerabilities']
-        required_vuln_fields = {'count', 'critical', 'high', 'moderate', 'low', 'info'}
+        vuln = mock_result["vulnerabilities"]
+        required_vuln_fields = {"count", "critical", "high", "moderate", "low", "info"}
         self.assertTrue(required_vuln_fields.issubset(vuln.keys()))
 
         # All counts should be integers
         for field in required_vuln_fields:
-            self.assertIsInstance(vuln[field], int,
-                                f"vulnerabilities.{field} should be int")
+            self.assertIsInstance(
+                vuln[field], int, f"vulnerabilities.{field} should be int"
+            )
 
         print("\n✓ Canonical mock nested structures are correct")
 
     def test_canonical_vulnerable_response(self):
         """Verify canonical vulnerable extension response."""
         mock_result = CanonicalVscanAPIMock.get_vulnerable_response(
-            publisher="test",
-            name="vulnerable-ext",
-            critical=1,
-            high=2,
-            moderate=3
+            publisher="test", name="vulnerable-ext", critical=1, high=2, moderate=3
         )
 
         # Should have vulnerabilities
-        vuln = mock_result['vulnerabilities']
-        self.assertEqual(vuln['count'], 6)  # 1+2+3
-        self.assertEqual(vuln['critical'], 1)
-        self.assertEqual(vuln['high'], 2)
-        self.assertEqual(vuln['moderate'], 3)
+        vuln = mock_result["vulnerabilities"]
+        self.assertEqual(vuln["count"], 6)  # 1+2+3
+        self.assertEqual(vuln["critical"], 1)
+        self.assertEqual(vuln["high"], 2)
+        self.assertEqual(vuln["moderate"], 3)
 
         # Security score should be lower
-        self.assertLess(mock_result['security_score'], 80)
+        self.assertLess(mock_result["security_score"], 80)
 
         # Should have risk factors
-        self.assertGreater(len(mock_result['risk_factors']), 0)
+        self.assertGreater(len(mock_result["risk_factors"]), 0)
 
         print("\n✓ Canonical vulnerable response structure is correct")
 
@@ -313,8 +322,9 @@ class TestExistingMocksValidation(unittest.TestCase):
 
             # Check critical fields that scanner depends on
             for field in CRITICAL_FIELDS:
-                self.assertIn(field, result,
-                            f"MockVscanAPI missing critical field: {field}")
+                self.assertIn(
+                    field, result, f"MockVscanAPI missing critical field: {field}"
+                )
 
             print(f"\n✓ test_integration.py MockVscanAPI has all critical fields")
 
@@ -328,13 +338,13 @@ class TestExistingMocksValidation(unittest.TestCase):
 
         # Example from test_parallel_scanning.py:
         minimal_mock_response = {
-            'scan_status': 'success',
-            'security': {'score': 85},
-            'vulnerabilities': {'count': 0}
+            "scan_status": "success",
+            "security": {"score": 85},
+            "vulnerabilities": {"count": 0},
         }
 
         # These minimal mocks are acceptable if they have scan_status
-        self.assertIn('scan_status', minimal_mock_response)
+        self.assertIn("scan_status", minimal_mock_response)
 
         print(f"\n✓ test_parallel_scanning.py mock pattern has critical fields")
 
@@ -346,8 +356,9 @@ class TestMockConsistency(unittest.TestCase):
         """Verify all success mocks return consistent structure."""
         # Get different success responses
         mock1 = CanonicalVscanAPIMock.get_success_response("pub1", "ext1")
-        mock2 = CanonicalVscanAPIMock.get_success_response("pub2", "ext2",
-                                                            security_score=50)
+        mock2 = CanonicalVscanAPIMock.get_success_response(
+            "pub2", "ext2", security_score=50
+        )
         mock3 = CanonicalVscanAPIMock.get_vulnerable_response("pub3", "ext3")
 
         # All should have same fields (different values)
@@ -355,10 +366,12 @@ class TestMockConsistency(unittest.TestCase):
         fields2 = set(mock2.keys())
         fields3 = set(mock3.keys())
 
-        self.assertEqual(fields1, fields2,
-                        "Success mocks should have consistent fields")
-        self.assertEqual(fields1, fields3,
-                        "Vulnerable mock should have same fields as success")
+        self.assertEqual(
+            fields1, fields2, "Success mocks should have consistent fields"
+        )
+        self.assertEqual(
+            fields1, fields3, "Vulnerable mock should have same fields as success"
+        )
 
         print(f"\n✓ All success mock variations have consistent structure")
 
@@ -378,9 +391,9 @@ class TestMockConsistency(unittest.TestCase):
 
 def run_tests():
     """Run all mock validation tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("MOCK VALIDATION TEST SUITE")
-    print("="*70)
+    print("=" * 70)
     print("\nThese tests validate that API mocks match the real vscan.dev API")
     print("to prevent mock drift and ensure test reliability.\n")
 
@@ -397,7 +410,7 @@ def run_tests():
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     if result.wasSuccessful():
         print("✓ ALL MOCK VALIDATION TESTS PASSED")
         print("\nMocks are validated against real API structure.")
@@ -406,11 +419,12 @@ def run_tests():
         print("✗ SOME MOCK VALIDATION TESTS FAILED")
         print("\nMock structure may have drifted from real API.")
         print("Review test output above for details.")
-    print("="*70)
+    print("=" * 70)
 
     return 0 if result.wasSuccessful() else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     sys.exit(run_tests())

@@ -29,7 +29,7 @@ class CanonicalVscanAPIMock:
         name: str,
         version: str = "1.0.0",
         security_score: int = 85,
-        vuln_count: int = 0
+        vuln_count: int = 0,
     ) -> Dict[str, Any]:
         """
         Returns structure matching real vscan.dev API success response.
@@ -50,7 +50,6 @@ class CanonicalVscanAPIMock:
             "publisher": publisher,
             "scan_status": "success",
             "error": None,
-
             # Comprehensive data categories (v3.0+)
             "metadata": {
                 "id": f"{publisher}.{name}",
@@ -61,16 +60,14 @@ class CanonicalVscanAPIMock:
                 "publisher_verified": True,
                 "install_count": 1000000,
                 "rating": 4.5,
-                "rating_count": 1500
+                "rating_count": 1500,
             },
-
             "security": {
                 "score": security_score,
                 "risk_level": _calculate_risk_level(security_score),
                 "analysis_version": "3.0",
-                "last_updated": "2025-10-26T00:00:00Z"
+                "last_updated": "2025-10-26T00:00:00Z",
             },
-
             "dependencies": {
                 "total_count": 5,
                 "npm_dependencies": ["express", "lodash"],
@@ -79,18 +76,18 @@ class CanonicalVscanAPIMock:
                     "critical": 0,
                     "high": 0,
                     "moderate": vuln_count,
-                    "low": 0
-                }
+                    "low": 0,
+                },
             },
-
             "risk_factors": [
                 {
                     "type": "network_access",
                     "severity": "medium",
-                    "description": "Extension makes network requests"
+                    "description": "Extension makes network requests",
                 }
-            ] if vuln_count > 0 else [],
-
+            ]
+            if vuln_count > 0
+            else [],
             # Legacy fields for backward compatibility
             "security_score": security_score,
             "risk_level": _calculate_risk_level(security_score),
@@ -100,22 +97,19 @@ class CanonicalVscanAPIMock:
                 "high": 0,
                 "moderate": vuln_count,
                 "low": 0,
-                "info": 0
+                "info": 0,
             },
-
             # Additional metadata
             "vscan_url": f"https://vscan.dev/extension/{publisher}.{name}",
             "analysis_timestamp": "2025-10-26T00:00:00Z",
             "has_errors": None,  # Real API returns None, not False
             "raw_response": None,
-            "analysis_id": "mock-analysis-id-12345"  # Real API returns this
+            "analysis_id": "mock-analysis-id-12345",  # Real API returns this
         }
 
     @staticmethod
     def get_error_response(
-        publisher: str,
-        name: str,
-        error_msg: str = "Extension not found"
+        publisher: str, name: str, error_msg: str = "Extension not found"
     ) -> Dict[str, Any]:
         """
         Returns structure matching real vscan.dev API error response.
@@ -134,13 +128,11 @@ class CanonicalVscanAPIMock:
             "publisher": publisher,
             "scan_status": "error",
             "error": error_msg,
-
             # Empty/null data categories
             "metadata": {},
             "security": {},
             "dependencies": {},
             "risk_factors": [],
-
             # Legacy fields (null for errors)
             "security_score": None,
             "risk_level": None,
@@ -150,24 +142,19 @@ class CanonicalVscanAPIMock:
                 "high": 0,
                 "moderate": 0,
                 "low": 0,
-                "info": 0
+                "info": 0,
             },
-
             # Additional metadata
             "vscan_url": f"https://vscan.dev/extension/{publisher}.{name}",
             "analysis_timestamp": None,
             "has_errors": None,  # Real API returns None
             "raw_response": None,
-            "analysis_id": None  # No analysis ID for errors
+            "analysis_id": None,  # No analysis ID for errors
         }
 
     @staticmethod
     def get_vulnerable_response(
-        publisher: str,
-        name: str,
-        critical: int = 1,
-        high: int = 2,
-        moderate: int = 3
+        publisher: str, name: str, critical: int = 1, high: int = 2, moderate: int = 3
     ) -> Dict[str, Any]:
         """
         Returns response for extension with vulnerabilities.
@@ -187,9 +174,7 @@ class CanonicalVscanAPIMock:
         security_score = max(30, 90 - (critical * 20 + high * 10 + moderate * 5))
 
         response = CanonicalVscanAPIMock.get_success_response(
-            publisher, name,
-            security_score=security_score,
-            vuln_count=total_vulns
+            publisher, name, security_score=security_score, vuln_count=total_vulns
         )
 
         # Update vulnerability counts
@@ -199,7 +184,7 @@ class CanonicalVscanAPIMock:
             "high": high,
             "moderate": moderate,
             "low": 0,
-            "info": 0
+            "info": 0,
         }
 
         response["dependencies"]["vulnerabilities"] = {
@@ -207,7 +192,7 @@ class CanonicalVscanAPIMock:
             "critical": critical,
             "high": high,
             "moderate": moderate,
-            "low": 0
+            "low": 0,
         }
 
         # Add risk factors
@@ -215,7 +200,7 @@ class CanonicalVscanAPIMock:
             {
                 "type": "vulnerable_dependencies",
                 "severity": "high" if critical > 0 else "medium",
-                "description": f"Found {total_vulns} vulnerabilities in dependencies"
+                "description": f"Found {total_vulns} vulnerabilities in dependencies",
             }
         ]
 
@@ -245,22 +230,42 @@ def _calculate_risk_level(security_score: int) -> str:
 # Required fields that must be present in all responses
 # Based on real API validation from ms-python.python on 2025-10-26
 REQUIRED_SUCCESS_FIELDS = {
-    'name', 'publisher', 'scan_status', 'error',
-    'metadata', 'security', 'dependencies', 'risk_factors',
-    'security_score', 'risk_level', 'vulnerabilities',
-    'vscan_url', 'analysis_timestamp', 'has_errors',
-    'raw_response', 'analysis_id'
+    "name",
+    "publisher",
+    "scan_status",
+    "error",
+    "metadata",
+    "security",
+    "dependencies",
+    "risk_factors",
+    "security_score",
+    "risk_level",
+    "vulnerabilities",
+    "vscan_url",
+    "analysis_timestamp",
+    "has_errors",
+    "raw_response",
+    "analysis_id",
 }
 
 REQUIRED_ERROR_FIELDS = {
-    'name', 'publisher', 'scan_status', 'error',
-    'metadata', 'security', 'dependencies', 'risk_factors',
-    'security_score', 'risk_level', 'vulnerabilities',
-    'vscan_url', 'analysis_timestamp', 'has_errors',
-    'raw_response', 'analysis_id'
+    "name",
+    "publisher",
+    "scan_status",
+    "error",
+    "metadata",
+    "security",
+    "dependencies",
+    "risk_factors",
+    "security_score",
+    "risk_level",
+    "vulnerabilities",
+    "vscan_url",
+    "analysis_timestamp",
+    "has_errors",
+    "raw_response",
+    "analysis_id",
 }
 
 # Critical fields that scanner depends on
-CRITICAL_FIELDS = {
-    'scan_status', 'security_score', 'vulnerabilities'
-}
+CRITICAL_FIELDS = {"scan_status", "security_score", "vulnerabilities"}

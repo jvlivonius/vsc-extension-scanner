@@ -53,55 +53,102 @@ TEST_EXTENSIONS = [
     {"publisher": "ms-python", "name": "python", "id": "ms-python.python"},
     {"publisher": "ms-vscode", "name": "cpptools", "id": "ms-vscode.cpptools"},
     {"publisher": "ms-dotnettools", "name": "csharp", "id": "ms-dotnettools.csharp"},
-    {"publisher": "ms-azuretools", "name": "vscode-docker", "id": "ms-azuretools.vscode-docker"},
-    {"publisher": "ms-vscode-remote", "name": "remote-ssh", "id": "ms-vscode-remote.remote-ssh"},
+    {
+        "publisher": "ms-azuretools",
+        "name": "vscode-docker",
+        "id": "ms-azuretools.vscode-docker",
+    },
+    {
+        "publisher": "ms-vscode-remote",
+        "name": "remote-ssh",
+        "id": "ms-vscode-remote.remote-ssh",
+    },
     {"publisher": "ms-toolsai", "name": "jupyter", "id": "ms-toolsai.jupyter"},
-
     # Popular community extensions
     {"publisher": "esbenp", "name": "prettier-vscode", "id": "esbenp.prettier-vscode"},
     {"publisher": "dbaeumer", "name": "vscode-eslint", "id": "dbaeumer.vscode-eslint"},
     {"publisher": "eamodio", "name": "gitlens", "id": "eamodio.gitlens"},
     {"publisher": "ritwickdey", "name": "LiveServer", "id": "ritwickdey.liveserver"},
-    {"publisher": "formulahendry", "name": "code-runner", "id": "formulahendry.code-runner"},
-    {"publisher": "christian-kohler", "name": "path-intellisense", "id": "christian-kohler.path-intellisense"},
-
+    {
+        "publisher": "formulahendry",
+        "name": "code-runner",
+        "id": "formulahendry.code-runner",
+    },
+    {
+        "publisher": "christian-kohler",
+        "name": "path-intellisense",
+        "id": "christian-kohler.path-intellisense",
+    },
     # Language support extensions
     {"publisher": "golang", "name": "go", "id": "golang.go"},
-    {"publisher": "rust-lang", "name": "rust-analyzer", "id": "rust-lang.rust-analyzer"},
+    {
+        "publisher": "rust-lang",
+        "name": "rust-analyzer",
+        "id": "rust-lang.rust-analyzer",
+    },
     {"publisher": "redhat", "name": "java", "id": "redhat.java"},
     {"publisher": "vue", "name": "volar", "id": "vue.volar"},
-    {"publisher": "bradlc", "name": "vscode-tailwindcss", "id": "bradlc.vscode-tailwindcss"},
-
+    {
+        "publisher": "bradlc",
+        "name": "vscode-tailwindcss",
+        "id": "bradlc.vscode-tailwindcss",
+    },
     # Productivity extensions
-    {"publisher": "vscode-icons-team", "name": "vscode-icons", "id": "vscode-icons-team.vscode-icons"},
-    {"publisher": "PKief", "name": "material-icon-theme", "id": "pkief.material-icon-theme"},
+    {
+        "publisher": "vscode-icons-team",
+        "name": "vscode-icons",
+        "id": "vscode-icons-team.vscode-icons",
+    },
+    {
+        "publisher": "PKief",
+        "name": "material-icon-theme",
+        "id": "pkief.material-icon-theme",
+    },
     {"publisher": "usernamehw", "name": "errorlens", "id": "usernamehw.errorlens"},
-    {"publisher": "streetsidesoftware", "name": "code-spell-checker", "id": "streetsidesoftware.code-spell-checker"},
-    {"publisher": "wayou", "name": "vscode-todo-highlight", "id": "wayou.vscode-todo-highlight"},
-
+    {
+        "publisher": "streetsidesoftware",
+        "name": "code-spell-checker",
+        "id": "streetsidesoftware.code-spell-checker",
+    },
+    {
+        "publisher": "wayou",
+        "name": "vscode-todo-highlight",
+        "id": "wayou.vscode-todo-highlight",
+    },
     # Testing and debugging
-    {"publisher": "hbenl", "name": "vscode-test-explorer", "id": "hbenl.vscode-test-explorer"},
+    {
+        "publisher": "hbenl",
+        "name": "vscode-test-explorer",
+        "id": "hbenl.vscode-test-explorer",
+    },
     {"publisher": "Orta", "name": "vscode-jest", "id": "orta.vscode-jest"},
-    {"publisher": "msjsdiag", "name": "debugger-for-chrome", "id": "msjsdiag.debugger-for-chrome"},
-
+    {
+        "publisher": "msjsdiag",
+        "name": "debugger-for-chrome",
+        "id": "msjsdiag.debugger-for-chrome",
+    },
     # Database and DevOps
     {"publisher": "mtxr", "name": "sqltools", "id": "mtxr.sqltools"},
     {"publisher": "redhat", "name": "vscode-yaml", "id": "redhat.vscode-yaml"},
     {"publisher": "hashicorp", "name": "terraform", "id": "hashicorp.terraform"},
-    {"publisher": "ms-kubernetes-tools", "name": "vscode-kubernetes-tools", "id": "ms-kubernetes-tools.vscode-kubernetes-tools"},
+    {
+        "publisher": "ms-kubernetes-tools",
+        "name": "vscode-kubernetes-tools",
+        "id": "ms-kubernetes-tools.vscode-kubernetes-tools",
+    },
     {"publisher": "github", "name": "copilot", "id": "github.copilot"},
 ]
 
 # Test scenarios: (workers, cache_state)
 TEST_SCENARIOS = [
-    (1, "empty"),    # Test 1: Baseline - sequential, no cache
-    (1, "50/50"),    # Test 2: Baseline with cache
-    (3, "empty"),    # Test 3: Target worker count - no cache
-    (3, "50/50"),    # Test 4: Target worker count with cache
-    (5, "empty"),    # Test 5: Higher load test - no cache
-    (5, "50/50"),    # Test 6: Higher load test with cache
-    (7, "empty"),    # Test 7: Stress test - no cache
-    (7, "50/50"),    # Test 8: Stress test with cache
+    (1, "empty"),  # Test 1: Baseline - sequential, no cache
+    (1, "50/50"),  # Test 2: Baseline with cache
+    (3, "empty"),  # Test 3: Target worker count - no cache
+    (3, "50/50"),  # Test 4: Target worker count with cache
+    (5, "empty"),  # Test 5: Higher load test - no cache
+    (5, "50/50"),  # Test 6: Higher load test with cache
+    (7, "empty"),  # Test 7: Stress test - no cache
+    (7, "50/50"),  # Test 8: Stress test with cache
 ]
 
 # PoC-specific cache directory (separate from production)
@@ -112,9 +159,11 @@ POC_CACHE_DIR = Path.home() / ".vscan-poc"
 # Data Structures
 # ============================================================================
 
+
 @dataclass
 class ScanResult:
     """Result of scanning a single extension."""
+
     extension_id: str
     success: bool
     from_cache: bool
@@ -127,6 +176,7 @@ class ScanResult:
 @dataclass
 class TestMetrics:
     """Metrics for a single test run."""
+
     test_number: int
     workers: int
     cache_state: str
@@ -149,11 +199,12 @@ class TestMetrics:
 # Worker Function
 # ============================================================================
 
+
 def scan_single_extension(
     extension: Dict[str, str],
     cache_manager: Optional[CacheManager],
     delay: float = DEFAULT_REQUEST_DELAY,
-    refresh_cache: bool = False
+    refresh_cache: bool = False,
 ) -> ScanResult:
     """
     Worker function to scan a single extension.
@@ -197,7 +248,7 @@ def scan_single_extension(
                 extension_id=extension_id,
                 success=True,
                 from_cache=False,
-                duration_seconds=duration
+                duration_seconds=duration,
             )
         else:
             return ScanResult(
@@ -206,7 +257,7 @@ def scan_single_extension(
                 from_cache=False,
                 duration_seconds=duration,
                 error_type="scan_failed",
-                error_message=result.get("error", "Unknown error")
+                error_message=result.get("error", "Unknown error"),
             )
 
     except Exception as e:
@@ -220,7 +271,7 @@ def scan_single_extension(
             duration_seconds=duration,
             error_type=error_type,
             error_message=str(e)[:200],  # Truncate long errors
-            http_status=http_status
+            http_status=http_status,
         )
 
 
@@ -255,11 +306,12 @@ def categorize_error(error: Exception) -> Tuple[str, Optional[int]]:
 # Test Runner
 # ============================================================================
 
+
 def run_parallel_scan(
     extensions: List[Dict[str, str]],
     workers: int,
     cache_manager: Optional[CacheManager],
-    delay: float = DEFAULT_REQUEST_DELAY
+    delay: float = DEFAULT_REQUEST_DELAY,
 ) -> Tuple[List[ScanResult], float]:
     """
     Run parallel scan with ThreadPoolExecutor.
@@ -281,12 +333,9 @@ def run_parallel_scan(
         # Submit all tasks
         futures = {
             executor.submit(
-                scan_single_extension,
-                ext,
-                cache_manager,
-                delay,
-                refresh_cache=False
-            ): ext for ext in extensions
+                scan_single_extension, ext, cache_manager, delay, refresh_cache=False
+            ): ext
+            for ext in extensions
         }
 
         # Collect results as they complete
@@ -301,18 +350,24 @@ def run_parallel_scan(
                 # Progress indicator
                 status = "✓" if result.success else "✗"
                 cache_indicator = "⚡" if result.from_cache else "🔍"
-                print(f"    [{completed}/{len(extensions)}] {ext['id'][:40]:40} {cache_indicator} {status}")
+                print(
+                    f"    [{completed}/{len(extensions)}] {ext['id'][:40]:40} {cache_indicator} {status}"
+                )
 
             except Exception as e:
-                print(f"    [{completed}/{len(extensions)}] {ext['id'][:40]:40} ✗ Exception: {e}")
-                results.append(ScanResult(
-                    extension_id=ext["id"],
-                    success=False,
-                    from_cache=False,
-                    duration_seconds=0,
-                    error_type="executor_error",
-                    error_message=str(e)[:200]
-                ))
+                print(
+                    f"    [{completed}/{len(extensions)}] {ext['id'][:40]:40} ✗ Exception: {e}"
+                )
+                results.append(
+                    ScanResult(
+                        extension_id=ext["id"],
+                        success=False,
+                        from_cache=False,
+                        duration_seconds=0,
+                        error_type="executor_error",
+                        error_message=str(e)[:200],
+                    )
+                )
 
     total_duration = time.time() - start_time
     print(f"  Completed in {total_duration:.1f}s")
@@ -324,9 +379,9 @@ def run_parallel_scan(
 # Cache Management
 # ============================================================================
 
+
 def setup_cache_50_50(
-    extensions: List[Dict[str, str]],
-    cache_manager: CacheManager
+    extensions: List[Dict[str, str]], cache_manager: CacheManager
 ) -> None:
     """
     Pre-populate cache with first 15 of 30 extensions for 50/50 mix test.
@@ -387,13 +442,14 @@ def check_cache_integrity(cache_manager: Optional[CacheManager]) -> bool:
 # Metrics and Reporting
 # ============================================================================
 
+
 def calculate_metrics(
     test_number: int,
     workers: int,
     cache_state: str,
     results: List[ScanResult],
     duration: float,
-    baseline_duration: Optional[float] = None
+    baseline_duration: Optional[float] = None,
 ) -> TestMetrics:
     """
     Calculate metrics for a test run.
@@ -418,15 +474,24 @@ def calculate_metrics(
     timeout_errors = sum(1 for r in results if r.error_type == "timeout")
     server_errors = sum(1 for r in results if r.error_type == "server_error")
     sqlite_errors = sum(1 for r in results if r.error_type == "sqlite_error")
-    other_errors = sum(1 for r in results if r.error_type and r.error_type not in
-                       ["rate_limit", "timeout", "server_error", "sqlite_error"])
+    other_errors = sum(
+        1
+        for r in results
+        if r.error_type
+        and r.error_type
+        not in ["rate_limit", "timeout", "server_error", "sqlite_error"]
+    )
 
     total_errors = sum(1 for r in results if not r.success)
     success_count = sum(1 for r in results if r.success)
-    success_rate = (success_count / total_extensions * 100) if total_extensions > 0 else 0
+    success_rate = (
+        (success_count / total_extensions * 100) if total_extensions > 0 else 0
+    )
 
     avg_duration = duration / total_extensions if total_extensions > 0 else 0
-    speedup = baseline_duration / duration if baseline_duration and duration > 0 else 1.0
+    speedup = (
+        baseline_duration / duration if baseline_duration and duration > 0 else 1.0
+    )
 
     return TestMetrics(
         test_number=test_number,
@@ -444,7 +509,7 @@ def calculate_metrics(
         sqlite_errors=sqlite_errors,
         other_errors=other_errors,
         total_errors=total_errors,
-        success_rate=success_rate
+        success_rate=success_rate,
     )
 
 
@@ -455,15 +520,19 @@ def display_results_table(all_metrics: List[TestMetrics]) -> None:
     print("=" * 120)
 
     # Header
-    print(f"{'Test':<6} {'Workers':<8} {'Cache':<8} {'Cached':<8} {'Fresh':<8} "
-          f"{'Duration':<12} {'Avg/Ext':<10} {'Speedup':<10} {'Errors':<8} {'Success%':<10}")
+    print(
+        f"{'Test':<6} {'Workers':<8} {'Cache':<8} {'Cached':<8} {'Fresh':<8} "
+        f"{'Duration':<12} {'Avg/Ext':<10} {'Speedup':<10} {'Errors':<8} {'Success%':<10}"
+    )
     print("-" * 120)
 
     # Rows
     for m in all_metrics:
-        print(f"{m.test_number:<6} {m.workers:<8} {m.cache_state:<8} {m.cached_count:<8} {m.fresh_count:<8} "
-              f"{m.total_duration:<12.1f} {m.avg_duration_per_ext:<10.2f} {m.speedup_factor:<10.2f}x "
-              f"{m.total_errors:<8} {m.success_rate:<10.1f}%")
+        print(
+            f"{m.test_number:<6} {m.workers:<8} {m.cache_state:<8} {m.cached_count:<8} {m.fresh_count:<8} "
+            f"{m.total_duration:<12.1f} {m.avg_duration_per_ext:<10.2f} {m.speedup_factor:<10.2f}x "
+            f"{m.total_errors:<8} {m.success_rate:<10.1f}%"
+        )
 
     print("=" * 120)
 
@@ -474,20 +543,23 @@ def display_error_summary(all_metrics: List[TestMetrics]) -> None:
     print("ERROR SUMMARY")
     print("=" * 80)
 
-    print(f"{'Test':<6} {'Workers':<8} {'Rate Limit':<12} {'Timeout':<10} "
-          f"{'Server':<10} {'SQLite':<10} {'Other':<10}")
+    print(
+        f"{'Test':<6} {'Workers':<8} {'Rate Limit':<12} {'Timeout':<10} "
+        f"{'Server':<10} {'SQLite':<10} {'Other':<10}"
+    )
     print("-" * 80)
 
     for m in all_metrics:
-        print(f"{m.test_number:<6} {m.workers:<8} {m.rate_limit_errors:<12} {m.timeout_errors:<10} "
-              f"{m.server_errors:<10} {m.sqlite_errors:<10} {m.other_errors:<10}")
+        print(
+            f"{m.test_number:<6} {m.workers:<8} {m.rate_limit_errors:<12} {m.timeout_errors:<10} "
+            f"{m.server_errors:<10} {m.sqlite_errors:<10} {m.other_errors:<10}"
+        )
 
     print("=" * 80)
 
 
 def generate_report(
-    all_metrics: List[TestMetrics],
-    test_environment: Dict[str, str]
+    all_metrics: List[TestMetrics], test_environment: Dict[str, str]
 ) -> str:
     """
     Generate markdown report.
@@ -509,8 +581,12 @@ def generate_report(
 
     # Results table
     report.append("## Results Table\n")
-    report.append("| Test | Workers | Cache | Cached | Fresh | Duration (s) | Avg/Ext (s) | Speedup | Errors | Success % |")
-    report.append("|------|---------|-------|--------|-------|--------------|-------------|---------|--------|-----------|")
+    report.append(
+        "| Test | Workers | Cache | Cached | Fresh | Duration (s) | Avg/Ext (s) | Speedup | Errors | Success % |"
+    )
+    report.append(
+        "|------|---------|-------|--------|-------|--------------|-------------|---------|--------|-----------|"
+    )
 
     for m in all_metrics:
         report.append(
@@ -540,15 +616,21 @@ def generate_report(
     test3 = next((m for m in all_metrics if m.test_number == 3), None)
 
     if test1 and test3:
-        report.append(f"- **Baseline (1 worker, empty cache):** {test1.total_duration:.1f}s")
-        report.append(f"- **Target (3 workers, empty cache):** {test3.total_duration:.1f}s")
+        report.append(
+            f"- **Baseline (1 worker, empty cache):** {test1.total_duration:.1f}s"
+        )
+        report.append(
+            f"- **Target (3 workers, empty cache):** {test3.total_duration:.1f}s"
+        )
         report.append(f"- **Speedup with 3 workers:** {test3.speedup_factor:.2f}x")
     report.append("")
 
     # Rate limit findings
     total_rate_limits = sum(m.rate_limit_errors for m in all_metrics)
     report.append("## Rate Limit Findings\n")
-    report.append(f"- **Total rate limit errors across all tests:** {total_rate_limits}")
+    report.append(
+        f"- **Total rate limit errors across all tests:** {total_rate_limits}"
+    )
 
     # Find max workers without rate limits
     max_safe_workers = 1
@@ -563,7 +645,9 @@ def generate_report(
     total_sqlite_errors = sum(m.sqlite_errors for m in all_metrics)
     report.append("## SQLite Concurrency\n")
     report.append(f"- **Total SQLite errors:** {total_sqlite_errors}")
-    report.append(f"- **Concurrent operations:** {'✓ PASSED' if total_sqlite_errors == 0 else '✗ FAILED'}")
+    report.append(
+        f"- **Concurrent operations:** {'✓ PASSED' if total_sqlite_errors == 0 else '✗ FAILED'}"
+    )
     report.append("")
 
     # Go/No-Go decision
@@ -578,7 +662,9 @@ def generate_report(
     if test3_rate_limits == 0:
         criteria_met.append("✓ No rate limit errors with 3 workers")
     else:
-        criteria_failed.append(f"✗ Rate limit errors with 3 workers: {test3_rate_limits}")
+        criteria_failed.append(
+            f"✗ Rate limit errors with 3 workers: {test3_rate_limits}"
+        )
 
     # 2. No SQLite errors
     if total_sqlite_errors == 0:
@@ -598,7 +684,9 @@ def generate_report(
     if success_rate_3w >= 95:
         criteria_met.append(f"✓ High success rate (3 workers): {success_rate_3w:.1f}%")
     else:
-        criteria_failed.append(f"⚠ Low success rate (3 workers): {success_rate_3w:.1f}%")
+        criteria_failed.append(
+            f"⚠ Low success rate (3 workers): {success_rate_3w:.1f}%"
+        )
 
     report.append("### Success Criteria\n")
     for c in criteria_met:
@@ -610,7 +698,9 @@ def generate_report(
     # Decision
     if len(criteria_failed) == 0:
         report.append("### **Decision: GO ✓**\n")
-        report.append("All success criteria met. Proceed to Phase 1 (production implementation).\n")
+        report.append(
+            "All success criteria met. Proceed to Phase 1 (production implementation).\n"
+        )
         report.append("")
         report.append("### Recommendations for Phase 1\n")
         report.append("")
@@ -638,7 +728,9 @@ def generate_report(
         report.append("- Higher error rates")
     else:
         report.append("### **Decision: NO-GO ✗**\n")
-        report.append("One or more success criteria failed. Do not proceed to Phase 1.\n")
+        report.append(
+            "One or more success criteria failed. Do not proceed to Phase 1.\n"
+        )
         report.append("")
         report.append("**Required actions:**")
         for c in criteria_failed:
@@ -650,6 +742,7 @@ def generate_report(
 # ============================================================================
 # Main Execution
 # ============================================================================
+
 
 def main():
     """Main PoC execution."""
@@ -663,13 +756,14 @@ def main():
 
     # Gather test environment info
     import platform
+
     test_environment = {
         "Python Version": platform.python_version(),
         "OS": f"{platform.system()} {platform.release()}",
         "Architecture": platform.machine(),
         "vscan.dev API": "https://vscan.dev/api/extensions",
         "Test Extensions": len(TEST_EXTENSIONS),
-        "Test Scenarios": len(TEST_SCENARIOS)
+        "Test Scenarios": len(TEST_SCENARIOS),
     }
 
     # Initialize cache manager for PoC
@@ -682,7 +776,9 @@ def main():
 
     for test_num, (workers, cache_state) in enumerate(TEST_SCENARIOS, 1):
         print(f"\n{'=' * 80}")
-        print(f"Test {test_num}/{len(TEST_SCENARIOS)}: {workers} worker(s), {cache_state} cache")
+        print(
+            f"Test {test_num}/{len(TEST_SCENARIOS)}: {workers} worker(s), {cache_state} cache"
+        )
         print(f"{'=' * 80}")
 
         # Clear cache for "empty" tests
@@ -696,10 +792,7 @@ def main():
 
         # Run test
         results, duration = run_parallel_scan(
-            TEST_EXTENSIONS,
-            workers,
-            cache_manager,
-            delay=DEFAULT_REQUEST_DELAY
+            TEST_EXTENSIONS, workers, cache_manager, delay=DEFAULT_REQUEST_DELAY
         )
 
         # Store baseline duration from test 1
@@ -708,12 +801,7 @@ def main():
 
         # Calculate metrics
         metrics = calculate_metrics(
-            test_num,
-            workers,
-            cache_state,
-            results,
-            duration,
-            baseline_duration
+            test_num, workers, cache_state, results, duration, baseline_duration
         )
         all_metrics.append(metrics)
 
@@ -748,11 +836,15 @@ def main():
     # Quick decision logic
     test3 = next((m for m in all_metrics if m.test_number == 3), None)
     if test3:
-        decision = "GO ✓" if (
-            test3.rate_limit_errors == 0 and
-            test3.speedup_factor >= 2.5 and
-            sum(m.sqlite_errors for m in all_metrics) == 0
-        ) else "NO-GO ✗"
+        decision = (
+            "GO ✓"
+            if (
+                test3.rate_limit_errors == 0
+                and test3.speedup_factor >= 2.5
+                and sum(m.sqlite_errors for m in all_metrics) == 0
+            )
+            else "NO-GO ✗"
+        )
 
         print(f"Decision: {decision}")
         print(f"See full report for details: {report_file}")
