@@ -105,14 +105,17 @@ pip-audit
 ### Run Coverage Analysis
 
 ```bash
-# Generate coverage report
-pytest tests/ --cov=vscode_scanner --cov-report=html
+# Generate coverage report (HTML format - recommended)
+coverage run -m pytest tests/
+coverage html
+open htmlcov/index.html  # macOS (use 'xdg-open' on Linux, 'start' on Windows)
 
-# View HTML report
-open htmlcov/index.html
+# Terminal coverage report with missing lines
+coverage run -m pytest tests/
+coverage report --show-missing
 
-# Show missing lines in terminal
-pytest tests/ --cov=vscode_scanner --cov-report=term-missing
+# Generate all report formats
+coverage run -m pytest tests/ && coverage report && coverage html && coverage xml
 ```
 
 ---

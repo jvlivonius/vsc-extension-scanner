@@ -63,7 +63,8 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["vscode_scanner"]
+# Auto-discover all packages with __init__.py (includes subpackages like html_report)
+packages = {find = {}}
 
 [tool.setuptools.dynamic]
 version = {attr = "vscode_scanner._version.__version__"}

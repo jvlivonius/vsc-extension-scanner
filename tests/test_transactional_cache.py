@@ -96,18 +96,18 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             self.assertIsNotNone(cached, f"Extension {ext['id']} should be cached")
 
     def test_individual_save_failure_doesnt_stop_commit(self):
-        """Test that individual save failures don't prevent commit."""
+        """Test that individual save failures don't prevent scan completion (v3.5.4+ instant persistence)."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        # Mock save_result_batch to fail on specific extension
-        original_save = cache_manager.save_result_batch
+        # Mock save_result to fail on specific extension (instant persistence uses save_result, not save_result_batch)
+        original_save = cache_manager.save_result
 
         def mock_save(ext_id, version, result):
             if ext_id == "test.ext2":
                 raise Exception("Simulated save failure")
             return original_save(ext_id, version, result)
 
-        cache_manager.save_result_batch = mock_save
+        cache_manager.save_result = mock_save
 
         extensions = [
             {
@@ -168,16 +168,16 @@ class TestTransactionalCacheWrites(unittest.TestCase):
         cached2 = cache_manager.get_cached_result("test.ext2", "1.0.0")
         self.assertIsNone(cached2, "Extension ext2 should not be cached (save failed)")
 
-    def test_commit_failure_is_logged(self):
-        """Test that commit failures are logged but don't crash."""
+    def test_save_result_failure_is_logged(self):
+        """Test that save_result failures are logged but don't crash (v3.5.4+ instant persistence)."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        # Mock commit_batch to fail
-        def mock_commit():
-            raise Exception("Simulated commit failure")
+        # Mock save_result to fail (instant persistence uses save_result, not commit_batch)
+        def mock_save(ext_id, version, result):
+            raise Exception("Simulated save failure")
 
-        original_commit = cache_manager.commit_batch
-        cache_manager.commit_batch = mock_commit
+        original_save = cache_manager.save_result
+        cache_manager.save_result = mock_save
 
         extensions = [
             {
@@ -206,7 +206,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             }
             mock_api_class.return_value = mock_api
 
-            # Should not crash even though commit fails
+            # Should not crash even though save_result fails
             with patch("vscode_scanner.scanner.log") as mock_log:
                 results, stats = _scan_extensions(
                     extensions,
@@ -217,12 +217,14 @@ class TestTransactionalCacheWrites(unittest.TestCase):
                     quiet=True,
                 )
 
-                # Verify error was logged
+                # Verify error was logged (instant persistence logs "Cache save failed")
                 error_logged = any(
-                    "commit" in str(call).lower() and "fail" in str(call).lower()
+                    "cache" in str(call).lower()
+                    and "save" in str(call).lower()
+                    and "fail" in str(call).lower()
                     for call in mock_log.call_args_list
                 )
-                self.assertTrue(error_logged, "Commit failure should be logged")
+                self.assertTrue(error_logged, "Cache save failure should be logged")
 
     def test_keyboard_interrupt_commits_partial_results(self):
         """Test that Ctrl+C (KeyboardInterrupt) still commits partial results."""
@@ -329,15 +331,15 @@ class TestTransactionalCacheWrites(unittest.TestCase):
         # In practice, ext1 might or might not be cached depending on when
         # the interrupt occurred, but commit_batch should have been called
 
-    def test_begin_batch_failure_caught(self):
-        """Test that begin_batch failures are caught and logged."""
+    def test_save_result_exception_caught(self):
+        """Test that save_result exceptions are caught and don't crash scan (v3.5.4+ instant persistence)."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        # Mock begin_batch to fail
-        def mock_begin():
-            raise Exception("Simulated begin_batch failure")
+        # Mock save_result to fail (instant persistence doesn't use begin_batch)
+        def mock_save(ext_id, version, result):
+            raise Exception("Simulated save_result failure")
 
-        cache_manager.begin_batch = mock_begin
+        cache_manager.save_result = mock_save
 
         extensions = [
             {
@@ -366,7 +368,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             }
             mock_api_class.return_value = mock_api
 
-            # Should not crash even though begin_batch fails
+            # Should not crash even though save_result fails
             with patch("vscode_scanner.scanner.log") as mock_log:
                 results, stats = _scan_extensions(
                     extensions,
@@ -377,14 +379,14 @@ class TestTransactionalCacheWrites(unittest.TestCase):
                     quiet=True,
                 )
 
-                # Verify error was logged
+                # Verify error was logged (instant persistence logs "Cache save failed")
                 error_logged = any(
-                    "batch" in str(call).lower() and "fail" in str(call).lower()
+                    "cache" in str(call).lower()
+                    and "save" in str(call).lower()
+                    and "fail" in str(call).lower()
                     for call in mock_log.call_args_list
                 )
-                self.assertTrue(
-                    error_logged, "Batch operation failure should be logged"
-                )
+                self.assertTrue(error_logged, "Cache save failure should be logged")
 
 
 def run_tests():

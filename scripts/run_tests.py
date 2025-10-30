@@ -387,20 +387,21 @@ class TestRunner:
         self.pytest_enabled = pytest_enabled
         self.results: List[TestResult] = []
         self.start_time = time.time()
-        self.cov = None
+        self.coverage_used = False  # Track if coverage was actually used
 
         # Detect TTY for color support
         if not sys.stdout.isatty():
             Colors.disable()
 
-        # Validate coverage availability
-        if self.coverage_enabled and not COVERAGE_AVAILABLE:
-            print(
-                f"{Colors.YELLOW}Warning: coverage.py not installed. "
-                f"Install with: pip install coverage{Colors.RESET}",
-                file=sys.stderr,
-            )
-            self.coverage_enabled = False
+        # Validate coverage availability (check command-line tool, not just Python module)
+        if self.coverage_enabled:
+            if not self._validate_coverage_command():
+                print(
+                    f"{Colors.YELLOW}Warning: coverage command not found. "
+                    f"Install with: pip install coverage{Colors.RESET}",
+                    file=sys.stderr,
+                )
+                self.coverage_enabled = False
 
         # Validate pytest availability
         if self.pytest_enabled and not PYTEST_AVAILABLE:
@@ -410,6 +411,20 @@ class TestRunner:
                 file=sys.stderr,
             )
             self.pytest_enabled = False
+
+    def _validate_coverage_command(self) -> bool:
+        """Validate that coverage command is available."""
+        try:
+            result = subprocess.run(
+                ["coverage", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
 
     def run_groups(self, groups: List[TestGroup]) -> int:
         """
@@ -421,10 +436,6 @@ class TestRunner:
         # Expand ALL to all groups
         if TestGroup.ALL in groups:
             groups = [g for g in TestGroup if g != TestGroup.ALL]
-
-        # Start coverage measurement if enabled
-        if self.coverage_enabled:
-            self._start_coverage()
 
         if not self.quiet:
             self._print_header(groups)
@@ -438,49 +449,37 @@ class TestRunner:
         if not self.quiet:
             self._print_overall_summary()
 
-        # Finalize coverage measurement if enabled
-        if self.coverage_enabled:
-            self._finalize_coverage()
+        # Generate coverage reports if enabled and tests were run with coverage
+        if self.coverage_enabled and self.coverage_used:
+            self._generate_coverage_reports()
 
         return self._calculate_exit_code()
 
-    def _start_coverage(self):
-        """Initialize coverage measurement."""
+    def _generate_coverage_reports(self):
+        """Generate coverage reports from .coverage data file.
+
+        This method assumes coverage data has already been collected via
+        subprocess execution (coverage run -m pytest). It reads the .coverage
+        file and generates the requested report formats.
+        """
         if not COVERAGE_AVAILABLE:
             return
 
         try:
-            # Use .coveragerc if it exists, otherwise use default config
+            # Load coverage data from .coverage file
+            # Use .coveragerc if it exists for configuration
             config_file = Path(".coveragerc")
             if config_file.exists():
-                self.cov = coverage.Coverage(config_file=str(config_file))
+                cov = coverage.Coverage(config_file=str(config_file))
             else:
                 # Default configuration
-                self.cov = coverage.Coverage(
+                cov = coverage.Coverage(
                     source=["vscode_scanner"],
                     omit=["*/tests/*", "*/test_*", "*/__pycache__/*"],
                 )
 
-            self.cov.start()
-
-            if not self.quiet:
-                print(f"{Colors.CYAN}📊 Coverage measurement started{Colors.RESET}\n")
-
-        except Exception as e:
-            print(
-                f"{Colors.YELLOW}Warning: Failed to start coverage: {e}{Colors.RESET}",
-                file=sys.stderr,
-            )
-            self.coverage_enabled = False
-
-    def _finalize_coverage(self):
-        """Stop coverage measurement and generate reports."""
-        if not COVERAGE_AVAILABLE or not self.cov:
-            return
-
-        try:
-            self.cov.stop()
-            self.cov.save()
+            # Load the coverage data file
+            cov.load()
 
             if not self.quiet:
                 print(f"\n{Colors.BOLD}{'='*70}{Colors.RESET}")
@@ -495,12 +494,12 @@ class TestRunner:
 
                 if fmt == "term":
                     # Terminal report
-                    self.cov.report(show_missing=False, skip_covered=False)
+                    cov.report(show_missing=False, skip_covered=False)
 
                 elif fmt == "html":
                     # HTML report
                     html_dir = Path("htmlcov")
-                    self.cov.html_report(directory=str(html_dir))
+                    cov.html_report(directory=str(html_dir))
                     print(
                         f"\n{Colors.GREEN}✓{Colors.RESET} HTML coverage report: {html_dir}/index.html"
                     )
@@ -508,7 +507,7 @@ class TestRunner:
                 elif fmt == "xml":
                     # XML report (for CI/CD)
                     xml_file = Path("coverage.xml")
-                    self.cov.xml_report(outfile=str(xml_file))
+                    cov.xml_report(outfile=str(xml_file))
                     print(
                         f"\n{Colors.GREEN}✓{Colors.RESET} XML coverage report: {xml_file}"
                     )
@@ -516,29 +515,29 @@ class TestRunner:
                 elif fmt == "json":
                     # JSON report
                     json_file = Path("coverage.json")
-                    self.cov.json_report(outfile=str(json_file))
+                    cov.json_report(outfile=str(json_file))
                     print(
                         f"\n{Colors.GREEN}✓{Colors.RESET} JSON coverage report: {json_file}"
                     )
 
             # Validate threshold if specified
             if self.coverage_threshold is not None:
-                self._validate_threshold()
+                self._validate_threshold(cov)
 
         except Exception as e:
             print(
-                f"{Colors.YELLOW}Warning: Failed to finalize coverage: {e}{Colors.RESET}",
+                f"{Colors.YELLOW}Warning: Failed to generate coverage reports: {e}{Colors.RESET}",
                 file=sys.stderr,
             )
 
-    def _validate_threshold(self):
+    def _validate_threshold(self, cov):
         """Validate coverage meets threshold requirement."""
-        if not COVERAGE_AVAILABLE or not self.cov:
+        if not COVERAGE_AVAILABLE or not cov:
             return
 
         try:
             # Get total coverage percentage
-            total_coverage = self.cov.report(file=None, show_missing=False)
+            total_coverage = cov.report(file=None, show_missing=False)
 
             print(f"\n{Colors.BOLD}Coverage Threshold Validation:{Colors.RESET}")
             print(f"  Required: {self.coverage_threshold}%")
@@ -633,13 +632,26 @@ class TestRunner:
     def _run_group_pytest(
         self, group: TestGroup, test_files: List[TestFile]
     ) -> TestResult:
-        """Run all test files in a group using pytest."""
+        """Run all test files in a group using pytest.
+
+        When coverage is enabled, runs pytest via subprocess using 'coverage run -m pytest'
+        to ensure coverage measurement starts before any imports. This matches the behavior
+        of running coverage directly and ensures accurate coverage results.
+
+        When coverage is disabled, runs pytest in-process for better performance and
+        real-time output.
+        """
         if not PYTEST_AVAILABLE:
             # Fallback to subprocess
             return self._run_test_file(test_files[0])
 
         start_time = time.time()
 
+        # If coverage is enabled, use subprocess execution to ensure proper instrumentation
+        if self.coverage_enabled:
+            return self._run_group_pytest_with_coverage(group, test_files, start_time)
+
+        # Otherwise, use in-process pytest for better performance
         try:
             # Create result collector plugin
             collector = PytestResultCollector()
@@ -691,6 +703,139 @@ class TestRunner:
             duration = time.time() - start_time
             return TestResult(
                 file=f"{group.value} (pytest)",
+                tests_run=0,
+                tests_passed=0,
+                tests_failed=0,
+                tests_skipped=0,
+                duration=duration,
+                status="ERROR",
+                error=str(e),
+            )
+
+    def _run_group_pytest_with_coverage(
+        self, group: TestGroup, test_files: List[TestFile], start_time: float
+    ) -> TestResult:
+        """Run pytest via subprocess with coverage instrumentation.
+
+        This ensures coverage starts BEFORE pytest and test modules are imported,
+        matching the behavior of 'coverage run -m pytest' and providing accurate
+        coverage measurement.
+        """
+        try:
+            # Build coverage command
+            cmd = ["coverage", "run"]
+
+            # Use --append for subsequent groups to combine coverage data
+            if self.coverage_used:
+                cmd.append("--append")
+
+            cmd.extend(["-m", "pytest"])
+
+            # Add test file paths
+            for test_file in test_files:
+                cmd.append(str(test_file.path))
+
+            # Add verbosity
+            if self.verbose:
+                cmd.append("-vv")
+            else:
+                cmd.append("-q")
+
+            # Disable warnings
+            cmd.append("--disable-warnings")
+
+            # Force color output (pytest disables colors when not in TTY)
+            cmd.append("--color=yes")
+
+            # Capture output
+            cmd.extend(["--tb=short"])
+
+            if not self.quiet and not self.coverage_used:
+                print(
+                    f"{Colors.CYAN}📊 Running tests with coverage instrumentation{Colors.RESET}"
+                )
+
+            self.coverage_used = True
+
+            # Run coverage + pytest via subprocess
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+                check=False,  # We handle errors via exit codes
+            )
+
+            # Print captured output immediately for user visibility
+            # This allows users to see individual test names as they run
+            if not self.quiet:
+                if result.stdout:
+                    print(result.stdout, end="")
+                if result.stderr:
+                    print(result.stderr, end="", file=sys.stderr)
+
+            duration = time.time() - start_time
+
+            # Parse pytest output for test counts
+            # Look for pytest summary line: "X passed", "Y failed", "Z skipped"
+            tests_run = 0
+            tests_passed = 0
+            tests_failed = 0
+            tests_skipped = 0
+
+            output = result.stdout + result.stderr
+
+            # Parse pytest output (format: "X passed" or "X passed, Y failed" etc.)
+            passed_match = re.search(r"(\d+) passed", output)
+            failed_match = re.search(r"(\d+) failed", output)
+            skipped_match = re.search(r"(\d+) skipped", output)
+            error_match = re.search(r"(\d+) error", output)
+
+            if passed_match:
+                tests_passed = int(passed_match.group(1))
+            if failed_match:
+                tests_failed = int(failed_match.group(1))
+            if skipped_match:
+                tests_skipped = int(skipped_match.group(1))
+            if error_match:
+                tests_failed += int(error_match.group(1))
+
+            tests_run = tests_passed + tests_failed + tests_skipped
+
+            # Determine status
+            if result.returncode == 0:
+                status = "PASS"
+            else:
+                status = "FAIL"
+
+            return TestResult(
+                file=f"{group.value} (pytest+coverage)",
+                tests_run=tests_run,
+                tests_passed=tests_passed,
+                tests_failed=tests_failed,
+                tests_skipped=tests_skipped,
+                duration=duration,
+                status=status,
+                output=result.stdout if self.verbose else "",
+                error=result.stderr if result.returncode != 0 else "",
+            )
+
+        except subprocess.TimeoutExpired:
+            duration = time.time() - start_time
+            return TestResult(
+                file=f"{group.value} (pytest+coverage)",
+                tests_run=0,
+                tests_passed=0,
+                tests_failed=0,
+                tests_skipped=0,
+                duration=duration,
+                status="ERROR",
+                error="Test timeout (>300s)",
+            )
+        except Exception as e:
+            duration = time.time() - start_time
+            return TestResult(
+                file=f"{group.value} (pytest+coverage)",
                 tests_run=0,
                 tests_passed=0,
                 tests_failed=0,
@@ -894,6 +1039,8 @@ class TestRunner:
             r
             for r in self.results
             if r.file == f"{group.value} (pytest)"
+            or r.file
+            == f"{group.value} (pytest+coverage)"  # Match pytest+coverage grouped results
             or any(  # Match pytest grouped results
                 tf.path.name == r.file for tf in test_files
             )  # Match subprocess individual results

@@ -229,7 +229,15 @@ def reset_environment():
 
 # Pytest configuration
 def pytest_configure(config):
-    """Configure pytest with custom markers."""
+    """Configure pytest with custom markers and path setup."""
+    # Add project root to Python path for imports
+    import sys
+    import os
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
     # Test group markers (for run_tests.py --pytest integration)
     config.addinivalue_line("markers", "unit: marks tests as unit tests")
     config.addinivalue_line("markers", "security: marks tests as security tests")

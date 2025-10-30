@@ -549,8 +549,8 @@ class ScanDashboard:
         # Progress bar (text-based)
         bar_width = 40
         filled = int(bar_width * progress_pct / 100)
-        bar = "━" * filled + "─" * (bar_width - filled)
-        content.append(f"{bar} {progress_pct:.0f}%\n\n", style="cyan")
+        progress_bar = "━" * filled + "─" * (bar_width - filled)
+        content.append(f"{progress_bar} {progress_pct:.0f}%\n\n", style="cyan")
 
         # Current extension
         if self.current_extension:
@@ -761,6 +761,7 @@ def display_failed_extensions(
 
 def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
     """Display failed extensions in Rich format."""
+    # pylint: disable=redefined-outer-name,reimported
     from rich.console import Console
     from rich.table import Table
 

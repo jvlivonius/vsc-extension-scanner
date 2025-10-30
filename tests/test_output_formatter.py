@@ -23,7 +23,7 @@ Mocking Strategy:
 
 import unittest
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from vscode_scanner.output_formatter import OutputFormatter
 
 
@@ -48,7 +48,7 @@ class TestOutputFormatterBasic(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.formatter = OutputFormatter()
-        self.timestamp = datetime.utcnow().isoformat() + "Z"
+        self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
     def test_basic_output_structure(self):
         """Test that output has required structure."""
@@ -113,7 +113,7 @@ class TestSummaryFormatting(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.formatter = OutputFormatter()
-        self.timestamp = datetime.utcnow().isoformat() + "Z"
+        self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
     def test_summary_counts_extensions_correctly(self):
         """Test that summary counts total extensions correctly."""
@@ -277,7 +277,7 @@ class TestExtensionFormatting(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.formatter = OutputFormatter()
-        self.timestamp = datetime.utcnow().isoformat() + "Z"
+        self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
     def test_extension_basic_metadata(self):
         """Test that extension basic metadata is formatted correctly."""
@@ -565,7 +565,7 @@ class TestEdgeCases(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.formatter = OutputFormatter()
-        self.timestamp = datetime.utcnow().isoformat() + "Z"
+        self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
     def test_handles_missing_metadata(self):
         """Test that missing metadata fields are handled gracefully."""

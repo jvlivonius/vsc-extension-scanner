@@ -303,6 +303,12 @@ def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
     # Note: \r is now removed (not in whitelist)
     text = "".join(char for char in text if ord(char) >= 0x20 or char in "\n\t")
 
+    # Collapse multiple consecutive newlines to prevent log injection
+    # Allow max 2 consecutive newlines (preserves paragraph breaks)
+    # This prevents attackers from injecting fake log entries with excessive newlines
+    while "\n\n\n" in text:
+        text = text.replace("\n\n\n", "\n\n")
+
     # Handle whitespace-only input edge case
     # If result is only whitespace, replace with a single space to ensure
     # non-empty stripped output (prevents test failures with pure whitespace)

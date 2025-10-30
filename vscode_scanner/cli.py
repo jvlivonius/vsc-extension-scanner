@@ -799,6 +799,7 @@ def config_show(
 
     # Display configuration
     if use_rich:
+        # pylint: disable=redefined-outer-name,reimported
         from rich.console import Console
         from rich.table import Table
 
@@ -1020,6 +1021,7 @@ def config_get(
             value_str = str(value)
 
         if use_rich:
+            # pylint: disable=redefined-outer-name,reimported
             from rich.console import Console
 
             console = Console()
@@ -1187,6 +1189,7 @@ def report(
         [dim]# Generate report from custom cache directory[/dim]
         $ vscan report report.html --cache-dir /custom/path
     """
+    # pylint: disable=redefined-outer-name
     from .cache_manager import CacheManager
     from .output_formatter import OutputFormatter
     from .html_report_generator import HTMLReportGenerator

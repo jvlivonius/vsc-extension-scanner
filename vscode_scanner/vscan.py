@@ -48,7 +48,7 @@ def load_config_file() -> dict:
         return {}
 
     try:
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
         # Validate that config is a dictionary
@@ -515,7 +515,7 @@ def discover_extensions(args):
     return extensions, extensions_dir, original_count
 
 
-def scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp):
+def scan_extensions(extensions, args, cache_manager, verbose, _scan_timestamp):
     """
     Scan extensions for vulnerabilities.
 
@@ -524,7 +524,7 @@ def scan_extensions(extensions, args, cache_manager, verbose, scan_timestamp):
         args: Parsed command-line arguments
         cache_manager: CacheManager instance or None
         verbose: Verbose logging flag
-        scan_timestamp: ISO timestamp of scan start
+        _scan_timestamp: ISO timestamp of scan start (reserved for future use)
 
     Returns:
         Tuple of (scan_results, stats_dict)
@@ -620,8 +620,8 @@ def _get_status_symbol(status: str) -> str:
 
 def _print_scan_progress(
     extension_id: str,
-    version: str,
-    progress_prefix: str,
+    _version: str,  # Reserved for future use
+    _progress_prefix: str,  # Reserved for future use
     status: str,
     message: str = "",
     verbose: bool = False,
@@ -631,8 +631,8 @@ def _print_scan_progress(
 
     Args:
         extension_id: Extension ID
-        version: Extension version
-        progress_prefix: Progress counter (e.g., "[1/42]")
+        _version: Extension version (reserved for future use)
+        _progress_prefix: Progress counter (e.g., "[1/42]") (reserved for future use)
         status: Status type (cached, scanning, success, warning, error)
         message: Additional message to display
         verbose: Whether in verbose mode
@@ -718,7 +718,7 @@ def _scan_extension_fresh(
     # Define progress callback
     def progress_callback(progress_pct, message):
         """Show progress updates during analysis."""
-        if progress_pct > 0 and progress_pct < 100:
+        if 0 < progress_pct < 100:
             log(f" ({progress_pct}%: {message})", "INFO", newline=False)
 
     try:
@@ -775,7 +775,7 @@ def _scan_extension_fresh(
         if stats["failed_scans"] <= 3:
             error_type = get_error_type(error_msg)
             if error_type != "unknown":
-                show_error_help(error_type, verbose)
+                show_error_help(error_type)
 
         scan_results.append(
             {
@@ -856,7 +856,6 @@ def generate_output(
         scan_results,
         scan_timestamp,
         scan_duration,
-        detailed=use_detailed,
         cache_stats=cache_stats_data if not args.no_cache else None,
     )
 
@@ -1015,13 +1014,13 @@ def main():
         error_msg = sanitize_string(str(e), max_length=200)
         log(error_msg, "ERROR")
         error_type = get_error_type(error_msg)
-        show_error_help(error_type, verbose)
+        show_error_help(error_type)
         return 2
     except Exception as e:
         error_msg = sanitize_string(str(e), max_length=200)
         log(f"Error discovering extensions: {error_msg}", "ERROR")
         error_type = get_error_type(error_msg)
-        show_error_help(error_type, verbose)
+        show_error_help(error_type)
         return 2
 
     # Handle empty extension list
@@ -1074,7 +1073,7 @@ def main():
         if verbose:
             log(f"Details: {error_msg}", "ERROR")
         error_type = get_error_type(error_msg)
-        show_error_help(error_type, verbose)
+        show_error_help(error_type)
         return 2
 
     # Print summary

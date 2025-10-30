@@ -79,6 +79,16 @@ class VscanAPIClient:
             "failed_after_workflow_retries": 0,
         }
 
+        # Performance timing statistics
+        self.timing_stats = {
+            "submit_times": [],
+            "poll_times": [],
+            "results_times": [],
+            "total_scan_times": [],
+            "rate_limit_count": 0,
+            "timeout_count": 0,
+        }
+
     def _throttle(self):
         """Implement request throttling."""
         elapsed = time.time() - self.last_request_time
@@ -211,6 +221,13 @@ class VscanAPIClient:
 
             except Exception as e:
                 last_error = e
+
+                # Track rate limits and timeouts
+                # pylint: disable=no-member
+                if isinstance(e, urllib.error.HTTPError) and e.code == 429:
+                    self.timing_stats["rate_limit_count"] += 1
+                if "timeout" in str(e).lower():
+                    self.timing_stats["timeout_count"] += 1
 
                 # Check if this is the last attempt
                 if attempt >= self.max_retries:
@@ -377,6 +394,7 @@ class VscanAPIClient:
         Raises:
             Exception: If submission fails
         """
+        start_time = time.time()
         self._throttle()
 
         url = f"{self.BASE_URL}/analyze"
@@ -385,6 +403,10 @@ class VscanAPIClient:
         status_code, response = self._make_request_with_retry(
             url, method="POST", data=payload
         )
+
+        # Record timing
+        elapsed = time.time() - start_time
+        self.timing_stats["submit_times"].append(elapsed)
 
         if status_code in (200, 202) and "analysisId" in response:
             return response["analysisId"]
@@ -441,10 +463,15 @@ class VscanAPIClient:
         Raises:
             Exception: If results retrieval fails
         """
+        start_time = time.time()
         self._throttle()
 
         url = f"{self.BASE_URL}/results/{analysis_id}"
         status_code, response = self._make_request_with_retry(url)
+
+        # Record timing
+        elapsed = time.time() - start_time
+        self.timing_stats["results_times"].append(elapsed)
 
         if status_code == 200:
             return response
@@ -480,6 +507,7 @@ class VscanAPIClient:
         Raises:
             Exception: If polling times out or fails
         """
+        poll_start = time.time()
         start_time = time.time()
         last_progress = 0
 
@@ -500,6 +528,9 @@ class VscanAPIClient:
                 last_progress = progress
 
             if status == "completed":
+                # Record poll timing
+                poll_elapsed = time.time() - poll_start
+                self.timing_stats["poll_times"].append(poll_elapsed)
                 return status
             elif status == "failed":
                 raise Exception("Analysis failed")
@@ -795,6 +826,7 @@ class VscanAPIClient:
             "analysis_timestamp": None,
         }
 
+        scan_start = time.time()
         try:
             # Step 1: Submit analysis
             analysis_id = self.submit_analysis(publisher, name)
@@ -813,6 +845,10 @@ class VscanAPIClient:
 
             # Step 3: Get results
             api_results = self.get_results(analysis_id)
+
+            # Record total scan time
+            scan_elapsed = time.time() - scan_start
+            self.timing_stats["total_scan_times"].append(scan_elapsed)
 
             # Store raw response only if requested (saves memory)
             if store_raw_response:
@@ -871,6 +907,50 @@ class VscanAPIClient:
             - failed_after_workflow_retries: Number of scans that failed after all workflow retries
         """
         return self.retry_stats.copy()
+
+    def get_timing_stats(self) -> Dict[str, Any]:
+        """
+        Get performance timing statistics.
+
+        Returns:
+            Dictionary with timing statistics:
+            - submit_times: List of submission times in seconds
+            - poll_times: List of polling times in seconds
+            - results_times: List of results retrieval times in seconds
+            - total_scan_times: List of total scan times in seconds
+            - rate_limit_count: Number of rate limit errors encountered
+            - timeout_count: Number of timeout errors encountered
+            - avg_submit_time: Average submission time
+            - avg_poll_time: Average polling time
+            - avg_results_time: Average results time
+            - avg_total_time: Average total scan time
+        """
+        import statistics
+
+        stats = self.timing_stats.copy()
+
+        # Calculate averages
+        if stats["submit_times"]:
+            stats["avg_submit_time"] = statistics.mean(stats["submit_times"])
+        else:
+            stats["avg_submit_time"] = 0.0
+
+        if stats["poll_times"]:
+            stats["avg_poll_time"] = statistics.mean(stats["poll_times"])
+        else:
+            stats["avg_poll_time"] = 0.0
+
+        if stats["results_times"]:
+            stats["avg_results_time"] = statistics.mean(stats["results_times"])
+        else:
+            stats["avg_results_time"] = 0.0
+
+        if stats["total_scan_times"]:
+            stats["avg_total_time"] = statistics.mean(stats["total_scan_times"])
+        else:
+            stats["avg_total_time"] = 0.0
+
+        return stats
 
     def _is_workflow_retryable_error(self, error_message: str) -> bool:
         """

@@ -152,7 +152,7 @@ def run_scan(
     quiet: bool = False,
     verbose: bool = False,
     workers: int = 3,
-    **kwargs,
+    **_kwargs,  # Reserved for future extensibility
 ) -> int:
     """
     Run the extension security scan.
@@ -485,7 +485,7 @@ def _scan_extensions(
     extensions: List[Dict],
     args,
     cache_manager: Optional[CacheManager],
-    scan_timestamp: str,
+    _scan_timestamp: str,  # Reserved for future use
     use_rich: bool,
     quiet: bool,
 ) -> Tuple[List[Dict], Dict]:
@@ -527,7 +527,6 @@ def _scan_extensions(
     stats = ThreadSafeStats()
 
     scan_results = []
-    results_to_cache = []  # Collect results for main-thread batch caching
 
     # Use Rich progress bar if available
     if use_rich and not quiet:
@@ -559,11 +558,18 @@ def _scan_extensions(
 
                             scan_results.append(result)
 
-                            # Collect for caching (main thread will handle writes)
-                            if should_cache:
-                                results_to_cache.append(
-                                    (ext["id"], ext["version"], result)
-                                )
+                            # Instant cache persistence (zero data loss on interruption)
+                            if should_cache and cache_manager:
+                                try:
+                                    cache_manager.save_result(
+                                        ext["id"], ext["version"], result
+                                    )
+                                except Exception as e:
+                                    # Cache errors should not fail the scan
+                                    log(
+                                        f"Cache save failed for {ext['id']}: {e}",
+                                        "WARNING",
+                                    )
 
                             # Update stats (thread-safe operations)
                             if result.get("scan_status") == "success":
@@ -636,9 +642,13 @@ def _scan_extensions(
 
                     scan_results.append(result)
 
-                    # Collect for caching (main thread will handle writes)
-                    if should_cache:
-                        results_to_cache.append((ext["id"], ext["version"], result))
+                    # Instant cache persistence (zero data loss on interruption)
+                    if should_cache and cache_manager:
+                        try:
+                            cache_manager.save_result(ext["id"], ext["version"], result)
+                        except Exception as e:
+                            # Cache errors should not fail the scan
+                            log(f"Cache save failed for {ext['id']}: {e}", "WARNING")
 
                     # Log progress in plain mode
                     if not quiet:
@@ -693,33 +703,6 @@ def _scan_extensions(
                             "error_message": _simplify_error_message(error_type),
                         }
                     )
-
-    # Batch write all results to cache in main thread (thread-safe)
-    # Use try/finally to ensure cache commits even on Ctrl+C or exception
-    if cache_manager and results_to_cache:
-        try:
-            cache_manager.begin_batch()
-
-            for ext_id, version, result in results_to_cache:
-                try:
-                    cache_manager.save_result_batch(ext_id, version, result)
-                except Exception as e:
-                    # Log but continue with other results
-                    log(f"Cache save failed for {ext_id}: {e}", "WARNING")
-
-        except Exception as e:
-            # Critical error in batch operation
-            log(f"Batch cache operation failed: {e}", "ERROR")
-
-        finally:
-            # ALWAYS commit, even on Ctrl+C or exception
-            # Ensures partial results are saved
-            try:
-                cache_manager.commit_batch()
-            except Exception as e:
-                # If commit fails, cache may be corrupted
-                # Integrity check will catch this on next run
-                log(f"Cache commit failed: {e}", "ERROR")
 
     if not quiet and not use_rich:
         log("", "INFO")
