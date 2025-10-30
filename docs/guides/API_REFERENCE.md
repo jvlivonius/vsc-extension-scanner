@@ -7,6 +7,33 @@
 
 The vscan.dev API provides security analysis for VS Code extensions through three RESTful endpoints. The API uses an asynchronous analysis workflow with intelligent caching, making it very efficient for repeated queries. This document provides complete endpoint documentation, integration patterns, and best practices.
 
+---
+
+## API Usage Disclaimer
+
+**IMPORTANT**: This project uses vscan.dev's publicly accessible API to provide security analysis functionality. This tool is **NOT officially affiliated with, endorsed by, or sponsored by vscan.dev**.
+
+### Legal Status
+
+- **Unofficial Tool**: Community-maintained, independent project
+- **Public API Access**: Uses publicly available endpoints without authentication
+- **No Circumvention**: Does not bypass any technical protections or access controls
+- **Compliance Commitment**: Will cease API usage immediately if requested by vscan.dev
+
+For complete legal and attribution details, see [ATTRIBUTION.md](../project/ATTRIBUTION.md).
+
+### Ethical Usage Commitment
+
+This tool implements respectful API usage practices:
+
+- **Rate Limiting**: 2.0s default delay between requests (configurable)
+- **Caching**: 70-90% cache hit rate reduces API load dramatically
+- **Exponential Backoff**: Intelligent retry mechanism prevents API hammering
+- **Transparent Identification**: User-Agent header identifies our tool
+- **No Abuse**: No circumvention, no hammering, no malicious usage
+
+We are deeply grateful to vscan.dev for providing their public API.
+
 ## API Endpoints
 
 ### 1. Submit Extension for Analysis

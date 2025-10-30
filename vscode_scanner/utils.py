@@ -277,7 +277,9 @@ def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
         r"\x1b\[[0-9;]*[a-zA-Z]", "", text
     )  # CSI sequences (colors, cursor movement)
     text = re.sub(r"\x1b\][^\x07]*\x07", "", text)  # OSC sequences (window title, etc.)
-    text = re.sub(r"\x1b[^[]", "", text)  # Other ESC sequences
+    text = re.sub(
+        r"\x1b(?![\[])", "", text
+    )  # Escape not part of CSI/OSC (preserve following char)
 
     # Remove dangerous control characters
     # Keep ONLY: \n (newline), \t (tab)

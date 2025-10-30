@@ -85,4 +85,5 @@ markers = [
     "integration: Integration tests with mocked dependencies",
     "real_api: Tests that make real API calls (slow)",
     "mock_validation: Mock validation against real API responses",
+    "slow: Tests that take >5 seconds (excluded by --fast flag)",
 ]

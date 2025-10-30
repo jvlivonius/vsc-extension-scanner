@@ -12,42 +12,9 @@ Quick Start - Preset Aliases:
 Advanced Usage:
     python3 scripts/run_tests.py --all
     python3 scripts/run_tests.py --unit --security
-    python3 scripts/run_tests.py --all --skip-slow
+    python3 scripts/run_tests.py --all --fast
     python3 scripts/run_tests.py --all --output json --output-file results.json
     python3 scripts/run_tests.py --all --coverage --coverage-format html
-
-Preset Aliases (Recommended):
-    --fast              Unit + security tests, skip slow (ideal for development)
-    --ci                All tests except real API, skip slow (ideal for CI/CD)
-    --report            All tests with HTML coverage report
-
-Test Groups (Auto-Discovered):
-    --unit              Fast unit tests (scanner, display, CLI, validators, commands, utils)
-    --security          Security validation tests (includes property-based tests)
-    --architecture      Architecture compliance tests
-    --parallel          Parallel scanning and threading tests
-    --integration       Integration tests (mocked API)
-    --real-api          Real API integration tests (slow)
-    --mock-validation   Mock validation tests (slow)
-    --all               All test groups
-
-Test Discovery:
-    Tests auto-discovered via pytest markers (@pytest.mark.unit, @pytest.mark.security, etc.)
-    No manual test registration required - new tests automatically included
-
-Test Coverage:
-    36 test files, 592+ tests (auto-discovered)
-    Includes 21 property-based tests generating 21,000+ test scenarios
-
-Options:
-    --skip-slow         Skip slow tests
-    --output FORMAT     Output format: console (default), json, junit
-    --output-file PATH  Output file for json/junit formats
-    --verbose           Verbose output
-    --quiet             Minimal output
-    --coverage          Enable coverage measurement (requires: pip install coverage)
-    --coverage-format   Coverage report format: term,html,xml,json (default: term)
-    --coverage-threshold PCT  Minimum required coverage percentage
 
 Exit Codes:
     0 - All tests passed
@@ -56,7 +23,7 @@ Exit Codes:
     3 - Execution error
 
 Version: 2.0
-Updated: 2025-10-30 (Phase 3: Auto-Discovery + Presets)
+Updated: 2025-10-30
 """
 
 import sys
@@ -66,7 +33,7 @@ import json
 import argparse
 import re
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -116,8 +83,10 @@ class TestFile:
     path: Path
     group: TestGroup
     description: str
-    slow: bool = False
-    real_api: bool = False
+    slow: bool = False  # Slow test marker (>5s duration, excluded by --fast)
+    real_api: bool = False  # Real API tests (network-dependent)
+    integration: bool = False  # Integration tests (mocked but complex)
+    property_based: bool = False  # Property-based tests (hypothesis)
 
 
 @dataclass
@@ -220,6 +189,7 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
     class TestCollector:
         def __init__(self):
             self.test_files = {}
+            self.file_markers = {}  # Track markers per file
 
         def pytest_collection_finish(self, session):
             """Called after collection is complete."""
@@ -230,6 +200,11 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
 
                 # Get markers
                 markers = {marker.name for marker in item.iter_markers()}
+
+                # Aggregate markers per file
+                if file_path not in self.file_markers:
+                    self.file_markers[file_path] = set()
+                self.file_markers[file_path].update(markers)
 
                 # Map markers to test groups (prioritize specific markers over general ones)
                 test_group = None
@@ -254,22 +229,63 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
                     self.test_files[test_group].add(file_path)
 
     collector = TestCollector()
-    pytest.main(["--collect-only", "-q", "tests/"], plugins=[collector])
+    # Suppress pytest output during collection (capture stdout/stderr)
+    import io
+
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    try:
+        sys.stdout = io.StringIO()
+        sys.stderr = io.StringIO()
+        pytest.main(["--collect-only", "-qq", "tests/"], plugins=[collector])
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
 
     # Convert to TestFile objects with relative paths (matching TEST_REGISTRY format)
     project_root = Path.cwd()
     result = {}
     for group, file_paths in collector.test_files.items():
-        result[group] = [
-            TestFile(
-                path=file_path.relative_to(project_root)
+        test_files = []
+        for file_path in sorted(file_paths):
+            relative_path = (
+                file_path.relative_to(project_root)
                 if file_path.is_absolute()
-                else file_path,
-                group=group,
-                description=f"Auto-discovered from markers",
+                else file_path
             )
-            for file_path in sorted(file_paths)
-        ]
+            filename = file_path.name.lower()
+
+            # Get markers for this file
+            file_markers = collector.file_markers.get(file_path, set())
+
+            # Detect test characteristics based on markers, filename, and group
+            is_real_api = (
+                "real_api" in filename
+                or group == TestGroup.REAL_API
+                or "real_api" in file_markers
+            )
+            is_integration = (
+                "integration" in filename
+                or group == TestGroup.INTEGRATION
+                or "integration" in file_markers
+            )
+            is_property = (
+                "property" in filename or "property_based" in file_markers
+            )  # Property-based tests
+            is_slow = "slow" in file_markers  # Slow tests (>5s duration)
+
+            test_files.append(
+                TestFile(
+                    path=relative_path,
+                    group=group,
+                    description=f"Auto-discovered from markers",
+                    slow=is_slow,
+                    real_api=is_real_api,
+                    integration=is_integration,
+                    property_based=is_property,
+                )
+            )
+        result[group] = test_files
 
     return result
 
@@ -353,8 +369,7 @@ class TestRunner:
 
     def __init__(
         self,
-        skip_slow=False,
-        skip_real_api=False,
+        fast=False,
         verbose=False,
         quiet=False,
         coverage_enabled=False,
@@ -363,8 +378,7 @@ class TestRunner:
         pytest_enabled=True,  # Pytest is default execution mode
     ):
         """Initialize test runner."""
-        self.skip_slow = skip_slow
-        self.skip_real_api = skip_real_api
+        self.fast = fast  # Skip long-running tests (real-api, integration, property-based, slow)
         self.verbose = verbose
         self.quiet = quiet
         self.coverage_enabled = coverage_enabled
@@ -414,6 +428,8 @@ class TestRunner:
 
         if not self.quiet:
             self._print_header(groups)
+            if self.verbose:
+                self._print_discovered_tests(groups)
 
         # Run each group
         for group in groups:
@@ -549,19 +565,51 @@ class TestRunner:
 
     def _run_group(self, group: TestGroup):
         """Run all tests in a group."""
-        test_files = TEST_REGISTRY.get(group, [])
+        all_test_files = TEST_REGISTRY.get(group, [])
+        test_files = all_test_files
 
-        # Filter based on flags
-        if self.skip_slow:
-            test_files = [tf for tf in test_files if not tf.slow]
-        if self.skip_real_api:
-            test_files = [tf for tf in test_files if not tf.real_api]
+        # Filter based on fast flag (skip long-running tests)
+        skipped_count = 0
+        if self.fast:
+            filtered_files = [
+                tf
+                for tf in all_test_files
+                if not (tf.real_api or tf.integration or tf.property_based or tf.slow)
+            ]
+            skipped_count = len(all_test_files) - len(filtered_files)
+            test_files = filtered_files
 
+            # Show diagnostic output in verbose mode
+            if self.verbose and skipped_count > 0:
+                skipped_files = [
+                    tf
+                    for tf in all_test_files
+                    if tf.real_api or tf.integration or tf.property_based or tf.slow
+                ]
+                print(
+                    f"{Colors.YELLOW}  Skipping {skipped_count} test files in {group.value} group due to --fast flag:{Colors.RESET}"
+                )
+                for tf in skipped_files:
+                    reasons = []
+                    if tf.real_api:
+                        reasons.append("real_api")
+                    if tf.integration:
+                        reasons.append("integration")
+                    if tf.property_based:
+                        reasons.append("property_based")
+                    if tf.slow:
+                        reasons.append("slow")
+                    print(
+                        f"{Colors.YELLOW}    - {tf.path.name} ({', '.join(reasons)}){Colors.RESET}"
+                    )
+                print()
+
+        # Skip if no test files to run (whether skipped or not)
         if not test_files:
             return
 
         if not self.quiet:
-            self._print_group_header(group, test_files)
+            self._print_group_header(group, test_files, skipped_count)
 
         # Use pytest if enabled, otherwise use subprocess
         if self.pytest_enabled and PYTEST_AVAILABLE:
@@ -755,19 +803,65 @@ class TestRunner:
             f"Running Test Groups: {Colors.CYAN}{', '.join(group_names)}{Colors.RESET}"
         )
         print(
-            f"Skip Slow Tests: {Colors.YELLOW if self.skip_slow else Colors.GREEN}{'Yes' if self.skip_slow else 'No'}{Colors.RESET}"
-        )
-        print(
-            f"Skip Real API: {Colors.YELLOW if self.skip_real_api else Colors.GREEN}{'Yes' if self.skip_real_api else 'No'}{Colors.RESET}"
+            f"Fast Mode (skip long-running): {Colors.CYAN if self.fast else Colors.GREEN}{'Yes' if self.fast else 'No'}{Colors.RESET}"
         )
         print()
 
-    def _print_group_header(self, group: TestGroup, test_files: List[TestFile]):
-        """Print group header."""
+    def _print_discovered_tests(self, groups: List[TestGroup]):
+        """Print discovered test files in verbose mode."""
+        print(f"{Colors.BOLD}Discovered Test Files:{Colors.RESET}\n")
+
+        for group in groups:
+            test_files = TEST_REGISTRY.get(group, [])
+            if test_files:
+                # Apply fast mode filter
+                if self.fast:
+                    test_files = [
+                        tf
+                        for tf in test_files
+                        if not (
+                            tf.real_api
+                            or tf.integration
+                            or tf.property_based
+                            or tf.slow
+                        )
+                    ]
+
+                if test_files:
+                    print(
+                        f"  {Colors.CYAN}{group.value.upper()}{Colors.RESET} ({len(test_files)} files):"
+                    )
+                    for tf in test_files:
+                        # Show test characteristics
+                        markers = []
+                        if tf.real_api:
+                            markers.append("real-api")
+                        if tf.integration:
+                            markers.append("integration")
+                        if tf.property_based:
+                            markers.append("property-based")
+
+                        marker_str = f" [{', '.join(markers)}]" if markers else ""
+                        print(
+                            f"    - {tf.path}{Colors.YELLOW}{marker_str}{Colors.RESET}"
+                        )
+                    print()
+
+        print(f"{Colors.BOLD}{'-'*70}{Colors.RESET}\n")
+
+    def _print_group_header(
+        self, group: TestGroup, test_files: List[TestFile], skipped_count: int = 0
+    ):
+        """Print group header with optional skipped test count."""
         print(f"{Colors.BOLD}{'-'*70}{Colors.RESET}")
-        print(
-            f"{Colors.BOLD}TEST GROUP: {group.value.title().replace('-', ' ')} ({len(test_files)} files){Colors.RESET}"
-        )
+
+        header_text = f"TEST GROUP: {group.value.title().replace('-', ' ')} ({len(test_files)} files)"
+        if skipped_count > 0:
+            header_text += (
+                f" {Colors.YELLOW}[{skipped_count} skipped - fast mode]{Colors.RESET}"
+            )
+
+        print(f"{Colors.BOLD}{header_text}{Colors.RESET}")
         print(f"{Colors.BOLD}{'-'*70}{Colors.RESET}")
 
     def _print_test_result(self, result: TestResult):
@@ -878,8 +972,8 @@ class TestRunner:
         output = {
             "test_run": {
                 "timestamp": datetime.now().isoformat(),
-                "skip_slow": self.skip_slow,
-                "skip_real_api": self.skip_real_api,
+                "skip_slow": getattr(self, "skip_slow", False),
+                "skip_real_api": getattr(self, "skip_real_api", False),
                 "total_duration": time.time() - self.start_time,
             },
             "results": [
@@ -1025,7 +1119,7 @@ def main():  # pylint: disable=too-many-return-statements
     parser.add_argument(
         "--fast",
         action="store_true",
-        help="Fast preset: unit + security tests, skip slow (ideal for development)",
+        help="Skip long-running tests (real API, integration, property-based, slow)",
     )
     parser.add_argument(
         "--ci",
@@ -1039,10 +1133,6 @@ def main():  # pylint: disable=too-many-return-statements
     )
 
     # Options
-    parser.add_argument("--skip-slow", action="store_true", help="Skip slow tests")
-    parser.add_argument(
-        "--skip-real-api", action="store_true", help="Skip real API tests"
-    )
     parser.add_argument(
         "--output",
         choices=["console", "json", "junit"],
@@ -1074,14 +1164,6 @@ def main():  # pylint: disable=too-many-return-statements
     args = parser.parse_args()
 
     # Handle preset aliases
-    if args.fast:
-        args.unit = True
-        args.security = True
-        args.skip_slow = True
-        print(
-            f"{Colors.CYAN}Using --fast preset: unit + security, skip slow{Colors.RESET}\n"
-        )
-
     if args.ci:
         args.unit = True
         args.security = True
@@ -1089,11 +1171,10 @@ def main():  # pylint: disable=too-many-return-statements
         args.parallel = True
         args.integration = True
         args.mock_validation = True
-        args.skip_slow = True
-        # Explicitly skip real API tests in CI
-        args.skip_real_api = True
+        # Note: real_api group is intentionally excluded (unreliable in CI)
+        # Use --fast flag to also skip integration and property-based tests
         print(
-            f"{Colors.CYAN}Using --ci preset: all tests except real API, skip slow{Colors.RESET}\n"
+            f"{Colors.CYAN}Using --ci preset: all tests except real API{Colors.RESET}\n"
         )
 
     if args.report:
@@ -1124,14 +1205,13 @@ def main():  # pylint: disable=too-many-return-statements
     if args.all:
         groups.append(TestGroup.ALL)
 
-    # Default to --all if no groups specified
+    # Default to unit + security if no groups specified (fast development default)
     if not groups:
-        groups.append(TestGroup.ALL)
+        groups.extend([TestGroup.UNIT, TestGroup.SECURITY])
 
     # Create runner and execute
     runner = TestRunner(
-        skip_slow=args.skip_slow,
-        skip_real_api=args.skip_real_api,
+        fast=args.fast,
         verbose=args.verbose,
         quiet=args.quiet,
         coverage_enabled=args.coverage,

@@ -77,7 +77,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
             msg="Should exit with non-zero code on KeyboardInterrupt",
         )
         # Check for user-friendly message
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "interrupt" in combined_output or len(combined_output) > 0,
             msg=f"Should show interruption message. Output: {combined_output}",
@@ -151,7 +151,7 @@ class TestReportPermissionErrors(unittest.TestCase):
         self.assertEqual(
             result.exit_code, 2, msg="Should exit with code 2 on PermissionError"
         )
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "permission" in combined_output or "error" in combined_output,
             msg=f"Should show permission error. Output: {combined_output}",
@@ -269,7 +269,7 @@ class TestGenericErrorHandling(unittest.TestCase):
             [1, 2],
             msg="Should exit with non-zero code on unexpected error",
         )
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "error" in combined_output or len(combined_output) > 0,
             msg=f"Should show error message. Output: {combined_output}",

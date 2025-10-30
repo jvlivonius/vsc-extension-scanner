@@ -1027,9 +1027,12 @@ class CacheManager:
     def commit_batch(self):
         """
         Commit the current batch transaction and close the connection.
+
+        Returns:
+            int: Number of operations in the committed batch.
         """
         if self._batch_connection is None:
-            return
+            return 0
 
         try:
             self._batch_connection.commit()
@@ -1043,7 +1046,8 @@ class CacheManager:
             self._batch_cursor = None
             count = self._batch_count
             self._batch_count = 0
-            return count
+
+        return count
 
     def cleanup_old_entries(
         self, max_age_days: int = DEFAULT_CACHE_MAX_AGE_DAYS

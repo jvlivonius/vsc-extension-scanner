@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # VS Code Extension Security Scanner CLI
 
-**Version:** 3.5.2
-**Date:** 2025-10-29
-**Status:** Production Ready (v3.5.2) ✅
+**Version:** 3.5.3
+**Date:** 2025-10-30
+**Status:** Production Ready (v3.5.3) ✅
 
 ---
 

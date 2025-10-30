@@ -159,6 +159,7 @@ class TestRetryMechanism(unittest.TestCase):
             stats = self.client.get_retry_stats()
             self.assertEqual(stats["total_retries"], 1)
 
+    @pytest.mark.slow
     def test_server_errors_retry(self):
         """Test 7: Server errors (502, 503, 504) should trigger retries."""
         test_cases = [

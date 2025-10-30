@@ -77,7 +77,7 @@ python3 scripts/run_tests.py --all
 
 # Specific test groups
 python3 scripts/run_tests.py --unit --security
-python3 scripts/run_tests.py --all --skip-slow
+python3 scripts/run_tests.py --all --fast
 
 # Individual test files
 python3 tests/test_scanner.py
@@ -200,8 +200,7 @@ python3 scripts/run_tests.py --all
 
 # Run specific groups
 python3 scripts/run_tests.py --unit --security
-python3 scripts/run_tests.py --all --skip-slow
-python3 scripts/run_tests.py --all --skip-real-api
+python3 scripts/run_tests.py --all --fast
 ```
 
 **Available Test Groups:**

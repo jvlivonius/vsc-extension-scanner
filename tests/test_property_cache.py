@@ -348,6 +348,7 @@ class TestCacheExpirationProperties(unittest.TestCase):
         if hasattr(self, "test_dir") and os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 
+    @pytest.mark.slow
     @given(extension_ids, versions, scan_result_strategy())
     @settings(
         max_examples=30,

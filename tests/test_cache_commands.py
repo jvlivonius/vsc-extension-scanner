@@ -151,7 +151,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         # Assert
         self.assertEqual(result.exit_code, 2, msg="Should reject max_age below minimum")
         # Error messages may appear in stdout or stderr
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "must be between" in combined_output or "invalid value" in combined_output,
             msg=f"Should show validation error. Output: {combined_output}",
@@ -167,7 +167,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         # Assert
         self.assertEqual(result.exit_code, 2, msg="Should reject max_age above maximum")
         # Error messages may appear in stdout or stderr
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "must be between" in combined_output or "invalid value" in combined_output,
             msg=f"Should show validation error. Output: {combined_output}",
@@ -218,7 +218,7 @@ class TestCacheStatsCommand(unittest.TestCase):
             result.exit_code, 2, msg="Should exit with error code on exception"
         )
         # Error messages may appear in stdout or stderr
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "error" in combined_output or len(combined_output) > 0,
             msg=f"Should show error message. Output: {combined_output}",
@@ -431,7 +431,7 @@ class TestCacheClearCommand(unittest.TestCase):
             result.exit_code, 2, msg="Should exit with error code on exception"
         )
         # Error messages may appear in stdout or stderr
-        combined_output = (result.stdout + result.stderr).lower()
+        combined_output = result.output.lower()
         self.assertTrue(
             "error" in combined_output or len(combined_output) > 0,
             msg=f"Should show error message. Output: {combined_output}",

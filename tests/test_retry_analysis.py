@@ -104,6 +104,7 @@ class TestRetryMechanismAnalysis(unittest.TestCase):
             self.assertEqual(mock_make_request.call_count, 3)
             self.assertEqual(client.retry_stats["total_retries"], 2)
 
+    @pytest.mark.slow
     def test_retry_stats_increment(self):
         """Test that retry stats are properly incremented."""
         client = VscanAPIClient(max_retries=3, retry_base_delay=0.1)
@@ -161,6 +162,7 @@ class TestRetryMechanismAnalysis(unittest.TestCase):
             # Only individual API calls (submit_analysis, check_status, get_results) retry
             # If submit_analysis fails after all retries, scan_extension just returns error
 
+    @pytest.mark.slow
     def test_failure_scenario_not_cached(self):
         """
         Test that failed scans are not cached.

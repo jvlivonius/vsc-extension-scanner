@@ -40,6 +40,8 @@ env/
 cache.db
 *.json
 !tests/**/*.json
+claudedocs/
+.claude/backups/
 
 # Testing
 .pytest_cache/
