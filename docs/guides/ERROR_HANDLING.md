@@ -187,7 +187,8 @@ ERROR_HELP = {
 **Suggestions:**
 ```python
 "timeout": [
-    "The request to vscan.dev timed out (see constants.py:API_TIMEOUT_SECONDS)",
+    "The request to vscan.dev timed out",
+    "(Current timeout: constants.py:API_TIMEOUT_SECONDS = 30 seconds)",
     "This can happen with slow connections or vscan.dev server issues",
     "Try increasing retries: vscan scan --max-retries 5",
     "Check your internet connection",
@@ -325,7 +326,7 @@ ERROR_HELP = {
 
 ```python
 # Example in vscan_api.py
-# (timeout value from constants.py:API_TIMEOUT_SECONDS)
+# Timeout value: constants.py:API_TIMEOUT_SECONDS = 30 seconds
 try:
     response = urllib.request.urlopen(request, timeout=API_TIMEOUT_SECONDS)
 except urllib.error.HTTPError as e:
@@ -490,10 +491,10 @@ delay = min(base_delay * (2 ^ retry_count) * (0.8 + random(0, 0.4)), MAX_BACKOFF
 ```
 
 Where:
-- **base_delay** = Configurable base delay (default: 2.0 seconds)
+- **base_delay** = Configurable base delay (constants.py:DEFAULT_RETRY_BASE_DELAY = 2.0 seconds)
 - **retry_count** = Number of retries attempted (0-indexed)
 - **jitter** = Random factor between 0.8 and 1.2 (±20%)
-- **MAX_BACKOFF_DELAY** = See `constants.py:MAX_BACKOFF_DELAY` (prevents DoS)
+- **MAX_BACKOFF_DELAY** = Maximum delay ceiling (constants.py:MAX_BACKOFF_DELAY = 30 seconds, prevents DoS)
 
 **Example Backoff Progression:**
 
@@ -1300,6 +1301,7 @@ def test_error_exit_codes():
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Status:** Current (v3.1.0) + Planned Enhancements
+**Last Updated:** 2025-10-30 (Agentic coding optimization - explicit constant references)
 **Next Review:** When ErrorHandler class is implemented (Phase 2)

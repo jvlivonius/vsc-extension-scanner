@@ -416,13 +416,402 @@ class TestPlainResultsDisplay(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
 
+class TestRetryStatsTable(unittest.TestCase):
+    """Test create_retry_stats_table() function."""
+
+    def test_create_retry_stats_table_no_retries(self):
+        """Test that None is returned when no retries occurred."""
+        retry_stats = {"total_retries": 0, "total_workflow_retries": 0}
+        table = display.create_retry_stats_table(retry_stats)
+        self.assertIsNone(table)
+
+    def test_create_retry_stats_table_http_only(self):
+        """Test table creation with HTTP retries only."""
+        retry_stats = {
+            "total_retries": 10,
+            "successful_retries": 8,
+            "failed_after_retries": 2,
+            "total_workflow_retries": 0,
+        }
+        table = display.create_retry_stats_table(retry_stats)
+        self.assertIsNotNone(table)
+        self.assertEqual(len(table.columns), 3)
+
+    def test_create_retry_stats_table_workflow_only(self):
+        """Test table creation with workflow retries only."""
+        retry_stats = {
+            "total_retries": 0,
+            "total_workflow_retries": 5,
+            "successful_workflow_retries": 4,
+            "failed_after_workflow_retries": 1,
+        }
+        table = display.create_retry_stats_table(retry_stats)
+        self.assertIsNotNone(table)
+        self.assertEqual(len(table.columns), 3)
+
+    def test_create_retry_stats_table_both_types(self):
+        """Test table creation with both HTTP and workflow retries."""
+        retry_stats = {
+            "total_retries": 10,
+            "successful_retries": 8,
+            "failed_after_retries": 2,
+            "total_workflow_retries": 5,
+            "successful_workflow_retries": 4,
+            "failed_after_workflow_retries": 1,
+        }
+        table = display.create_retry_stats_table(retry_stats)
+        self.assertIsNotNone(table)
+        # Should have HTTP + workflow rows
+        self.assertGreaterEqual(len(table.rows), 2)
+
+    def test_create_retry_stats_table_high_success_rate(self):
+        """Test color coding for high success rate (>= 80%)."""
+        retry_stats = {
+            "total_retries": 10,
+            "successful_retries": 9,  # 90% success
+            "failed_after_retries": 1,
+        }
+        table = display.create_retry_stats_table(retry_stats)
+        self.assertIsNotNone(table)
+
+    def test_create_retry_stats_table_low_success_rate(self):
+        """Test color coding for low success rate (< 50%)."""
+        retry_stats = {
+            "total_retries": 10,
+            "successful_retries": 3,  # 30% success
+            "failed_after_retries": 7,
+        }
+        table = display.create_retry_stats_table(retry_stats)
+        self.assertIsNotNone(table)
+
+
+class TestDisplaySummary(unittest.TestCase):
+    """Test display_summary() function."""
+
+    @patch("vscode_scanner.display.Console")
+    def test_display_summary_no_vulnerabilities(self, mock_console_class):
+        """Test summary display with no vulnerabilities found."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        results = {
+            "summary": {"total_extensions_scanned": 42, "vulnerabilities_found": 0}
+        }
+
+        display.display_summary(results, duration=10.5, use_rich=True, verbose=False)
+
+        # Verify console.print was called (Panel display)
+        mock_console.print.assert_called()
+
+    @patch("vscode_scanner.display.Console")
+    def test_display_summary_with_vulnerabilities(self, mock_console_class):
+        """Test summary display with vulnerabilities found."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        results = {
+            "summary": {"total_extensions_scanned": 42, "vulnerabilities_found": 5}
+        }
+
+        display.display_summary(results, duration=10.5, use_rich=True, verbose=False)
+
+        mock_console.print.assert_called()
+
+    @patch("vscode_scanner.display.Console")
+    def test_display_summary_with_retry_stats_verbose(self, mock_console_class):
+        """Test summary display with retry stats in verbose mode."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        results = {
+            "summary": {"total_extensions_scanned": 42, "vulnerabilities_found": 0}
+        }
+        retry_stats = {
+            "total_retries": 10,
+            "successful_retries": 8,
+            "failed_after_retries": 2,
+            "total_workflow_retries": 0,
+            "successful_workflow_retries": 0,
+            "failed_after_workflow_retries": 0,
+        }
+
+        display.display_summary(
+            results, duration=10.5, retry_stats=retry_stats, use_rich=True, verbose=True
+        )
+
+        mock_console.print.assert_called()
+
+    @patch("vscode_scanner.display.Console")
+    def test_display_summary_duration_formatting_verbose(self, mock_console_class):
+        """Test duration formatting in verbose mode (minutes and seconds)."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        results = {
+            "summary": {"total_extensions_scanned": 42, "vulnerabilities_found": 0}
+        }
+
+        # Test with duration > 60 seconds
+        display.display_summary(results, duration=125.7, use_rich=True, verbose=True)
+
+        mock_console.print.assert_called()
+
+    @patch("builtins.print")
+    def test_display_summary_plain_mode(self, mock_print):
+        """Test summary display in plain text mode."""
+        results = {
+            "summary": {"total_extensions_scanned": 42, "vulnerabilities_found": 0}
+        }
+
+        display.display_summary(results, duration=10.5, use_rich=False, verbose=False)
+
+        # Verify print was called multiple times for plain output
+        self.assertGreater(mock_print.call_count, 1)
+
+    @patch("builtins.print")
+    def test_display_summary_plain_with_vulnerabilities(self, mock_print):
+        """Test plain mode summary with vulnerabilities."""
+        results = {
+            "summary": {"total_extensions_scanned": 42, "vulnerabilities_found": 5}
+        }
+
+        display.display_summary(results, duration=10.5, use_rich=False, verbose=False)
+
+        # Check that vulnerability warning was printed
+        calls = [str(call) for call in mock_print.call_args_list]
+        self.assertTrue(any("5" in call for call in calls))
+
+
+class TestDisplayInfo(unittest.TestCase):
+    """Test display_info() function."""
+
+    @patch("vscode_scanner.display.Console")
+    def test_display_info_rich_mode(self, mock_console_class):
+        """Test info display with Rich formatting."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        display.display_info("Test info message", use_rich=True)
+
+        mock_console.print.assert_called_once()
+        args = mock_console.print.call_args[0]
+        self.assertIn("Test info message", args[0])
+
+    @patch("builtins.print")
+    def test_display_info_plain_mode(self, mock_print):
+        """Test info display in plain text mode."""
+        display.display_info("Test info message", use_rich=False)
+
+        mock_print.assert_called_once()
+        args = mock_print.call_args[0]
+        self.assertIn("Test info message", args[0])
+
+    @patch("vscode_scanner.display.Console")
+    def test_display_info_long_message(self, mock_console_class):
+        """Test info display with very long message."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        long_message = "A" * 500
+        display.display_info(long_message, use_rich=True)
+
+        mock_console.print.assert_called_once()
+
+
+class TestFailedExtensionsDisplay(unittest.TestCase):
+    """Test display_failed_extensions() and related functions."""
+
+    @patch("rich.console.Console")
+    def test_display_failed_extensions_rich_single(self, mock_console_class):
+        """Test failed extensions display with single failure in Rich mode."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        failed = [{"name": "test.extension", "error_message": "Network timeout"}]
+
+        display.display_failed_extensions(failed, use_rich=True)
+
+        # Should have called print 3 times (warning, table, suggestion)
+        self.assertEqual(mock_console.print.call_count, 3)
+
+    @patch("rich.console.Console")
+    def test_display_failed_extensions_rich_multiple(self, mock_console_class):
+        """Test failed extensions display with multiple failures in Rich mode."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        failed = [
+            {"name": "ext1", "error_message": "Network timeout"},
+            {"name": "ext2", "error_message": "Rate limit exceeded"},
+            {"name": "ext3", "error_message": "API error"},
+        ]
+
+        display.display_failed_extensions(failed, use_rich=True)
+
+        self.assertEqual(mock_console.print.call_count, 3)
+
+    @patch("builtins.print")
+    def test_display_failed_extensions_plain_single(self, mock_print):
+        """Test failed extensions display with single failure in plain mode."""
+        failed = [{"name": "test.extension", "error_message": "Network timeout"}]
+
+        display.display_failed_extensions(failed, use_rich=False)
+
+        # Should have multiple print calls for plain output
+        self.assertGreater(mock_print.call_count, 1)
+
+    @patch("builtins.print")
+    def test_display_failed_extensions_plain_multiple(self, mock_print):
+        """Test failed extensions display with multiple failures in plain mode."""
+        failed = [
+            {"name": "ext1", "error_message": "Network timeout"},
+            {"name": "ext2", "error_message": "Rate limit exceeded"},
+        ]
+
+        display.display_failed_extensions(failed, use_rich=False)
+
+        self.assertGreater(mock_print.call_count, 1)
+
+    def test_display_failed_extensions_empty_list(self):
+        """Test that empty failed list produces no output."""
+        failed = []
+
+        # Should return early without any output
+        display.display_failed_extensions(failed, use_rich=True)
+        # No assertion needed - just verifying no exception raised
+
+    @patch("rich.console.Console")
+    def test_display_failed_extensions_singular_plural_rich(self, mock_console_class):
+        """Test singular/plural handling in Rich mode."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
+        # Test singular
+        failed = [{"name": "test.extension", "error_message": "Error"}]
+        display.display_failed_extensions(failed, use_rich=True)
+
+        # Check that "1 extension" (not "extensions") was used
+        print_calls = [call[0][0] for call in mock_console.print.call_args_list]
+        # First call should have the warning with count
+        self.assertTrue(any("1 extension" in str(call) for call in print_calls))
+
+    @patch("builtins.print")
+    def test_display_failed_extensions_singular_plural_plain(self, mock_print):
+        """Test singular/plural handling in plain mode."""
+        # Test singular
+        failed = [{"name": "test.extension", "error_message": "Error"}]
+        display.display_failed_extensions(failed, use_rich=False)
+
+        # Check print calls for singular form
+        calls = [str(call) for call in mock_print.call_args_list]
+        self.assertTrue(any("1 extension" in call for call in calls))
+
+
+class TestTableGenerationEdgeCases(unittest.TestCase):
+    """Test edge cases for table generation functions."""
+
+    def test_create_results_table_empty(self):
+        """Test creating results table with empty list."""
+        table = display.create_results_table([])
+        # Should still create table, but with no rows
+        self.assertIsNotNone(table)
+        self.assertEqual(len(table.rows), 0)
+
+    def test_create_results_table_single_result(self):
+        """Test creating results table with single result."""
+        results = [
+            {
+                "name": "test",
+                "display_name": "Test Extension",
+                "version": "1.0.0",
+                "risk_level": "low",
+                "security_score": 95,
+                "vulnerabilities": {"count": 0},
+            }
+        ]
+        table = display.create_results_table(results)
+        self.assertIsNotNone(table)
+        self.assertEqual(len(table.rows), 1)
+
+    def test_create_results_table_all_same_risk(self):
+        """Test creating results table when all results have same risk level."""
+        results = [
+            {
+                "name": "ext1",
+                "display_name": "Extension 1",
+                "version": "1.0.0",
+                "risk_level": "medium",
+                "security_score": 75,
+                "vulnerabilities": {"count": 0},
+            },
+            {
+                "name": "ext2",
+                "display_name": "Extension 2",
+                "version": "2.0.0",
+                "risk_level": "medium",
+                "security_score": 70,
+                "vulnerabilities": {"count": 0},
+            },
+        ]
+        table = display.create_results_table(results)
+        self.assertIsNotNone(table)
+        self.assertEqual(len(table.rows), 2)
+
+    def test_create_cache_stats_table_zero_stats(self):
+        """Test cache stats table with all zeros."""
+        stats = {"from_cache": 0, "fresh_scans": 0}
+        table = display.create_cache_stats_table(stats)
+        self.assertIsNotNone(table)
+        self.assertEqual(len(table.columns), 3)
+
+    def test_create_cache_stats_table_large_numbers(self):
+        """Test cache stats table with large numbers."""
+        stats = {"from_cache": 9999, "fresh_scans": 5000}
+        table = display.create_cache_stats_table(stats)
+        self.assertIsNotNone(table)
+
+
+class TestScanDashboardEdgeCases(unittest.TestCase):
+    """Test edge cases for ScanDashboard class."""
+
+    def test_dashboard_zero_extensions(self):
+        """Test dashboard with zero total extensions."""
+        dashboard = display.ScanDashboard(total_extensions=0)
+        self.assertEqual(dashboard.total, 0)
+        panel = dashboard.generate_panel()
+        self.assertIsNotNone(panel)
+
+    def test_dashboard_100_percent_complete(self):
+        """Test dashboard at 100% completion."""
+        dashboard = display.ScanDashboard(total_extensions=10)
+        dashboard.update(
+            current=10,
+            current_extension="last.extension",
+            clean_count=10,
+            issues_count=0,
+        )
+        self.assertEqual(dashboard.current, 10)
+        panel = dashboard.generate_panel()
+        self.assertIsNotNone(panel)
+
+    def test_dashboard_all_issues(self):
+        """Test dashboard where all scans have issues."""
+        dashboard = display.ScanDashboard(total_extensions=5)
+        dashboard.update(
+            current=5, current_extension="test.ext", clean_count=0, issues_count=5
+        )
+        self.assertEqual(dashboard.issues_count, 5)
+        panel = dashboard.generate_panel()
+        self.assertIsNotNone(panel)
+
+
 def run_tests():
     """Run all tests."""
     # Create test suite
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 
-    # Add all test classes
+    # Add all test classes (original)
     suite.addTests(loader.loadTestsFromTestCase(TestShouldUseRich))
     suite.addTests(loader.loadTestsFromTestCase(TestTableGeneration))
     suite.addTests(loader.loadTestsFromTestCase(TestScanDashboard))
@@ -430,6 +819,14 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestProgressBar))
     suite.addTests(loader.loadTestsFromTestCase(TestFilterSummary))
     suite.addTests(loader.loadTestsFromTestCase(TestPlainResultsDisplay))
+
+    # Add new test classes (Phase 4.2)
+    suite.addTests(loader.loadTestsFromTestCase(TestRetryStatsTable))
+    suite.addTests(loader.loadTestsFromTestCase(TestDisplaySummary))
+    suite.addTests(loader.loadTestsFromTestCase(TestDisplayInfo))
+    suite.addTests(loader.loadTestsFromTestCase(TestFailedExtensionsDisplay))
+    suite.addTests(loader.loadTestsFromTestCase(TestTableGenerationEdgeCases))
+    suite.addTests(loader.loadTestsFromTestCase(TestScanDashboardEdgeCases))
 
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)

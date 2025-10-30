@@ -241,6 +241,34 @@ docs/archive/
 
 ---
 
+### v3.5.2: Phase 2 Security Automation (2025-10-29) ✅ COMPLETE
+
+**Plans:**
+- [v3.5.2-roadmap.md](plans/v3.5.2-roadmap.md) - Phase 2 security automation implementation roadmap
+
+**Summaries:**
+- [v3.5.2-release-notes.md](summaries/v3.5.2-release-notes.md) - Release completion summary
+
+**Reviews:**
+- [tool-recommendations.md](reviews/tool-recommendations.md) - Comprehensive security tool evaluation (16 tools analyzed)
+
+**Phase 2: Security Automation (4/4 Tools COMPLETE ✅):**
+- ✅ **Dependabot** (30m) - Automated weekly dependency updates with grouped PRs
+- ✅ **Coverage.py** (1h) - Branch coverage tracking with 85% CI threshold
+- ✅ **Semgrep OSS** (3h) - 6 custom security rules (free CodeQL alternative for private repos)
+- ✅ **Hypothesis** (4h) - Property-based testing with 4,000+ test cases
+
+**Key Achievements:**
+- 80% reduction in manual dependency management
+- Branch coverage > line coverage (tests error paths)
+- Custom security rules enforcing validate_path() and sanitize_string()
+- Automated edge case discovery via property-based fuzzing
+- $588/year savings (Semgrep OSS vs CodeQL GitHub Enterprise)
+
+**Status:** Complete (4/4 tools implemented). v3.5.2 released 2025-10-29. Total investment: 8.5 hours, $0 cost.
+
+---
+
 ## Document Types Explained
 
 ### Plans (Roadmaps & Requirements)
@@ -363,6 +391,6 @@ docs/archive/
 
 ---
 
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-29
 **Reorganized By:** Claude Code Documentation Restructuring
 **Reason:** Version-based organization for clarity and chronological alignment

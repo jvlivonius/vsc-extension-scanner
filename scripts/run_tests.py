@@ -11,16 +11,25 @@ Usage:
     python3 scripts/run_tests.py --all --skip-slow
     python3 scripts/run_tests.py --all --output json --output-file results.json
     python3 scripts/run_tests.py --all --output junit --output-file results.xml
+    python3 scripts/run_tests.py --all --coverage
+    python3 scripts/run_tests.py --all --coverage --coverage-format html
+    python3 scripts/run_tests.py --all --coverage --coverage-threshold 85.0
+    python3 scripts/run_tests.py --all --pytest
+    python3 scripts/run_tests.py --all --pytest --coverage
 
 Test Groups:
-    --unit              Fast unit tests (scanner, display, CLI)
-    --security          Security validation tests
+    --unit              Fast unit tests (scanner, display, CLI, validators, commands, utils)
+    --security          Security validation tests (includes property-based tests)
     --architecture      Architecture compliance tests
     --parallel          Parallel scanning and threading tests
     --integration       Integration tests (mocked API)
     --real-api          Real API integration tests (slow)
     --mock-validation   Mock validation tests (slow)
     --all               All test groups
+
+Test Coverage:
+    36 test files, 604+ tests
+    Includes 21 property-based tests generating 21,000+ test scenarios
 
 Options:
     --skip-slow         Skip slow tests
@@ -29,6 +38,10 @@ Options:
     --output-file PATH  Output file for json/junit formats
     --verbose           Verbose output
     --quiet             Minimal output
+    --coverage          Enable coverage measurement (requires: pip install coverage)
+    --coverage-format   Coverage report format: term,html,xml,json (default: term)
+    --coverage-threshold PCT  Minimum required coverage percentage
+    --pytest            Use pytest runner for in-process execution (requires: pip install pytest)
 
 Exit Codes:
     0 - All tests passed
@@ -36,8 +49,8 @@ Exit Codes:
     2 - No tests found
     3 - Execution error
 
-Version: 1.0
-Created: 2025-10-26
+Version: 1.3
+Updated: 2025-10-30 (Phase 2: Pytest Integration)
 """
 
 import sys
@@ -47,10 +60,26 @@ import json
 import argparse
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field
+from typing import List, Dict
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+
+# Optional coverage.py support
+try:
+    import coverage
+
+    COVERAGE_AVAILABLE = True
+except ImportError:
+    COVERAGE_AVAILABLE = False
+
+# Optional pytest support
+try:
+    import pytest
+
+    PYTEST_AVAILABLE = True
+except ImportError:
+    PYTEST_AVAILABLE = False
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -106,6 +135,61 @@ class TestResult:
 
 
 # ==============================================================================
+# Pytest Plugin (Optional)
+# ==============================================================================
+
+if PYTEST_AVAILABLE:
+
+    class PytestResultCollector:
+        """Pytest plugin to collect test results."""
+
+        def __init__(self):
+            """Initialize result collector."""
+            self.tests_run = 0
+            self.tests_passed = 0
+            self.tests_failed = 0
+            self.tests_skipped = 0
+            self.errors = []
+            self.start_time = None
+
+        def pytest_sessionstart(self, _session):
+            """Called at start of test session."""
+            self.start_time = time.time()
+
+        def pytest_runtest_logreport(self, report):
+            """Process test report."""
+            if report.when == "call":
+                # Only count the actual test call, not setup/teardown
+                self.tests_run += 1
+
+                if report.passed:
+                    self.tests_passed += 1
+                elif report.failed:
+                    self.tests_failed += 1
+                    # Collect error details
+                    if hasattr(report, "longreprtext"):
+                        self.errors.append(report.longreprtext)
+            elif report.when == "setup" and report.skipped:
+                # Count skipped tests
+                self.tests_skipped += 1
+
+        def get_duration(self) -> float:
+            """Get total test duration."""
+            if self.start_time:
+                return time.time() - self.start_time
+            return 0.0
+
+        def get_status(self) -> str:
+            """Determine overall test status."""
+            if self.tests_failed > 0:
+                return "FAIL"
+            elif self.tests_run == 0:
+                return "SKIP"
+            else:
+                return "PASS"
+
+
+# ==============================================================================
 # Test File Registry
 # ==============================================================================
 
@@ -132,6 +216,51 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             Path("tests/test_report_empty_cache.py"),
             TestGroup.UNIT,
             "Empty cache reporting",
+        ),
+        TestFile(
+            Path("tests/test_utils.py"),
+            TestGroup.UNIT,
+            "Utility functions (Phase 4.1)",
+        ),
+        TestFile(
+            Path("tests/test_config_manager.py"),
+            TestGroup.UNIT,
+            "Config manager",
+        ),
+        TestFile(
+            Path("tests/test_output_formatter.py"),
+            TestGroup.UNIT,
+            "Output formatting (JSON/CSV)",
+        ),
+        TestFile(
+            Path("tests/test_extension_discovery.py"),
+            TestGroup.UNIT,
+            "Extension discovery",
+        ),
+        TestFile(
+            Path("tests/test_input_validators.py"),
+            TestGroup.UNIT,
+            "CLI input validators",
+        ),
+        TestFile(
+            Path("tests/test_config_commands.py"),
+            TestGroup.UNIT,
+            "Config subcommands",
+        ),
+        TestFile(
+            Path("tests/test_cache_commands.py"),
+            TestGroup.UNIT,
+            "Cache subcommands",
+        ),
+        TestFile(
+            Path("tests/test_report_commands.py"),
+            TestGroup.UNIT,
+            "Report generation",
+        ),
+        TestFile(
+            Path("tests/test_error_handling.py"),
+            TestGroup.UNIT,
+            "Error handling paths",
         ),
     ],
     TestGroup.SECURITY: [
@@ -160,6 +289,16 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             Path("tests/test_sqlite_security.py"),
             TestGroup.SECURITY,
             "SQLite security audit",
+        ),
+        TestFile(
+            Path("tests/test_property_validation.py"),
+            TestGroup.SECURITY,
+            "Property-based validation tests (13 tests, 13K scenarios)",
+        ),
+        TestFile(
+            Path("tests/test_property_cache.py"),
+            TestGroup.SECURITY,
+            "Property-based cache integrity tests (8 tests, 8K scenarios)",
         ),
     ],
     TestGroup.ARCHITECTURE: [
@@ -281,19 +420,50 @@ class TestRunner:
     """Main test suite runner."""
 
     def __init__(
-        self, skip_slow=False, skip_real_api=False, verbose=False, quiet=False
+        self,
+        skip_slow=False,
+        skip_real_api=False,
+        verbose=False,
+        quiet=False,
+        coverage_enabled=False,
+        coverage_format=None,
+        coverage_threshold=None,
+        pytest_enabled=False,
     ):
         """Initialize test runner."""
         self.skip_slow = skip_slow
         self.skip_real_api = skip_real_api
         self.verbose = verbose
         self.quiet = quiet
+        self.coverage_enabled = coverage_enabled
+        self.coverage_format = coverage_format or "term"
+        self.coverage_threshold = coverage_threshold
+        self.pytest_enabled = pytest_enabled
         self.results: List[TestResult] = []
         self.start_time = time.time()
+        self.cov = None
 
         # Detect TTY for color support
         if not sys.stdout.isatty():
             Colors.disable()
+
+        # Validate coverage availability
+        if self.coverage_enabled and not COVERAGE_AVAILABLE:
+            print(
+                f"{Colors.YELLOW}Warning: coverage.py not installed. "
+                f"Install with: pip install coverage{Colors.RESET}",
+                file=sys.stderr,
+            )
+            self.coverage_enabled = False
+
+        # Validate pytest availability
+        if self.pytest_enabled and not PYTEST_AVAILABLE:
+            print(
+                f"{Colors.YELLOW}Warning: pytest not installed. Falling back to subprocess execution. "
+                f"Install with: pip install pytest{Colors.RESET}",
+                file=sys.stderr,
+            )
+            self.pytest_enabled = False
 
     def run_groups(self, groups: List[TestGroup]) -> int:
         """
@@ -306,6 +476,10 @@ class TestRunner:
         if TestGroup.ALL in groups:
             groups = [g for g in TestGroup if g != TestGroup.ALL]
 
+        # Start coverage measurement if enabled
+        if self.coverage_enabled:
+            self._start_coverage()
+
         if not self.quiet:
             self._print_header(groups)
 
@@ -316,7 +490,130 @@ class TestRunner:
         if not self.quiet:
             self._print_overall_summary()
 
+        # Finalize coverage measurement if enabled
+        if self.coverage_enabled:
+            self._finalize_coverage()
+
         return self._calculate_exit_code()
+
+    def _start_coverage(self):
+        """Initialize coverage measurement."""
+        if not COVERAGE_AVAILABLE:
+            return
+
+        try:
+            # Use .coveragerc if it exists, otherwise use default config
+            config_file = Path(".coveragerc")
+            if config_file.exists():
+                self.cov = coverage.Coverage(config_file=str(config_file))
+            else:
+                # Default configuration
+                self.cov = coverage.Coverage(
+                    source=["vscode_scanner"],
+                    omit=["*/tests/*", "*/test_*", "*/__pycache__/*"],
+                )
+
+            self.cov.start()
+
+            if not self.quiet:
+                print(f"{Colors.CYAN}📊 Coverage measurement started{Colors.RESET}\n")
+
+        except Exception as e:
+            print(
+                f"{Colors.YELLOW}Warning: Failed to start coverage: {e}{Colors.RESET}",
+                file=sys.stderr,
+            )
+            self.coverage_enabled = False
+
+    def _finalize_coverage(self):
+        """Stop coverage measurement and generate reports."""
+        if not COVERAGE_AVAILABLE or not self.cov:
+            return
+
+        try:
+            self.cov.stop()
+            self.cov.save()
+
+            if not self.quiet:
+                print(f"\n{Colors.BOLD}{'='*70}{Colors.RESET}")
+                print(f"{Colors.BOLD}COVERAGE REPORT{Colors.RESET}")
+                print(f"{Colors.BOLD}{'='*70}{Colors.RESET}\n")
+
+            # Generate requested report formats
+            formats = self.coverage_format.split(",")
+
+            for fmt in formats:
+                fmt = fmt.strip()
+
+                if fmt == "term":
+                    # Terminal report
+                    self.cov.report(show_missing=False, skip_covered=False)
+
+                elif fmt == "html":
+                    # HTML report
+                    html_dir = Path("htmlcov")
+                    self.cov.html_report(directory=str(html_dir))
+                    print(
+                        f"\n{Colors.GREEN}✓{Colors.RESET} HTML coverage report: {html_dir}/index.html"
+                    )
+
+                elif fmt == "xml":
+                    # XML report (for CI/CD)
+                    xml_file = Path("coverage.xml")
+                    self.cov.xml_report(outfile=str(xml_file))
+                    print(
+                        f"\n{Colors.GREEN}✓{Colors.RESET} XML coverage report: {xml_file}"
+                    )
+
+                elif fmt == "json":
+                    # JSON report
+                    json_file = Path("coverage.json")
+                    self.cov.json_report(outfile=str(json_file))
+                    print(
+                        f"\n{Colors.GREEN}✓{Colors.RESET} JSON coverage report: {json_file}"
+                    )
+
+            # Validate threshold if specified
+            if self.coverage_threshold is not None:
+                self._validate_threshold()
+
+        except Exception as e:
+            print(
+                f"{Colors.YELLOW}Warning: Failed to finalize coverage: {e}{Colors.RESET}",
+                file=sys.stderr,
+            )
+
+    def _validate_threshold(self):
+        """Validate coverage meets threshold requirement."""
+        if not COVERAGE_AVAILABLE or not self.cov:
+            return
+
+        try:
+            # Get total coverage percentage
+            total_coverage = self.cov.report(file=None, show_missing=False)
+
+            print(f"\n{Colors.BOLD}Coverage Threshold Validation:{Colors.RESET}")
+            print(f"  Required: {self.coverage_threshold}%")
+            print(f"  Actual:   {total_coverage:.2f}%")
+
+            if total_coverage < self.coverage_threshold:
+                print(
+                    f"  Status:   {Colors.RED}✗ FAILED{Colors.RESET} "
+                    f"(below threshold by {self.coverage_threshold - total_coverage:.2f}%)"
+                )
+                # Note: We don't fail the build here, just report
+                # Actual enforcement should be done in CI/CD
+            else:
+                print(
+                    f"  Status:   {Colors.GREEN}✓ PASSED{Colors.RESET} "
+                    f"(exceeds threshold by {total_coverage - self.coverage_threshold:.2f}%)"
+                )
+
+        except Exception as e:
+            print(
+                f"{Colors.YELLOW}Warning: Failed to validate threshold: {e}{Colors.RESET}",
+                file=sys.stderr,
+            )
 
     def _run_group(self, group: TestGroup):
         """Run all tests in a group."""
@@ -334,16 +631,94 @@ class TestRunner:
         if not self.quiet:
             self._print_group_header(group, test_files)
 
-        # Run each test file
-        for test_file in test_files:
-            result = self._run_test_file(test_file)
+        # Use pytest if enabled, otherwise use subprocess
+        if self.pytest_enabled and PYTEST_AVAILABLE:
+            result = self._run_group_pytest(group, test_files)
             self.results.append(result)
 
             if not self.quiet:
                 self._print_test_result(result)
+        else:
+            # Run each test file with subprocess
+            for test_file in test_files:
+                result = self._run_test_file(test_file)
+                self.results.append(result)
+
+                if not self.quiet:
+                    self._print_test_result(result)
 
         if not self.quiet:
             self._print_group_summary(group, test_files)
+
+    def _run_group_pytest(
+        self, group: TestGroup, test_files: List[TestFile]
+    ) -> TestResult:
+        """Run all test files in a group using pytest."""
+        if not PYTEST_AVAILABLE:
+            # Fallback to subprocess
+            return self._run_test_file(test_files[0])
+
+        start_time = time.time()
+
+        try:
+            # Create result collector plugin
+            collector = PytestResultCollector()
+
+            # Build pytest arguments
+            pytest_args = []
+
+            # Add test file paths
+            for test_file in test_files:
+                pytest_args.append(str(test_file.path))
+
+            # Note: We don't use markers because test files don't have @pytest.mark decorators yet
+            # This could be added in future enhancement
+
+            # Add verbosity
+            if self.verbose:
+                pytest_args.append("-vv")
+            else:
+                pytest_args.append("-q")
+
+            # Disable warnings
+            pytest_args.append("--disable-warnings")
+
+            # Capture output
+            pytest_args.extend(["--tb=short"])
+
+            # Run pytest with plugin
+            exit_code = pytest.main(pytest_args, plugins=[collector])
+
+            duration = collector.get_duration()
+            status = collector.get_status()
+
+            # Combine error messages
+            error_msg = "\n".join(collector.errors) if collector.errors else ""
+
+            return TestResult(
+                file=f"{group.value} (pytest)",
+                tests_run=collector.tests_run,
+                tests_passed=collector.tests_passed,
+                tests_failed=collector.tests_failed,
+                tests_skipped=collector.tests_skipped,
+                duration=duration,
+                status=status,
+                output="",
+                error=error_msg if exit_code != 0 else "",
+            )
+
+        except Exception as e:
+            duration = time.time() - start_time
+            return TestResult(
+                file=f"{group.value} (pytest)",
+                tests_run=0,
+                tests_passed=0,
+                tests_failed=0,
+                tests_skipped=0,
+                duration=duration,
+                status="ERROR",
+                error=str(e),
+            )
 
     def _run_test_file(self, test_file: TestFile) -> TestResult:
         """Run a single test file."""
@@ -724,6 +1099,31 @@ def main():
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--quiet", "-q", action="store_true", help="Minimal output")
 
+    # Coverage options
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Enable coverage measurement (requires: pip install coverage)",
+    )
+    parser.add_argument(
+        "--coverage-format",
+        default="term",
+        help="Coverage report format: term,html,xml,json (comma-separated, default: term)",
+    )
+    parser.add_argument(
+        "--coverage-threshold",
+        type=float,
+        metavar="PCT",
+        help="Minimum required coverage percentage (e.g., 85.0)",
+    )
+
+    # Pytest options
+    parser.add_argument(
+        "--pytest",
+        action="store_true",
+        help="Use pytest runner for in-process execution (requires: pip install pytest)",
+    )
+
     args = parser.parse_args()
 
     # Determine which groups to run
@@ -755,6 +1155,10 @@ def main():
         skip_real_api=args.skip_real_api,
         verbose=args.verbose,
         quiet=args.quiet,
+        coverage_enabled=args.coverage,
+        coverage_format=args.coverage_format,
+        coverage_threshold=args.coverage_threshold,
+        pytest_enabled=args.pytest,
     )
 
     exit_code = runner.run_groups(groups)

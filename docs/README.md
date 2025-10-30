@@ -27,8 +27,16 @@ docs/
 │   ├── SECURITY.md                # Security requirements and best practices
 │   ├── ERROR_HANDLING.md          # Error handling strategy
 │   ├── ERROR_CODES.md             # Error code reference
-│   ├── TESTING.md                 # Testing guidelines
-│   └── API_REFERENCE.md           # vscan.dev API documentation
+│   ├── TESTING.md                 # Testing guidelines (main overview)
+│   ├── API_REFERENCE.md           # vscan.dev API documentation
+│   └── testing/                   # Specialized testing documentation (v3.5.3+)
+│       ├── README.md              # Testing documentation navigation index
+│       ├── TESTING_SECURITY.md    # Security testing (95%+ coverage)
+│       ├── TESTING_COVERAGE.md    # Coverage strategy (52% → 70%)
+│       ├── TESTING_INTEGRATION.md # Integration testing patterns
+│       ├── TESTING_MOCKING.md     # Mocking guidelines
+│       ├── TESTING_PROPERTY_BASED.md # Hypothesis property testing
+│       └── ... (6 more specialized testing guides)
 │
 ├── project/                       # Active project management
 │   ├── STATUS.md                  # Current project status and progress

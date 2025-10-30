@@ -29,10 +29,13 @@ VS Code Extension Security Scanner uses a **Simple Layered Architecture** design
 
 ### Size & Complexity
 
-- **~9,800 lines** of Python code
-- **14 modules** organized in flat structure
-- **3 architectural layers** (Presentation, Application, Infrastructure)
-- **No sub-packages** (flat structure sufficient for this size)
+**Current Metrics:** Run `cloc vscode_scanner/ --by-file` for current line counts and `ls vscode_scanner/*.py | wc -l` for module count
+
+**Baseline (v3.5.x):**
+- ~9,800 lines of Python code
+- 14 modules organized in flat structure
+- 3 architectural layers (Presentation, Application, Infrastructure)
+- No sub-packages (flat structure sufficient for this size)
 
 ### Architectural Style
 
@@ -267,7 +270,7 @@ Quick workflow:
 - config_*() - Configuration management commands
 ```
 
-**Lines of Code:** ~900
+**Lines of Code:** Run `wc -l vscode_scanner/cli.py` for current count (baseline: ~900)
 **Dependencies:** scanner, display, config_manager, utils
 
 **CLI Architecture (Typer/Rich Integration - v3.0+):**
@@ -327,7 +330,7 @@ entry_points={
 - create_progress_bar() - Live progress tracking
 ```
 
-**Lines of Code:** ~500
+**Lines of Code:** Run `wc -l vscode_scanner/display.py` for current count (baseline: ~500)
 **Dependencies:** utils, constants
 
 ### html_report_generator.py (Presentation)
@@ -347,7 +350,7 @@ entry_points={
 - _generate_pie_chart_svg() - Risk distribution chart
 ```
 
-**Lines of Code:** ~2,300
+**Lines of Code:** Run `wc -l vscode_scanner/html_report_generator.py` for current count (baseline: ~2,300)
 **Dependencies:** utils
 
 **Self-Contained HTML Design (v2.2+):**
@@ -446,7 +449,7 @@ def _generate_scripts(self) -> str:
 - _build_summary() - Aggregate statistics
 ```
 
-**Lines of Code:** ~800
+**Lines of Code:** Run `wc -l vscode_scanner/scanner.py` for current count (baseline: ~800)
 **Dependencies:** vscan_api, cache_manager, extension_discovery, display
 
 ### vscan_api.py (Infrastructure)
@@ -466,7 +469,7 @@ def _generate_scripts(self) -> str:
 - _calculate_backoff_delay() - Exponential backoff with ceiling
 ```
 
-**Lines of Code:** ~600
+**Lines of Code:** Run `wc -l vscode_scanner/vscan_api.py` for current count (baseline: ~600)
 **Dependencies:** utils, constants
 
 **Retry Mechanism (v2.2+):**
@@ -502,7 +505,7 @@ The API client implements intelligent retry with exponential backoff and jitter 
 - _migrate_cache_to_v2() - Schema migration
 ```
 
-**Lines of Code:** ~900
+**Lines of Code:** Run `wc -l vscode_scanner/cache_manager.py` for current count (baseline: ~900)
 **Dependencies:** utils, constants
 
 ### config_manager.py (Application)
@@ -522,7 +525,7 @@ The API client implements intelligent retry with exponential backoff and jitter 
 - init_config() - Create default config
 ```
 
-**Lines of Code:** ~400
+**Lines of Code:** Run `wc -l vscode_scanner/config_manager.py` for current count (baseline: ~400)
 **Dependencies:** utils, constants
 
 ---
@@ -1298,6 +1301,7 @@ finally:
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Status:** Current
+**Last Updated:** 2025-10-30 (Agentic coding optimization - dynamic metrics)
 **Next Review:** When module count exceeds 15 or major refactoring planned

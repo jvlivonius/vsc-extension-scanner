@@ -4,7 +4,7 @@
 
 A command-line tool that scans your installed VS Code extensions for security vulnerabilities, suspicious permissions, and risky dependencies. Get instant insights into the security posture of your development environment.
 
-**Version:** 3.5.1 | **Status:** Production Ready
+**Version:** 3.5.2 | **Status:** Production Ready
 
 ---
 

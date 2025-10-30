@@ -1,0 +1,249 @@
+# Semgrep Custom Security Rules for VS Code Extension Scanner
+# Project-specific security pattern enforcement
+#
+# These rules enforce the security requirements documented in:
+# - docs/guides/SECURITY.md
+# - docs/guides/ARCHITECTURE.md
+#
+# Rule Categories:
+# 1. Path Validation - All file paths must use validate_path()
+# 2. String Sanitization - All user input must use sanitize_string()
+# 3. SQL Injection Prevention - Parameterized queries required
+# 4. Logging Security - Sanitized logging of user data
+
+rules:
+  # ============================================================================
+  # Rule 1: Path Validation Enforcement
+  # ============================================================================
+  - id: missing-path-validation-open
+    pattern-either:
+      - pattern: open($PATH, ...)
+      - pattern: pathlib.Path($PATH).open(...)
+    pattern-not-inside: |
+      $VALIDATED = validate_path(...)
+      ...
+      $USAGE
+    message: |
+      File operations must use validate_path() first to prevent path traversal attacks.
+
+      Example:
+        # Bad
+        with open(user_path, 'r') as f:
+            data = f.read()
+
+        # Good
+        validated_path = validate_path(user_path)
+        with open(validated_path, 'r') as f:
+            data = f.read()
+
+      See docs/guides/SECURITY.md for details.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A01:2021 - Broken Access Control"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+
+  # ============================================================================
+  # Rule 2: String Sanitization for Display
+  # ============================================================================
+  - id: missing-string-sanitization-print
+    pattern-either:
+      - pattern: print($USER_INPUT, ...)
+      - pattern: sys.stdout.write($USER_INPUT)
+      - pattern: sys.stderr.write($USER_INPUT)
+    pattern-not-inside: |
+      $SANITIZED = sanitize_string($USER_INPUT, ...)
+      ...
+      $OUTPUT
+    message: |
+      User input displayed to terminal must use sanitize_string() to prevent injection attacks.
+
+      Example:
+        # Bad
+        print(f"Error: {user_input}")
+
+        # Good
+        sanitized = sanitize_string(user_input, context="error")
+        print(f"Error: {sanitized}")
+
+      See docs/guides/SECURITY.md for sanitization contexts (output, log, error).
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+    metadata:
+      category: security
+      cwe: "CWE-74: Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: MEDIUM
+
+  # ============================================================================
+  # Rule 3: String Sanitization for Logging
+  # ============================================================================
+  - id: missing-string-sanitization-logging
+    pattern-either:
+      - pattern: logging.debug($MSG, ...)
+      - pattern: logging.info($MSG, ...)
+      - pattern: logging.warning($MSG, ...)
+      - pattern: logging.error($MSG, ...)
+      - pattern: logging.critical($MSG, ...)
+      - pattern: logger.debug($MSG, ...)
+      - pattern: logger.info($MSG, ...)
+      - pattern: logger.warning($MSG, ...)
+      - pattern: logger.error($MSG, ...)
+      - pattern: logger.critical($MSG, ...)
+    pattern-not-inside: |
+      $SANITIZED = sanitize_string(..., context="log")
+      ...
+      $LOGGER
+    message: |
+      User input in logs should be sanitized to prevent log injection.
+
+      Example:
+        # Warning - Potential log injection
+        logging.error(f"Failed to process: {user_path}")
+
+        # Better
+        sanitized = sanitize_string(user_path, context="log")
+        logging.error(f"Failed to process: {sanitized}")
+
+      This is a WARNING not ERROR because logs may contain intentional debugging data.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+    metadata:
+      category: security
+      cwe: "CWE-117: Log Injection"
+      owasp: "A09:2021 - Security Logging Failures"
+      confidence: LOW
+      likelihood: LOW
+      impact: LOW
+
+  # ============================================================================
+  # Rule 4: SQL Injection Prevention
+  # ============================================================================
+  - id: sql-injection-risk-execute
+    pattern-either:
+      - pattern: $CURSOR.execute($QUERY)
+      - pattern: $CURSOR.executemany($QUERY, ...)
+      - pattern: $CURSOR.executescript($QUERY)
+    pattern-not-inside: |
+      $CURSOR.$METHOD("...", ...)
+    pattern-not-either:
+      - pattern: $CURSOR.execute("CREATE TABLE ...")
+      - pattern: $CURSOR.execute("CREATE INDEX ...")
+    message: |
+      Use parameterized queries to prevent SQL injection attacks.
+
+      Example:
+        # Bad - SQL injection risk
+        query = f"SELECT * FROM cache WHERE key = '{user_key}'"
+        cursor.execute(query)
+
+        # Good - Parameterized query
+        query = "SELECT * FROM cache WHERE key = ?"
+        cursor.execute(query, (user_key,))
+
+      See docs/guides/SECURITY.md for SQLite security best practices.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+        - vscode_scanner/cache_manager.py  # Already audited in test_sqlite_security.py
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: CRITICAL
+
+  # ============================================================================
+  # Rule 5: Dangerous File Operations (Bonus Rule)
+  # ============================================================================
+  - id: dangerous-file-operations
+    pattern-either:
+      - pattern: os.system($CMD)
+      - pattern: subprocess.call($CMD, shell=True, ...)
+      - pattern: subprocess.run($CMD, shell=True, ...)
+      - pattern: subprocess.Popen($CMD, shell=True, ...)
+      - pattern: eval($CODE)
+      - pattern: exec($CODE)
+    message: |
+      Dangerous operation detected. These operations can lead to arbitrary code execution.
+
+      - os.system(), shell=True: Command injection risk
+      - eval(), exec(): Code injection risk
+
+      Use safer alternatives:
+      - subprocess.run([...], shell=False) for commands
+      - ast.literal_eval() for safe evaluation
+      - Avoid eval()/exec() entirely
+
+      If necessary for legitimate use, document security review in code comments.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection / CWE-95: Code Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: CRITICAL
+
+  # ============================================================================
+  # Rule 6: Weak Cryptography (Bonus Rule)
+  # ============================================================================
+  - id: weak-cryptography
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+    pattern-not-inside: |
+      # OK for non-security purposes (file fingerprinting, etc.)
+      ...
+    message: |
+      Weak cryptographic hash function detected (MD5/SHA1).
+
+      For security purposes, use:
+      - HMAC-SHA256 (already used in cache_manager.py)
+      - SHA256 or stronger
+
+      MD5/SHA1 acceptable only for:
+      - Non-security checksums
+      - Legacy compatibility (document why)
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+        - vscode_scanner/cache_manager.py  # Uses HMAC-SHA256
+    metadata:
+      category: security
+      cwe: "CWE-327: Broken Cryptography"
+      owasp: "A02:2021 - Cryptographic Failures"
+      confidence: MEDIUM
+      likelihood: LOW
+      impact: MEDIUM

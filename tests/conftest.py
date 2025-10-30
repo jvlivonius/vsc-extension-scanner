@@ -230,11 +230,20 @@ def reset_environment():
 # Pytest configuration
 def pytest_configure(config):
     """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
-    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    # Test group markers (for run_tests.py --pytest integration)
+    config.addinivalue_line("markers", "unit: marks tests as unit tests")
     config.addinivalue_line("markers", "security: marks tests as security tests")
     config.addinivalue_line(
         "markers", "architecture: marks tests as architecture tests"
+    )
+    config.addinivalue_line(
+        "markers", "parallel: marks tests as parallel/threading tests"
+    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "real-api: marks tests that make real API calls")
+    config.addinivalue_line("markers", "mock-validation: marks mock validation tests")
+
+    # Additional markers
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )

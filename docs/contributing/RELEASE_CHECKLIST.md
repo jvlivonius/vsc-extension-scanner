@@ -84,18 +84,15 @@
 
 - [ ] **Run all test suites:**
   ```bash
-  python3 tests/test_display.py
-  python3 tests/test_scanner.py
-  python3 tests/test_cli.py
-  python3 tests/test_api.py
-  python3 tests/test_retry.py
-  python3 tests/test_security.py
-  python3 tests/test_db_integrity.py
-  python3 tests/test_integration.py
-  python3 tests/test_parallel_scanning.py  # If v3.4+
+  # Recommended: Run all with pytest
+  pytest tests/
+
+  # Alternative: Run individually
+  for test in tests/test_*.py; do python3 "$test"; done
   ```
 
 - [ ] **All tests passed** (no failures)
+- [ ] **Test coverage:** See `tests/` directory for current test modules
 
 #### Manual Verification
 
@@ -352,7 +349,8 @@ ___________________________________________________________________________
 
 ## Reference
 
-**See full process documentation:** [RELEASE_PROCESS.md](RELEASE_PROCESS.md)
+**Full Process Documentation:** [RELEASE_PROCESS.md](RELEASE_PROCESS.md)
+**Version-Specific Changes:** [CHANGELOG.md](../../CHANGELOG.md)
 
 **Release Complete!** ✅
 

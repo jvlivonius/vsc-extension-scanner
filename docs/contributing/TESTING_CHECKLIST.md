@@ -1,46 +1,14 @@
 # VS Code Extension Scanner - Testing Checklist
 
-**Version:** 3.5.0
-**Last Updated:** 2025-10-26
+**Document Type:** Timeless Reference
+**Last Updated:** 2025-10-30
 
 This comprehensive checklist covers functional, performance, security, and compatibility testing for the VS Code Extension Scanner.
 
----
-
-## 🚨 v3.5.0 Breaking Changes Testing
-
-### Parallel Processing Default
-
-- [ ] **Default 3 workers behavior**
-  - Run `vscan scan` without flags
-  - Verify 3 workers are used (check progress output)
-  - Verify faster than sequential mode
-  - Compare timing with v3.4.0 sequential mode
-
-- [ ] **Workers parameter range (1-5)**
-  - Test `--workers 1` (sequential mode)
-  - Test `--workers 3` (default, explicit)
-  - Test `--workers 5` (maximum performance)
-  - Test `--workers 0` (should error, below min)
-  - Test `--workers 6` (should error, above max)
-
-- [ ] **--parallel flag removed**
-  - Run `vscan scan --parallel` (should show error)
-  - Verify help text doesn't mention `--parallel`
-  - Check `vscan scan --help | grep parallel` returns nothing
-
-- [ ] **Config file changes**
-  - Create `~/.vscanrc` with `parallel = true` (should be ignored with warning)
-  - Create `~/.vscanrc` with `workers = 3` (should work)
-  - Test `workers = 1` through `workers = 5` in config
-  - Test invalid `workers = 0` (should error or default to 1)
-
-### Migration Testing
-
-- [ ] **Backward compatibility**
-  - Scripts using old sequential behavior work with `--workers 1`
-  - Config files without `workers` setting use default (3)
-  - Performance gain is automatic for users not specifying workers
+**Note:** For version-specific testing scenarios, breaking changes, and regression tests, see:
+- [CHANGELOG.md](../../CHANGELOG.md) - Version history and changes
+- [docs/archive/summaries/](../archive/summaries/) - Version-specific release notes
+- [docs/project/STATUS.md](../project/STATUS.md) - Current project state
 
 ---
 
@@ -537,42 +505,6 @@ Test scenarios:
 
 ---
 
-## Regression Testing (Previous Bugs)
-
-### Fixed in v3.3.3
-
-- [ ] **Duplicate extensions eliminated**
-  - Old extension versions not scanned
-  - Only current version from extensions.json
-  - Accurate extension counts
-
-### Fixed in v3.3.2
-
-- [ ] **Date column sorting**
-  - HTML report date columns sort chronologically
-  - ISO date format used for sorting
-  - N/A values handled correctly
-
-### Fixed in v3.3.1
-
-- [ ] **Critical risk filter**
-  - `--min-risk-level critical` works correctly
-  - Properly identifies critical extensions
-  - Filter comparison fixed
-
-### Fixed in v3.2.0
-
-- [ ] **Database connection leak**
-  - No leaks in batch mode
-  - Cleanup on error
-  - Resource management correct
-
-- [ ] **Division by zero**
-  - Cache hit rate calculation safe
-  - Handles 0 total scans
-
----
-
 ## Performance Testing
 
 ### Timing Benchmarks
@@ -649,11 +581,6 @@ Test scenarios:
   - Cache utilization
   - Report generation
 
-- [ ] **Migration** (v3.4.0 → v3.5.0)
-  - Remove `--parallel` from scripts
-  - Update config file
-  - Verify performance improvement
-
 ---
 
 ## Documentation Testing
@@ -679,16 +606,16 @@ Test scenarios:
 ### Automated Testing
 
 ```bash
-# Unit tests
-python3 tests/test_display.py       # Display module (24 tests)
-python3 tests/test_scanner.py       # Scanner module (15 tests)
-python3 tests/test_cli.py          # CLI module (18 tests)
-python3 tests/test_api.py          # API validation
-python3 tests/test_integration.py  # Integration tests
-
-# All tests
+# Run all tests (recommended)
 pytest tests/
+
+# Or run individually (see tests/ directory for current list)
+for test in tests/test_*.py; do
+    python3 "$test"
+done
 ```
+
+**Current test modules:** See `tests/` directory for complete list and test counts.
 
 ### Manual Testing
 
@@ -733,6 +660,5 @@ Before releasing a new version:
 
 ---
 
-**Last Updated:** 2025-10-26 for v3.5.0 release
 **Maintained By:** Project contributors
-**Questions:** See [GitHub Issues](https://github.com/jvlivonius/vsc-extension-scanner/issues)
+**Questions:** See [CHANGELOG.md](../../CHANGELOG.md) for version-specific changes

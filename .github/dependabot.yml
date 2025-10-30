@@ -1,0 +1,62 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+
+    # Group dev dependencies to reduce PR noise
+    groups:
+      dev-dependencies:
+        patterns:
+          - "pytest*"
+          - "black*"
+          - "pylint*"
+          - "bandit*"
+          - "safety*"
+          - "pip-audit*"
+          - "pre-commit*"
+          - "hypothesis*"
+          - "coverage*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      production-dependencies:
+        patterns:
+          - "rich*"
+          - "typer*"
+        update-types:
+          - "patch"
+
+    # Limit number of open PRs
+    open-pull-requests-limit: 5
+
+    # Enable security updates
+    labels:
+      - "dependencies"
+      - "automated"
+
+    # Commit message configuration
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+    # Reviewers (optional - remove if not needed)
+    # reviewers:
+    #   - "your-github-username"
+
+    # Allow Dependabot to update lock files
+    allow:
+      - dependency-type: "all"
+
+    # Ignore specific dependencies (if needed)
+    # ignore:
+    #   - dependency-name: "example-package"
+    #     versions: ["1.x"]

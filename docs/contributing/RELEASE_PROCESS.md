@@ -1,7 +1,7 @@
 # Release Process
 
 **Version:** 1.0
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-30
 **Status:** Active Process
 
 ---
@@ -196,21 +196,18 @@ Ensure archived documents follow [DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CO
 Run all test suites:
 
 ```bash
-python3 tests/test_display.py
-python3 tests/test_scanner.py
-python3 tests/test_cli.py
-python3 tests/test_api.py
-python3 tests/test_retry.py
-python3 tests/test_security.py
-python3 tests/test_db_integrity.py
-python3 tests/test_integration.py
-python3 tests/test_parallel_scanning.py  # If v3.4+
+# Run all tests (recommended)
+pytest tests/
 
-# Or run all at once
-for test in tests/test_*.py; do python3 "$test"; done
+# Or run individually
+for test in tests/test_*.py; do
+    python3 "$test"
+done
 ```
 
 **All tests must pass before proceeding.**
+
+**Current test coverage:** See `tests/` directory for complete list of test modules.
 
 #### 3.2 Manual Verification Checklist
 
@@ -592,5 +589,5 @@ python3 -c "from vscode_scanner._version import __version__; print(__version__)"
 
 ---
 
-**Last Updated:** 2025-10-25
 **Process Version:** 1.0
+**Last Updated:** 2025-10-30

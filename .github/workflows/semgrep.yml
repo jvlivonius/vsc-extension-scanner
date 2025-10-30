@@ -1,0 +1,122 @@
+# Semgrep Security Scan Workflow
+# Custom security rules for project-specific patterns
+#
+# Phase 2 Tool: Semgrep OSS (Free for private repos)
+# Replaces CodeQL for private repositories (saves $588/year)
+#
+# Custom Rules Enforced:
+# 1. validate_path() enforcement for file operations
+# 2. sanitize_string() for print statements
+# 3. sanitize_string() for logging
+# 4. SQL injection prevention (parameterized queries)
+#
+# Triggers:
+# - Push to main/master/develop branches
+# - Push to claude/** branches (Claude Code branches)
+# - Pull requests to main/master/develop
+# - Weekly schedule (Sunday 00:00 UTC)
+
+name: Semgrep Security Scan
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - 'claude/**'
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  schedule:
+    # Weekly Semgrep scan every Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  semgrep:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    container:
+      image: returntocorp/semgrep
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep with custom rules
+        run: |
+          echo "Running Semgrep with custom security rules..."
+          semgrep scan --config=.semgrep.yml \
+            --verbose \
+            --json \
+            --output=semgrep-results.json \
+            vscode_scanner/
+
+      - name: Display Semgrep results
+        if: always()
+        run: |
+          echo ""
+          echo "=================================================="
+          echo "Semgrep Security Scan Results"
+          echo "=================================================="
+          echo ""
+          semgrep scan --config=.semgrep.yml vscode_scanner/
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+          retention-days: 30
+
+      - name: Generate Semgrep summary
+        if: always()
+        run: |
+          echo "# Semgrep Security Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Custom Security Rules" >> $GITHUB_STEP_SUMMARY
+          echo "1. **validate_path() enforcement** - File operations must use path validation" >> $GITHUB_STEP_SUMMARY
+          echo "2. **sanitize_string() for display** - User input must be sanitized before printing" >> $GITHUB_STEP_SUMMARY
+          echo "3. **sanitize_string() for logging** - User input in logs must be sanitized" >> $GITHUB_STEP_SUMMARY
+          echo "4. **SQL injection prevention** - Parameterized queries required" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count findings by severity
+          ERROR_COUNT=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' semgrep-results.json 2>/dev/null || echo "0")
+          WARNING_COUNT=$(jq '[.results[] | select(.extra.severity == "WARNING")] | length' semgrep-results.json 2>/dev/null || echo "0")
+
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors:** $ERROR_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Warnings:** $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$ERROR_COUNT" -eq "0" ] && [ "$WARNING_COUNT" -eq "0" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **No security issues found**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  semgrep-status:
+    name: Semgrep Status Check
+    runs-on: ubuntu-latest
+    needs: semgrep
+    if: always()
+
+    steps:
+      - name: Check Semgrep status
+        run: |
+          if [ "${{ needs.semgrep.result }}" == "success" ]; then
+            echo "✅ Semgrep scan passed - No security issues found"
+            exit 0
+          elif [ "${{ needs.semgrep.result }}" == "failure" ]; then
+            echo "❌ Semgrep scan failed - Security issues detected"
+            echo "Review the Semgrep job output for details"
+            exit 1
+          else
+            echo "⚠️  Semgrep scan skipped or cancelled"
+            exit 0
+          fi

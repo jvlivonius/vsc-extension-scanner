@@ -61,6 +61,8 @@ setup(
         "test": [
             "pyyaml>=6.0.0,<7.0.0",  # For architecture tests configuration
             "pytest>=7.0.0",  # Test framework
+            "hypothesis>=6.0.0,<7.0.0",  # Property-based testing (Phase 2)
+            "coverage>=7.0.0,<8.0.0",  # Branch coverage tracking (Phase 2)
         ],
         "dev": [
             "bandit>=1.7.6",  # AST-based security scanner
@@ -70,7 +72,8 @@ setup(
             "black>=23.12.0",  # Code formatter
             "pylint>=3.0.0",  # Comprehensive linter
             "pylint-security",  # Pylint security plugin
-            "future>=0.18.3",  # Fixes CVE-2022-40899 (transitive dependency, pinned for security)
+            "hypothesis>=6.0.0,<7.0.0",  # Property-based testing (Phase 2)
+            "coverage>=7.0.0,<8.0.0",  # Branch coverage tracking (Phase 2)
         ],
     },
     entry_points={

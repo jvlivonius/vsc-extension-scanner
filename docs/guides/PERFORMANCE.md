@@ -6,6 +6,34 @@
 **Platform:** macOS (Darwin 25.0.0), Python 3.11
 **Note:** Specific timing numbers are platform/hardware-specific. Focus on relative improvements rather than absolute values.
 
+## Benchmark Validity
+
+**Important:** Benchmarks in this document are platform-specific and age over time.
+
+**Current Measurements Valid For:**
+- Platform: macOS (Darwin 25.0.0), Python 3.11
+- Measurement Date: 2025-10-26 (parallel), 2025-10-22 (caching)
+- Version: v3.5.0
+
+**Refresh Required When:**
+- Platform or OS changes significantly
+- 6+ months have elapsed since measurement
+- Major performance optimizations are implemented
+- Python version is upgraded
+
+**How to Re-Run Benchmarks:**
+```bash
+# Performance benchmarks
+python3 tests/test_performance.py
+
+# Real-world scan timing
+time vscan scan --quiet
+
+# Parallel vs sequential comparison
+time vscan scan --workers 1 --quiet  # Sequential
+time vscan scan --workers 3 --quiet  # Parallel (default)
+```
+
 ## Overview
 
 This document provides detailed performance benchmarks, optimization strategies, and resource usage metrics for the VS Code Extension Security Scanner.
@@ -441,5 +469,6 @@ du -h ~/.vscan/cache.db
 
 ---
 
-**Document Version:** 1.0.0
+**Document Version:** 1.1.0
 **Status:** Complete ✅
+**Last Updated:** 2025-10-30 (Agentic coding optimization - benchmark validity section)

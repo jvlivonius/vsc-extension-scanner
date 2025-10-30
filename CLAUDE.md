@@ -6,9 +6,11 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Current Status
 
-**Version:** v3.5.1 Complete ✅
-**Latest:** Security hardening (4/4 tasks) + Technical debt (4/4 tasks) = 8/8 tasks complete
-**Completed Roadmap:** [docs/archive/plans/v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) (Both phases complete)
+**Version:** v3.5.2 Complete ✅ | v3.5.3 In Progress 🚧
+**Latest:** Phase 4 Testing Excellence (5/5 phases) = 70 new tests + Documentation restructuring
+**Current:** Phase 4 Complete - Testing: 604 tests, 52% coverage → 70% target | Docs: TESTING.md restructured (11 focused guides)
+**Completed Roadmap:** [docs/archive/plans/v3.5.2-roadmap.md](docs/archive/plans/v3.5.2-roadmap.md)
+**Active Roadmap:** [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Testing Excellence (Phase 4: 5/5 ✅)
 
 ---
 
@@ -58,7 +60,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 **Adding Features:**
 - Check scope: [PRD.md](docs/project/PRD.md) - Is this feature in scope?
 - Check roadmap: [STATUS.md](docs/project/STATUS.md) - Current sprint priorities
-- Check roadmap: [v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) - All 8 tasks complete
+- Check roadmap: [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Testing Excellence (planned)
 
 **Security Changes:**
 - [SECURITY.md](docs/guides/SECURITY.md) - Complete security requirements, validation patterns, defense layers
@@ -72,8 +74,20 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md) - Parallel processing architecture
 
 **Testing:**
-- [TESTING.md](docs/guides/TESTING.md) - Test patterns (AAA), fixtures, coverage goals (85% overall, 95% security)
+- [TESTING.md](docs/guides/TESTING.md) - Overview (compact), test patterns (AAA), quick start (486 lines)
+- **Specialized Testing Guides (v3.5.3+):** [testing/](docs/guides/testing/)
+  - [TESTING_SECURITY.md](docs/guides/testing/TESTING_SECURITY.md) - Security testing (21K, 95%+ coverage)
+  - [TESTING_COVERAGE.md](docs/guides/testing/TESTING_COVERAGE.md) - Coverage strategy (52% → 70%)
+  - [TESTING_INTEGRATION.md](docs/guides/testing/TESTING_INTEGRATION.md) - Integration patterns
+  - [TESTING_MOCKING.md](docs/guides/testing/TESTING_MOCKING.md) - Canonical mocks
+  - [TESTING_PROPERTY_BASED.md](docs/guides/testing/TESTING_PROPERTY_BASED.md) - Hypothesis (1,250+ scenarios)
+  - [TESTING_CLI.md](docs/guides/testing/TESTING_CLI.md) - CLI testing
+  - [TESTING_PERFORMANCE.md](docs/guides/testing/TESTING_PERFORMANCE.md) - Performance benchmarks
+  - [TESTING_PARALLEL.md](docs/guides/testing/TESTING_PARALLEL.md) - Parallel execution
+  - [TESTING_RETRY.md](docs/guides/testing/TESTING_RETRY.md) - Retry mechanism
+  - [TESTING_HTML_REPORTS.md](docs/guides/testing/TESTING_HTML_REPORTS.md) - HTML report validation
 - [TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md) - Pre-release testing checklist
+- [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Testing Excellence: Phase 4 complete (5/5)
 
 **Releasing:**
 - [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) - Complete 11-step release process (3 phases)
@@ -91,7 +105,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Current Work:**
 - [STATUS.md](docs/project/STATUS.md) - Current sprint status, version progress, metrics
-- [v3.5.1-roadmap.md](docs/archive/plans/v3.5.1-roadmap.md) - Archived roadmap (Both phases complete - 8/8 tasks)
+- [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Current roadmap: Testing Excellence (4 weeks, 52% → 70% coverage)
 
 **Finding Historical Info:**
 - [docs/archive/README.md](docs/archive/README.md) - Version timeline & complete archive index
@@ -126,10 +140,13 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - **See:** [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md) for complete rules and anti-patterns
 
 **Testing (REQUIRED):**
-- **Coverage:** 85% overall, 95% for security modules (utils.py, cache_manager.py)
+- **Test Suite:** 604 tests (Phase 4: +70 tests), 100% passing
+- **Coverage:** Current 52.37%, target 70% (85% overall goal, 95% security modules)
 - **Pattern:** AAA (Arrange-Act-Assert) for all tests
-- **Run ALL tests before commits:** `python3 tests/test_*.py`
+- **Property Testing:** 20 tests generating 1,250+ scenarios (Hypothesis)
+- **Run ALL tests before commits:** `python3 tests/test_*.py` or `pytest tests/`
 - **Security tests:** Must pass with 0 vulnerabilities before any commit
+- **Documentation:** See [TESTING.md](docs/guides/TESTING.md) + 10 specialized guides
 
 **Error Handling:**
 - **Exit codes:** 0=success/no vulns, 1=success/vulns found, 2=scan failed
@@ -204,7 +221,7 @@ vsc-extension-scanner/
 │   └── utils.py           # Path validation, sanitization (Infrastructure)
 ├── scripts/
 │   └── bump_version.py    # Version management tool
-├── tests/                 # Test files (169+ tests, 100% passing)
+├── tests/                 # Test files (604 tests, 100% passing, 52% coverage)
 │   ├── test_security_regression.py  # Security test suite
 │   ├── test_path_validation.py      # Path validation tests
 │   ├── test_string_sanitization.py  # Sanitization tests

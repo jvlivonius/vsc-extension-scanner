@@ -629,18 +629,393 @@ class TestProcessCachedResult(unittest.TestCase):
         self.assertEqual(stats["vulnerabilities_found"], 1)
 
 
+class TestErrorCategorization(unittest.TestCase):
+    """Test error categorization and message simplification.
+
+    **Purpose:** Ensure error messages are properly categorized and simplified.
+
+    **Scope:**
+    - Error type detection (rate_limit, network_timeout, network_error, api_error)
+    - Message simplification
+    - Edge cases (empty messages, unknown errors)
+    """
+
+    def test_categorize_rate_limit_error(self):
+        """Test that rate limit errors are correctly identified."""
+        # Test with "rate limit" text
+        result = scanner._categorize_error("Rate limit exceeded")
+        self.assertEqual(result, "rate_limit")
+
+        # Test with 429 status code
+        result = scanner._categorize_error("HTTP 429: Too many requests")
+        self.assertEqual(result, "rate_limit")
+
+    def test_categorize_timeout_error(self):
+        """Test that timeout errors are correctly identified."""
+        result = scanner._categorize_error("Request timed out")
+        self.assertEqual(result, "network_timeout")
+
+        result = scanner._categorize_error("Connection timeout error")
+        self.assertEqual(result, "network_timeout")
+
+    def test_categorize_network_error(self):
+        """Test that network errors are correctly identified."""
+        result = scanner._categorize_error("Network connection failed")
+        self.assertEqual(result, "network_error")
+
+        result = scanner._categorize_error("Connection refused")
+        self.assertEqual(result, "network_error")
+
+    def test_categorize_generic_api_error(self):
+        """Test that generic errors default to api_error."""
+        result = scanner._categorize_error("Unknown API error")
+        self.assertEqual(result, "api_error")
+
+        result = scanner._categorize_error("Invalid response format")
+        self.assertEqual(result, "api_error")
+
+    def test_categorize_empty_error_message(self):
+        """Test handling of empty error message."""
+        result = scanner._categorize_error("")
+        self.assertEqual(result, "api_error")
+
+        result = scanner._categorize_error(None)
+        self.assertEqual(result, "api_error")
+
+    def test_simplify_error_message(self):
+        """Test error type to user-friendly message conversion."""
+        # Test known error types
+        self.assertEqual(scanner._simplify_error_message("rate_limit"), "Rate limit")
+        self.assertEqual(
+            scanner._simplify_error_message("network_timeout"), "Network timeout"
+        )
+        self.assertEqual(
+            scanner._simplify_error_message("network_error"), "Network error"
+        )
+        self.assertEqual(scanner._simplify_error_message("api_error"), "API error")
+
+        # Test unknown error type defaults to "API error"
+        self.assertEqual(scanner._simplify_error_message("unknown_error"), "API error")
+
+
+class TestExtensionDiscoveryErrors(unittest.TestCase):
+    """Test error handling in extension discovery.
+
+    **Purpose:** Ensure discovery failures are handled gracefully.
+
+    **Scope:**
+    - No extensions found
+    - Discovery exceptions
+    - Invalid extension data
+    """
+
+    @patch("vscode_scanner.scanner.ExtensionDiscovery")
+    def test_discover_extensions_no_extensions_found(self, mock_discovery_class):
+        """Test handling when no extensions are found."""
+        # Mock discovery to return empty list
+        mock_discovery = MagicMock()
+        mock_discovery.find_extensions_directory.return_value = Path("/fake/path")
+        mock_discovery.discover_extensions.return_value = []
+        mock_discovery_class.return_value = mock_discovery
+
+        # Create mock args
+        mock_args = MagicMock()
+        mock_args.publisher = None
+        mock_args.include_ids = None
+        mock_args.exclude_ids = None
+
+        # Act
+        extensions, extensions_dir, extension_count = scanner._discover_extensions(
+            mock_args, use_rich=False, quiet=True
+        )
+
+        # Assert
+        self.assertEqual(len(extensions), 0)
+        self.assertEqual(extension_count, 0)
+
+    @patch("vscode_scanner.scanner.ExtensionDiscovery")
+    def test_discover_extensions_directory_not_found(self, mock_discovery_class):
+        """Test handling when extensions directory is not found."""
+        # Mock discovery to raise FileNotFoundError
+        mock_discovery = MagicMock()
+        mock_discovery.find_extensions_directory.side_effect = FileNotFoundError(
+            "Extensions directory not found"
+        )
+        mock_discovery_class.return_value = mock_discovery
+
+        # Create mock args
+        mock_args = MagicMock()
+        mock_args.extensions_dir = None
+
+        # Act & Assert
+        with self.assertRaises(FileNotFoundError):
+            scanner._discover_extensions(mock_args, use_rich=False, quiet=True)
+
+    @patch("vscode_scanner.scanner.ExtensionDiscovery")
+    def test_discover_extensions_permission_error(self, mock_discovery_class):
+        """Test handling when permission denied on extensions directory."""
+        # Mock discovery to raise PermissionError
+        mock_discovery = MagicMock()
+        mock_discovery.find_extensions_directory.return_value = Path("/fake/path")
+        mock_discovery.discover_extensions.side_effect = PermissionError(
+            "Permission denied"
+        )
+        mock_discovery_class.return_value = mock_discovery
+
+        # Create mock args
+        mock_args = MagicMock()
+        mock_args.extensions_dir = None
+
+        # Act & Assert
+        with self.assertRaises(PermissionError):
+            scanner._discover_extensions(mock_args, use_rich=False, quiet=True)
+
+
+class TestScanErrorPaths(unittest.TestCase):
+    """Test error paths during scanning operations.
+
+    **Purpose:** Ensure scan failures are handled gracefully.
+
+    **Scope:**
+    - API client errors
+    - Network failures
+    - Invalid API responses
+    - Cache errors during scan
+    """
+
+    @patch("vscode_scanner.scanner._scan_extension_fresh")
+    def test_scan_single_extension_api_error(self, mock_scan_fresh):
+        """Test handling of API errors during scan."""
+        # Arrange
+        mock_api_client = MagicMock()
+        mock_cache = MagicMock()
+        mock_cache.get_cached_result.return_value = None
+        mock_args = MagicMock()
+        # Use regular dict for stats (not ThreadSafeStats)
+        stats = {
+            "successful_scans": 0,
+            "failed_scans": 0,
+            "vulnerabilities_found": 0,
+            "failed_extensions": [],
+            "api_client": mock_api_client,
+        }
+        scan_results = []
+
+        # Mock API error - exception propagates out, not caught
+        mock_scan_fresh.side_effect = Exception("API request failed")
+
+        ext = {
+            "id": "test.ext",
+            "version": "1.0.0",
+            "name": "Test Ext",
+            "publisher": "test",
+        }
+
+        # Act & Assert - exception propagates out
+        with self.assertRaises(Exception) as ctx:
+            scanner._scan_single_extension(
+                ext,  # ext
+                1,  # idx
+                1,  # total
+                mock_cache,  # cache_manager
+                mock_args,  # args
+                mock_api_client,  # api_client
+                stats,  # stats (Dict)
+                scan_results,  # scan_results
+                False,  # use_rich
+            )
+
+        self.assertIn("API request failed", str(ctx.exception))
+
+    @patch("vscode_scanner.scanner._scan_extension_fresh")
+    def test_scan_single_extension_cache_error(self, mock_scan_fresh):
+        """Test handling of cache errors during scan."""
+        # Arrange
+        mock_cache = MagicMock()
+        mock_api_client = MagicMock()
+        # Mock cache to raise exception - should continue with fresh scan
+        mock_cache.get_cached_result.side_effect = Exception("Cache read error")
+        mock_args = MagicMock()
+        # Use regular dict for stats (not ThreadSafeStats)
+        stats = {
+            "successful_scans": 0,
+            "failed_scans": 0,
+            "vulnerabilities_found": 0,
+            "fresh_scans": 0,
+            "failed_extensions": [],
+            "api_client": mock_api_client,
+        }
+        scan_results = []
+
+        ext = {
+            "id": "test.ext",
+            "version": "1.0.0",
+            "name": "Test Ext",
+            "publisher": "test",
+        }
+
+        # Mock successful API scan after cache error
+        mock_scan_fresh.return_value = None  # Modifies scan_results in place
+
+        # Act - should handle cache error gracefully and continue with fresh scan
+        result = scanner._scan_single_extension(
+            ext,  # ext
+            1,  # idx
+            1,  # total
+            mock_cache,  # cache_manager
+            mock_args,  # args
+            mock_api_client,  # api_client
+            stats,  # stats (Dict)
+            scan_results,  # scan_results
+            False,  # use_rich
+        )
+
+        # Assert - _scan_extension_fresh was called despite cache error
+        mock_scan_fresh.assert_called_once()
+
+
+class TestOutputFileErrors(unittest.TestCase):
+    """Test error handling for output file operations.
+
+    **Purpose:** Ensure file writing errors are handled gracefully.
+
+    **Scope:**
+    - Permission errors
+    - Invalid paths
+    - Disk full scenarios
+    """
+
+    @patch("builtins.open", side_effect=PermissionError("Permission denied"))
+    @patch("vscode_scanner.scanner.safe_mkdir")
+    def test_write_output_file_permission_error(self, mock_mkdir, mock_open):
+        """Test handling of permission error when writing output file."""
+        # Arrange
+        results = {"extensions": [{"id": "test.ext", "version": "1.0.0"}]}
+        output_file = "/protected/output.json"
+
+        # Act & Assert - function lets exception propagate
+        with self.assertRaises(PermissionError):
+            scanner._write_output_file(
+                output_file,  # output_path_str
+                results,  # results
+                False,  # is_html_output
+                False,  # use_rich
+            )
+
+    @patch("builtins.open", side_effect=OSError("Disk full"))
+    @patch("vscode_scanner.scanner.safe_mkdir")
+    def test_write_output_file_disk_full(self, mock_mkdir, mock_open):
+        """Test handling of disk full error when writing output file."""
+        # Arrange
+        results = {"extensions": [{"id": "test.ext", "version": "1.0.0"}]}
+        output_file = "/tmp/output.json"
+
+        # Act & Assert - function lets exception propagate
+        with self.assertRaises(OSError):
+            scanner._write_output_file(
+                output_file,  # output_path_str
+                results,  # results
+                False,  # is_html_output
+                False,  # use_rich
+            )
+
+
+class TestThreadSafeStats(unittest.TestCase):
+    """Test thread-safe statistics tracking.
+
+    **Purpose:** Ensure stats tracking works correctly in multi-threaded environment.
+
+    **Scope:**
+    - Concurrent increments
+    - Counter accuracy
+    - Thread safety verification
+    """
+
+    def test_thread_safe_stats_initialization(self):
+        """Test ThreadSafeStats initialization."""
+        stats = scanner.ThreadSafeStats()
+
+        self.assertEqual(stats.get("vulnerabilities_found"), 0)
+        self.assertEqual(stats.get("successful_scans"), 0)
+        self.assertEqual(stats.get("failed_scans"), 0)
+        self.assertEqual(stats.get("cached_results"), 0)
+        self.assertEqual(stats.get("fresh_scans"), 0)
+
+    def test_thread_safe_stats_increment_vulnerabilities(self):
+        """Test incrementing vulnerability count."""
+        stats = scanner.ThreadSafeStats()
+
+        stats.increment("vulnerabilities_found")
+        self.assertEqual(stats.get("vulnerabilities_found"), 1)
+
+        stats.increment("vulnerabilities_found")
+        self.assertEqual(stats.get("vulnerabilities_found"), 2)
+
+    def test_thread_safe_stats_increment_successful_scans(self):
+        """Test incrementing successful scan count."""
+        stats = scanner.ThreadSafeStats()
+
+        stats.increment("successful_scans")
+        self.assertEqual(stats.get("successful_scans"), 1)
+
+    def test_thread_safe_stats_increment_failed_scans(self):
+        """Test incrementing failed scan count."""
+        stats = scanner.ThreadSafeStats()
+
+        stats.increment("failed_scans")
+        self.assertEqual(stats.get("failed_scans"), 1)
+
+    def test_thread_safe_stats_increment_cached_results(self):
+        """Test incrementing cached result count."""
+        stats = scanner.ThreadSafeStats()
+
+        stats.increment("cached_results")
+        self.assertEqual(stats.get("cached_results"), 1)
+
+    def test_thread_safe_stats_increment_fresh_scans(self):
+        """Test incrementing fresh scan count."""
+        stats = scanner.ThreadSafeStats()
+
+        stats.increment("fresh_scans")
+        self.assertEqual(stats.get("fresh_scans"), 1)
+
+    def test_thread_safe_stats_to_dict(self):
+        """Test converting stats to dictionary."""
+        mock_api = MagicMock()
+        stats = scanner.ThreadSafeStats()
+        stats.set("api_client", mock_api)
+
+        stats.increment("vulnerabilities_found")
+        stats.increment("successful_scans")
+        stats.increment("cached_results")
+
+        result = stats.to_dict()
+
+        self.assertEqual(result["vulnerabilities_found"], 1)
+        self.assertEqual(result["successful_scans"], 1)
+        self.assertEqual(result["cached_results"], 1)
+        self.assertIn("api_client", result)
+
+
 def run_tests():
     """Run all tests."""
     # Create test suite
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 
-    # Add all test classes
+    # Add all test classes (existing)
     suite.addTests(loader.loadTestsFromTestCase(TestRunScan))
     suite.addTests(loader.loadTestsFromTestCase(TestApplyPreScanFilters))
     suite.addTests(loader.loadTestsFromTestCase(TestApplyPostScanFilters))
     suite.addTests(loader.loadTestsFromTestCase(TestCalculateExitCode))
     suite.addTests(loader.loadTestsFromTestCase(TestProcessCachedResult))
+
+    # Add error path test classes (Phase 3.5)
+    suite.addTests(loader.loadTestsFromTestCase(TestErrorCategorization))
+    suite.addTests(loader.loadTestsFromTestCase(TestExtensionDiscoveryErrors))
+    suite.addTests(loader.loadTestsFromTestCase(TestScanErrorPaths))
+    suite.addTests(loader.loadTestsFromTestCase(TestOutputFileErrors))
+    suite.addTests(loader.loadTestsFromTestCase(TestThreadSafeStats))
 
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)

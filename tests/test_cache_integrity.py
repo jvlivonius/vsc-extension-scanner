@@ -387,6 +387,221 @@ class TestCacheIntegrationWithSecurity(unittest.TestCase):
         self.assertTrue(loaded["_cache_hit"])
 
 
+class TestCacheErrorRecovery(unittest.TestCase):
+    """Test cache manager error recovery and resilience.
+
+    **Purpose:** Ensure cache manager handles error conditions gracefully
+    and recovers from various failure scenarios.
+
+    **Scope:**
+    - Database corruption recovery
+    - Secret key file corruption/missing
+    - Invalid JSON in cached results
+    - Permission errors during operations
+    - Concurrent access scenarios
+    """
+
+    def setUp(self):
+        """Create temporary cache directory for each test."""
+        self.test_dir = os.path.join(os.path.expanduser("~"), ".vscan_test_recovery")
+        os.makedirs(self.test_dir, exist_ok=True)
+
+    def tearDown(self):
+        """Clean up temporary cache directory."""
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir)
+
+    def test_database_corruption_recovery(self):
+        """Test that cache manager recovers from corrupted database."""
+        # Arrange: Create cache manager and database
+        cache = CacheManager(cache_dir=self.test_dir)
+        cache_db_path = Path(self.test_dir) / "vscan_cache.db"
+
+        # Corrupt the database by writing garbage
+        with open(cache_db_path, "wb") as f:
+            f.write(b"This is not a valid SQLite database!")
+
+        # Act: Create new cache manager (should recover)
+        try:
+            cache2 = CacheManager(cache_dir=self.test_dir)
+            # Should be able to get cache (empty or recreated)
+            result = cache2.get_cached_result("test.extension", "1.0.0")
+
+            # Assert: Should not crash and return None for missing entry
+            self.assertIsNone(result)
+        except Exception as e:
+            self.fail(f"Cache manager should recover from corruption, but raised: {e}")
+
+    def test_secret_key_missing_recovery(self):
+        """Test that cache manager recreates missing secret key."""
+        # Arrange: Create cache manager and then delete secret key
+        cache1 = CacheManager(cache_dir=self.test_dir)
+        secret_file = Path(self.test_dir) / ".cache_secret"
+
+        # Store original key
+        original_key = cache1._secret_key
+
+        # Delete secret key file
+        secret_file.unlink()
+
+        # Act: Create new cache manager (should recreate key)
+        cache2 = CacheManager(cache_dir=self.test_dir)
+
+        # Assert: Should have a new secret key
+        self.assertIsNotNone(cache2._secret_key)
+        self.assertEqual(len(cache2._secret_key), 32)
+        # Note: New key will be different from original
+        self.assertNotEqual(original_key, cache2._secret_key)
+
+    def test_secret_key_corrupted_recovery(self):
+        """Test that cache manager recovers from corrupted secret key."""
+        # Arrange: Create cache manager
+        cache1 = CacheManager(cache_dir=self.test_dir)
+        secret_file = Path(self.test_dir) / ".cache_secret"
+
+        # Corrupt secret key (wrong size)
+        with open(secret_file, "wb") as f:
+            f.write(b"short")  # Not 32 bytes
+
+        # Act: Create new cache manager (should recreate key)
+        cache2 = CacheManager(cache_dir=self.test_dir)
+
+        # Assert: Should have a valid secret key
+        self.assertIsNotNone(cache2._secret_key)
+        self.assertEqual(len(cache2._secret_key), 32)
+
+    def test_invalid_json_in_cache_handled(self):
+        """Test that invalid JSON in cache is handled gracefully."""
+        # Arrange: Create cache and save valid result first
+        cache = CacheManager(cache_dir=self.test_dir)
+
+        # Save a valid result first to ensure database is initialized
+        valid_result = {
+            "extension_id": "test.extension",
+            "version": "1.0.0",
+            "scan_status": "success",
+            "security_score": 85,
+        }
+        cache.save_result("test.extension", "1.0.0", valid_result)
+
+        # Corrupt the JSON in database
+        conn = sqlite3.connect(cache.cache_db)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE scan_cache
+            SET scan_result = 'INVALID JSON{'
+            WHERE extension_id = 'test.extension' AND version = '1.0.0'
+        """
+        )
+        conn.commit()
+        conn.close()
+
+        # Act: Try to get cached result
+        result = cache.get_cached_result("test.extension", "1.0.0")
+
+        # Assert: Should return None for invalid JSON
+        self.assertIsNone(result)
+
+    def test_empty_cache_directory_initialization(self):
+        """Test that cache manager initializes empty cache directory."""
+        # Arrange: Fresh temp directory
+        new_dir = os.path.join(self.test_dir, "fresh_cache")
+        os.makedirs(new_dir)
+
+        # Act: Create cache manager
+        cache = CacheManager(cache_dir=new_dir)
+
+        # Assert: Should create necessary files
+        self.assertTrue((Path(new_dir) / "cache.db").exists())
+        self.assertTrue((Path(new_dir) / ".cache_secret").exists())
+
+    def test_get_all_cached_results_with_multiple_entries(self):
+        """Test that get_all_cached_results retrieves multiple entries."""
+        # Arrange: Create cache with multiple valid entries
+        cache = CacheManager(cache_dir=self.test_dir)
+
+        # Add first entry
+        result1 = {
+            "extension_id": "ext1.test",
+            "version": "1.0.0",
+            "security_score": 85,
+            "scan_status": "success",
+        }
+        cache.save_result("ext1.test", "1.0.0", result1)
+
+        # Add second entry
+        result2 = {
+            "extension_id": "ext2.test",
+            "version": "2.0.0",
+            "security_score": 75,
+            "scan_status": "success",
+        }
+        cache.save_result("ext2.test", "2.0.0", result2)
+
+        # Act: Get all cached results
+        results = cache.get_all_cached_results()
+
+        # Assert: Should return both entries
+        self.assertIsInstance(results, list)
+        self.assertGreaterEqual(
+            len(results), 2, msg="Should retrieve multiple cached results"
+        )
+
+    def test_cache_statistics_with_multiple_entries(self):
+        """Test that cache statistics count multiple entries correctly."""
+        # Arrange: Create cache with multiple valid entries
+        cache = CacheManager(cache_dir=self.test_dir)
+
+        # Add first entry
+        result1 = {
+            "extension_id": "ext1.test",
+            "version": "1.0.0",
+            "security_score": 85,
+            "scan_status": "success",
+        }
+        cache.save_result("ext1.test", "1.0.0", result1)
+
+        # Add second entry
+        result2 = {
+            "extension_id": "ext2.test",
+            "version": "2.0.0",
+            "security_score": 75,
+            "scan_status": "success",
+        }
+        cache.save_result("ext2.test", "2.0.0", result2)
+
+        # Act: Get cache statistics
+        stats = cache.get_cache_stats()
+
+        # Assert: Should return accurate statistics
+        self.assertIsInstance(stats, dict)
+        self.assertIn("total_entries", stats)
+        self.assertGreaterEqual(
+            stats["total_entries"], 2, msg="Should count multiple cache entries"
+        )
+
+    def test_clear_cache_on_corrupted_database(self):
+        """Test that clear_cache works even with corrupted database."""
+        # Arrange: Create cache manager
+        cache = CacheManager(cache_dir=self.test_dir)
+        cache_db_path = Path(self.test_dir) / "vscan_cache.db"
+
+        # Corrupt database
+        with open(cache_db_path, "wb") as f:
+            f.write(b"corrupted")
+
+        # Act: Try to clear cache
+        try:
+            cleared_count = cache.clear_cache()
+
+            # Assert: Should handle gracefully (return 0 or rebuild)
+            self.assertIsInstance(cleared_count, int)
+        except Exception as e:
+            # If it raises, should be attempting to rebuild
+            self.assertIn("database", str(e).lower())
+
+
 def run_tests():
     """Run all cache integrity tests."""
     # Create test suite
@@ -396,6 +611,7 @@ def run_tests():
     # Add all test classes
     suite.addTests(loader.loadTestsFromTestCase(TestCacheIntegrity))
     suite.addTests(loader.loadTestsFromTestCase(TestCacheIntegrationWithSecurity))
+    suite.addTests(loader.loadTestsFromTestCase(TestCacheErrorRecovery))
 
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
