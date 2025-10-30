@@ -5,6 +5,9 @@ include LICENSE
 include pyproject.toml
 include setup.py
 
+# Include HTML report assets
+recursive-include vscode_scanner/html_report/assets *.css *.js
+
 # Exclude build artifacts
 global-exclude *.pyc
 global-exclude *.pyo
