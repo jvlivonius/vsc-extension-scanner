@@ -533,15 +533,10 @@ class TestCLIErrorHandling(unittest.TestCase):
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Error generating report", result.output)
 
-    @patch("vscode_scanner.utils.validate_path")
-    def test_config_init_handles_invalid_path(self, mock_validate):
-        """Test config init handles invalid config path."""
-        mock_validate.side_effect = ValueError("Invalid path")
-
-        result = self.runner.invoke(cli.app, ["config", "init", "--plain"])
-
-        # Should handle validation error gracefully
-        self.assertNotEqual(result.exit_code, 0)
+    # NOTE: No test for config init path validation - config commands use hardcoded
+    # ~/.vscanrc path (not user input), so validate_path() is not called. Only commands
+    # that accept user-provided paths (cache --cache-dir, scan --extensions-dir, etc.)
+    # require path validation. See config_manager.py:get_config_path() for details.
 
     @patch("vscode_scanner.utils.validate_path")
     def test_cache_stats_handles_path_traversal(self, mock_validate):
