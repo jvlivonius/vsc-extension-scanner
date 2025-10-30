@@ -380,6 +380,194 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
 
 
 # ==============================================================================
+# Auto-Discovery Functions (Phase 3B)
+# ==============================================================================
+
+
+def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
+    """Auto-discover test files using pytest markers.
+
+    Returns:
+        Dictionary mapping TestGroup to list of discovered TestFile objects.
+        Returns empty dict if pytest is not available.
+    """
+    if not PYTEST_AVAILABLE:
+        print(
+            f"{Colors.YELLOW}Warning: pytest not available for auto-discovery.{Colors.RESET}"
+        )
+        return {}
+
+    from _pytest.config import Config
+    from _pytest.main import Session
+
+    # Collect all tests
+    class TestCollector:
+        def __init__(self):
+            self.test_files = {}
+
+        def pytest_collection_finish(self, session):
+            """Called after collection is complete."""
+            for item in session.items:
+                file_path = Path(item.fspath)
+                if not file_path.exists():
+                    continue
+
+                # Get markers
+                markers = {marker.name for marker in item.iter_markers()}
+
+                # Map markers to test groups
+                test_group = None
+                if "unit" in markers:
+                    test_group = TestGroup.UNIT
+                elif "security" in markers:
+                    test_group = TestGroup.SECURITY
+                elif "architecture" in markers:
+                    test_group = TestGroup.ARCHITECTURE
+                elif "parallel" in markers:
+                    test_group = TestGroup.PARALLEL
+                elif "integration" in markers:
+                    test_group = TestGroup.INTEGRATION
+                elif "real_api" in markers or "real-api" in markers:
+                    test_group = TestGroup.REAL_API
+                elif "mock_validation" in markers or "mock-validation" in markers:
+                    test_group = TestGroup.MOCK_VALIDATION
+
+                if test_group:
+                    if test_group not in self.test_files:
+                        self.test_files[test_group] = set()
+                    self.test_files[test_group].add(file_path)
+
+    collector = TestCollector()
+    pytest.main(["--collect-only", "-q", "tests/"], plugins=[collector])
+
+    # Convert to TestFile objects
+    result = {}
+    for group, file_paths in collector.test_files.items():
+        result[group] = [
+            TestFile(
+                path=file_path, group=group, description=f"Auto-discovered from markers"
+            )
+            for file_path in sorted(file_paths)
+        ]
+
+    return result
+
+
+def validate_registry() -> tuple[bool, List[str]]:
+    """Compare TEST_REGISTRY against auto-discovered tests.
+
+    Returns:
+        Tuple of (is_valid, list_of_issues).
+        is_valid is True if registry matches discovery, False otherwise.
+        list_of_issues contains human-readable descriptions of discrepancies.
+    """
+    discovered = discover_test_files()
+    issues = []
+
+    # Build registry lookup
+    registry_files = {}
+    for group in TestGroup:
+        if group in TEST_REGISTRY:
+            for test_file in TEST_REGISTRY[group]:
+                registry_files[test_file.path] = group
+
+    # Build discovered lookup
+    discovered_files = {}
+    for group, files in discovered.items():
+        for test_file in files:
+            discovered_files[test_file.path] = group
+
+    # Check for missing files
+    registry_set = set(registry_files.keys())
+    discovered_set = set(discovered_files.keys())
+
+    missing_from_registry = discovered_set - registry_set
+    missing_from_discovered = registry_set - discovered_set
+    group_mismatches = []
+
+    # Check for group mismatches
+    common_files = registry_set & discovered_set
+    for file_path in common_files:
+        registry_group = registry_files[file_path]
+        discovered_group = discovered_files[file_path]
+        if registry_group != discovered_group:
+            group_mismatches.append(
+                f"{file_path.name}: Registry={registry_group.value}, Discovered={discovered_group.value}"
+            )
+
+    # Build issue list
+    if missing_from_registry:
+        issues.append(
+            f"Files not in TEST_REGISTRY: {', '.join(f.name for f in missing_from_registry)}"
+        )
+
+    if missing_from_discovered:
+        issues.append(
+            f"Files in TEST_REGISTRY but not discovered: {', '.join(f.name for f in missing_from_discovered)}"
+        )
+
+    if group_mismatches:
+        issues.extend([f"Group mismatch: {mismatch}" for mismatch in group_mismatches])
+
+    is_valid = len(issues) == 0
+    return is_valid, issues
+
+
+def sync_registry(dry_run: bool = True) -> str:
+    """Generate Python code for TEST_REGISTRY from discovered tests.
+
+    Args:
+        dry_run: If True, only generate code without modifying file.
+
+    Returns:
+        Generated Python code for TEST_REGISTRY definition.
+    """
+    discovered = discover_test_files()
+
+    # Generate Python code
+    lines = ["TEST_REGISTRY = {"]
+
+    for group in TestGroup:
+        if group not in discovered or not discovered[group]:
+            continue
+
+        lines.append(f"    TestGroup.{group.name}: [")
+
+        for test_file in sorted(discovered[group], key=lambda x: x.path.name):
+            # Try to extract description from file docstring
+            description = test_file.description
+            try:
+                content = test_file.path.read_text()
+                docstring_match = re.search(r'"""([^"]+)"""', content)
+                if docstring_match:
+                    first_line = docstring_match.group(1).split("\n")[0].strip()
+                    if first_line and len(first_line) < 80:
+                        description = first_line
+            except (OSError, UnicodeDecodeError):
+                pass
+
+            lines.append(
+                f'        TestFile(Path("{test_file.path}"), TestGroup.{group.name}, "{description}"),'
+            )
+
+        lines.append("    ],")
+
+    lines.append("}")
+
+    generated_code = "\n".join(lines)
+
+    if not dry_run:
+        print(
+            f"{Colors.YELLOW}Note: Automatic registry update not implemented yet.{Colors.RESET}"
+        )
+        print(
+            f"{Colors.YELLOW}Copy the generated code and update TEST_REGISTRY manually.{Colors.RESET}"
+        )
+
+    return generated_code
+
+
+# ==============================================================================
 # Color Support
 # ==============================================================================
 
@@ -1054,7 +1242,7 @@ class TestRunner:
 # ==============================================================================
 
 
-def main():
+def main():  # pylint: disable=too-many-return-statements
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="VS Code Extension Scanner Test Suite Runner",
@@ -1083,6 +1271,23 @@ def main():
         help="Run mock validation tests (slow)",
     )
     parser.add_argument("--all", action="store_true", help="Run all test groups")
+
+    # Auto-Discovery (Phase 3B)
+    parser.add_argument(
+        "--auto-discover",
+        action="store_true",
+        help="Auto-discover tests using pytest markers and display results",
+    )
+    parser.add_argument(
+        "--validate-registry",
+        action="store_true",
+        help="Validate TEST_REGISTRY against auto-discovered tests",
+    )
+    parser.add_argument(
+        "--sync-registry",
+        action="store_true",
+        help="Generate TEST_REGISTRY code from auto-discovered tests (dry-run)",
+    )
 
     # Options
     parser.add_argument("--skip-slow", action="store_true", help="Skip slow tests")
@@ -1125,6 +1330,54 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Handle auto-discovery commands (Phase 3C)
+    if args.auto_discover:
+        print(f"{Colors.BOLD}Auto-Discovery Results:{Colors.RESET}\n")
+        discovered = discover_test_files()
+
+        if not discovered:
+            print(f"{Colors.YELLOW}No tests discovered.{Colors.RESET}")
+            return 0
+
+        total_files = 0
+        for group, test_files in sorted(discovered.items(), key=lambda x: x[0].value):
+            print(f"{Colors.CYAN}{group.value}:{Colors.RESET}")
+            for test_file in sorted(test_files, key=lambda x: x.path.name):
+                print(f"  - {test_file.path.name}")
+            print(f"  {Colors.BOLD}Total: {len(test_files)} files{Colors.RESET}\n")
+            total_files += len(test_files)
+
+        print(
+            f"{Colors.BOLD}Grand Total: {total_files} test files discovered{Colors.RESET}"
+        )
+        return 0
+
+    if args.validate_registry:
+        print(f"{Colors.BOLD}Validating TEST_REGISTRY...{Colors.RESET}\n")
+        is_valid, issues = validate_registry()
+
+        if is_valid:
+            print(
+                f"{Colors.GREEN}✓ TEST_REGISTRY is valid and matches discovered tests!{Colors.RESET}"
+            )
+            return 0
+        else:
+            print(f"{Colors.RED}✗ TEST_REGISTRY validation failed:{Colors.RESET}\n")
+            for issue in issues:
+                print(f"  - {issue}")
+            return 1
+
+    if args.sync_registry:
+        print(
+            f"{Colors.BOLD}Generating TEST_REGISTRY code from discovered tests...{Colors.RESET}\n"
+        )
+        generated_code = sync_registry(dry_run=True)
+        print(generated_code)
+        print(
+            f"\n{Colors.YELLOW}Note: This is a dry-run. Copy the code above to update TEST_REGISTRY.{Colors.RESET}"
+        )
+        return 0
 
     # Determine which groups to run
     groups = []
