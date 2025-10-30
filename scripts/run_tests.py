@@ -2,22 +2,26 @@
 """
 Test Suite Runner for VS Code Extension Scanner
 
-Unified test execution with standardized output, supporting multiple test groups
-and output formats.
+Simplified test execution with auto-discovery and preset aliases.
 
-Usage:
+Quick Start - Preset Aliases:
+    python3 scripts/run_tests.py --fast      # Fast: unit + security, skip slow
+    python3 scripts/run_tests.py --ci        # CI: all except real API, skip slow
+    python3 scripts/run_tests.py --report    # Report: all tests with HTML coverage
+
+Advanced Usage:
     python3 scripts/run_tests.py --all
     python3 scripts/run_tests.py --unit --security
     python3 scripts/run_tests.py --all --skip-slow
     python3 scripts/run_tests.py --all --output json --output-file results.json
-    python3 scripts/run_tests.py --all --output junit --output-file results.xml
-    python3 scripts/run_tests.py --all --coverage
     python3 scripts/run_tests.py --all --coverage --coverage-format html
-    python3 scripts/run_tests.py --all --coverage --coverage-threshold 85.0
-    python3 scripts/run_tests.py --all --pytest
-    python3 scripts/run_tests.py --all --pytest --coverage
 
-Test Groups:
+Preset Aliases (Recommended):
+    --fast              Unit + security tests, skip slow (ideal for development)
+    --ci                All tests except real API, skip slow (ideal for CI/CD)
+    --report            All tests with HTML coverage report
+
+Test Groups (Auto-Discovered):
     --unit              Fast unit tests (scanner, display, CLI, validators, commands, utils)
     --security          Security validation tests (includes property-based tests)
     --architecture      Architecture compliance tests
@@ -27,13 +31,16 @@ Test Groups:
     --mock-validation   Mock validation tests (slow)
     --all               All test groups
 
+Test Discovery:
+    Tests auto-discovered via pytest markers (@pytest.mark.unit, @pytest.mark.security, etc.)
+    No manual test registration required - new tests automatically included
+
 Test Coverage:
-    36 test files, 604+ tests
+    36 test files, 592+ tests (auto-discovered)
     Includes 21 property-based tests generating 21,000+ test scenarios
 
 Options:
     --skip-slow         Skip slow tests
-    --skip-real-api     Skip tests that make real API calls
     --output FORMAT     Output format: console (default), json, junit
     --output-file PATH  Output file for json/junit formats
     --verbose           Verbose output
@@ -41,7 +48,6 @@ Options:
     --coverage          Enable coverage measurement (requires: pip install coverage)
     --coverage-format   Coverage report format: term,html,xml,json (default: term)
     --coverage-threshold PCT  Minimum required coverage percentage
-    --pytest            Use pytest runner for in-process execution (requires: pip install pytest)
 
 Exit Codes:
     0 - All tests passed
@@ -49,8 +55,8 @@ Exit Codes:
     2 - No tests found
     3 - Execution error
 
-Version: 1.3
-Updated: 2025-10-30 (Phase 2: Pytest Integration)
+Version: 2.0
+Updated: 2025-10-30 (Phase 3: Auto-Discovery + Presets)
 """
 
 import sys

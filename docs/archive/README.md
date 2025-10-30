@@ -6,6 +6,7 @@ This directory contains **archived documentation** from completed project phases
 
 ```
 docs/archive/
+├── code/       # Archived scripts and proof-of-concepts (version-tagged)
 ├── plans/      # Roadmaps, requirements, and planning documents
 ├── summaries/  # Release notes and completion summaries
 └── reviews/    # Analysis, research, and retrospective documents
@@ -266,6 +267,19 @@ docs/archive/
 - $588/year savings (Semgrep OSS vs CodeQL GitHub Enterprise)
 
 **Status:** Complete (4/4 tools implemented). v3.5.2 released 2025-10-29. Total investment: 8.5 hours, $0 cost.
+
+---
+
+## Archived Code
+
+**Location:** [code/](code/)
+
+Historical scripts and proof-of-concepts that are no longer actively used but preserved for development history. See [code/README.md](code/README.md) for details.
+
+**Current Archive:**
+- [v3.4-poc-parallel-scan.py](code/v3.4-poc-parallel-scan.py) - Parallel scanning PoC (feature shipped in v3.5.0)
+- [v3.5.2-migration-add-pytest-markers.py](code/v3.5.2-migration-add-pytest-markers.py) - Pytest marker migration (complete)
+- [v3.5.1-setup-security-tools.sh](code/v3.5.1-setup-security-tools.sh) - Security tools setup (superseded by `pip install -e .[dev]`)
 
 ---
 

@@ -30,6 +30,8 @@ These documents define critical constraints and requirements that must be follow
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service.
 
+**IMPORTANT**: This is an **unofficial, community-maintained tool**. All security analysis is **powered by [vscan.dev](https://vscan.dev)**. We are deeply grateful to vscan.dev for providing their public API. This tool is NOT affiliated with or endorsed by vscan.dev. For complete legal and attribution information, see [docs/project/ATTRIBUTION.md](docs/project/ATTRIBUTION.md).
+
 **See:** [README.md](README.md) for features and [docs/project/STATUS.md](docs/project/STATUS.md) for current development status.
 
 ---
@@ -109,6 +111,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Finding Historical Info:**
 - [docs/archive/README.md](docs/archive/README.md) - Version timeline & complete archive index
+- [docs/archive/code/](docs/archive/code/) - Archived scripts (PoCs, migrations, superseded tools)
 - [docs/archive/plans/](docs/archive/plans/) - Historical roadmaps (vX.Y-roadmap.md format)
 - [docs/archive/summaries/](docs/archive/summaries/) - Release notes (vX.Y.Z-release-notes.md format)
 - [docs/archive/reviews/](docs/archive/reviews/) - Decision rationale, architectural reviews, analysis
@@ -220,7 +223,9 @@ vsc-extension-scanner/
 │   ├── types.py           # Result dataclasses (Application)
 │   └── utils.py           # Path validation, sanitization (Infrastructure)
 ├── scripts/
-│   └── bump_version.py    # Version management tool
+│   ├── bump_version.py           # Version management tool
+│   ├── check_doc_freshness.sh    # Documentation quality validation
+│   └── run_tests.py              # Test runner with pytest integration
 ├── tests/                 # Test files (604 tests, 100% passing, 52% coverage)
 │   ├── test_security_regression.py  # Security test suite
 │   ├── test_path_validation.py      # Path validation tests
@@ -233,9 +238,9 @@ vsc-extension-scanner/
 │   ├── test_architecture.py         # Layer compliance tests
 │   └── ...                          # Additional test files
 ├── docs/                  # Documentation (see docs/README.md)
+│   └── archive/code/      # Archived scripts (PoCs, migrations, superseded tools)
 ├── vscan                  # Convenience wrapper for development
-├── setup.py               # Build configuration
-├── pyproject.toml         # Modern Python packaging
+├── pyproject.toml         # Modern Python packaging (PEP 621)
 └── MANIFEST.in            # Distribution rules
 ```
 
