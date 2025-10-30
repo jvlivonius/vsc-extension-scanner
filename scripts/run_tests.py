@@ -144,9 +144,9 @@ if PYTEST_AVAILABLE:
                     # Collect error details
                     if hasattr(report, "longreprtext"):
                         self.errors.append(report.longreprtext)
-            elif report.when == "setup" and report.skipped:
-                # Count skipped tests
-                self.tests_skipped += 1
+                elif report.skipped:
+                    # Count skipped tests (when='call' for skipped tests)
+                    self.tests_skipped += 1
 
         def get_duration(self) -> float:
             """Get total test duration."""
