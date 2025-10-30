@@ -158,7 +158,7 @@ if PYTEST_AVAILABLE:
             self.errors = []
             self.start_time = None
 
-        def pytest_sessionstart(self, _session):
+        def pytest_sessionstart(self, session):  # pylint: disable=unused-argument
             """Called at start of test session."""
             self.start_time = time.time()
 
