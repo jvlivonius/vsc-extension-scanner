@@ -797,7 +797,12 @@ class TestRunner:
     def _print_group_summary(self, group: TestGroup, test_files: List[TestFile]):
         """Print group summary."""
         group_results = [
-            r for r in self.results if any(tf.path.name == r.file for tf in test_files)
+            r
+            for r in self.results
+            if r.file == f"{group.value} (pytest)"
+            or any(  # Match pytest grouped results
+                tf.path.name == r.file for tf in test_files
+            )  # Match subprocess individual results
         ]
 
         total_tests = sum(r.tests_run for r in group_results)
