@@ -26,9 +26,12 @@ from pathlib import Path
 from io import StringIO
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 from vscode_scanner import utils
 
 
+@pytest.mark.unit
 class TestFormatDuration(unittest.TestCase):
     """Test duration formatting for human-readable output.
 
@@ -74,6 +77,7 @@ class TestFormatDuration(unittest.TestCase):
         self.assertIn("m", result)
 
 
+@pytest.mark.unit
 class TestTruncateText(unittest.TestCase):
     """Test text truncation functionality.
 
@@ -129,6 +133,7 @@ class TestTruncateText(unittest.TestCase):
         self.assertTrue(result.endswith("..."))
 
 
+@pytest.mark.unit
 class TestSafeMkdir(unittest.TestCase):
     """Test safe directory creation with permissions.
 
@@ -193,6 +198,7 @@ class TestSafeMkdir(unittest.TestCase):
         self.assertEqual(stat_mode, 0o755)
 
 
+@pytest.mark.unit
 class TestSafeTouch(unittest.TestCase):
     """Test safe file creation with permissions.
 
@@ -247,6 +253,7 @@ class TestSafeTouch(unittest.TestCase):
         self.assertEqual(stat_mode, 0o600)
 
 
+@pytest.mark.unit
 class TestSafeChmod(unittest.TestCase):
     """Test safe permission modification.
 
@@ -301,6 +308,7 @@ class TestSafeChmod(unittest.TestCase):
             utils._safe_chmod(self.test_file, 0o644)
 
 
+@pytest.mark.unit
 class TestGetErrorType(unittest.TestCase):
     """Test error type detection from error messages.
 
@@ -365,6 +373,7 @@ class TestGetErrorType(unittest.TestCase):
         self.assertEqual(utils.get_error_type("Unexpected failure"), "unknown")
 
 
+@pytest.mark.unit
 class TestShowErrorHelp(unittest.TestCase):
     """Test error help display functionality.
 
@@ -405,6 +414,7 @@ class TestShowErrorHelp(unittest.TestCase):
         self.assertEqual(mock_log.call_count, 0)
 
 
+@pytest.mark.unit
 class TestLogging(unittest.TestCase):
     """Test logging functionality.
 

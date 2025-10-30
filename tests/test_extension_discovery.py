@@ -27,6 +27,8 @@ import platform
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 from vscode_scanner.extension_discovery import ExtensionDiscovery
 
 
@@ -35,6 +37,7 @@ from vscode_scanner.extension_discovery import ExtensionDiscovery
 # ============================================================
 
 
+@pytest.mark.unit
 class TestPlatformDetection(unittest.TestCase):
     """Test suite for platform-specific directory detection.
 
@@ -165,6 +168,7 @@ class TestPlatformDetection(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestCustomDirectory(unittest.TestCase):
     """Test suite for custom extensions directory support.
 
@@ -239,6 +243,7 @@ class TestCustomDirectory(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestExtensionsJsonParsing(unittest.TestCase):
     """Test suite for extensions.json parsing.
 
@@ -374,6 +379,7 @@ class TestExtensionsJsonParsing(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestPackageJsonParsing(unittest.TestCase):
     """Test suite for package.json parsing.
 
@@ -520,6 +526,7 @@ class TestPackageJsonParsing(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestExtensionDiscovery(unittest.TestCase):
     """Test suite for extension discovery integration.
 

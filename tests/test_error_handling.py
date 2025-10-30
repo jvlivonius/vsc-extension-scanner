@@ -23,6 +23,8 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 # Check if typer is available
 try:
     import typer
@@ -42,6 +44,7 @@ if TYPER_AVAILABLE:
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestKeyboardInterruptHandling(unittest.TestCase):
     """Test suite for KeyboardInterrupt handling.
 
@@ -101,6 +104,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestReportPermissionErrors(unittest.TestCase):
     """Test suite for PermissionError handling in report command.
 
@@ -191,6 +195,7 @@ class TestReportPermissionErrors(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestExtensionDiscoveryPermissionErrors(unittest.TestCase):
     """Test suite for PermissionError in extension discovery.
 
@@ -232,6 +237,7 @@ class TestExtensionDiscoveryPermissionErrors(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestGenericErrorHandling(unittest.TestCase):
     """Test suite for generic error handling.
 
@@ -299,6 +305,7 @@ class TestGenericErrorHandling(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestExitCodeConsistency(unittest.TestCase):
     """Test suite for exit code consistency.
 

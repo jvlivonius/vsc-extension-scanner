@@ -17,6 +17,7 @@ Created: 2025-10-24 (Phase 4.0: Test Infrastructure)
 import ast
 import sys
 import unittest
+import pytest
 import yaml
 from pathlib import Path
 from typing import Set, List, Dict, Optional
@@ -155,6 +156,7 @@ def get_all_modules() -> List[str]:
     return sorted(modules)
 
 
+@pytest.mark.architecture
 class TestArchitectureLayering(unittest.TestCase):
     """Test suite for architectural layer boundary validation."""
 

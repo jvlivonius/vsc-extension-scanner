@@ -9,6 +9,8 @@ import sys
 import os
 import unittest
 from unittest.mock import Mock, patch, MagicMock
+
+import pytest
 import time
 import urllib.error
 
@@ -18,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vscode_scanner.vscan_api import VscanAPIClient
 
 
+@pytest.mark.integration
 class TestRetryMechanism(unittest.TestCase):
     """Test suite for retry mechanism."""
 
@@ -341,6 +344,7 @@ class TestRetryMechanism(unittest.TestCase):
             self.assertEqual(stats["total_retries"], 0)
 
 
+@pytest.mark.integration
 class TestRetryIntegration(unittest.TestCase):
     """Integration tests for retry mechanism with actual API methods."""
 

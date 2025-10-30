@@ -19,6 +19,8 @@ import sqlite3
 import json
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
+
+import pytest
 from types import SimpleNamespace
 
 # Add parent directory to path
@@ -28,6 +30,7 @@ from vscode_scanner.scanner import _scan_extensions
 from vscode_scanner.cache_manager import CacheManager
 
 
+@pytest.mark.unit
 class TestTransactionalCacheWrites(unittest.TestCase):
     """Test transactional cache writes with interrupt handling."""
 

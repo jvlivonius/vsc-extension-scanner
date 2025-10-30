@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -31,6 +33,7 @@ from vscode_scanner.display import display_failed_extensions
 from vscode_scanner.output_formatter import OutputFormatter
 
 
+@pytest.mark.unit
 class TestErrorCategorization(unittest.TestCase):
     """Test error categorization logic."""
 
@@ -68,6 +71,7 @@ class TestErrorCategorization(unittest.TestCase):
         self.assertEqual(_categorize_error(None), "api_error")
 
 
+@pytest.mark.unit
 class TestErrorMessageSimplification(unittest.TestCase):
     """Test error message simplification."""
 
@@ -92,6 +96,7 @@ class TestErrorMessageSimplification(unittest.TestCase):
         self.assertEqual(_simplify_error_message("unknown_type"), "API error")
 
 
+@pytest.mark.unit
 class TestFailedExtensionsTracking(unittest.TestCase):
     """Test failed extensions tracking during scan."""
 
@@ -185,6 +190,7 @@ class TestFailedExtensionsTracking(unittest.TestCase):
         self.assertEqual(len(stats["failed_extensions"]), 0)
 
 
+@pytest.mark.unit
 class TestFailedExtensionsDisplayRich(unittest.TestCase):
     """Test Rich mode display for failed extensions."""
 
@@ -261,6 +267,7 @@ class TestFailedExtensionsDisplayRich(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
 
+@pytest.mark.unit
 class TestFailedExtensionsDisplayPlain(unittest.TestCase):
     """Test Plain mode display for failed extensions."""
 
@@ -337,6 +344,7 @@ class TestFailedExtensionsDisplayPlain(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
 
+@pytest.mark.unit
 class TestFailedExtensionsJSONOutput(unittest.TestCase):
     """Test JSON output includes failed_extensions."""
 

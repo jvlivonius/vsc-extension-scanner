@@ -21,6 +21,7 @@ import sys
 import os
 import tempfile
 import unittest
+import pytest
 from pathlib import Path
 
 # Add parent directory to path
@@ -29,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from vscode_scanner.utils import validate_path
 
 
+@pytest.mark.security
 class TestPathValidation(unittest.TestCase):
     """Test the enhanced validate_path() function."""
 
@@ -238,6 +240,7 @@ class TestPathValidation(unittest.TestCase):
             self.assertIn(path_type, str(cm.exception).lower())
 
 
+@pytest.mark.security
 class TestPathValidationIntegration(unittest.TestCase):
     """Integration tests for path validation in actual modules."""
 

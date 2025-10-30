@@ -10,6 +10,8 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 import time
 
 # Add parent directory to path
@@ -23,6 +25,7 @@ from vscode_scanner.constants import (
 )
 
 
+@pytest.mark.integration
 class TestWorkflowRetry(unittest.TestCase):
     """Test workflow-level retry functionality."""
 

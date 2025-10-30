@@ -17,6 +17,8 @@ import shutil
 import json
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
+
+import pytest
 from types import SimpleNamespace
 
 # Add parent directory to path for imports
@@ -32,6 +34,7 @@ from vscode_scanner.scanner import (
 from vscode_scanner.cache_manager import CacheManager
 
 
+@pytest.mark.parallel
 class TestParallelScanningBasic(unittest.TestCase):
     """Test basic parallel scanning functionality."""
 
@@ -131,6 +134,7 @@ class TestParallelScanningBasic(unittest.TestCase):
             )
 
 
+@pytest.mark.parallel
 class TestWorkerIsolation(unittest.TestCase):
     """Test that each worker has isolated API client."""
 
@@ -226,6 +230,7 @@ class TestWorkerIsolation(unittest.TestCase):
             self.assertEqual(mock_api_class.call_count, 5)
 
 
+@pytest.mark.parallel
 class TestThreadSafety(unittest.TestCase):
     """Test thread safety of cache operations."""
 
@@ -331,6 +336,7 @@ class TestThreadSafety(unittest.TestCase):
         self.assertEqual(stats["fresh_scans"], 0)
 
 
+@pytest.mark.parallel
 class TestErrorHandling(unittest.TestCase):
     """Test error handling in parallel mode."""
 
@@ -449,6 +455,7 @@ class TestErrorHandling(unittest.TestCase):
             self.assertIn("error_type", stats["failed_extensions"][0])
 
 
+@pytest.mark.parallel
 class TestResultConsistency(unittest.TestCase):
     """Test that parallel and sequential modes produce consistent results."""
 
@@ -556,6 +563,7 @@ class TestResultConsistency(unittest.TestCase):
         self.assertEqual(seq_ids, par_ids)
 
 
+@pytest.mark.parallel
 class TestIntegration(unittest.TestCase):
     """Integration tests for parallel scanning."""
 
@@ -612,6 +620,7 @@ class TestIntegration(unittest.TestCase):
             self.assertEqual(exit_code, 0)
 
 
+@pytest.mark.parallel
 class TestThreadSafeStats(unittest.TestCase):
     """Test ThreadSafeStats class for thread safety (v3.5.1 Task 5)."""
 

@@ -9,6 +9,8 @@ import sys
 import os
 import unittest
 from unittest.mock import patch, MagicMock, call
+
+import pytest
 import tempfile
 from pathlib import Path
 
@@ -18,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vscode_scanner import scanner
 
 
+@pytest.mark.unit
 class TestRunScan(unittest.TestCase):
     """Test the main run_scan() function."""
 
@@ -146,6 +149,7 @@ class TestRunScan(unittest.TestCase):
         self.assertEqual(exit_code, 0)
 
 
+@pytest.mark.unit
 class TestApplyPreScanFilters(unittest.TestCase):
     """Test pre-scan filtering logic."""
 
@@ -210,6 +214,7 @@ class TestApplyPreScanFilters(unittest.TestCase):
         self.assertNotIn("microsoft.vscode", ids)
 
 
+@pytest.mark.unit
 class TestApplyPostScanFilters(unittest.TestCase):
     """Test post-scan filtering logic (risk level)."""
 
@@ -280,6 +285,7 @@ class TestApplyPostScanFilters(unittest.TestCase):
         self.assertIn("critical", risk_levels)
 
 
+@pytest.mark.unit
 class TestNewFilteringFeatures(unittest.TestCase):
     """Test new v3.3.1 filtering features (publisher verification, vulnerabilities)."""
 
@@ -557,6 +563,7 @@ class TestNewFilteringFeatures(unittest.TestCase):
         self.assertFalse(scanner._get_verification_status(result_empty))
 
 
+@pytest.mark.unit
 class TestCalculateExitCode(unittest.TestCase):
     """Test exit code calculation."""
 
@@ -574,6 +581,7 @@ class TestCalculateExitCode(unittest.TestCase):
         self.assertEqual(exit_code, 1)
 
 
+@pytest.mark.unit
 class TestProcessCachedResult(unittest.TestCase):
     """Test cached result processing."""
 
@@ -629,6 +637,7 @@ class TestProcessCachedResult(unittest.TestCase):
         self.assertEqual(stats["vulnerabilities_found"], 1)
 
 
+@pytest.mark.unit
 class TestErrorCategorization(unittest.TestCase):
     """Test error categorization and message simplification.
 
@@ -698,6 +707,7 @@ class TestErrorCategorization(unittest.TestCase):
         self.assertEqual(scanner._simplify_error_message("unknown_error"), "API error")
 
 
+@pytest.mark.unit
 class TestExtensionDiscoveryErrors(unittest.TestCase):
     """Test error handling in extension discovery.
 
@@ -771,6 +781,7 @@ class TestExtensionDiscoveryErrors(unittest.TestCase):
             scanner._discover_extensions(mock_args, use_rich=False, quiet=True)
 
 
+@pytest.mark.unit
 class TestScanErrorPaths(unittest.TestCase):
     """Test error paths during scanning operations.
 
@@ -874,6 +885,7 @@ class TestScanErrorPaths(unittest.TestCase):
         mock_scan_fresh.assert_called_once()
 
 
+@pytest.mark.unit
 class TestOutputFileErrors(unittest.TestCase):
     """Test error handling for output file operations.
 
@@ -920,6 +932,7 @@ class TestOutputFileErrors(unittest.TestCase):
             )
 
 
+@pytest.mark.unit
 class TestThreadSafeStats(unittest.TestCase):
     """Test thread-safe statistics tracking.
 

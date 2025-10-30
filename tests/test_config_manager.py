@@ -26,6 +26,8 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 from vscode_scanner import config_manager
 from vscode_scanner.config_manager import (
     get_config_path,
@@ -49,6 +51,7 @@ from vscode_scanner.types import ConfigWarning
 # ============================================================
 
 
+@pytest.mark.unit
 class TestConfigPath(unittest.TestCase):
     """Test suite for config path operations.
 
@@ -103,6 +106,7 @@ class TestConfigPath(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestConfigLoad(unittest.TestCase):
     """Test suite for config file loading.
 
@@ -247,6 +251,7 @@ delay = 2.5
 # ============================================================
 
 
+@pytest.mark.unit
 class TestValueValidation(unittest.TestCase):
     """Test suite for config value validation.
 
@@ -366,6 +371,7 @@ class TestValueValidation(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestConfigKeyParsing(unittest.TestCase):
     """Test suite for config key parsing and validation.
 
@@ -418,6 +424,7 @@ class TestConfigKeyParsing(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestConfigOperations(unittest.TestCase):
     """Test suite for config file operations.
 
@@ -585,6 +592,7 @@ class TestConfigOperations(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestEdgeCases(unittest.TestCase):
     """Test suite for edge cases and error handling.
 

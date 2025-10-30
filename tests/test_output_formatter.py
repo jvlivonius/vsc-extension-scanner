@@ -22,6 +22,7 @@ Mocking Strategy:
 """
 
 import unittest
+import pytest
 from datetime import datetime
 from vscode_scanner.output_formatter import OutputFormatter
 
@@ -31,6 +32,7 @@ from vscode_scanner.output_formatter import OutputFormatter
 # ============================================================
 
 
+@pytest.mark.unit
 class TestOutputFormatterBasic(unittest.TestCase):
     """Test suite for basic output formatting operations.
 
@@ -93,6 +95,7 @@ class TestOutputFormatterBasic(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestSummaryFormatting(unittest.TestCase):
     """Test suite for summary section formatting.
 
@@ -254,6 +257,7 @@ class TestSummaryFormatting(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestExtensionFormatting(unittest.TestCase):
     """Test suite for individual extension formatting.
 
@@ -423,6 +427,7 @@ class TestExtensionFormatting(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestCSVFormatting(unittest.TestCase):
     """Test suite for CSV export formatting.
 
@@ -542,6 +547,7 @@ class TestCSVFormatting(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestEdgeCases(unittest.TestCase):
     """Test suite for edge cases and error handling.
 

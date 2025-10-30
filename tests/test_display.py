@@ -10,12 +10,15 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from vscode_scanner import display
 
 
+@pytest.mark.unit
 class TestShouldUseRich(unittest.TestCase):
     """Test the should_use_rich() detection logic."""
 
@@ -62,6 +65,7 @@ class TestShouldUseRich(unittest.TestCase):
         self.assertFalse(display.should_use_rich())
 
 
+@pytest.mark.unit
 class TestTableGeneration(unittest.TestCase):
     """Test table generation functions."""
 
@@ -121,6 +125,7 @@ class TestTableGeneration(unittest.TestCase):
         self.assertEqual(len(table.columns), 3)
 
 
+@pytest.mark.unit
 class TestScanDashboard(unittest.TestCase):
     """Test the ScanDashboard class."""
 
@@ -158,6 +163,7 @@ class TestScanDashboard(unittest.TestCase):
         self.assertIsNotNone(panel)
 
 
+@pytest.mark.unit
 class TestDisplayFunctions(unittest.TestCase):
     """Test display helper functions."""
 
@@ -197,6 +203,7 @@ class TestDisplayFunctions(unittest.TestCase):
         self.assertIn("Test message", args[0])
 
 
+@pytest.mark.unit
 class TestProgressBar(unittest.TestCase):
     """Test progress bar creation."""
 
@@ -206,6 +213,7 @@ class TestProgressBar(unittest.TestCase):
         self.assertIsNotNone(progress)
 
 
+@pytest.mark.unit
 class TestFilterSummary(unittest.TestCase):
     """Test filter summary table generation."""
 
@@ -235,6 +243,7 @@ class TestFilterSummary(unittest.TestCase):
         self.assertIsNone(table)
 
 
+@pytest.mark.unit
 class TestPlainResultsDisplay(unittest.TestCase):
     """Test display_results_plain() function."""
 
@@ -416,6 +425,7 @@ class TestPlainResultsDisplay(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
 
+@pytest.mark.unit
 class TestRetryStatsTable(unittest.TestCase):
     """Test create_retry_stats_table() function."""
 
@@ -485,6 +495,7 @@ class TestRetryStatsTable(unittest.TestCase):
         self.assertIsNotNone(table)
 
 
+@pytest.mark.unit
 class TestDisplaySummary(unittest.TestCase):
     """Test display_summary() function."""
 
@@ -582,6 +593,7 @@ class TestDisplaySummary(unittest.TestCase):
         self.assertTrue(any("5" in call for call in calls))
 
 
+@pytest.mark.unit
 class TestDisplayInfo(unittest.TestCase):
     """Test display_info() function."""
 
@@ -618,6 +630,7 @@ class TestDisplayInfo(unittest.TestCase):
         mock_console.print.assert_called_once()
 
 
+@pytest.mark.unit
 class TestFailedExtensionsDisplay(unittest.TestCase):
     """Test display_failed_extensions() and related functions."""
 
@@ -707,6 +720,7 @@ class TestFailedExtensionsDisplay(unittest.TestCase):
         self.assertTrue(any("1 extension" in call for call in calls))
 
 
+@pytest.mark.unit
 class TestTableGenerationEdgeCases(unittest.TestCase):
     """Test edge cases for table generation functions."""
 
@@ -771,6 +785,7 @@ class TestTableGenerationEdgeCases(unittest.TestCase):
         self.assertIsNotNone(table)
 
 
+@pytest.mark.unit
 class TestScanDashboardEdgeCases(unittest.TestCase):
     """Test edge cases for ScanDashboard class."""
 

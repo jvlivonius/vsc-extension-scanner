@@ -10,6 +10,7 @@ Tests:
 """
 
 import unittest
+import pytest
 import tempfile
 import os
 from pathlib import Path
@@ -31,6 +32,7 @@ from vscode_scanner.config_manager import (
 )
 
 
+@pytest.mark.unit
 class TestExtensionsDirConfigSchema(unittest.TestCase):
     """Test that extensions_dir is properly defined in config schema."""
 
@@ -50,6 +52,7 @@ class TestExtensionsDirConfigSchema(unittest.TestCase):
         self.assertIsNone(schema_entry[2])  # No max constraint
 
 
+@pytest.mark.unit
 class TestExtensionsDirConfigOperations(unittest.TestCase):
     """Test config file operations for extensions_dir."""
 
@@ -130,6 +133,7 @@ class TestExtensionsDirConfigOperations(unittest.TestCase):
         self.assertEqual(config["scan"]["extensions_dir"], test_path)
 
 
+@pytest.mark.unit
 class TestExtensionsDirCLIIntegration(unittest.TestCase):
     """Test CLI integration with extensions_dir config."""
 
@@ -224,6 +228,7 @@ class TestExtensionsDirCLIIntegration(unittest.TestCase):
         self.assertTrue(str(expanded_path).startswith(str(Path.home())))
 
 
+@pytest.mark.unit
 class TestExtensionsDirValidation(unittest.TestCase):
     """Test validation behavior for extensions_dir."""
 

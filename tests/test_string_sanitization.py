@@ -18,6 +18,7 @@ This addresses security concerns for CLI output:
 
 import sys
 import unittest
+import pytest
 from pathlib import Path
 
 # Add parent directory to path
@@ -26,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from vscode_scanner.utils import sanitize_string
 
 
+@pytest.mark.security
 class TestStringSanitization(unittest.TestCase):
     """Test the enhanced sanitize_string() function."""
 
@@ -185,6 +187,7 @@ class TestStringSanitization(unittest.TestCase):
         self.assertEqual(result, "   \t\n   ")
 
 
+@pytest.mark.security
 class TestStringSanitizationIntegration(unittest.TestCase):
     """Integration tests for sanitize_string() usage."""
 

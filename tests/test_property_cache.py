@@ -26,6 +26,7 @@ Updated for actual CacheManager API:
 import sys
 import os
 import unittest
+import pytest
 import tempfile
 import shutil
 import json
@@ -84,6 +85,7 @@ def scan_result_strategy():
 # ============================================================================
 
 
+@pytest.mark.security
 class TestCacheHMACProperties(unittest.TestCase):
     """Property-based tests for cache HMAC integrity validation."""
 
@@ -265,6 +267,7 @@ class TestCacheHMACProperties(unittest.TestCase):
 # ============================================================================
 
 
+@pytest.mark.security
 class TestCacheStatisticsProperties(unittest.TestCase):
     """Property-based tests for cache statistics accuracy."""
 
@@ -331,6 +334,7 @@ class TestCacheStatisticsProperties(unittest.TestCase):
 # ============================================================================
 
 
+@pytest.mark.security
 class TestCacheExpirationProperties(unittest.TestCase):
     """Property-based tests for cache expiration behavior."""
 

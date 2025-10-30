@@ -11,6 +11,8 @@ import json
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 # Add parent directory to path so we can import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -20,6 +22,7 @@ from vscode_scanner import extension_discovery
 from vscode_scanner import cache_manager
 
 
+@pytest.mark.security
 class SecurityTester:
     """Test suite for security vulnerabilities."""
 

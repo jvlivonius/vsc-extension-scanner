@@ -18,6 +18,7 @@ This addresses the cache poisoning vulnerability identified in v3.4.1:
 import sys
 import os
 import unittest
+import pytest
 import tempfile
 import shutil
 import sqlite3
@@ -32,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from vscode_scanner.cache_manager import CacheManager
 
 
+@pytest.mark.security
 class TestCacheIntegrity(unittest.TestCase):
     """Test HMAC-based cache integrity checking."""
 
@@ -305,6 +307,7 @@ class TestCacheIntegrity(unittest.TestCase):
         )
 
 
+@pytest.mark.security
 class TestCacheIntegrationWithSecurity(unittest.TestCase):
     """Integration tests for cache integrity in security scenarios."""
 
@@ -387,6 +390,7 @@ class TestCacheIntegrationWithSecurity(unittest.TestCase):
         self.assertTrue(loaded["_cache_hit"])
 
 
+@pytest.mark.security
 class TestCacheErrorRecovery(unittest.TestCase):
     """Test cache manager error recovery and resilience.
 

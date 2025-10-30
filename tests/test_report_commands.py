@@ -26,6 +26,8 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
+import pytest
+
 # Check if typer is available
 try:
     import typer
@@ -45,6 +47,7 @@ if TYPER_AVAILABLE:
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestReportJSONGeneration(unittest.TestCase):
     """Test suite for JSON report generation.
 
@@ -178,6 +181,7 @@ class TestReportJSONGeneration(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestReportHTMLGeneration(unittest.TestCase):
     """Test suite for HTML report generation.
 
@@ -323,6 +327,7 @@ class TestReportHTMLGeneration(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestReportCSVGeneration(unittest.TestCase):
     """Test suite for CSV export generation.
 
@@ -418,6 +423,7 @@ class TestReportCSVGeneration(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestReportPathValidation(unittest.TestCase):
     """Test suite for report path validation.
 

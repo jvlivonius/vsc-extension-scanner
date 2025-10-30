@@ -10,6 +10,8 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 import urllib.error
 
 # Add parent directory to path
@@ -18,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from vscode_scanner.vscan_api import VscanAPIClient
 
 
+@pytest.mark.integration
 class TestRetryMechanismAnalysis(unittest.TestCase):
     """Analyze retry mechanism behavior."""
 

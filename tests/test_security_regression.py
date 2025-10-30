@@ -51,6 +51,7 @@ This suite serves as:
 import sys
 import os
 import unittest
+import pytest
 import tempfile
 import shutil
 import sqlite3
@@ -66,6 +67,7 @@ from vscode_scanner.extension_discovery import ExtensionDiscovery
 from vscode_scanner.config_manager import validate_config_value
 
 
+@pytest.mark.security
 class TestTask1PathValidationRegression(unittest.TestCase):
     """
     Regression tests for Task 1: Unified Path Validation.
@@ -165,6 +167,7 @@ class TestTask1PathValidationRegression(unittest.TestCase):
             validate_config_value("cache", "cache_dir", "/etc/vscan")
 
 
+@pytest.mark.security
 class TestTask2StringSanitizationRegression(unittest.TestCase):
     """
     Regression tests for Task 2: Unified String Sanitization.
@@ -293,6 +296,7 @@ class TestTask2StringSanitizationRegression(unittest.TestCase):
         self.assertTrue(result.endswith("..."))
 
 
+@pytest.mark.security
 class TestTask3CacheIntegrityRegression(unittest.TestCase):
     """
     Regression tests for Task 3: Cache Integrity Checks.
@@ -444,6 +448,7 @@ class TestTask3CacheIntegrityRegression(unittest.TestCase):
             self.assertFalse(result)
 
 
+@pytest.mark.security
 class TestSecurityIntegration(unittest.TestCase):
     """
     Integration tests to ensure all security layers work together.
@@ -595,6 +600,7 @@ class TestSecurityIntegration(unittest.TestCase):
         self.assertIsNone(loaded)
 
 
+@pytest.mark.security
 class TestSecurityDocumentation(unittest.TestCase):
     """
     Tests that serve as documentation for security features.

@@ -14,7 +14,10 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
+import pytest
 
+
+@pytest.mark.unit
 class VscanAPITester:
     """Test and validate vscan.dev API endpoints."""
 

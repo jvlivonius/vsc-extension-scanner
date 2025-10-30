@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -22,6 +24,7 @@ from vscode_scanner.scanner import _print_summary
 from vscode_scanner.display import display_summary
 
 
+@pytest.mark.integration
 class TestVerboseModeStandard(unittest.TestCase):
     """Test standard mode (security-focused, hides operational details)."""
 
@@ -114,6 +117,7 @@ class TestVerboseModeStandard(unittest.TestCase):
             self.assertIn("Vulnerabilities found", all_output)
 
 
+@pytest.mark.integration
 class TestVerboseModeVerbose(unittest.TestCase):
     """Test verbose mode (shows all operational details)."""
 
@@ -255,6 +259,7 @@ class TestVerboseModeVerbose(unittest.TestCase):
             self.assertIn("HTTP retry attempts", all_output)
 
 
+@pytest.mark.integration
 class TestVerboseModeQuiet(unittest.TestCase):
     """Test quiet mode (unchanged behavior)."""
 
@@ -300,6 +305,7 @@ class TestVerboseModeQuiet(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
 
+@pytest.mark.integration
 class TestDisplaySummaryVerboseParameter(unittest.TestCase):
     """Test display_summary function verbose parameter."""
 

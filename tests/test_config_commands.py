@@ -31,6 +31,8 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -51,6 +53,7 @@ except ImportError:
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestConfigInitCommand(unittest.TestCase):
     """Test suite for 'config init' command.
 
@@ -161,6 +164,7 @@ class TestConfigInitCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestConfigShowCommand(unittest.TestCase):
     """Test suite for 'config show' command.
 
@@ -255,6 +259,7 @@ class TestConfigShowCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestConfigSetCommand(unittest.TestCase):
     """Test suite for 'config set' command.
 
@@ -402,6 +407,7 @@ class TestConfigSetCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestConfigGetCommand(unittest.TestCase):
     """Test suite for 'config get' command.
 
@@ -511,6 +517,7 @@ class TestConfigGetCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestConfigResetCommand(unittest.TestCase):
     """Test suite for 'config reset' command.
 

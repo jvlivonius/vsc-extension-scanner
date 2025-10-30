@@ -9,6 +9,11 @@ import tempfile
 import shutil
 from pathlib import Path
 
+import pytest
+
+# Module-level marker for all tests in this file
+pytestmark = pytest.mark.integration
+
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

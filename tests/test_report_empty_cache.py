@@ -13,6 +13,8 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+import pytest
 from io import StringIO
 
 # Add parent directory to path
@@ -21,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from vscode_scanner.cli import _check_extensions_exist
 
 
+@pytest.mark.integration
 class TestReportEmptyCache(unittest.TestCase):
     """Test report command with empty cache."""
 

@@ -9,6 +9,8 @@ import sys
 import os
 import unittest
 from unittest.mock import patch, MagicMock
+
+import pytest
 from pathlib import Path
 
 # Add parent directory to path
@@ -25,6 +27,7 @@ except ImportError:
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestCLICommands(unittest.TestCase):
     """Test CLI commands and basic invocation."""
 
@@ -69,6 +72,7 @@ class TestCLICommands(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestScanCommand(unittest.TestCase):
     """Test scan command with various parameters."""
 
@@ -170,6 +174,7 @@ class TestScanCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestCacheStatsCommand(unittest.TestCase):
     """Test cache-stats command."""
 
@@ -194,6 +199,7 @@ class TestCacheStatsCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestCacheClearCommand(unittest.TestCase):
     """Test cache-clear command."""
 
@@ -215,6 +221,7 @@ class TestCacheClearCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestParameterValidation(unittest.TestCase):
     """Test parameter validation."""
 

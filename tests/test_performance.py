@@ -11,6 +11,7 @@ Run with: python3 tests/test_performance.py
 """
 
 import unittest
+import pytest
 import time
 import tempfile
 import shutil
@@ -24,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from vscode_scanner.cache_manager import CacheManager
 
 
+@pytest.mark.integration
 class TestDatabaseBatchCommitPerformance(unittest.TestCase):
     """Test that batch commits provide significant performance improvement."""
 
@@ -124,6 +126,7 @@ class TestDatabaseBatchCommitPerformance(unittest.TestCase):
             print(f"✓ Exceeded target: {improvement_pct:.1f}% > 50% improvement")
 
 
+@pytest.mark.integration
 class TestCacheReadPerformance(unittest.TestCase):
     """Test that cache reads are fast enough for good UX."""
 
@@ -195,6 +198,7 @@ class TestCacheReadPerformance(unittest.TestCase):
         )
 
 
+@pytest.mark.integration
 class TestVACUUMEffect(unittest.TestCase):
     """Test that VACUUM reduces database file size after deletions."""
 
@@ -274,6 +278,7 @@ class TestVACUUMEffect(unittest.TestCase):
         )
 
 
+@pytest.mark.integration
 class TestBatchErrorCleanup(unittest.TestCase):
     """Test that batch connection is properly cleaned up on errors."""
 

@@ -15,6 +15,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
+import pytest
+
+# Module-level marker for all tests in this file
+pytestmark = pytest.mark.integration
+
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

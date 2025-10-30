@@ -27,6 +27,11 @@ import inspect
 import hmac
 from pathlib import Path
 
+import pytest
+
+# Module-level marker for all tests in this file
+pytestmark = pytest.mark.security
+
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

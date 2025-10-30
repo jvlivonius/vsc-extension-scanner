@@ -25,6 +25,7 @@ used for CLI parameter validation.
 import sys
 import os
 import unittest
+import pytest
 from pathlib import Path
 
 # Add parent directory to path
@@ -42,6 +43,7 @@ import typer
 # ============================================================
 
 
+@pytest.mark.unit
 class TestBoundedIntValidator(unittest.TestCase):
     """Test suite for bounded_int_validator function.
 
@@ -327,6 +329,7 @@ class TestBoundedIntValidator(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestBoundedFloatValidator(unittest.TestCase):
     """Test suite for bounded_float_validator function.
 
@@ -654,6 +657,7 @@ class TestBoundedFloatValidator(unittest.TestCase):
 # ============================================================
 
 
+@pytest.mark.unit
 class TestValidatorConsistency(unittest.TestCase):
     """Test consistency between int and float validators.
 

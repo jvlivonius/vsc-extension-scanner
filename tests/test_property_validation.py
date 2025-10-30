@@ -19,6 +19,8 @@ import sys
 import os
 import unittest
 from unittest.mock import patch
+
+import pytest
 from pathlib import Path
 
 # Add parent directory to path
@@ -37,6 +39,7 @@ from vscode_scanner.utils import validate_path, sanitize_string
 # ============================================================================
 
 
+@pytest.mark.security
 class TestPathValidationProperties(unittest.TestCase):
     """Property-based tests for path validation security."""
 
@@ -183,6 +186,7 @@ class TestPathValidationProperties(unittest.TestCase):
 # ============================================================================
 
 
+@pytest.mark.security
 class TestStringSanitizationProperties(unittest.TestCase):
     """Property-based tests for string sanitization security."""
 
@@ -326,6 +330,7 @@ class TestStringSanitizationProperties(unittest.TestCase):
 # ============================================================================
 
 
+@pytest.mark.security
 class TestCombinedSecurityProperties(unittest.TestCase):
     """Property tests for combined security scenarios."""
 

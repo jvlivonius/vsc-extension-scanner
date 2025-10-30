@@ -23,6 +23,8 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 # Check if typer is available
 try:
     import typer
@@ -42,6 +44,7 @@ if TYPER_AVAILABLE:
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestCacheStatsCommand(unittest.TestCase):
     """Test suite for 'cache stats' command.
 
@@ -248,6 +251,7 @@ class TestCacheStatsCommand(unittest.TestCase):
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.unit
 class TestCacheClearCommand(unittest.TestCase):
     """Test suite for 'cache clear' command.
 
