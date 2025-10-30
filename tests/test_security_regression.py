@@ -241,7 +241,7 @@ class TestTask2StringSanitizationRegression(unittest.TestCase):
         test_cases = [
             ("line1\nline2", "line1\nline2"),  # Newline
             ("col1\tcol2", "col1\tcol2"),  # Tab
-            ("text\r\n", "text\r\n"),  # CRLF
+            ("text\r\n", "text\n"),  # CRLF - \r removed for security
             ("  spaces  ", "  spaces  "),  # Spaces
         ]
 

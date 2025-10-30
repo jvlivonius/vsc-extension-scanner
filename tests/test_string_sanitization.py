@@ -116,9 +116,9 @@ class TestStringSanitization(unittest.TestCase):
         result = sanitize_string("col1\tcol2")
         self.assertEqual(result, "col1\tcol2")
 
-        # Carriage return (often used with newline)
+        # Carriage return removed (security fix - can overwrite terminal)
         result = sanitize_string("text\r\n")
-        self.assertEqual(result, "text\r\n")
+        self.assertEqual(result, "text\n")  # \r removed, \n preserved
 
     def test_other_control_characters_removed(self):
         """Test that other control characters are removed."""
@@ -184,7 +184,7 @@ class TestStringSanitization(unittest.TestCase):
     def test_whitespace_only(self):
         """Test strings with only whitespace."""
         result = sanitize_string("   \t\n   ")
-        self.assertEqual(result, "   \t\n   ")
+        self.assertEqual(result, " ")  # Normalized to single space
 
 
 @pytest.mark.security

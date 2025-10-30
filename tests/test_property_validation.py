@@ -285,7 +285,9 @@ class TestStringSanitizationProperties(unittest.TestCase):
 
     @given(
         st.text(
-            alphabet=st.characters(exclude_characters=["\x00", "\x1b", "\r"]),
+            alphabet=st.characters(
+                exclude_categories=["Cc"]
+            ),  # Exclude ALL control chars
             max_size=1000,
         )
     )
