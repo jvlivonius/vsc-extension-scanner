@@ -43,6 +43,9 @@ cache.db
 claudedocs/
 .claude/backups/
 
+# Serena MCP session state (machine-specific, ephemeral)
+.serena/
+
 # Testing
 .pytest_cache/
 .coverage
