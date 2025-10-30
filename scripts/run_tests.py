@@ -304,145 +304,11 @@ def _load_or_discover_registry() -> Dict[TestGroup, List[TestFile]]:
 
 
 # Load registry on module import (cached for performance)
-TEST_REGISTRY = _load_or_discover_registry()
-
-
-# ==============================================================================
-# Registry Validation (Phase 3B)
-# ==============================================================================
-
-
-def validate_registry() -> tuple[bool, List[str]]:
-    """Compare TEST_REGISTRY against auto-discovered tests.
-
-    Returns:
-        Tuple of (is_valid, list_of_issues).
-        is_valid is True if registry matches discovery, False otherwise.
-        list_of_issues contains human-readable descriptions of discrepancies.
-    """
-    discovered = discover_test_files()
-    issues = []
-    warnings = []
-
-    # Build registry lookup
-    registry_files = {}
-    for group in TestGroup:
-        if group in TEST_REGISTRY:
-            for test_file in TEST_REGISTRY[group]:
-                registry_files[test_file.path] = group
-
-    # Build discovered lookup
-    discovered_files = {}
-    for group, files in discovered.items():
-        for test_file in files:
-            discovered_files[test_file.path] = group
-
-    # Check for missing files
-    registry_set = set(registry_files.keys())
-    discovered_set = set(discovered_files.keys())
-
-    missing_from_registry = discovered_set - registry_set
-    missing_from_discovered = registry_set - discovered_set
-    group_mismatches = []
-
-    # Check for group mismatches
-    common_files = registry_set & discovered_set
-    for file_path in common_files:
-        registry_group = registry_files[file_path]
-        discovered_group = discovered_files[file_path]
-        if registry_group != discovered_group:
-            group_mismatches.append(
-                f"{file_path.name}: Registry={registry_group.value}, Discovered={discovered_group.value}"
-            )
-
-    # Build issue list
-    if missing_from_registry:
-        issues.append(
-            f"Files not in TEST_REGISTRY: {', '.join(f.name for f in missing_from_registry)}"
-        )
-
-    if missing_from_discovered:
-        # Check if these files exist and have pytest collection errors
-        collection_errors = []
-        actual_missing = []
-
-        for file_path in missing_from_discovered:
-            if file_path.exists():
-                collection_errors.append(file_path.name)
-            else:
-                actual_missing.append(file_path.name)
-
-        if collection_errors:
-            warnings.append(
-                f"Files in TEST_REGISTRY with pytest collection errors (check syntax/imports): {', '.join(collection_errors)}"
-            )
-
-        if actual_missing:
-            issues.append(
-                f"Files in TEST_REGISTRY but missing from disk: {', '.join(actual_missing)}"
-            )
-
-    if group_mismatches:
-        issues.extend([f"Group mismatch: {mismatch}" for mismatch in group_mismatches])
-
-    # Combine issues and warnings
-    all_messages = issues + warnings
-    is_valid = len(issues) == 0  # Warnings don't fail validation
-    return is_valid, all_messages
-
-
-def sync_registry(dry_run: bool = True) -> str:
-    """Generate Python code for TEST_REGISTRY from discovered tests.
-
-    Args:
-        dry_run: If True, only generate code without modifying file.
-
-    Returns:
-        Generated Python code for TEST_REGISTRY definition.
-    """
-    discovered = discover_test_files()
-
-    # Generate Python code
-    lines = ["TEST_REGISTRY = {"]
-
-    for group in TestGroup:
-        if group not in discovered or not discovered[group]:
-            continue
-
-        lines.append(f"    TestGroup.{group.name}: [")
-
-        for test_file in sorted(discovered[group], key=lambda x: x.path.name):
-            # Try to extract description from file docstring
-            description = test_file.description
-            try:
-                content = test_file.path.read_text()
-                docstring_match = re.search(r'"""([^"]+)"""', content)
-                if docstring_match:
-                    first_line = docstring_match.group(1).split("\n")[0].strip()
-                    if first_line and len(first_line) < 80:
-                        description = first_line
-            except (OSError, UnicodeDecodeError):
-                pass
-
-            lines.append(
-                f'        TestFile(Path("{test_file.path}"), TestGroup.{group.name}, "{description}"),'
-            )
-
-        lines.append("    ],")
-
-    lines.append("}")
-
-    generated_code = "\n".join(lines)
-
-    if not dry_run:
-        print(
-            f"{Colors.YELLOW}Note: Automatic registry update not implemented yet.{Colors.RESET}"
-        )
-        print(
-            f"{Colors.YELLOW}Copy the generated code and update TEST_REGISTRY manually.{Colors.RESET}"
-        )
-
-    return generated_code
+# Skip discovery if just showing help to avoid unnecessary pytest collection
+if "--help" not in sys.argv and "-h" not in sys.argv:
+    TEST_REGISTRY = _load_or_discover_registry()
+else:
+    TEST_REGISTRY = {}  # Empty registry for help display
 
 
 # ==============================================================================
@@ -494,7 +360,7 @@ class TestRunner:
         coverage_enabled=False,
         coverage_format=None,
         coverage_threshold=None,
-        pytest_enabled=False,
+        pytest_enabled=True,  # Pytest is default execution mode
     ):
         """Initialize test runner."""
         self.skip_slow = skip_slow
@@ -1167,23 +1033,6 @@ def main():  # pylint: disable=too-many-return-statements
         help="Report preset: all tests with coverage and HTML report",
     )
 
-    # Auto-Discovery (Phase 3B)
-    parser.add_argument(
-        "--auto-discover",
-        action="store_true",
-        help="Auto-discover tests using pytest markers and display results",
-    )
-    parser.add_argument(
-        "--validate-registry",
-        action="store_true",
-        help="Validate TEST_REGISTRY against auto-discovered tests",
-    )
-    parser.add_argument(
-        "--sync-registry",
-        action="store_true",
-        help="Generate TEST_REGISTRY code from auto-discovered tests (dry-run)",
-    )
-
     # Options
     parser.add_argument("--skip-slow", action="store_true", help="Skip slow tests")
     parser.add_argument(
@@ -1215,13 +1064,6 @@ def main():  # pylint: disable=too-many-return-statements
         type=float,
         metavar="PCT",
         help="Minimum required coverage percentage (e.g., 85.0)",
-    )
-
-    # Pytest options
-    parser.add_argument(
-        "--pytest",
-        action="store_true",
-        help="Use pytest runner for in-process execution (requires: pip install pytest)",
     )
 
     args = parser.parse_args()
@@ -1258,69 +1100,6 @@ def main():  # pylint: disable=too-many-return-statements
             f"{Colors.CYAN}Using --report preset: all tests with coverage HTML report{Colors.RESET}\n"
         )
 
-    # Handle auto-discovery commands (Phase 3C)
-    if args.auto_discover:
-        print(f"{Colors.BOLD}Auto-Discovery Results:{Colors.RESET}\n")
-        discovered = discover_test_files()
-
-        if not discovered:
-            print(f"{Colors.YELLOW}No tests discovered.{Colors.RESET}")
-            return 0
-
-        total_files = 0
-        for group, test_files in sorted(discovered.items(), key=lambda x: x[0].value):
-            print(f"{Colors.CYAN}{group.value}:{Colors.RESET}")
-            for test_file in sorted(test_files, key=lambda x: x.path.name):
-                print(f"  - {test_file.path.name}")
-            print(f"  {Colors.BOLD}Total: {len(test_files)} files{Colors.RESET}\n")
-            total_files += len(test_files)
-
-        print(
-            f"{Colors.BOLD}Grand Total: {total_files} test files discovered{Colors.RESET}"
-        )
-        return 0
-
-    if args.validate_registry:
-        print(f"{Colors.BOLD}Validating TEST_REGISTRY...{Colors.RESET}\n")
-        is_valid, messages = validate_registry()
-
-        if is_valid:
-            if messages:
-                # Valid but has warnings
-                print(
-                    f"{Colors.GREEN}✓ TEST_REGISTRY is valid{Colors.RESET} (with warnings):\n"
-                )
-                for msg in messages:
-                    # Show warnings in yellow
-                    print(f"{Colors.YELLOW}  ⚠ {msg}{Colors.RESET}")
-            else:
-                # Perfect match
-                print(
-                    f"{Colors.GREEN}✓ TEST_REGISTRY is valid and matches all discovered tests!{Colors.RESET}"
-                )
-            return 0
-        else:
-            # Has actual errors
-            print(f"{Colors.RED}✗ TEST_REGISTRY validation failed:{Colors.RESET}\n")
-            for msg in messages:
-                # Determine if it's a warning or error
-                if "collection errors" in msg.lower():
-                    print(f"{Colors.YELLOW}  ⚠ {msg}{Colors.RESET}")
-                else:
-                    print(f"{Colors.RED}  ✗ {msg}{Colors.RESET}")
-            return 1
-
-    if args.sync_registry:
-        print(
-            f"{Colors.BOLD}Generating TEST_REGISTRY code from discovered tests...{Colors.RESET}\n"
-        )
-        generated_code = sync_registry(dry_run=True)
-        print(generated_code)
-        print(
-            f"\n{Colors.YELLOW}Note: This is a dry-run. Copy the code above to update TEST_REGISTRY.{Colors.RESET}"
-        )
-        return 0
-
     # Determine which groups to run
     groups = []
     if args.unit:
@@ -1353,7 +1132,7 @@ def main():  # pylint: disable=too-many-return-statements
         coverage_enabled=args.coverage,
         coverage_format=args.coverage_format,
         coverage_threshold=args.coverage_threshold,
-        pytest_enabled=args.pytest,
+        pytest_enabled=True,  # Pytest is now default and only execution mode
     )
 
     exit_code = runner.run_groups(groups)
