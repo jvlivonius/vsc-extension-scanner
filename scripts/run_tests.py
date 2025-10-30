@@ -193,198 +193,6 @@ if PYTEST_AVAILABLE:
 # Test File Registry
 # ==============================================================================
 
-# Define all test files organized by group
-TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
-    TestGroup.UNIT: [
-        TestFile(Path("tests/test_scanner.py"), TestGroup.UNIT, "Core scanner logic"),
-        TestFile(Path("tests/test_display.py"), TestGroup.UNIT, "Display module"),
-        TestFile(Path("tests/test_cli.py"), TestGroup.UNIT, "CLI interface"),
-        TestFile(
-            Path("tests/test_failed_extensions.py"),
-            TestGroup.UNIT,
-            "Failed extensions tracking",
-        ),
-        TestFile(
-            Path("tests/test_config_extensions_dir.py"),
-            TestGroup.UNIT,
-            "Config extensions directory",
-        ),
-        TestFile(
-            Path("tests/test_transactional_cache.py"),
-            TestGroup.UNIT,
-            "Transactional cache operations",
-        ),
-        TestFile(
-            Path("tests/test_utils.py"),
-            TestGroup.UNIT,
-            "Utility functions (Phase 4.1)",
-        ),
-        TestFile(
-            Path("tests/test_config_manager.py"),
-            TestGroup.UNIT,
-            "Config manager",
-        ),
-        TestFile(
-            Path("tests/test_output_formatter.py"),
-            TestGroup.UNIT,
-            "Output formatting (JSON/CSV)",
-        ),
-        TestFile(
-            Path("tests/test_extension_discovery.py"),
-            TestGroup.UNIT,
-            "Extension discovery",
-        ),
-        TestFile(
-            Path("tests/test_input_validators.py"),
-            TestGroup.UNIT,
-            "CLI input validators",
-        ),
-        TestFile(
-            Path("tests/test_config_commands.py"),
-            TestGroup.UNIT,
-            "Config subcommands",
-        ),
-        TestFile(
-            Path("tests/test_cache_commands.py"),
-            TestGroup.UNIT,
-            "Cache subcommands",
-        ),
-        TestFile(
-            Path("tests/test_report_commands.py"),
-            TestGroup.UNIT,
-            "Report generation",
-        ),
-        TestFile(
-            Path("tests/test_error_handling.py"),
-            TestGroup.UNIT,
-            "Error handling paths",
-        ),
-    ],
-    TestGroup.SECURITY: [
-        TestFile(
-            Path("tests/test_security.py"), TestGroup.SECURITY, "Security validation"
-        ),
-        TestFile(
-            Path("tests/test_path_validation.py"), TestGroup.SECURITY, "Path validation"
-        ),
-        TestFile(
-            Path("tests/test_string_sanitization.py"),
-            TestGroup.SECURITY,
-            "String sanitization",
-        ),
-        TestFile(
-            Path("tests/test_cache_integrity.py"),
-            TestGroup.SECURITY,
-            "Cache integrity (HMAC)",
-        ),
-        TestFile(
-            Path("tests/test_security_regression.py"),
-            TestGroup.SECURITY,
-            "Security regression suite",
-        ),
-        TestFile(
-            Path("tests/test_sqlite_security.py"),
-            TestGroup.SECURITY,
-            "SQLite security audit",
-        ),
-        TestFile(
-            Path("tests/test_property_validation.py"),
-            TestGroup.SECURITY,
-            "Property-based validation tests (13 tests, 13K scenarios)",
-        ),
-        TestFile(
-            Path("tests/test_property_cache.py"),
-            TestGroup.SECURITY,
-            "Property-based cache integrity tests (8 tests, 8K scenarios)",
-        ),
-    ],
-    TestGroup.ARCHITECTURE: [
-        TestFile(
-            Path("tests/test_architecture.py"),
-            TestGroup.ARCHITECTURE,
-            "Layer compliance",
-        ),
-    ],
-    TestGroup.PARALLEL: [
-        TestFile(
-            Path("tests/test_parallel_scanning.py"),
-            TestGroup.PARALLEL,
-            "Parallel scanning",
-        ),
-    ],
-    TestGroup.INTEGRATION: [
-        TestFile(
-            Path("tests/test_integration.py"),
-            TestGroup.INTEGRATION,
-            "Integration tests (mocked)",
-        ),
-        TestFile(
-            Path("tests/test_db_integrity.py"),
-            TestGroup.INTEGRATION,
-            "Database integrity",
-        ),
-        TestFile(
-            Path("tests/test_api.py"),
-            TestGroup.INTEGRATION,
-            "API client tests",
-        ),
-        TestFile(
-            Path("tests/test_retry.py"),
-            TestGroup.INTEGRATION,
-            "Retry mechanism",
-        ),
-        TestFile(
-            Path("tests/test_retry_analysis.py"),
-            TestGroup.INTEGRATION,
-            "Retry analysis",
-        ),
-        TestFile(
-            Path("tests/test_workflow_retry.py"),
-            TestGroup.INTEGRATION,
-            "Workflow retry logic",
-        ),
-        TestFile(
-            Path("tests/test_performance.py"),
-            TestGroup.INTEGRATION,
-            "Performance benchmarks",
-            slow=True,
-        ),
-        TestFile(
-            Path("tests/test_verbose_mode.py"),
-            TestGroup.INTEGRATION,
-            "Verbose mode output",
-        ),
-        TestFile(
-            Path("tests/test_report_empty_cache.py"),
-            TestGroup.INTEGRATION,
-            "Empty cache reporting",
-        ),
-    ],
-    TestGroup.REAL_API: [
-        TestFile(
-            Path("tests/test_integration_real_api.py"),
-            TestGroup.REAL_API,
-            "Real API integration",
-            slow=True,
-            real_api=True,
-        ),
-    ],
-    TestGroup.MOCK_VALIDATION: [
-        TestFile(
-            Path("tests/test_mock_validation.py"),
-            TestGroup.MOCK_VALIDATION,
-            "Mock validation against real API",
-            slow=True,
-            real_api=True,
-        ),
-    ],
-}
-
-
-# ==============================================================================
-# Auto-Discovery Functions (Phase 3B)
-# ==============================================================================
-
 
 def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
     """Auto-discover test files using pytest markers.
@@ -458,6 +266,44 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
         ]
 
     return result
+
+
+# Auto-discover test files from pytest markers (replaces manual TEST_REGISTRY)
+_test_registry_cache: Optional[Dict[TestGroup, List[TestFile]]] = None
+
+
+def _load_or_discover_registry() -> Dict[TestGroup, List[TestFile]]:
+    """
+    Load test registry using auto-discovery.
+
+    Results are cached to avoid repeated pytest collection overhead.
+    Auto-validates on first load and warns about discrepancies.
+    """
+    global _test_registry_cache  # pylint: disable=global-statement
+
+    if _test_registry_cache is not None:
+        return _test_registry_cache
+
+    # Discover tests using pytest markers
+    discovered = discover_test_files()
+
+    if not discovered:
+        print(
+            f"{Colors.YELLOW}Warning: No tests discovered via pytest markers.{Colors.RESET}"
+        )
+        return {}
+
+    _test_registry_cache = discovered
+    return discovered
+
+
+# Load registry on module import (cached for performance)
+TEST_REGISTRY = _load_or_discover_registry()
+
+
+# ==============================================================================
+# Registry Validation (Phase 3B)
+# ==============================================================================
 
 
 def validate_registry() -> tuple[bool, List[str]]:
@@ -1298,6 +1144,23 @@ def main():  # pylint: disable=too-many-return-statements
     )
     parser.add_argument("--all", action="store_true", help="Run all test groups")
 
+    # Preset aliases for common workflows
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Fast preset: unit + security tests, skip slow (ideal for development)",
+    )
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="CI preset: all tests except real API, skip slow (ideal for CI/CD)",
+    )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Report preset: all tests with coverage and HTML report",
+    )
+
     # Auto-Discovery (Phase 3B)
     parser.add_argument(
         "--auto-discover",
@@ -1356,6 +1219,38 @@ def main():  # pylint: disable=too-many-return-statements
     )
 
     args = parser.parse_args()
+
+    # Handle preset aliases
+    if args.fast:
+        args.unit = True
+        args.security = True
+        args.skip_slow = True
+        print(
+            f"{Colors.CYAN}Using --fast preset: unit + security, skip slow{Colors.RESET}\n"
+        )
+
+    if args.ci:
+        args.unit = True
+        args.security = True
+        args.architecture = True
+        args.parallel = True
+        args.integration = True
+        args.mock_validation = True
+        args.skip_slow = True
+        # Explicitly skip real API tests in CI
+        args.skip_real_api = True
+        print(
+            f"{Colors.CYAN}Using --ci preset: all tests except real API, skip slow{Colors.RESET}\n"
+        )
+
+    if args.report:
+        args.all = True
+        args.coverage = True
+        if not args.coverage_format:
+            args.coverage_format = "html"
+        print(
+            f"{Colors.CYAN}Using --report preset: all tests with coverage HTML report{Colors.RESET}\n"
+        )
 
     # Handle auto-discovery commands (Phase 3C)
     if args.auto_discover:
