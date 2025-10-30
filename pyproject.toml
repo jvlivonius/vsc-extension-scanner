@@ -77,3 +77,12 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "unit: Unit tests for individual components",
+    "security: Security vulnerability tests",
+    "architecture: Architecture compliance tests",
+    "parallel: Parallel execution and threading tests",
+    "integration: Integration tests with mocked dependencies",
+    "real_api: Tests that make real API calls (slow)",
+    "mock_validation: Mock validation against real API responses",
+]

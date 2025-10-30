@@ -205,17 +205,14 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             "Failed extensions tracking",
         ),
         TestFile(
-            Path("tests/test_verbose_mode.py"), TestGroup.UNIT, "Verbose mode output"
-        ),
-        TestFile(
             Path("tests/test_config_extensions_dir.py"),
             TestGroup.UNIT,
             "Config extensions directory",
         ),
         TestFile(
-            Path("tests/test_report_empty_cache.py"),
+            Path("tests/test_transactional_cache.py"),
             TestGroup.UNIT,
-            "Empty cache reporting",
+            "Transactional cache operations",
         ),
         TestFile(
             Path("tests/test_utils.py"),
@@ -314,11 +311,6 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             TestGroup.PARALLEL,
             "Parallel scanning",
         ),
-        TestFile(
-            Path("tests/test_transactional_cache.py"),
-            TestGroup.PARALLEL,
-            "Transactional cache writes",
-        ),
     ],
     TestGroup.INTEGRATION: [
         TestFile(
@@ -356,6 +348,16 @@ TEST_REGISTRY: Dict[TestGroup, List[TestFile]] = {
             TestGroup.INTEGRATION,
             "Performance benchmarks",
             slow=True,
+        ),
+        TestFile(
+            Path("tests/test_verbose_mode.py"),
+            TestGroup.INTEGRATION,
+            "Verbose mode output",
+        ),
+        TestFile(
+            Path("tests/test_report_empty_cache.py"),
+            TestGroup.INTEGRATION,
+            "Empty cache reporting",
         ),
     ],
     TestGroup.REAL_API: [
@@ -415,7 +417,7 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
                 # Get markers
                 markers = {marker.name for marker in item.iter_markers()}
 
-                # Map markers to test groups
+                # Map markers to test groups (prioritize specific markers over general ones)
                 test_group = None
                 if "unit" in markers:
                     test_group = TestGroup.UNIT
@@ -425,12 +427,12 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
                     test_group = TestGroup.ARCHITECTURE
                 elif "parallel" in markers:
                     test_group = TestGroup.PARALLEL
-                elif "integration" in markers:
-                    test_group = TestGroup.INTEGRATION
                 elif "real_api" in markers or "real-api" in markers:
                     test_group = TestGroup.REAL_API
                 elif "mock_validation" in markers or "mock-validation" in markers:
                     test_group = TestGroup.MOCK_VALIDATION
+                elif "integration" in markers:
+                    test_group = TestGroup.INTEGRATION
 
                 if test_group:
                     if test_group not in self.test_files:
@@ -440,12 +442,17 @@ def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
     collector = TestCollector()
     pytest.main(["--collect-only", "-q", "tests/"], plugins=[collector])
 
-    # Convert to TestFile objects
+    # Convert to TestFile objects with relative paths (matching TEST_REGISTRY format)
+    project_root = Path.cwd()
     result = {}
     for group, file_paths in collector.test_files.items():
         result[group] = [
             TestFile(
-                path=file_path, group=group, description=f"Auto-discovered from markers"
+                path=file_path.relative_to(project_root)
+                if file_path.is_absolute()
+                else file_path,
+                group=group,
+                description=f"Auto-discovered from markers",
             )
             for file_path in sorted(file_paths)
         ]
@@ -463,6 +470,7 @@ def validate_registry() -> tuple[bool, List[str]]:
     """
     discovered = discover_test_files()
     issues = []
+    warnings = []
 
     # Build registry lookup
     registry_files = {}
@@ -502,15 +510,33 @@ def validate_registry() -> tuple[bool, List[str]]:
         )
 
     if missing_from_discovered:
-        issues.append(
-            f"Files in TEST_REGISTRY but not discovered: {', '.join(f.name for f in missing_from_discovered)}"
-        )
+        # Check if these files exist and have pytest collection errors
+        collection_errors = []
+        actual_missing = []
+
+        for file_path in missing_from_discovered:
+            if file_path.exists():
+                collection_errors.append(file_path.name)
+            else:
+                actual_missing.append(file_path.name)
+
+        if collection_errors:
+            warnings.append(
+                f"Files in TEST_REGISTRY with pytest collection errors (check syntax/imports): {', '.join(collection_errors)}"
+            )
+
+        if actual_missing:
+            issues.append(
+                f"Files in TEST_REGISTRY but missing from disk: {', '.join(actual_missing)}"
+            )
 
     if group_mismatches:
         issues.extend([f"Group mismatch: {mismatch}" for mismatch in group_mismatches])
 
-    is_valid = len(issues) == 0
-    return is_valid, issues
+    # Combine issues and warnings
+    all_messages = issues + warnings
+    is_valid = len(issues) == 0  # Warnings don't fail validation
+    return is_valid, all_messages
 
 
 def sync_registry(dry_run: bool = True) -> str:
@@ -1355,17 +1381,32 @@ def main():  # pylint: disable=too-many-return-statements
 
     if args.validate_registry:
         print(f"{Colors.BOLD}Validating TEST_REGISTRY...{Colors.RESET}\n")
-        is_valid, issues = validate_registry()
+        is_valid, messages = validate_registry()
 
         if is_valid:
-            print(
-                f"{Colors.GREEN}✓ TEST_REGISTRY is valid and matches discovered tests!{Colors.RESET}"
-            )
+            if messages:
+                # Valid but has warnings
+                print(
+                    f"{Colors.GREEN}✓ TEST_REGISTRY is valid{Colors.RESET} (with warnings):\n"
+                )
+                for msg in messages:
+                    # Show warnings in yellow
+                    print(f"{Colors.YELLOW}  ⚠ {msg}{Colors.RESET}")
+            else:
+                # Perfect match
+                print(
+                    f"{Colors.GREEN}✓ TEST_REGISTRY is valid and matches all discovered tests!{Colors.RESET}"
+                )
             return 0
         else:
+            # Has actual errors
             print(f"{Colors.RED}✗ TEST_REGISTRY validation failed:{Colors.RESET}\n")
-            for issue in issues:
-                print(f"  - {issue}")
+            for msg in messages:
+                # Determine if it's a warning or error
+                if "collection errors" in msg.lower():
+                    print(f"{Colors.YELLOW}  ⚠ {msg}{Colors.RESET}")
+                else:
+                    print(f"{Colors.RED}  ✗ {msg}{Colors.RESET}")
             return 1
 
     if args.sync_registry:

@@ -55,7 +55,7 @@ except ImportError:
         return func
 
 
-@pytest.mark.real-api
+@pytest.mark.real_api
 class TestRealAPIIntegration(unittest.TestCase):
     """Integration tests using real vscan.dev API."""
 
@@ -410,7 +410,7 @@ delay = 2.0
             )
 
 
-@pytest.mark.real-api
+@pytest.mark.real_api
 class TestRealAPIEndToEnd(unittest.TestCase):
     """End-to-end integration tests using run_scan()."""
 

@@ -51,7 +51,7 @@ except ImportError:
         return func
 
 
-@pytest.mark.mock-validation
+@pytest.mark.mock_validation
 class TestRealAPIStructure(unittest.TestCase):
     """
     Document and validate the real vscan.dev API response structure.
@@ -207,7 +207,7 @@ class TestRealAPIStructure(unittest.TestCase):
         self.assertIn("metadata", result)
 
 
-@pytest.mark.mock-validation
+@pytest.mark.mock_validation
 class TestCanonicalMockValidation(unittest.TestCase):
     """Validate that canonical mock matches documented real API structure."""
 
@@ -309,7 +309,7 @@ class TestCanonicalMockValidation(unittest.TestCase):
         print("\n✓ Canonical vulnerable response structure is correct")
 
 
-@pytest.mark.mock-validation
+@pytest.mark.mock_validation
 class TestExistingMocksValidation(unittest.TestCase):
     """Validate existing mocks in test files."""
 
@@ -352,7 +352,7 @@ class TestExistingMocksValidation(unittest.TestCase):
         print(f"\n✓ test_parallel_scanning.py mock pattern has critical fields")
 
 
-@pytest.mark.mock-validation
+@pytest.mark.mock_validation
 class TestMockConsistency(unittest.TestCase):
     """Verify consistency across different mock types."""
 
