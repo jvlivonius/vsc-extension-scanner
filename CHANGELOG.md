@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.5] - 2025-10-31
+
+### Fixed
+
+**Post-Refactoring Fixes**
+
+- **Security**: Fixed case-insensitive filesystem bypass for system paths validation (commit 09c1836)
+- **Distribution**: Fixed HTML report assets inclusion in distribution package (commit b85d589)
+- **Testing**: Corrected property test to use path prefix matching instead of substring matching (commit 08a7e40)
+
+### Added
+
+- **Documentation**: Integrated Simplified GitHub Flow branching strategy with comprehensive workflow documentation (commit f37feb1)
+- **Configuration**: Added branch protection configuration file for GitHub (commit 00d0084)
+
+### Changed
+
+- **Repository**: Updated `.gitignore` to include workspace files (commit b87d2c7)
+
 ## [3.5.4] - 2025-10-31
 
 ### Changed
