@@ -42,34 +42,6 @@ jobs:
           echo "Architecture tests completed"
           echo "Check output above for violations"
 
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install -e .[test]
-
-      - name: Run test suite with pytest
-        run: |
-          echo "Running complete test suite..."
-          pytest tests/ -v --strict-markers
-
-      - name: Report test results
-        if: always()
-        run: |
-          echo "Unit tests completed"
-          echo "Check output above for test results"
-
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -97,8 +69,8 @@ jobs:
             echo "No integration tests found"
           fi
 
-  coverage-analysis:
-    name: Coverage Analysis
+  tests-and-coverage:
+    name: Tests & Coverage Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -121,7 +93,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           echo "Running test suite with branch coverage tracking..."
-          coverage run -m pytest tests/ -v
+          coverage run -m pytest tests/ -v --strict-markers
           echo "✅ Tests complete"
 
       - name: Generate coverage report
