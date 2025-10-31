@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+# Cancel in-progress runs when new push occurs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Restrict permissions to minimum required
+permissions:
+  contents: read
+
 jobs:
   architecture-tests:
     name: Architecture Validation
