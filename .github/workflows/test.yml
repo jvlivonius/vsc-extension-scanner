@@ -60,26 +60,10 @@ jobs:
         run: |
           pip install -e .[test]
 
-      - name: Run individual test files
+      - name: Run test suite with pytest
         run: |
-          echo "Running test files individually..."
-
-          # Run each test file that doesn't require pytest
-          for test_file in tests/test_*.py; do
-            if [ -f "$test_file" ] && [ "$test_file" != "tests/test_architecture.py" ]; then
-              echo "Running $test_file..."
-              python3 "$test_file" || true
-            fi
-          done
-
-      - name: Run pytest if available
-        run: |
-          if command -v pytest &> /dev/null; then
-            echo "Running pytest..."
-            pytest tests/ -v || true
-          else
-            echo "pytest not available, individual test files already run"
-          fi
+          echo "Running complete test suite..."
+          pytest tests/ -v --strict-markers
 
       - name: Report test results
         if: always()
@@ -114,3 +98,74 @@ jobs:
           else
             echo "No integration tests found"
           fi
+
+  coverage-analysis:
+    name: Coverage Analysis
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install package and dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .[test]
+          pip install coverage
+
+      - name: Run tests with coverage
+        run: |
+          echo "Running test suite with branch coverage tracking..."
+          coverage run -m pytest tests/ -v
+          echo "✅ Tests complete"
+
+      - name: Generate coverage report
+        run: |
+          echo ""
+          echo "=================================================="
+          echo "Coverage Report"
+          echo "=================================================="
+          coverage report --fail-under=52
+          echo ""
+          echo "✅ Coverage threshold met (≥52% baseline)"
+          echo "📊 Current baseline: 52% | Aspirational goal: 85%"
+
+      - name: Generate HTML coverage report
+        if: always()
+        run: |
+          coverage html
+          echo "HTML coverage report generated in htmlcov/"
+
+      - name: Generate XML coverage report (for CI tools)
+        if: always()
+        run: |
+          coverage xml
+          echo "XML coverage report generated: coverage.xml"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
+            .coverage
+          retention-days: 30
+
+      - name: Upload coverage summary
+        if: always()
+        run: |
+          echo "# Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          coverage report >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
