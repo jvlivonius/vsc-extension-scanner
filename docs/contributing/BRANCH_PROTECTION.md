@@ -123,12 +123,42 @@ This applies the rules only to the `main` branch.
 1. Check **"Require status checks to pass before merging"**
 2. Check **"Require branches to be up to date before merging"**
 3. Search and add each required status check (use exact names):
-   - `Security Checks / Security Analysis`
-   - `Tests / Architecture Validation`
+   - `Security Analysis`
+   - `Architecture Validation`
    - `Tests & Coverage Analysis`
-   - `Semgrep Security Scan / Semgrep Scan`
+   - `Semgrep Scan`
 
-**Note:** Status check names use the format `"Workflow Name / Job Name"` as defined in `.github/workflows/*.yml` files. GitHub will show these as search suggestions after the first PR runs.
+**Note:** Status check names are automatically derived from GitHub Actions job names. GitHub simplifies them by removing the workflow name prefix in most cases. These will appear as search suggestions after the first PR runs.
+
+#### Security Scanner Behavior
+
+**⚠️ IMPORTANT: Non-Blocking Security Checks**
+
+The `Security Analysis` job uses `continue-on-error: true` for individual security scanners, making them **informational rather than strictly blocking**:
+
+**Rationale:**
+- Security tools (Bandit, Safety, pip-audit) can generate false positives
+- Allows merging PRs with warnings after manual review
+- Prevents development workflow disruption from low-severity findings
+- Security reports are retained as artifacts for offline review
+
+**Security Policy:**
+- ⚠️ **Manual Review Required:** All security warnings must be reviewed before merge
+- 🔒 **Critical Findings:** Must be fixed immediately (owner discretion)
+- 📊 **Reports Available:** Security artifacts retained 90 days in workflow runs
+- ✅ **Job Still Required:** Job must complete successfully (even if scanners warn)
+
+**What This Means:**
+- ✅ PRs **can** merge with security warnings (not errors)
+- ✅ Security tools run and report findings
+- ✅ Manual review process enforces security standards
+- ❌ Automatic blocking only on job failure (infrastructure/setup issues)
+
+**For Contributors:**
+1. Review security scan output in CI logs
+2. Address critical vulnerabilities before requesting review
+3. Document why warnings are acceptable if present
+4. Expect maintainer questions about security findings
 
 ---
 

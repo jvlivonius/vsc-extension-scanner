@@ -64,9 +64,9 @@ jobs:
         run: |
           if [ -f "tests/test_integration.py" ]; then
             echo "Running integration tests..."
-            python3 tests/test_integration.py || true
+            python3 tests/test_integration.py
           else
-            echo "No integration tests found"
+            echo "No integration tests found - skipping"
           fi
 
   tests-and-coverage:
