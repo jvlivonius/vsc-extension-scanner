@@ -108,11 +108,10 @@ This applies the rules only to the `main` branch.
 - ✅ **Require status checks to pass before merging**
 - ✅ **Require branches to be up to date before merging**
 - **Required status checks:**
-  - `Security Checks / Security Analysis` (Bandit, Safety, pip-audit)
-  - `Security Checks / Coverage Analysis` (minimum 70% coverage requirement)
-  - `Tests / Architecture Validation` (layer compliance, 0 violations)
-  - `Tests / Unit Tests` (all 628 tests must pass)
-  - `Semgrep Security Scan / Semgrep Status Check` (static security analysis)
+  - `Security Checks / Security Analysis` (Bandit, Safety, pip-audit security scanning)
+  - `Tests / Architecture Validation` (layer compliance, 0 violations required)
+  - `Tests & Coverage Analysis` (all tests must pass, minimum 70% coverage)
+  - `Semgrep Security Scan / Semgrep Scan` (custom security rules enforcement)
 
 **Rationale:**
 - Prevents merging broken code
@@ -125,10 +124,9 @@ This applies the rules only to the `main` branch.
 2. Check **"Require branches to be up to date before merging"**
 3. Search and add each required status check (use exact names):
    - `Security Checks / Security Analysis`
-   - `Security Checks / Coverage Analysis`
    - `Tests / Architecture Validation`
-   - `Tests / Unit Tests`
-   - `Semgrep Security Scan / Semgrep Status Check`
+   - `Tests & Coverage Analysis`
+   - `Semgrep Security Scan / Semgrep Scan`
 
 **Note:** Status check names use the format `"Workflow Name / Job Name"` as defined in `.github/workflows/*.yml` files. GitHub will show these as search suggestions after the first PR runs.
 
@@ -311,10 +309,9 @@ Create `.github/branch-protection-config.json`:
     "strict": true,
     "contexts": [
       "Security Checks / Security Analysis",
-      "Security Checks / Coverage Analysis",
       "Tests / Architecture Validation",
-      "Tests / Unit Tests",
-      "Semgrep Security Scan / Semgrep Status Check"
+      "Tests & Coverage Analysis",
+      "Semgrep Security Scan / Semgrep Scan"
     ]
   },
   "enforce_admins": false,
@@ -613,5 +610,5 @@ gh api repos/:owner/:repo/branches/main/protection \
 
 ---
 
-**Last Updated:** 2025-01-31
-**Version:** 1.0.0
+**Last Updated:** 2025-10-31
+**Version:** 1.1.0
