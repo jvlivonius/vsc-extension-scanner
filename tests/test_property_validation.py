@@ -100,13 +100,23 @@ class TestPathValidationProperties(unittest.TestCase):
         """
         PROPERTY: System-critical paths should ALWAYS be blocked.
 
-        Paths containing system directories should raise SecurityError.
+        Paths that ARE system directories or are UNDER system directories
+        should raise ValueError. Uses proper path prefix matching to avoid
+        false positives (e.g., /sys0, /etc-backup, /mysystem are legitimate
+        directory names that should NOT be blocked).
         """
+        import os
+
         system_dirs = ["/etc", "/sys", "/proc", "c:\\windows\\system32"]
 
-        # Check if path contains system directory
+        # Check if path is a system directory or subdirectory (proper path prefix)
+        # This avoids false positives from substring matching
         path_lower = path.lower()
-        has_system_dir = any(sysdir.lower() in path_lower for sysdir in system_dirs)
+        has_system_dir = any(
+            path_lower == sysdir.lower()
+            or path_lower.startswith(sysdir.lower() + os.sep)
+            for sysdir in system_dirs
+        )
 
         if has_system_dir:
             with self.assertRaises(ValueError):
