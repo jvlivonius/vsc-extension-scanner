@@ -108,10 +108,10 @@ This applies the rules only to the `main` branch.
 - ✅ **Require status checks to pass before merging**
 - ✅ **Require branches to be up to date before merging**
 - **Required status checks:**
-  - `Security Checks / Security Analysis` (Bandit, Safety, pip-audit security scanning)
-  - `Tests / Architecture Validation` (layer compliance, 0 violations required)
-  - `Tests & Coverage Analysis` (all tests must pass, minimum 70% coverage)
-  - `Semgrep Security Scan / Semgrep Scan` (custom security rules enforcement)
+  - `Security Analysis` (Bandit, Safety, pip-audit security scanning)
+  - `Architecture Validation` (layer compliance, 0 violations required)
+  - `Tests & Coverage Analysis` (all tests must pass, minimum 52% coverage enforced, 70% target)
+  - `Semgrep Scan` (custom security rules enforcement)
 
 **Rationale:**
 - Prevents merging broken code
