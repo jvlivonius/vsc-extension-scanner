@@ -106,6 +106,39 @@ class TestPathValidation(unittest.TestCase):
                 validate_path(path, path_type="cache directory")
             self.assertIn("system directories", str(cm.exception).lower())
 
+    def test_system_directories_case_insensitive_blocked(self):
+        """
+        Test that system directories are blocked with case variations.
+
+        Security Fix (v3.5.5): Prevent bypassing system path restrictions
+        on case-insensitive filesystems (macOS, Windows) using mixed case
+        like /Sys, /ETC, /Proc.
+
+        This test addresses the vulnerability found by property-based testing
+        where /Sys (capital S) was not blocked on case-insensitive filesystems.
+        """
+        # Case variations that should all be blocked
+        case_variations = [
+            "/Sys",  # The exact case that triggered the property test failure
+            "/SYS",  # All uppercase
+            "/sYs",  # Mixed case
+            "/Etc/passwd",  # Mixed case etc
+            "/ETC/passwd",  # All uppercase etc
+            "/Proc/self",  # Capital P proc
+            "/PROC/self",  # All uppercase proc
+            "/Var/log",  # Capital V var
+            "/Root/.bashrc",  # Capital R root
+            "/Boot/grub",  # Capital B boot
+            "/Dev/null",  # Capital D dev
+        ]
+
+        for path in case_variations:
+            with self.assertRaises(
+                ValueError, msg=f"Should block case variation: {path}"
+            ) as cm:
+                validate_path(path, path_type="cache directory")
+            self.assertIn("system directories", str(cm.exception).lower())
+
     def test_macos_system_directories_blocked(self):
         """Test that macOS system directories are blocked."""
         import platform
@@ -121,6 +154,34 @@ class TestPathValidation(unittest.TestCase):
 
         for path in macos_paths:
             with self.assertRaises(ValueError, msg=f"Should block: {path}") as cm:
+                validate_path(path, path_type="cache directory")
+            self.assertIn("system directories", str(cm.exception).lower())
+
+    def test_macos_system_directories_case_insensitive_blocked(self):
+        """
+        Test that macOS system directories are blocked with case variations.
+
+        Security Fix (v3.5.5): macOS APFS/HFS+ with default case-insensitive
+        settings allows /SYSTEM and /System to access the same directory.
+        """
+        import platform
+
+        # Only test on macOS
+        if platform.system() != "Darwin":
+            self.skipTest("macOS-specific test")
+
+        macos_case_variations = [
+            "/SYSTEM/Library/Extensions/",  # All uppercase
+            "/system/Library/Extensions/",  # All lowercase
+            "/SyStEm/Library/Extensions/",  # Mixed case
+            "/System/LIBRARY/Extensions/",  # Library uppercase
+            "/LIBRARY/System/Volumes/",  # Library uppercase
+        ]
+
+        for path in macos_case_variations:
+            with self.assertRaises(
+                ValueError, msg=f"Should block macOS case variation: {path}"
+            ) as cm:
                 validate_path(path, path_type="cache directory")
             self.assertIn("system directories", str(cm.exception).lower())
 

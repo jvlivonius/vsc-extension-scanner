@@ -121,6 +121,10 @@ def is_restricted_path(path_str: str) -> bool:
     """
     Check if path is in a restricted system directory (cross-platform).
 
+    Security Fix (v3.5.5): Added case-insensitive matching to prevent
+    bypassing system path restrictions on case-insensitive filesystems
+    (macOS, Windows) using variations like /Sys, /ETC, /Proc.
+
     Args:
         path_str: Path to check
 
@@ -134,12 +138,25 @@ def is_restricted_path(path_str: str) -> bool:
         # Check if path starts with any restricted path
         for restricted_path in restricted:
             try:
+                # Resolve restricted path to handle symlinks (e.g., /etc -> /private/etc on macOS)
                 restricted_resolved = PathLib(restricted_path).resolve()
-                path.relative_to(restricted_resolved)
-                # Path is under restricted directory
-                return True
-            except ValueError:
-                # Not under this restricted path, continue checking
+
+                # Case-insensitive prefix check for system paths
+                # This prevents bypasses like /Sys instead of /sys on case-insensitive filesystems
+                path_str_lower = str(path).lower()
+                restricted_str_lower = str(restricted_resolved).lower()
+
+                # Case-insensitive prefix check
+                # On case-insensitive filesystems (macOS, Windows), /Sys and /sys
+                # refer to the same directory, so block both
+                if (
+                    path_str_lower.startswith(restricted_str_lower + "/")
+                    or path_str_lower == restricted_str_lower
+                ):
+                    # Path starts with restricted directory (case-insensitive match)
+                    return True
+            except (ValueError, OSError):
+                # Can't resolve restricted path, skip to next
                 continue
 
         return False

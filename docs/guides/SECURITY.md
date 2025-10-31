@@ -99,13 +99,17 @@ if not validate_path(user_path):
 - ✅ No URL encoding (`%2e`, `%2f`)
 - ✅ Must resolve within current working directory (for output)
 - ✅ Must resolve within user home (for extensions/cache)
+- ✅ Case-insensitive system path blocking (v3.5.5+)
 
 **Restricted Paths:**
 - Unix/Linux: `/etc`, `/var`, `/sys`, `/proc`, `/root`, `/usr`
 - macOS: Same as Unix/Linux plus `/System`, `/Library`
 - Windows: `C:\Windows`, `C:\Program Files`, system32
 
-**Reference:** `utils.py:validate_path()` | `guides/ARCHITECTURE.md:Security`
+**Case-Insensitive Blocking (v3.5.5):**
+On case-insensitive filesystems (macOS APFS/HFS+, Windows NTFS), all case variations of system paths are blocked to prevent security bypasses. Examples: `/Sys`, `/SYS`, `/Etc`, `/ETC`, `/Proc`, `/SYSTEM`, `/Library/SYSTEM`.
+
+**Reference:** `utils.py:validate_path()` | `utils.py:is_restricted_path()` | `guides/ARCHITECTURE.md:Security`
 
 ---
 
