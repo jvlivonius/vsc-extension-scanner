@@ -16,6 +16,28 @@ Branch protection rules enforce code quality standards and workflow requirements
 
 **Target Branch:** `main`
 
+**Repository Type:** Solo Maintainer (Owner bypass enabled)
+
+---
+
+## Solo Maintainer Configuration
+
+This repository uses a **solo maintainer configuration** optimized for single-owner workflows while maintaining code quality standards:
+
+- ✅ **Owner Bypass Enabled** (`enforce_admins: false`) - Repository owner can merge PRs without approval for emergency situations
+- ✅ **Contributor Enforcement** - Future contributors must pass all CI checks + receive owner approval
+- ✅ **Policy-Based Workflow** - Owner should follow same PR process as contributors except in genuine emergencies
+
+**Why This Configuration?**
+- **GitHub Free Tier Limitation:** Cannot selectively enforce rules on admins while allowing emergency bypass
+- **Solo Maintainer Reality:** Single maintainer may need to merge critical hotfixes without external approval
+- **Future-Proof:** When contributors join, they will be fully blocked until owner approves
+
+**Owner Workflow Policy:**
+- **Standard Process:** Create PR → Wait for CI → Self-review → Merge
+- **Emergency Bypass:** Use `gh pr merge --admin` only for critical security fixes or production incidents
+- **Documentation:** Document bypass reason in commit message and create follow-up validation issue
+
 ---
 
 ## Quick Setup
@@ -86,10 +108,11 @@ This applies the rules only to the `main` branch.
 - ✅ **Require status checks to pass before merging**
 - ✅ **Require branches to be up to date before merging**
 - **Required status checks:**
-  - `security-scan` (Bandit, Safety, pip-audit via GitHub Actions)
-  - `coverage-test` (minimum 70% coverage requirement)
-  - `test` (all 628 tests must pass)
-  - `semgrep` (static security analysis)
+  - `Security Checks / Security Analysis` (Bandit, Safety, pip-audit)
+  - `Security Checks / Coverage Analysis` (minimum 70% coverage requirement)
+  - `Tests / Architecture Validation` (layer compliance, 0 violations)
+  - `Tests / Unit Tests` (all 628 tests must pass)
+  - `Semgrep Security Scan / Semgrep Status Check` (static security analysis)
 
 **Rationale:**
 - Prevents merging broken code
@@ -100,13 +123,14 @@ This applies the rules only to the `main` branch.
 **Web Interface Steps:**
 1. Check **"Require status checks to pass before merging"**
 2. Check **"Require branches to be up to date before merging"**
-3. Search and add each required status check:
-   - Type `security-scan` → Select
-   - Type `coverage-test` → Select
-   - Type `test` → Select
-   - Type `semgrep` → Select
+3. Search and add each required status check (use exact names):
+   - `Security Checks / Security Analysis`
+   - `Security Checks / Coverage Analysis`
+   - `Tests / Architecture Validation`
+   - `Tests / Unit Tests`
+   - `Semgrep Security Scan / Semgrep Status Check`
 
-**Note:** Status check names must match exactly what's defined in `.github/workflows/*.yml` files.
+**Note:** Status check names use the format `"Workflow Name / Job Name"` as defined in `.github/workflows/*.yml` files. GitHub will show these as search suggestions after the first PR runs.
 
 ---
 
@@ -200,18 +224,32 @@ This applies the rules only to the `main` branch.
 
 ---
 
-### 10. Do Not Allow Bypassing
+### 10. Administrator Enforcement (Solo Maintainer Configuration)
 
 **Setting:**
-- ✅ **Do not allow bypassing the above settings**
+- ⬜ **Do not allow bypassing the above settings** - UNCHECKED for solo maintainer
 
-**Rationale:**
-- Applies rules to administrators
-- Ensures no one can skip quality gates
-- Creates consistent process for entire team
+**Rationale (Solo Maintainer):**
+- **Owner Bypass Capability:** Allows repository owner to merge critical hotfixes without external approval
+- **Contributor Enforcement:** Future contributors are fully blocked until all checks pass + owner approves
+- **GitHub Free Tier:** Cannot selectively enforce rules while allowing emergency bypass
+- **Policy-Based:** Owner should follow same process voluntarily except in genuine emergencies
 
 **Web Interface Steps:**
-1. Check **"Do not allow bypassing the above settings"** under "Rules applied to everyone including administrators"
+1. **Leave UNCHECKED:** "Do not allow bypassing the above settings"
+2. This corresponds to `"enforce_admins": false` in JSON configuration
+
+**Configuration Trade-offs:**
+- ✅ **Owner can bypass:** Emergency capability for critical fixes (using `--admin` flag)
+- ✅ **Contributors blocked:** All rules enforced on non-admin users (checks + approval required)
+- ⚠️ **Policy-based for owner:** GitHub won't prevent owner merges (requires discipline)
+- ✅ **Future-proof:** When team grows, easy to change to `enforce_admins: true`
+
+**When to Use `--admin` Flag:**
+- Critical security vulnerability requiring immediate fix
+- Production outage requiring hotfix
+- CI/CD system failure preventing normal merge
+- Always document bypass reason in commit message
 
 ---
 
@@ -272,15 +310,15 @@ Create `.github/branch-protection-config.json`:
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "security-scan",
-      "coverage-test",
-      "test",
-      "semgrep"
+      "Security Checks / Security Analysis",
+      "Security Checks / Coverage Analysis",
+      "Tests / Architecture Validation",
+      "Tests / Unit Tests",
+      "Semgrep Security Scan / Semgrep Status Check"
     ]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": {
-    "dismissal_restrictions": {},
     "dismiss_stale_reviews": true,
     "require_code_owner_reviews": false,
     "required_approving_review_count": 1,
@@ -296,6 +334,12 @@ Create `.github/branch-protection-config.json`:
   "allow_fork_syncing": true
 }
 ```
+
+**Key Configuration Points:**
+- `"enforce_admins": false` - Allows owner bypass for emergency situations
+- `"required_approving_review_count": 1` - Enforced for contributors, not owner
+- `"require_last_push_approval": true` - Better security (new commits require re-approval)
+- Status checks use `"Workflow Name / Job Name"` format from GitHub Actions
 
 ### Apply via CLI
 
