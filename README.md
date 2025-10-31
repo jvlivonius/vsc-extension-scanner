@@ -6,8 +6,6 @@ A command-line tool that scans your installed VS Code extensions for security vu
 
 **Version:** 3.5.5 | **Status:** Production Ready
 
-<!-- Test line for branch protection validation - owner bypass simulation -->
-
 ---
 
 ## Why Use This Tool?
