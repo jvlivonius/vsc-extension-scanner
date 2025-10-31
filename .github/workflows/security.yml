@@ -91,89 +91,20 @@ jobs:
           pip-audit --desc
           echo "✅ pip-audit complete"
 
-      - name: Run Security Regression Tests
-        id: security-regression
-        run: |
-          echo "Running security regression test suite..."
-          python3 tests/test_security_regression.py
-          echo "✅ Security regression tests passed"
-
-      - name: Run Path Validation Tests
-        id: path-validation
-        run: |
-          echo "Running path validation security tests..."
-          python3 tests/test_path_validation.py
-          echo "✅ Path validation tests passed"
-
-      - name: Run String Sanitization Tests
-        id: string-sanitization
-        run: |
-          echo "Running string sanitization security tests..."
-          python3 tests/test_string_sanitization.py
-          echo "✅ String sanitization tests passed"
-
-      - name: Run Cache Integrity Tests (HMAC)
-        id: cache-integrity
-        run: |
-          echo "Running HMAC cache integrity tests..."
-          python3 tests/test_cache_integrity.py
-          echo "✅ Cache integrity tests passed"
-
-      - name: Run SQLite Security Tests
-        id: sqlite-security
-        run: |
-          echo "Running SQLite security audit tests..."
-          python3 tests/test_sqlite_security.py
-          echo "✅ SQLite security tests passed"
-
-      - name: Run Property Validation Tests
-        id: property-validation
-        run: |
-          echo "Running property-based validation tests (14 tests, ~14K scenarios)..."
-          python3 tests/test_property_validation.py
-          echo "✅ Property validation tests passed"
-
-      - name: Run Property Cache Tests
-        id: property-cache
-        run: |
-          echo "Running property-based cache integrity tests (6 tests, ~700 scenarios)..."
-          python3 tests/test_property_cache.py
-          echo "✅ Property cache tests passed"
-
-      - name: Check for Critical Vulnerabilities
+      - name: Security Scanner Summary
         if: always()
         run: |
           echo ""
           echo "=================================================="
-          echo "Security Scan Summary"
+          echo "Security Scanner Summary"
           echo "=================================================="
           echo ""
           echo "Bandit:        ${{ steps.bandit.outcome }}"
           echo "Safety:        ${{ steps.safety.outcome }}"
           echo "pip-audit:     ${{ steps.pip-audit.outcome }}"
-          echo "Regression:    ${{ steps.security-regression.outcome }}"
-          echo "Path Validate: ${{ steps.path-validation.outcome }}"
-          echo "Sanitization:  ${{ steps.string-sanitization.outcome }}"
-          echo "Cache HMAC:    ${{ steps.cache-integrity.outcome }}"
-          echo "SQLite:        ${{ steps.sqlite-security.outcome }}"
-          echo "Property Val:  ${{ steps.property-validation.outcome }}"
-          echo "Property Cache:${{ steps.property-cache.outcome }}"
           echo ""
 
-          # Fail if any security test failed
-          if [ "${{ steps.security-regression.outcome }}" != "success" ] || \
-             [ "${{ steps.path-validation.outcome }}" != "success" ] || \
-             [ "${{ steps.string-sanitization.outcome }}" != "success" ] || \
-             [ "${{ steps.cache-integrity.outcome }}" != "success" ] || \
-             [ "${{ steps.sqlite-security.outcome }}" != "success" ] || \
-             [ "${{ steps.property-validation.outcome }}" != "success" ] || \
-             [ "${{ steps.property-cache.outcome }}" != "success" ]; then
-            echo "❌ SECURITY TESTS FAILED"
-            echo "Review security test failures above"
-            exit 1
-          fi
-
-          # Warn if scanners found issues (but don't fail - tests are authoritative)
+          # Warn if scanners found issues (informational only)
           if [ "${{ steps.bandit.outcome }}" == "failure" ]; then
             echo "⚠️  Bandit found potential issues (review bandit-report.json)"
           fi
@@ -185,8 +116,8 @@ jobs:
           fi
 
           echo ""
-          echo "✅ All security tests passed"
-          echo "Security requirements validated successfully"
+          echo "✅ Security scanner analysis complete"
+          echo "Note: Security test validation runs in Tests workflow"
 
       - name: Upload Security Reports
         if: always()
@@ -217,21 +148,22 @@ jobs:
     steps:
       - name: Generate Security Summary
         run: |
-          echo "# Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "# Security Scanner Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.security-scan.result }}" == "success" ]; then
-            echo "✅ **All security checks passed**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Security scanner analysis complete**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The codebase meets all security requirements:" >> $GITHUB_STEP_SUMMARY
+            echo "All security scanners executed successfully:" >> $GITHUB_STEP_SUMMARY
             echo "- Bandit AST security analysis" >> $GITHUB_STEP_SUMMARY
             echo "- Safety dependency scanning" >> $GITHUB_STEP_SUMMARY
             echo "- pip-audit package auditing" >> $GITHUB_STEP_SUMMARY
-            echo "- Comprehensive security test suite (95% security coverage)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Note:** Security test validation runs in Tests workflow" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Security checks failed**" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Security scanner failed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Review the security scan job for details." >> $GITHUB_STEP_SUMMARY
           fi
@@ -241,4 +173,3 @@ jobs:
           echo "- **Bandit**: AST-based Python security scanner" >> $GITHUB_STEP_SUMMARY
           echo "- **Safety**: Dependency vulnerability database (50K+ CVEs)" >> $GITHUB_STEP_SUMMARY
           echo "- **pip-audit**: Official PyPA package auditing tool" >> $GITHUB_STEP_SUMMARY
-          echo "- **Custom Tests**: SQLite security, HMAC integrity, path validation" >> $GITHUB_STEP_SUMMARY
