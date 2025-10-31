@@ -191,6 +191,22 @@ docs/
 - Verification checkpoints and quality gates
 - Post-release notes and improvement tracking
 
+**[contributing/GIT_WORKFLOW.md](contributing/GIT_WORKFLOW.md)** - Git workflow guide
+- Simplified GitHub Flow branching strategy
+- Branch types and naming conventions (feature/*, bugfix/*, hotfix/*)
+- Feature development workflow (create → develop → PR → merge)
+- Release workflow (from main branch with tags)
+- Hotfix procedures for critical issues
+- Pull request guidelines and commit message standards
+- Branch protection configuration recommendations
+
+**[contributing/BRANCH_PROTECTION.md](contributing/BRANCH_PROTECTION.md)** - Branch protection setup
+- GitHub branch protection configuration for main branch
+- Required status checks (tests, security, coverage)
+- PR approval requirements (1 approval + CI passing)
+- GitHub CLI and web interface setup instructions
+- Verification procedures and troubleshooting
+
 **[contributing/TESTING_CHECKLIST.md](contributing/TESTING_CHECKLIST.md)** - Testing checklist
 - API behavior tests
 - Extension discovery tests
@@ -336,7 +352,7 @@ docs/
 | **Total Documentation** | ~20,000+ lines |
 | **Number of Documents** | 32+ files |
 | **Core Guide Docs** | 6 (Architecture, Security, Error Handling, Testing, API Reference, Error Codes) |
-| **Contributing Guides** | 2 (Testing Checklist, Version Management) |
+| **Contributing Guides** | 4 (Git Workflow, Branch Protection, Testing Checklist, Version Management) |
 | **Feature Specifications** | 3 (HTML Reports, Retry Mechanism, CLI UX) |
 | **API Endpoints Documented** | 3 |
 | **Test Suites** | 13+ (Display, Scanner, CLI, API, Cache, Config, Security, Performance, Integration, etc.) |

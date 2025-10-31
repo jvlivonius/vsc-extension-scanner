@@ -164,16 +164,43 @@ Actionable rules for enhanced Claude Code framework operation.
 
 - **Always Check Status First**: Start every session with `git status` and `git branch`
 - **Feature Branches Only**: Create feature branches for ALL work, never work on main/master
+- **Branch Naming**: Use format `<type>/<short-descriptive-name>` (feature/*, bugfix/*, hotfix/*)
+- **Branch from Main**: Always create new branches from updated main branch
 - **Incremental Commits**: Commit frequently with meaningful messages, not giant commits
+- **Commit Message Format**: Use `<type>(<scope>): <subject>` (e.g., `feat(scanner): add parallel processing`)
 - **Verify Before Commit**: Always `git diff` to review changes before staging
 - **Create Restore Points**: Commit before risky operations for easy rollback
 - **Branch for Experiments**: Use branches to safely test different approaches
+- **Pull Request Required**: All changes merge via PR with 1 approval and passing CI
+- **Update Before PR**: Rebase or merge main into feature branch before creating PR
 - **Clean History**: Use descriptive commit messages, avoid "fix", "update", "changes"
 - **Non-Destructive Workflow**: Always preserve ability to rollback changes
+- **Delete After Merge**: Remove feature branches after PR merge
 
-✅ **Right**: `git checkout -b feature/auth` → work → commit → PR
+**Branch Types:**
+- `feature/*` - New features, enhancements (e.g., `feature/add-csv-export`)
+- `bugfix/*` - Non-critical bug fixes (e.g., `bugfix/cache-corruption`)
+- `hotfix/*` - Critical security/data issues (e.g., `hotfix/CVE-2024-12345`)
+- `claude/*` - Claude Code automated work (auto-generated names)
+- `dependabot/*` - Automated dependency updates
+
+**Commit Types:**
+- `feat` - New feature
+- `fix` - Bug fix
+- `hotfix` - Critical security/data fix
+- `docs` - Documentation only
+- `refactor` - Code restructuring
+- `test` - Testing updates
+- `chore` - Maintenance (deps, build)
+
+✅ **Right**: `git checkout main && git pull && git checkout -b feature/auth` → work → commit → push → PR
 ❌ **Wrong**: Work directly on main/master branch
-**Detection**: `git branch` should show feature branch, not main/master
+❌ **Wrong**: Branch names like `fix-bug`, `temp`, `john-work`
+✅ **Right**: `git commit -m "feat(auth): add JWT token validation"`
+❌ **Wrong**: `git commit -m "update code"`
+**Detection**: `git branch` should show feature/*, bugfix/*, or hotfix/* branch
+
+→ **Full workflow:** See [docs/contributing/GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md)
 
 ## Tool Optimization
 **Priority**: 🟢 **Triggers**: Multi-step operations, performance needs, complex tasks

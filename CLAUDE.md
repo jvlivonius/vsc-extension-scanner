@@ -96,6 +96,10 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - [RELEASE_CHECKLIST.md](docs/contributing/RELEASE_CHECKLIST.md) - Printable release checklist
 - [VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md) - Version bumping with `bump_version.py`
 
+**Git Workflow:**
+- [GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md) - Branching strategy (Simplified GitHub Flow), branch types, PR guidelines
+- [BRANCH_PROTECTION.md](docs/contributing/BRANCH_PROTECTION.md) - GitHub branch protection configuration
+
 **Documentation:**
 - [DOCUMENTATION_CONVENTIONS.md](docs/contributing/DOCUMENTATION_CONVENTIONS.md) - Naming conventions, structure, archive organization
 - [_CANONICAL_REFERENCES.md](docs/guides/_CANONICAL_REFERENCES.md) - Single source of truth index, prevent duplication
@@ -387,14 +391,20 @@ python3 -m pdb -m vscode_scanner.vscan scan
 
 **Before Committing:**
 ```bash
-# 0. Pre-commit hooks (RECOMMENDED - Phase 1)
+# 0. Verify git workflow (CRITICAL - See GIT_WORKFLOW.md)
+git status                                 # Check working directory state
+git branch                                 # Verify on feature branch, NOT main
+# Expected: On branch feature/* or bugfix/* or hotfix/*
+# Never commit directly to main!
+
+# 1. Pre-commit hooks (RECOMMENDED - Phase 1)
 # Install once: pip install -e .[dev] && pre-commit install
 pre-commit run --all-files                 # Runs security checks automatically
 
-# 1. Run ALL tests
+# 2. Run ALL tests
 python3 tests/test_*.py                    # All tests must pass
 
-# 2. Verify security (CRITICAL - Phase 1 Enhanced)
+# 3. Verify security (CRITICAL - Phase 1 Enhanced)
 python3 tests/test_security.py             # Must show 0 vulnerabilities
 python3 tests/test_security_regression.py  # All security tests must pass
 python3 tests/test_sqlite_security.py      # SQLite security audit (Phase 1)
@@ -404,15 +414,23 @@ bandit -r vscode_scanner/ -ll              # AST-based security scan
 safety check                               # Dependency vulnerabilities
 pip-audit                                  # PyPI package audit
 
-# 3. Check architecture compliance
+# 4. Check architecture compliance
 python3 tests/test_architecture.py         # Must show 0 layer violations
 
-# 4. Verify version consistency (if version changed)
+# 5. Verify version consistency (if version changed)
 python3 scripts/bump_version.py --check    # All files must have matching versions
 
-# 5. Check documentation freshness (if docs changed)
+# 6. Check documentation freshness (if docs changed)
 ./scripts/check_doc_freshness.sh           # Must show "✓ All checks passed!"
+
+# 7. Commit and push (after all checks pass)
+git add .                                  # Stage all changes
+git commit -m "type(scope): subject"       # Follow commit message standards
+git push origin feature/branch-name        # Push to feature branch
+gh pr create --title "..." --body "..."    # Create pull request
 ```
+
+→ **Git workflow details:** See [GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md) for complete branching strategy, PR guidelines, and commit standards
 
 **Phase 1 Security Tools Setup (v3.5.1):**
 ```bash

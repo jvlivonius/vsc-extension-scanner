@@ -330,11 +330,11 @@ def run_scan(
     cache_stats_data = {
         "from_cache": stats["cached_results"],
         "fresh_scans": stats["fresh_scans"],
-        "cache_hit_rate": round(
-            (stats["cached_results"] / max(len(scan_results), 1) * 100), 1
-        )
-        if scan_results
-        else 0.0,
+        "cache_hit_rate": (
+            round((stats["cached_results"] / max(len(scan_results), 1) * 100), 1)
+            if scan_results
+            else 0.0
+        ),
     }
 
     try:

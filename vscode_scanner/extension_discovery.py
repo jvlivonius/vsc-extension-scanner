@@ -111,10 +111,12 @@ class ExtensionDiscovery:
                 installed[relative_location] = {
                     "id": ext_id.lower(),  # Lowercase for case-insensitive matching
                     "version": version,
-                    "timestamp": int(installed_timestamp)
-                    if installed_timestamp
-                    and isinstance(installed_timestamp, (int, float))
-                    else None,
+                    "timestamp": (
+                        int(installed_timestamp)
+                        if installed_timestamp
+                        and isinstance(installed_timestamp, (int, float))
+                        else None
+                    ),
                 }
 
             return installed

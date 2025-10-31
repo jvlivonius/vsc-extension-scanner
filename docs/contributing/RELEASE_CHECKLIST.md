@@ -1,360 +1,182 @@
 # Release Checklist
 
 **Version:** ___________
-**Release Date:** ___________
-**Release Manager:** ___________
+**Date:** ___________
+**Manager:** ___________
 
 ---
 
-## Pre-Release Preparation
+## Prerequisites: Git Workflow Verification
+
+**BEFORE starting release process:**
+
+- [ ] `git status` - Working directory is clean (no uncommitted changes)
+- [ ] `git branch` - Currently on `main` branch
+- [ ] `git pull origin main` - Main branch is up to date with remote
+- [ ] All feature branches for this release have been merged to main
+- [ ] All PRs for this release have been approved and merged
+
+**If checks fail:**
+- If on feature branch: Complete work → Create PR → Merge → Switch to main
+- If uncommitted changes: Commit or stash changes first
+- If not up to date: Pull latest changes from remote
+
+→ **See:** [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for complete workflow details
+
+---
+
+## Phase 1: Pre-Release Preparation (30-45 min)
 
 ### Version Management
 
-- [ ] **Update version**
-  ```bash
-  python3 scripts/bump_version.py X.Y.Z
-  ```
+- [ ] `python3 scripts/bump_version.py X.Y.Z`
+- [ ] `python3 scripts/bump_version.py --check` (all files ✓)
 
-- [ ] **Verify version consistency**
-  ```bash
-  python3 scripts/bump_version.py --check
-  ```
-  - [ ] All Python files use centralized version
-  - [ ] README.md version matches
-  - [ ] CLAUDE.md version matches
-  - [ ] docs/project/STATUS.md version matches
-  - [ ] docs/project/PRD.md version matches
-  - [ ] DISTRIBUTION.md version examples match
+### Documentation Updates (8 Files)
 
-### Documentation Updates
+- [ ] **CHANGELOG.md** - Add `## [X.Y.Z] - YYYY-MM-DD` section
+- [ ] **CHANGELOG.md** - Document: Added, Changed, Fixed, Security
+- [ ] **CHANGELOG.md** - Update comparison links
+- [ ] **README.md** - Update version badge in header
+- [ ] **README.md** - Update installation examples (if changed)
+- [ ] **CLAUDE.md** - Update `## Current Status` section
+- [ ] **CLAUDE.md** - Move in-progress to previous updates
+- [ ] **DISTRIBUTION.md** - Update version references
+- [ ] **DISTRIBUTION.md** - Update wheel filename examples
+- [ ] **docs/project/STATUS.md** - Update `**Current Version:**` field
+- [ ] **docs/project/STATUS.md** - Update `**Schema Version:**` (if changed)
+- [ ] **docs/project/STATUS.md** - Add new release section
+- [ ] **docs/project/PRD.md** - Update version (if requirements changed)
+- [ ] **docs/README.md** - Verify navigation, links, new docs
+- [ ] **docs/archive/summaries/vX.Y.Z-release-notes.md** - Create from template
 
-- [ ] **CHANGELOG.md** (Root)
-  - [ ] Added new `## [X.Y.Z] - YYYY-MM-DD` section
-  - [ ] Documented under: Added, Changed, Fixed, Deprecated, Removed, Security
-  - [ ] Included migration notes (if breaking changes)
-  - [ ] Updated comparison links at bottom
+### Automated Testing
 
-- [ ] **README.md** (Root)
-  - [ ] Updated version number (line 7)
-  - [ ] Updated installation examples (if changed)
-  - [ ] Updated feature list (if new features)
+- [ ] `pytest tests/` (all pass)
+- [ ] Alternative: `for test in tests/test_*.py; do python3 "$test"; done`
 
-- [ ] **CLAUDE.md** (Root)
-  - [ ] Updated "Current Status" section (~line 21)
-  - [ ] Moved in-progress work to "Previous Updates"
-  - [ ] Added new release to "Latest Updates"
-  - [ ] Verified all version references match
+### Manual Verification
 
-- [ ] **DISTRIBUTION.md** (Root)
-  - [ ] Updated version references
-  - [ ] Updated wheel filename examples
-  - [ ] Updated troubleshooting (if new issues)
-
-- [ ] **docs/project/STATUS.md**
-  - [ ] Updated current version (line 5)
-  - [ ] Updated schema version if changed (line 6)
-  - [ ] Added new release section
-  - [ ] Updated "Next Release" section
-
-- [ ] **docs/project/PRD.md**
-  - [ ] Updated version (if requirements changed)
-  - [ ] Updated feature scope (if applicable)
-  - [ ] Updated constraints (if applicable)
-
-- [ ] **docs/README.md**
-  - [ ] Verified navigation table is current
-  - [ ] Verified all links work
-  - [ ] Updated if new docs added
-
-- [ ] **Release Notes** (Recommended)
-  - [ ] Created `docs/archive/summaries/vX.Y.Z-release-notes.md`
-  - [ ] Used template from `docs/templates/release-notes-template.md`
-  - [ ] Included: summary, features, fixes, breaking changes, upgrade notes
-
-### Archive Cleanup (if applicable)
-
-- [ ] **Archived completed roadmap** (if completing a versioned roadmap)
-  - [ ] Moved `docs/project/vX.Y-ROADMAP.md` to `docs/archive/plans/`
-  - [ ] Updated `docs/archive/README.md` navigation
-  - [ ] Followed DOCUMENTATION_CONVENTIONS.md naming
-
-### Pre-Release Testing
-
-#### Automated Tests
-
-- [ ] **Run all test suites:**
-  ```bash
-  # Recommended: Run all with pytest
-  pytest tests/
-
-  # Alternative: Run individually
-  for test in tests/test_*.py; do python3 "$test"; done
-  ```
-
-- [ ] **All tests passed** (no failures)
-- [ ] **Test coverage:** See `tests/` directory for current test modules
-
-#### Manual Verification
-
-- [ ] `vscan --version` shows correct version (X.Y.Z)
+- [ ] `vscan --version` shows X.Y.Z
 - [ ] `vscan --help` displays correctly
-- [ ] `vscan scan` works with real extensions
-- [ ] `vscan scan --output report.html` generates valid HTML
-- [ ] `vscan scan --output results.json` generates valid JSON
-- [ ] `vscan scan --output data.csv` generates valid CSV
-- [ ] `vscan cache stats` displays correctly
-- [ ] `vscan config show` displays correctly
+- [ ] `vscan scan` works with extensions
+- [ ] `vscan scan --output report.html` valid HTML
+- [ ] `vscan scan --output results.json` valid JSON
+- [ ] `vscan scan --output data.csv` valid CSV
+- [ ] `vscan cache stats` works
+- [ ] `vscan config show` works
 
-#### Platform Testing
+### Platform Testing
 
-- [ ] Tested on macOS (primary platform)
+- [ ] Tested on macOS
 - [ ] Tested on Windows (if available)
 - [ ] Tested on Linux (if available)
 
-#### Version Consistency Check
+### Version Consistency
 
-- [ ] **Verified version appears consistently:**
-  ```bash
-  python3 scripts/bump_version.py --show
-  python3 -c "from vscode_scanner import __version__; print(__version__)"
-  vscan --version
-  # All should show: X.Y.Z
-  ```
+- [ ] `python3 scripts/bump_version.py --show` → X.Y.Z
+- [ ] `python3 -c "from vscode_scanner import __version__; print(__version__)"` → X.Y.Z
+- [ ] `vscan --version` → X.Y.Z
 
 ---
 
-## Build & Package
+## Phase 2: Build & Package (15-20 min)
 
-### Clean Build Environment
+### Clean Build
 
-- [ ] **Removed old build artifacts:**
-  ```bash
-  rm -rf build/
-  rm -rf dist/
-  rm -rf *.egg-info
-  rm -rf vscode_scanner.egg-info
-  ```
+- [ ] `rm -rf build/ dist/ *.egg-info`
+- [ ] Verify cleanup: `ls -la build/ dist/ *.egg-info 2>&1 | grep "No such file"`
 
-- [ ] **Verified cleanup completed**
-  ```bash
-  ls -la build/ dist/ *.egg-info 2>&1 | grep "No such file"
-  ```
+### Build Distribution
 
-### Build Distribution Package
+- [ ] `python3 -m pip install --upgrade build`
+- [ ] `python3 -m build`
+- [ ] `ls -lh dist/` shows wheel + tar.gz
 
-- [ ] **Ensured build tools installed:**
-  ```bash
-  python3 -m pip install --upgrade build
-  ```
+### Verify Installation
 
-- [ ] **Built distribution package:**
-  ```bash
-  python3 -m build
-  ```
+- [ ] `python3 -m venv test-release-env`
+- [ ] `source test-release-env/bin/activate`
+- [ ] `pip install dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl`
+- [ ] `vscan --version` → X.Y.Z
+- [ ] `vscan --help` displays
+- [ ] `vscan cache stats` works
+- [ ] `python3 -c "import vscode_scanner; print(vscode_scanner.__version__)"` → X.Y.Z
+- [ ] `deactivate && rm -rf test-release-env`
 
-- [ ] **Verified outputs created:**
-  ```bash
-  ls -lh dist/
-  # Should show:
-  #   vscode_extension_scanner-X.Y.Z-py3-none-any.whl
-  #   vscode_extension_scanner-X.Y.Z.tar.gz
-  ```
+### Package Metadata
 
-### Verify Package Installation
-
-- [ ] **Created test virtual environment**
-  ```bash
-  python3 -m venv test-release-env
-  source test-release-env/bin/activate
-  ```
-
-- [ ] **Installed from built wheel**
-  ```bash
-  pip install dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
-  ```
-
-- [ ] **Verified installation:**
-  - [ ] `vscan --version` shows X.Y.Z
-  - [ ] `vscan --help` displays correctly
-  - [ ] `vscan cache stats` works without errors
-  - [ ] `python3 -c "import vscode_scanner; print(vscode_scanner.__version__)"` shows X.Y.Z
-
-- [ ] **Cleaned up test environment**
-  ```bash
-  deactivate
-  rm -rf test-release-env
-  ```
-
-### Generate Package Metadata
-
-- [ ] **Generated SHA256 checksums:**
-  ```bash
-  cd dist/
-  shasum -a 256 *.whl *.tar.gz > SHA256SUMS.txt
-  cat SHA256SUMS.txt  # Verify
-  cd ..
-  ```
-
-- [ ] **GPG signature** (Optional - if using)
-  ```bash
-  gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
-  ```
+- [ ] `cd dist/ && shasum -a 256 *.whl *.tar.gz > SHA256SUMS.txt && cd ..`
+- [ ] Optional: `gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl`
 
 ---
 
-## Version Control
+## Phase 3: Version Control (10-15 min)
 
-### Commit Release Changes
+### Commit Release
 
-- [ ] **Staged all updated files:**
-  ```bash
-  git add vscode_scanner/_version.py
-  git add CHANGELOG.md
-  git add README.md
-  git add CLAUDE.md
-  git add DISTRIBUTION.md
-  git add docs/project/STATUS.md
-  git add docs/project/PRD.md
-  git add docs/README.md
-  git add docs/archive/summaries/vX.Y.Z-release-notes.md
-  # If archiving:
-  git add docs/archive/plans/vX.Y-ROADMAP.md
-  git add docs/archive/README.md
-  ```
+- [ ] `git add vscode_scanner/_version.py CHANGELOG.md README.md CLAUDE.md DISTRIBUTION.md`
+- [ ] `git add docs/project/STATUS.md docs/project/PRD.md docs/README.md`
+- [ ] `git add docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] `git status` (verify staged files)
+- [ ] `git commit -m "Release vX.Y.Z: [description]..."`
 
-- [ ] **Verified staged files:**
-  ```bash
-  git status
-  ```
+### Create Tag
 
-- [ ] **Committed with descriptive message:**
-  ```bash
-  git commit -m "Release vX.Y.Z: {Brief description}
-
-  - Bumped version to X.Y.Z
-  - Updated all documentation
-  - Created release notes
-  - {Other changes}
-
-  See CHANGELOG.md for full details"
-  ```
-
-### Create Version Tag
-
-- [ ] **Created annotated tag:**
-  ```bash
-  git tag -a vX.Y.Z -m "Release vX.Y.Z
-
-  {Brief description}
-
-  Key changes:
-  - Feature 1
-  - Feature 2
-  - Bug fix 1
-
-  See CHANGELOG.md for complete details"
-  ```
-
-- [ ] **Verified tag:**
-  ```bash
-  git tag -l -n9 vX.Y.Z
-  git log --oneline -1 vX.Y.Z
-  ```
+- [ ] `git tag -a vX.Y.Z -m "Release vX.Y.Z..."`
+- [ ] `git tag -l -n9 vX.Y.Z` (verify)
+- [ ] `git log --oneline -1 vX.Y.Z` (verify)
 
 ### Push to Remote
 
-- [ ] **Pushed commits to remote:**
-  ```bash
-  git push origin [branch-name]
-  ```
+- [ ] `git push origin main` (push release commit)
+- [ ] `git push origin vX.Y.Z` (push tag - permanent!)
+- [ ] `git ls-remote --heads origin main` (verify commit pushed)
+- [ ] `git ls-remote --tags origin | grep vX.Y.Z` (verify tag pushed)
 
-- [ ] **Pushed version tag to remote:**
-  ```bash
-  git push origin vX.Y.Z
-  ```
+### GitHub Release
 
-- [ ] **Verified tag pushed successfully:**
-  ```bash
-  git ls-remote --tags origin | grep vX.Y.Z
-  ```
-
-### Create GitHub Release
-
-- [ ] **Created GitHub release:**
-
-  **Using GitHub CLI:**
-  ```bash
-  gh release create vX.Y.Z \
-    dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl \
-    dist/SHA256SUMS.txt \
-    --title "vX.Y.Z" \
-    --notes-file docs/archive/summaries/vX.Y.Z-release-notes.md
-  ```
-
-  **Fallback: Via GitHub Web Interface:**
-  - [ ] Navigated to repository → Releases → Draft new release
-  - [ ] Selected tag vX.Y.Z
-  - [ ] Set release title: vX.Y.Z
-  - [ ] Copied release notes
-  - [ ] Uploaded wheel and checksums
-  - [ ] Published release
+- [ ] **CLI:** `gh release create vX.Y.Z dist/*.whl dist/SHA256SUMS.txt --title "vX.Y.Z" --notes-file docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] **Web:** Repository → Releases → Draft → Select tag → Upload → Publish
 
 ---
 
-## Post-Release Verification
+## Verification
 
-- [ ] **Verified release artifacts:**
-  - [ ] GitHub release created
-  - [ ] Wheel file downloadable
-  - [ ] Checksums match
-
-- [ ] **Verified documentation:**
-  - [ ] CHANGELOG.md updated
-  - [ ] README.md shows correct version
-  - [ ] STATUS.md reflects release
-
-- [ ] **Verified git history:**
-  - [ ] Tag exists: `git tag -l vX.Y.Z`
-  - [ ] Commit message clear and descriptive
-  - [ ] All changes included
+- [ ] GitHub release visible and downloadable
+- [ ] CHANGELOG.md updated
+- [ ] README.md shows X.Y.Z
+- [ ] STATUS.md reflects release
+- [ ] `git tag -l vX.Y.Z` exists
 
 ---
 
 ## Notes
 
+**Time Tracking:**
+- Phase 1: _______ min
+- Phase 2: _______ min
+- Phase 3: _______ min
+- **Total:** _______ min
+
 **Issues Encountered:**
 
-___________________________________________________________________________
+_________________________________________________________________
 
-___________________________________________________________________________
+_________________________________________________________________
 
-___________________________________________________________________________
-
-**Time Taken:**
-
-- Pre-Release Preparation: _______ minutes
-- Build & Package: _______ minutes
-- Version Control: _______ minutes
-- **Total:** _______ minutes
+_________________________________________________________________
 
 **Improvements for Next Release:**
 
-___________________________________________________________________________
+_________________________________________________________________
 
-___________________________________________________________________________
+_________________________________________________________________
 
-___________________________________________________________________________
+_________________________________________________________________
 
 ---
 
-## Reference
+**Reference:** [RELEASE_PROCESS.md](RELEASE_PROCESS.md) - Full process documentation
 
-**Full Process Documentation:** [RELEASE_PROCESS.md](RELEASE_PROCESS.md)
-**Version-Specific Changes:** [CHANGELOG.md](../../CHANGELOG.md)
-
-**Release Complete!** ✅
-
-Next steps (separate workflows):
-- Distribution (follow DISTRIBUTION.md)
-- Post-release communication
-- Roadmap planning for next version
+**Next Steps:** Distribution ([DISTRIBUTION.md](../../DISTRIBUTION.md)), post-release communication, roadmap planning
