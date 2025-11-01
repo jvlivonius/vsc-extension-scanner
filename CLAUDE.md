@@ -6,11 +6,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Current Status
 
-**Version:** 3.5.6 Complete ✅
-**Latest:** Automated Release Workflow - GitHub Actions for automatic distribution builds on version tags
-**Features:** CI/CD automation (38% release time reduction), comprehensive testing (628 tests, 72.60% coverage), modular HTML reports
-**Completed Roadmap:** [v3.5.3-roadmap.md](docs/archive/plans/v3.5.3-roadmap.md) - Testing Excellence complete
-**Previous Roadmap:** [docs/archive/plans/v3.5.2-roadmap.md](docs/archive/plans/v3.5.2-roadmap.md)
+**See:** [docs/project/STATUS.md](docs/project/STATUS.md) for current version, features, test metrics, and progress
 
 ---
 
@@ -61,8 +57,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Adding Features:**
 - Check scope: [PRD.md](docs/project/PRD.md) - Is this feature in scope?
-- Check roadmap: [STATUS.md](docs/project/STATUS.md) - Current sprint priorities
-- Check roadmap: [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Testing Excellence (planned)
+- Check roadmap: [STATUS.md](docs/project/STATUS.md) - Current sprint priorities and active roadmap
 
 **Security Changes:**
 - [SECURITY.md](docs/guides/SECURITY.md) - Complete security requirements, validation patterns, defense layers
@@ -77,9 +72,9 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Testing:**
 - [TESTING.md](docs/guides/TESTING.md) - Overview (compact), test patterns (AAA), quick start (486 lines)
-- **Specialized Testing Guides (v3.5.3+):** [testing/](docs/guides/testing/)
-  - [TESTING_SECURITY.md](docs/guides/testing/TESTING_SECURITY.md) - Security testing (21K, 95%+ coverage)
-  - [TESTING_COVERAGE.md](docs/guides/testing/TESTING_COVERAGE.md) - Coverage strategy (52% → 70%)
+- **Specialized Testing Guides:** [testing/](docs/guides/testing/)
+  - [TESTING_SECURITY.md](docs/guides/testing/TESTING_SECURITY.md) - Security testing (95%+ coverage)
+  - [TESTING_COVERAGE.md](docs/guides/testing/TESTING_COVERAGE.md) - Coverage strategy
   - [TESTING_INTEGRATION.md](docs/guides/testing/TESTING_INTEGRATION.md) - Integration patterns
   - [TESTING_MOCKING.md](docs/guides/testing/TESTING_MOCKING.md) - Canonical mocks
   - [TESTING_PROPERTY_BASED.md](docs/guides/testing/TESTING_PROPERTY_BASED.md) - Hypothesis (1,250+ scenarios)
@@ -89,7 +84,6 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
   - [TESTING_RETRY.md](docs/guides/testing/TESTING_RETRY.md) - Retry mechanism
   - [TESTING_HTML_REPORTS.md](docs/guides/testing/TESTING_HTML_REPORTS.md) - HTML report validation
 - [TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md) - Pre-release testing checklist
-- [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Testing Excellence: Phase 4 complete (5/5)
 
 **Releasing:**
 - [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) - Complete 11-step release process (3 phases)
@@ -110,20 +104,14 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 ### 🟢 Reference & History:
 
 **Current Work:**
-- [STATUS.md](docs/project/STATUS.md) - Current sprint status, version progress, metrics
-- [v3.5.3-roadmap.md](docs/project/v3.5.3-roadmap.md) - Current roadmap: Testing Excellence (4 weeks, 52% → 70% coverage)
+- [STATUS.md](docs/project/STATUS.md) - Current sprint status, version progress, metrics, active roadmap
 
 **Finding Historical Info:**
-- [docs/archive/README.md](docs/archive/README.md) - Version timeline & complete archive index
+- [docs/archive/README.md](docs/archive/README.md) - Version timeline, complete archive index, and historical feature specifications
 - [docs/archive/code/](docs/archive/code/) - Archived scripts (PoCs, migrations, superseded tools)
-- [docs/archive/plans/](docs/archive/plans/) - Historical roadmaps (vX.Y-roadmap.md format)
+- [docs/archive/plans/](docs/archive/plans/) - Historical roadmaps and feature specifications
 - [docs/archive/summaries/](docs/archive/summaries/) - Release notes (vX.Y.Z-release-notes.md format)
 - [docs/archive/reviews/](docs/archive/reviews/) - Decision rationale, architectural reviews, analysis
-
-**Archived Feature Specifications:**
-- [docs/archive/plans/v2.2-html-reports-spec.md](docs/archive/plans/v2.2-html-reports-spec.md) - HTML report feature (v2.2)
-- [docs/archive/plans/v2.2-retry-mechanism-spec.md](docs/archive/plans/v2.2-retry-mechanism-spec.md) - Retry mechanism (v2.2)
-- [docs/archive/plans/v3.0-cli-ux-spec.md](docs/archive/plans/v3.0-cli-ux-spec.md) - CLI UX enhancement (v3.0)
 
 **Complete Index:**
 - [docs/README.md](docs/README.md) - Complete documentation navigation and index
@@ -147,13 +135,12 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - **See:** [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md) for complete rules and anti-patterns
 
 **Testing (REQUIRED):**
-- **Test Suite:** 604 tests (Phase 4: +70 tests), 100% passing
-- **Coverage:** Current 52.37%, target 70% (85% overall goal, 95% security modules)
+- **Test Suite:** See [STATUS.md](docs/project/STATUS.md) for current test count and coverage metrics
 - **Pattern:** AAA (Arrange-Act-Assert) for all tests
-- **Property Testing:** 20 tests generating 1,250+ scenarios (Hypothesis)
+- **Property Testing:** Hypothesis-based testing generating 1,000+ scenarios
 - **Run ALL tests before commits:** `python3 tests/test_*.py` or `pytest tests/`
 - **Security tests:** Must pass with 0 vulnerabilities before any commit
-- **Documentation:** See [TESTING.md](docs/guides/TESTING.md) + 10 specialized guides
+- **Documentation:** See [TESTING.md](docs/guides/TESTING.md) for comprehensive testing guides
 
 **Error Handling:**
 - **Exit codes:** 0=success/no vulns, 1=success/vulns found, 2=scan failed
@@ -161,7 +148,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 - **Continue on failures:** Individual extension scan failures should not stop entire scan
 - **Use ERROR_HELP:** Provide actionable guidance in all error messages
 
-**Threading (v3.5.0+):**
+**Threading:**
 - **Parallel by default:** ThreadPoolExecutor with 3 workers (configurable 1-5)
 - **Thread-safe:** All shared state must use locks (ThreadSafeStats class)
 - **Main thread only:** Database writes happen in main thread (SQLite limitation)
@@ -176,7 +163,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 
 **Development:**
 ```bash
-./vscan scan                           # Run scan (3 workers default, 4.88x faster)
+./vscan scan                           # Run scan (3 workers default)
 python3 tests/test_*.py               # Run all tests
 python3 scripts/bump_version.py X.Y.Z # Bump version
 python3 -m build                      # Build distribution package
@@ -230,7 +217,7 @@ vsc-extension-scanner/
 │   ├── bump_version.py           # Version management tool
 │   ├── check_doc_freshness.sh    # Documentation quality validation
 │   └── run_tests.py              # Test runner with pytest integration
-├── tests/                 # Test files (604 tests, 100% passing, 52% coverage)
+├── tests/                 # Test files (see STATUS.md for metrics)
 │   ├── test_security_regression.py  # Security test suite
 │   ├── test_path_validation.py      # Path validation tests
 │   ├── test_string_sanitization.py  # Sanitization tests
@@ -265,24 +252,15 @@ vsc-extension-scanner/
 # Security tests (MUST pass before any commit)
 python3 tests/test_security.py              # Security vulnerability tests
 python3 tests/test_security_regression.py   # Comprehensive security suite
-python3 tests/test_path_validation.py       # Path validation coverage
-python3 tests/test_string_sanitization.py   # String sanitization coverage
-python3 tests/test_cache_integrity.py       # HMAC integrity tests
 
-# Architecture & Core tests
+# Architecture compliance
 python3 tests/test_architecture.py          # Layer compliance (0 violations required)
-python3 tests/test_display.py              # Display module tests
-python3 tests/test_scanner.py              # Scanner module tests
-python3 tests/test_cli.py                  # CLI module tests
-
-# Integration & Performance
-python3 tests/test_integration.py          # Integration tests
-python3 tests/test_performance.py          # Performance benchmarks
-python3 tests/test_db_integrity.py         # Database integrity tests
 
 # Run all tests
-python3 -m pytest tests/                   # Full test suite
+python3 -m pytest tests/                    # Full test suite
 ```
+
+→ **Complete test reference:** See [TESTING.md](docs/guides/TESTING.md) for all test commands and patterns
 
 **Documentation Quality:**
 ```bash
@@ -295,7 +273,7 @@ python3 -m pytest tests/                   # Full test suite
 # Basic usage
 vscan                                      # Show help
 vscan scan                                 # Scan with default settings (3 workers)
-vscan scan --plain                         # Plain output (v2.x style, for CI/CD)
+vscan scan --plain                         # Plain output (for CI/CD)
 vscan scan --quiet                         # Minimal single-line summary
 
 # Output formats
@@ -303,7 +281,7 @@ vscan scan --output results.json           # Save JSON to file
 vscan scan --output report.html            # Generate interactive HTML report
 vscan scan --output results.csv            # Export to CSV spreadsheet
 
-# Performance tuning (v3.5.0+)
+# Performance tuning
 vscan scan --workers 5                     # Maximum performance (5 workers)
 vscan scan --workers 1                     # Sequential mode (for debugging)
 vscan config set scan.workers 3            # Set default worker count
@@ -333,27 +311,10 @@ vscan report results.csv                   # Generate CSV report from cache
 ```
 
 **Version Management:**
-```bash
-python3 scripts/bump_version.py 3.5.1      # Bump version
-python3 scripts/bump_version.py --show     # Show current version
-python3 scripts/bump_version.py --check    # Verify version consistency across all files
-```
+→ **Full guide:** See [VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md)
 
 **Building & Distribution:**
-```bash
-# Build package
-rm -rf build/ dist/ *.egg-info            # Clean build artifacts
-python3 -m build                           # Build wheel and source distribution
-
-# Test installation
-python3 -m venv test_env                   # Create test environment
-source test_env/bin/activate               # Activate (Unix/macOS)
-pip install dist/*.whl                     # Install package
-vscan --version                            # Verify installation
-deactivate                                 # Exit test environment
-```
-
-→ **Full release process:** See [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) for complete 11-step workflow
+→ **Full process:** See [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) for complete 11-step workflow
 
 ---
 
@@ -391,71 +352,34 @@ python3 -m pdb -m vscode_scanner.vscan scan
 
 **Before Committing:**
 ```bash
-# 0. Verify git workflow (CRITICAL - See GIT_WORKFLOW.md)
-git status                                 # Check working directory state
-git branch                                 # Verify on feature branch, NOT main
-# Expected: On branch feature/* or bugfix/* or hotfix/*
-# Never commit directly to main!
+# 1. Verify git workflow (CRITICAL)
+git status && git branch                    # Verify on feature/* branch, NOT main
 
-# 1. Pre-commit hooks (RECOMMENDED - Phase 1)
-# Install once: pip install -e .[dev] && pre-commit install
-pre-commit run --all-files                 # Runs security checks automatically
+# 2. Pre-commit hooks (RECOMMENDED)
+pre-commit run --all-files                  # Runs security checks automatically
 
-# 2. Run ALL tests
-python3 tests/test_*.py                    # All tests must pass
+# 3. Run tests
+python3 -m pytest tests/                    # All tests must pass
 
-# 3. Verify security (CRITICAL - Phase 1 Enhanced)
-python3 tests/test_security.py             # Must show 0 vulnerabilities
-python3 tests/test_security_regression.py  # All security tests must pass
-python3 tests/test_sqlite_security.py      # SQLite security audit (Phase 1)
+# 4. Verify security (CRITICAL)
+python3 tests/test_security.py              # Must show 0 vulnerabilities
+python3 tests/test_security_regression.py   # All security tests must pass
 
-# Phase 1 Security Tools (automated in pre-commit + CI/CD)
-bandit -r vscode_scanner/ -ll              # AST-based security scan
-safety check                               # Dependency vulnerabilities
-pip-audit                                  # PyPI package audit
+# 5. Check architecture compliance
+python3 tests/test_architecture.py          # Must show 0 layer violations
 
-# 4. Check architecture compliance
-python3 tests/test_architecture.py         # Must show 0 layer violations
+# 6. Commit and push (after all checks pass)
+git add . && git commit -m "type(scope): subject"
+git push origin feature/branch-name
+gh pr create --title "..." --body "..."
 
-# 5. Verify version consistency (if version changed)
-python3 scripts/bump_version.py --check    # All files must have matching versions
-
-# 6. Check documentation freshness (if docs changed)
-./scripts/check_doc_freshness.sh           # Must show "✓ All checks passed!"
-
-# 7. Commit and push (after all checks pass)
-git add .                                  # Stage all changes
-git commit -m "type(scope): subject"       # Follow commit message standards
-git push origin feature/branch-name        # Push to feature branch
-gh pr create --title "..." --body "..."    # Create pull request
-
-# 8. After PR merge - Clean up local branches
-git checkout main && git pull              # Update main branch
-git branch -D feature/branch-name          # Delete local feature branch (use -D for squash-merge)
-# Remote branch auto-deleted by GitHub (deleteBranchOnMerge enabled)
-# See docs/contributing/GIT_WORKFLOW.md#branch-cleanup for automated cleanup options
+# 7. After PR merge - Clean up
+git checkout main && git pull
+git branch -D feature/branch-name            # Delete local feature branch
 ```
 
 → **Git workflow details:** See [GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md) for complete branching strategy, PR guidelines, and commit standards
-
-**Phase 1 Security Tools Setup (v3.5.1):**
-```bash
-# Install development tools (includes security tools)
-pip install -e .[dev]
-
-# Install pre-commit hooks (runs security checks automatically)
-pre-commit install
-
-# Test pre-commit hooks
-pre-commit run --all-files
-
-# Manual security scans (also run automatically in CI/CD)
-bandit -r vscode_scanner/ -ll              # AST security analysis
-safety check --full-report                 # Dependency vulnerabilities
-pip-audit --desc                           # PyPI package audit
-```
-
-→ **Full testing guide:** See [TESTING.md](docs/guides/TESTING.md) and [TESTING_CHECKLIST.md](docs/contributing/TESTING_CHECKLIST.md)
+→ **Security tools setup:** See [TESTING.md](docs/guides/TESTING.md#security-testing) for pre-commit hooks and security scan configuration
 
 ---
 
