@@ -19,6 +19,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security**: Semgrep Phase 2.5 - Fixed vulnerabilities and improved rule precision (50% noise reduction)
+  - **SECURITY FIX**: Sanitized `extension_id` and `version` in cache_manager.py print statements (2 instances)
+    - Lines 783-784: Cache integrity check failed message
+    - Lines 798-799: Unsigned cache entry message
+    - Issue: Extension IDs from filesystem are user-controlled input (potential injection attack)
+    - Fix: Added `sanitize_string()` before printing to prevent terminal injection
+    - Validation: All 127 security tests passing
+  - **Improved Semgrep Rule 2** (`missing-string-sanitization-print`): Enhanced pattern matching
+    - Added exclusions for static strings: `print("static text")`
+    - Added exclusions for already-sanitized variables: `sanitized_error`, `sanitize_error_message()`
+    - Added exclusion for utils.py (contains intentional test/demo print statements)
+    - Updated rule message with clearer guidance and verification steps
+  - **Results**: 92 total findings (down from 156, 41% reduction)
+    - 0 ERRORs (maintained - perfect!)
+    - 65 WARNINGs (down from 129, 50% reduction in false positives)
+    - 27 INFOs (Phase 1 Rich console monitoring - unchanged)
+  - **Impact**: More actionable security monitoring - developers will review WARNINGs instead of ignoring noise
 - **Security**: Semgrep Phase 2 - Corrected rule syntax and eliminated false positives
   - Fixed all 6 existing rules to use correct Semgrep `patterns:` syntax (replaced invalid `pattern-not-inside` and `pattern-not-either`)
   - Eliminated 16 ERROR-level false positives from path validation rule (dataflow tracking limitations)

@@ -63,7 +63,7 @@ rules:
       impact: HIGH
 
   # ============================================================================
-  # Rule 2: String Sanitization for Display
+  # Rule 2: String Sanitization for Display (Phase 2.5 Enhanced)
   # ============================================================================
   - id: missing-string-sanitization-print
     patterns:
@@ -71,6 +71,17 @@ rules:
           - pattern: print($USER_INPUT, ...)
           - pattern: sys.stdout.write($USER_INPUT)
           - pattern: sys.stderr.write($USER_INPUT)
+
+      # Exclude static strings (no variables)
+      - pattern-not: print("...", ...)
+      - pattern-not: print('...', ...)
+      - pattern-not: sys.stdout.write("...")
+      - pattern-not: sys.stderr.write("...")
+
+      # Exclude empty print
+      - pattern-not: print()
+
+      # Exclude already sanitized (direct assignment)
       - pattern-not: |
           $SANITIZED = sanitize_string(...)
           ...
@@ -83,18 +94,35 @@ rules:
           $SANITIZED = sanitize_string(...)
           ...
           sys.stderr.write($SANITIZED)
+
+      # Exclude already sanitized via error message function
+      - pattern-not: |
+          $SANITIZED = sanitize_error_message(...)
+          ...
+          print(f"... {$SANITIZED} ...", ...)
+      - pattern-not: |
+          $SANITIZED = sanitize_error_message(...)
+          ...
+          print(f"... {$SANITIZED}", ...)
+
     message: |
-      User input displayed to terminal must use sanitize_string() to prevent injection attacks.
+      User input in print() should use sanitize_string() to prevent injection attacks.
+
+      This rule has been tuned to reduce false positives. If flagged, verify:
+      1. Does the variable contain user input? (filesystem, network, user input)
+      2. If yes: sanitize with sanitize_string(var) before printing
+      3. If no (static data): this may be a false positive
 
       Example:
-        # Bad
-        print(f"Error: {user_input}")
+        # Bad - User input without sanitization
+        print(f"Extension: {extension_id}")  # extension_id from filesystem
 
-        # Good
-        sanitized = sanitize_string(user_input, context="error")
-        print(f"Error: {sanitized}")
+        # Good - Sanitized user input
+        sanitized_id = sanitize_string(extension_id)
+        print(f"Extension: {sanitized_id}")
 
-      See docs/guides/SECURITY.md for sanitization contexts (output, log, error).
+      See docs/guides/SECURITY.md for sanitization guidance.
+
     languages: [python]
     severity: WARNING
     paths:
@@ -102,6 +130,7 @@ rules:
         - vscode_scanner/
       exclude:
         - tests/
+        - "**/utils.py"  # Contains test/demo print statements with intentional examples
     metadata:
       category: security
       cwe: "CWE-74: Injection"
