@@ -1,9 +1,67 @@
 # Project Status
 
-**Last Updated:** 2025-10-31
-**Status:** Post-Refactoring Fixes - Complete ✅
+**Last Updated:** 2025-11-02
+**Status:** Planning v3.6 Coverage Improvements
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
+
+---
+
+## Planning: v3.6 (Coverage Excellence)
+
+**Status:** Planning Phase
+**Target:** 75% Coverage Per File (Minimum)
+**Roadmap:** [v3.6 Coverage Improvement Roadmap](v3.6-coverage-improvement-roadmap.md)
+
+### Objectives
+
+**Primary Goal:** Achieve 75%+ coverage for all main modules (excluding CLI)
+
+**Target Improvements:**
+- config_manager.py: 57.48% → 75% (+17.52%)
+- scanner.py: 60.29% → 75% (+14.71%)
+- cache_manager.py: 60.54% → 75% (+14.46%)
+- utils.py: 64.50% → 75% (+10.50%)
+- output_formatter.py: 62.30% → 75% (+12.70%)
+- extension_discovery.py: 63.98% → 75% (+11.02%)
+- cli.py: 17.55% → 50% (+32.45%, revised target)
+
+**Expected Outcomes:**
+- Overall coverage: 80%+ (currently 72.60%)
+- Total tests: 1,000+ (currently 628)
+- New test cases: ~375
+- Branch coverage: 85%+
+
+### Implementation Phases
+
+**Phase 1: Security Module Hardening** (Week 1)
+- cache_manager.py + utils.py → 75%+
+- 110 new test cases
+- Focus: Error recovery, threading, batch operations
+
+**Phase 2: Core Business Logic** (Week 2)
+- scanner.py + config_manager.py → 75%+
+- 130 new test cases (240 cumulative)
+- Focus: Error paths, filters, validation
+
+**Phase 3: Infrastructure Layer** (Week 3)
+- extension_discovery.py + output_formatter.py → 75%+
+- 75 new test cases (315 cumulative)
+- Focus: Edge cases, large datasets, file operations
+
+**Phase 4: CLI Enhancement** (Week 4 - Stretch Goal)
+- cli.py → 50%+
+- 60 new test cases (375 cumulative)
+- Focus: Integration tests, critical paths
+
+### Milestones
+
+- **M1 (Week 1):** Security modules at 75%+, overall ~74%
+- **M2 (Week 2):** Core logic at 75%+, overall ~77%
+- **M3 (Week 3):** Infrastructure at 75%+, overall ~80% ✅
+- **M4 (Week 4):** CLI enhanced to 50%+, overall ~82%
+
+**See:** [Complete v3.6 Roadmap](v3.6-coverage-improvement-roadmap.md) for detailed implementation plan
 
 ---
 
