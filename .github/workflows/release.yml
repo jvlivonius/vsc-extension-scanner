@@ -102,17 +102,21 @@ jobs:
 
           echo "✅ Package verification complete"
 
-      - name: Extract release notes from CHANGELOG
-        id: changelog
+      - name: Extract release notes
+        id: release_notes
         run: |
-          echo "📝 Extracting release notes from CHANGELOG.md..."
+          echo "📝 Extracting release notes..."
 
-          # Extract section for this version from CHANGELOG.md
           VERSION="${{ steps.version.outputs.version }}"
+          RELEASE_NOTES_FILE="docs/archive/summaries/v${VERSION}-release-notes.md"
 
-          # Try to extract changelog section (between ## [VERSION] and next ## or end of file)
-          if [ -f "CHANGELOG.md" ]; then
-            # Use awk to extract the relevant section
+          # Prefer release notes file if it exists
+          if [ -f "$RELEASE_NOTES_FILE" ]; then
+            echo "✅ Using comprehensive release notes from $RELEASE_NOTES_FILE"
+            cat "$RELEASE_NOTES_FILE" > release-notes.txt
+          elif [ -f "CHANGELOG.md" ]; then
+            echo "⚠️ Release notes file not found, extracting from CHANGELOG.md"
+            # Fallback: Extract from CHANGELOG
             NOTES=$(awk "
               /^## \[$VERSION\]/ { found=1; next }
               found && /^## \[/ { exit }
@@ -120,17 +124,19 @@ jobs:
             " CHANGELOG.md)
 
             if [ -n "$NOTES" ]; then
-              echo "✅ Extracted release notes from CHANGELOG.md"
-              # Save to file for release creation
+              echo "✅ Extracted from CHANGELOG.md"
               echo "$NOTES" > release-notes.txt
             else
-              echo "⚠️ No release notes found for version $VERSION in CHANGELOG.md"
+              echo "⚠️ No release notes found for version $VERSION"
               echo "Release v$VERSION" > release-notes.txt
             fi
           else
-            echo "⚠️ CHANGELOG.md not found"
+            echo "⚠️ No release notes or CHANGELOG.md found"
             echo "Release v$VERSION" > release-notes.txt
           fi
+
+          echo "📄 Release notes preview (first 10 lines):"
+          head -10 release-notes.txt
 
       - name: Create GitHub Release
         run: |

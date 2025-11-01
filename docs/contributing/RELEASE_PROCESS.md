@@ -177,7 +177,8 @@ Add new release section using [Keep a Changelog](https://keepachangelog.com/) fo
 - Verify all links work
 - Update if new documentation added
 
-#### 2.8 Release Notes (Recommended)
+#### 2.8 Release Notes (Required for Automated Releases)
+
 Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - Summary and key features
 - Bug fixes and improvements
@@ -186,6 +187,12 @@ Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - Known issues
 
 **Pattern:** Follow [DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CONVENTIONS.md) for archive naming.
+
+**For Automated Releases:**
+- The GitHub Actions workflow will use this file for the GitHub release description
+- If this file doesn't exist, it will fall back to extracting from CHANGELOG.md
+- Release notes provide comprehensive user-facing information vs brief CHANGELOG bullets
+- File must be created and committed **before** pushing the version tag
 
 ---
 
@@ -469,8 +476,8 @@ The release workflow **automatically triggers** when you push a version tag to t
 2. Build wheel and source distribution
 3. Generate SHA256 checksums
 4. Install and verify package in isolated environment
-5. Extract release notes from CHANGELOG.md
-6. Create GitHub release with artifacts
+5. Extract release notes from `docs/archive/summaries/vX.Y.Z-release-notes.md` (or fallback to CHANGELOG.md)
+6. Create GitHub release with artifacts and comprehensive release notes
 
 #### Manual Steps Required
 
@@ -484,6 +491,7 @@ python3 scripts/bump_version.py --check
 
 # 2. Documentation updates (8 files)
 # - CHANGELOG.md, README.md, CLAUDE.md, etc.
+# - IMPORTANT: Create docs/archive/summaries/vX.Y.Z-release-notes.md
 
 # 3. Testing
 pytest tests/
