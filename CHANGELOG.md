@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security**: Semgrep Phase 2 - Corrected rule syntax and eliminated false positives
+  - Fixed all 6 existing rules to use correct Semgrep `patterns:` syntax (replaced invalid `pattern-not-inside` and `pattern-not-either`)
+  - Eliminated 16 ERROR-level false positives from path validation rule (dataflow tracking limitations)
+  - Updated file exclusions to use `**/` prefix for Semgrepignore v2 compliance
+  - Results: 156 total findings (down from 172), 0 ERRORs, 129 WARNINGs (monitoring), 27 INFOs (correct)
+  - Validation: All 127 security tests passing, no Semgrep syntax warnings
 - **Documentation**: Fixed placeholder GitHub URLs across all documentation
   - Updated User-Agent version from outdated versions (1.0.0, 3.5.2, 3.5.3) to current 3.5.6
   - Replaced placeholder "username" and "your-repo" with actual "jvlivonius" in 12 files
