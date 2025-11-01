@@ -113,7 +113,11 @@ jobs:
           # Try to extract changelog section (between ## [VERSION] and next ## or end of file)
           if [ -f "CHANGELOG.md" ]; then
             # Use awk to extract the relevant section
-            NOTES=$(awk "/## \[$VERSION\]/,/## \[/{if (/## \[/ && !/## \[$VERSION\]/) exit; print}" CHANGELOG.md | tail -n +2)
+            NOTES=$(awk "
+              /^## \[$VERSION\]/ { found=1; next }
+              found && /^## \[/ { exit }
+              found { print }
+            " CHANGELOG.md)
 
             if [ -n "$NOTES" ]; then
               echo "✅ Extracted release notes from CHANGELOG.md"
