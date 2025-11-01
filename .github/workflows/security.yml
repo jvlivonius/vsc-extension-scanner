@@ -64,15 +64,38 @@ jobs:
           pip install -e .[test]
           pip install bandit safety pip-audit
 
-      - name: Bandit Security Scanner
-        id: bandit
+      - name: Bandit Security Scanner (High Severity - Blocking)
+        id: bandit-high
+        run: |
+          echo "Running Bandit for HIGH severity issues (blocking)..."
+          bandit -r vscode_scanner/ -lll
+          echo "✅ No high-severity security issues found"
+
+      - name: Bandit Security Scanner (Medium Severity - Informational)
+        id: bandit-medium
         continue-on-error: true
         run: |
-          echo "Running Bandit AST-based security scanner..."
+          echo "Running Bandit for MEDIUM severity issues (informational)..."
           bandit -r vscode_scanner/ -ll -f json -o bandit-report.json
           echo "Bandit report (terminal output):"
           bandit -r vscode_scanner/ -ll
-          echo "✅ Bandit scan complete"
+          echo "✅ Bandit medium-severity scan complete"
+
+      - name: Bandit SARIF Report
+        id: bandit-sarif
+        if: always()
+        continue-on-error: true
+        run: |
+          echo "Generating SARIF report for GitHub Security tab..."
+          bandit -r vscode_scanner/ -ll -f sarif -o bandit-report.sarif
+          echo "✅ SARIF report generated"
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit-report.sarif
+          category: bandit
 
       - name: Safety Dependency Check
         id: safety
@@ -99,14 +122,18 @@ jobs:
           echo "Security Scanner Summary"
           echo "=================================================="
           echo ""
-          echo "Bandit:        ${{ steps.bandit.outcome }}"
+          echo "Bandit (High): ${{ steps.bandit-high.outcome }}"
+          echo "Bandit (Med):  ${{ steps.bandit-medium.outcome }}"
           echo "Safety:        ${{ steps.safety.outcome }}"
           echo "pip-audit:     ${{ steps.pip-audit.outcome }}"
           echo ""
 
-          # Warn if scanners found issues (informational only)
-          if [ "${{ steps.bandit.outcome }}" == "failure" ]; then
-            echo "⚠️  Bandit found potential issues (review bandit-report.json)"
+          # Warn if scanners found issues
+          if [ "${{ steps.bandit-high.outcome }}" == "failure" ]; then
+            echo "❌  Bandit found HIGH severity issues (build blocked)"
+          fi
+          if [ "${{ steps.bandit-medium.outcome }}" == "failure" ]; then
+            echo "⚠️  Bandit found medium severity issues (review bandit-report.json)"
           fi
           if [ "${{ steps.safety.outcome }}" == "failure" ]; then
             echo "⚠️  Safety found dependency vulnerabilities"
@@ -126,6 +153,7 @@ jobs:
           name: security-reports
           path: |
             bandit-report.json
+            bandit-report.sarif
             requirements-scan.txt
           retention-days: 90
 
@@ -136,6 +164,7 @@ jobs:
           name: security-failure-report
           path: |
             bandit-report.json
+            bandit-report.sarif
             requirements-scan.txt
           retention-days: 30
 

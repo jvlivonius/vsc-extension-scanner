@@ -51,7 +51,7 @@ test = [
     "coverage>=7.0.0,<8.0.0",  # Branch coverage tracking (Phase 2)
 ]
 dev = [
-    "bandit>=1.7.6",  # AST-based security scanner
+    "bandit==1.7.6",  # AST-based security scanner (pinned for consistency)
     "safety>=2.3.0",  # Dependency vulnerability scanner
     "pip-audit>=2.4.0",  # PyPI package auditing
     "pre-commit>=3.0.0",  # Pre-commit hooks framework
