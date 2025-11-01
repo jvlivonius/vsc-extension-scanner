@@ -78,6 +78,7 @@ def validate_version_consistency() -> tuple[bool, str]:
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
 
         if result.returncode == 0:
@@ -93,7 +94,9 @@ def validate_version_consistency() -> tuple[bool, str]:
         return False, f"✗ Version check failed: {str(e)}"
 
 
-def validate_git_status() -> tuple[bool, str]:
+def validate_git_status() -> (
+    tuple[bool, str]
+):  # pylint: disable=too-many-return-statements
     """
     Validate git repository status for release readiness.
 
@@ -108,7 +111,11 @@ def validate_git_status() -> tuple[bool, str]:
     try:
         # Check if we're in a git repository
         result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"], capture_output=True, text=True, timeout=5
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
         if result.returncode != 0:
             return False, "✗ Not a git repository"
@@ -119,6 +126,7 @@ def validate_git_status() -> tuple[bool, str]:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         branch = result.stdout.strip()
         if branch not in ["main", "master"]:
@@ -126,7 +134,11 @@ def validate_git_status() -> tuple[bool, str]:
 
         # Check for uncommitted changes
         result = subprocess.run(
-            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=5
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
         if result.stdout.strip():
             return False, f"✗ Uncommitted changes detected:\n{result.stdout}"
@@ -196,7 +208,9 @@ def run_pre_release_checks(verbose: bool = True) -> bool:
             "-v",
             "--tb=short",
         ]
-        result = subprocess.run(test_args, capture_output=not verbose, timeout=300)
+        result = subprocess.run(
+            test_args, capture_output=not verbose, timeout=300, check=False
+        )
         if result.returncode == 0:
             if verbose:
                 print("      ✓ All core tests passed")
@@ -224,6 +238,7 @@ def run_pre_release_checks(verbose: bool = True) -> bool:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         if result.returncode == 0:
             if verbose:
@@ -243,6 +258,7 @@ def run_pre_release_checks(verbose: bool = True) -> bool:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         if result.returncode == 0:
             if verbose:
@@ -262,6 +278,7 @@ def run_pre_release_checks(verbose: bool = True) -> bool:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         if result.returncode == 0:
             if verbose:
@@ -325,7 +342,9 @@ def run_pre_release_checks(verbose: bool = True) -> bool:
     return all_passed
 
 
-def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
+def run_smoke_tests(  # pylint: disable=too-many-return-statements
+    wheel_file: str, verbose: bool = True
+) -> bool:
     """
     Run smoke tests on a built wheel package.
 
@@ -359,7 +378,7 @@ def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
             print(f"✗ Wheel file not found: {wheel_path}")
         return False
 
-    if not wheel_path.suffix == ".whl":
+    if wheel_path.suffix != ".whl":
         if verbose:
             print(f"✗ Not a wheel file: {wheel_path}")
         return False
@@ -380,6 +399,7 @@ def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
             [sys.executable, "-m", "venv", str(venv_path)],
             capture_output=True,
             timeout=60,
+            check=False,
         )
         if result.returncode != 0:
             if verbose:
@@ -401,6 +421,7 @@ def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
             [str(venv_python), "-m", "pip", "install", str(wheel_path.absolute())],
             capture_output=True,
             timeout=120,
+            check=False,
         )
         if result.returncode != 0:
             if verbose:
@@ -417,6 +438,7 @@ def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
         if result.returncode != 0:
             if verbose:
@@ -435,6 +457,7 @@ def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
         if result.returncode != 0:
             if verbose:

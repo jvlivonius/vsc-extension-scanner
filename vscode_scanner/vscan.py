@@ -102,7 +102,7 @@ def bounded_float(min_val: float, max_val: float):
     return validator
 
 
-def parse_arguments():
+def parse_arguments():  # pylint: disable=too-many-nested-blocks
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="VS Code Extension Security Scanner - Audit installed extensions using vscan.dev",
@@ -249,7 +249,7 @@ For more information, see: https://github.com/jvlivonius/vsc-extension-scanner
     # Load configuration file and merge with defaults (CLI args take precedence)
     config = load_config_file()
 
-    if config:
+    if config:  # pylint: disable=too-many-nested-blocks
         # Map config file keys to argument attributes
         # Only apply config values if CLI argument is at default value
         config_mappings = {
@@ -980,7 +980,7 @@ def calculate_exit_code(vulnerabilities_found):
     return 1 if vulnerabilities_found > 0 else 0
 
 
-def main():
+def main():  # pylint: disable=too-many-return-statements
     """Main entry point for the scanner - orchestration only."""
     args = parse_arguments()
 
