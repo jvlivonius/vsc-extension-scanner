@@ -65,6 +65,8 @@ jobs:
             --verbose \
             --json \
             --output=semgrep-results.json \
+            --sarif \
+            --sarif-output=semgrep-results.sarif \
             vscode_scanner/
 
       - name: Display Semgrep results
@@ -84,6 +86,13 @@ jobs:
           name: semgrep-results
           path: semgrep-results.json
           retention-days: 30
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep-custom-rules
 
       - name: Generate Semgrep summary
         if: always()
