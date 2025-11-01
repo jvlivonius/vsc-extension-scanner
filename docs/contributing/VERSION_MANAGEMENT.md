@@ -1,8 +1,8 @@
 # Version Management
 
-**Purpose:** Centralized version management with single source of truth
+**Purpose:** Simplified version management with automated documentation updates
 
-**Last Updated:** 2025-10-31
+**Last Updated:** 2025-11-01
 
 ---
 
@@ -11,7 +11,7 @@
 **File:** `vscode_scanner/_version.py`
 
 Contains:
-- `__version__` - Application version (e.g., "3.5.3")
+- `__version__` - Application version (e.g., "3.5.6")
 - `SCHEMA_VERSION` - JSON schema version (e.g., "2.1")
 
 **All** version numbers import from this single file.
@@ -20,10 +20,23 @@ Contains:
 
 ## Updating Version
 
-### Method 1: Helper Script (Recommended)
+### Method 1: Auto-Update (Recommended) ⭐ NEW
 
 ```bash
-# Bump to new version
+# Bump version AND auto-update documentation
+python3 scripts/bump_version.py X.Y.Z --auto-update
+
+# This updates:
+# - vscode_scanner/_version.py (source of truth)
+# - README.md (version badge)
+# - CLAUDE.md (current status)
+# - docs/project/PRD.md (version field)
+```
+
+### Method 2: Manual Documentation Updates
+
+```bash
+# Bump version only (you update docs manually)
 python3 scripts/bump_version.py X.Y.Z
 
 # Check current version
@@ -33,7 +46,7 @@ python3 scripts/bump_version.py --show
 python3 scripts/bump_version.py --check
 ```
 
-### Method 2: Manual Edit
+### Method 3: Manual Edit
 
 1. Edit `vscode_scanner/_version.py`
 2. Update `__version__ = "X.Y.Z"`
@@ -72,10 +85,12 @@ python3 scripts/bump_version.py --check
 ## Benefits
 
 ✅ **One place to update** - Change `_version.py` only
+✅ **Automated doc updates** - 3 files updated automatically with `--auto-update`
 ✅ **No sync issues** - All files import from single source
-✅ **Build tools synchronized** - Auto-sync with setup.py/pyproject.toml
+✅ **Build tools synchronized** - Auto-sync with pyproject.toml
 ✅ **Runtime consistency** - CLI `--version` matches package
 ✅ **Automated validation** - Script checks for hardcoded versions
+✅ **Pre-commit protection** - Hook prevents version mismatches
 
 ---
 
@@ -95,7 +110,6 @@ python3 scripts/bump_version.py --check
 - `html_report_generator.py`
 
 ### Build Configuration
-- `setup.py` - Dynamic via Python import
 - `pyproject.toml` - Uses `dynamic = ["version"]`
 
 ---
@@ -112,18 +126,18 @@ python3 scripts/bump_version.py --check
 
 **Python Files:**
 - All modules use `_version.py` import (no hardcoded versions)
-- `setup.py` and `pyproject.toml` use dynamic versioning
+- `pyproject.toml` uses dynamic versioning
 
-**Documentation Files:**
-- README.md version badge
-- CLAUDE.md `## Current Status` section
-- docs/project/STATUS.md `**Current Version:**` field
-- docs/project/PRD.md version field
-- DISTRIBUTION.md version examples
+**Documentation Files (Simplified):**
+- README.md version badge (`**Version:** X.Y.Z`)
+- CLAUDE.md current status (`**Version:** X.Y.Z`)
+- docs/project/PRD.md version field (`**Version:** X.Y.Z`)
+
+**Standardized Pattern:** All docs use `**Version:** X.Y.Z` (no `v` prefix variations)
 
 **Example output:**
 ```
-Current version: 3.5.3
+Current version: 3.5.6
 Schema version: 2.1
 
 Python Files:
@@ -132,14 +146,15 @@ Python Files:
   ...
 
 Documentation Files:
-  ✓ README.md: Version 3.5.3 matches
-  ✓ CLAUDE.md: Version 3.5.3 matches
-  ✓ docs/project/STATUS.md: Version 3.5.3 matches
-  ✓ docs/project/PRD.md: Version 3.5.3 matches
-  ✓ DISTRIBUTION.md: All examples use 3.5.3
+  ✓ README.md: Version 3.5.6 matches
+  ✓ CLAUDE.md: Version 3.5.6 matches
+  ✓ docs/project/PRD.md: Version 3.5.6 matches
 
 ✓ All files use consistent versioning!
 ```
+
+**Pre-Commit Hook:**
+The version consistency check runs automatically via pre-commit hook when you modify version-related files.
 
 **Manual verification:**
 ```bash
@@ -151,43 +166,53 @@ python3 -c "from vscode_scanner import __version__; print(__version__)"
 
 ## Documentation Updates
 
-When bumping versions, update these files (validated by `bump_version.py --check`):
+### Automated (with `--auto-update` flag)
 
-1. ✅ CHANGELOG.md - Add release section ([Keep a Changelog](https://keepachangelog.com/) format)
-2. ✅ README.md - Version badge in header section
-3. ✅ CLAUDE.md - `## Current Status` section
-4. ✅ DISTRIBUTION.md - Version examples throughout
-5. ✅ docs/project/STATUS.md - `**Current Version:**` field
-6. ✅ docs/project/PRD.md - Version field (if requirements changed)
-7. ✅ docs/README.md - Navigation and links
-8. ✅ docs/archive/summaries/vX.Y.Z-release-notes.md - Create new
+These files are **automatically updated** by the script:
+1. ✅ README.md - Version badge
+2. ✅ CLAUDE.md - Current Status version
+3. ✅ PRD.md - Version field
+
+### Manual Updates Required
+
+These files still require manual editing:
+1. ⚠️ CHANGELOG.md - Add release section ([Keep a Changelog](https://keepachangelog.com/) format)
+2. ⚠️ docs/archive/summaries/vX.Y.Z-release-notes.md - Create comprehensive release notes
+
+**Why manual?**
+- CHANGELOG.md requires human curation of changes (industry best practice)
+- Release notes need comprehensive human-written summaries for GitHub releases
 
 **Complete update checklist:** [RELEASE_PROCESS.md § Documentation Updates](RELEASE_PROCESS.md#step-2-documentation-updates)
 
 ---
 
-## Release Workflow
+## Release Workflow (Simplified)
 
 **For complete release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md)**
 
-Quick reference:
+Quick reference (NEW simplified workflow):
 
 ```bash
-# 1. Bump version
-python3 scripts/bump_version.py X.Y.Z
-python3 scripts/bump_version.py --check
+# 1. Bump version with auto-update
+python3 scripts/bump_version.py X.Y.Z --auto-update
+# This automatically updates: _version.py, README.md, CLAUDE.md, PRD.md
 
-# 2. Update 8 documentation files (see RELEASE_PROCESS.md)
+# 2. Manual documentation updates (only 2 files now!)
+# - Edit CHANGELOG.md (add release section)
+# - Create docs/archive/summaries/vX.Y.Z-release-notes.md
 
 # 3. Test and build
 pytest tests/
 python3 -m build
 
 # 4. Commit and tag
-git commit -m "Release vX.Y.Z: ..."
-git tag -a vX.Y.Z -m "..."
+git commit -m "chore(release): bump version to X.Y.Z"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin main vX.Y.Z
 ```
+
+**Time Savings:** 50% reduction in manual steps (3 auto-updated, 2 manual vs 8 manual)
 
 ---
 

@@ -123,7 +123,7 @@ Configuration:
   Example: {"delay": 2.0, "max_retries": 5, "exclude_ids": "local.test"}
   Command-line arguments override config file settings
 
-For more information, see: https://github.com/your-repo/vsc-extension-scanner
+For more information, see: https://github.com/jvlivonius/vsc-extension-scanner
         """,
     )
 

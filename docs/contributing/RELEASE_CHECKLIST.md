@@ -25,30 +25,32 @@
 
 ---
 
-## Phase 1: Pre-Release Preparation (30-45 min)
+## Phase 1: Pre-Release Preparation (20-30 min)
 
-### Version Management
+### Version Management with Auto-Update
 
-- [ ] `python3 scripts/bump_version.py X.Y.Z`
+- [ ] `python3 scripts/bump_version.py X.Y.Z --auto-update` (updates 3 files automatically)
 - [ ] `python3 scripts/bump_version.py --check` (all files ✓)
 
-### Documentation Updates (8 Files)
+### Documentation Updates
 
+#### Automated (3 files - handled by bump_version.py --auto-update)
+- [ ] ✅ **README.md** - Version badge (auto-updated)
+- [ ] ✅ **CLAUDE.md** - Current Status version (auto-updated)
+- [ ] ✅ **docs/project/PRD.md** - Version field (auto-updated)
+
+#### Manual Updates Required (2 files)
 - [ ] **CHANGELOG.md** - Add `## [X.Y.Z] - YYYY-MM-DD` section
 - [ ] **CHANGELOG.md** - Document: Added, Changed, Fixed, Security
-- [ ] **CHANGELOG.md** - Update comparison links
-- [ ] **README.md** - Update version badge in header
-- [ ] **README.md** - Update installation examples (if changed)
-- [ ] **CLAUDE.md** - Update `## Current Status` section
-- [ ] **CLAUDE.md** - Move in-progress to previous updates
-- [ ] **DISTRIBUTION.md** - Update version references
-- [ ] **DISTRIBUTION.md** - Update wheel filename examples
-- [ ] **docs/project/STATUS.md** - Update `**Current Version:**` field
-- [ ] **docs/project/STATUS.md** - Update `**Schema Version:**` (if changed)
-- [ ] **docs/project/STATUS.md** - Add new release section
-- [ ] **docs/project/PRD.md** - Update version (if requirements changed)
-- [ ] **docs/README.md** - Verify navigation, links, new docs
+- [ ] **CHANGELOG.md** - Update comparison links at bottom
 - [ ] **docs/archive/summaries/vX.Y.Z-release-notes.md** - Create from template
+
+#### Optional Review (as needed)
+- [ ] **README.md** - Update installation examples (if changed)
+- [ ] **README.md** - Update feature list (if new features added)
+- [ ] **CLAUDE.md** - Move in-progress work to previous updates
+- [ ] **CLAUDE.md** - Update latest features/roadmap references
+- [ ] **docs/project/PRD.md** - Update requirements/constraints (if changed)
 
 ### Automated Testing
 
@@ -115,11 +117,11 @@
 
 ### Commit Release
 
-- [ ] `git add vscode_scanner/_version.py CHANGELOG.md README.md CLAUDE.md DISTRIBUTION.md`
-- [ ] `git add docs/project/STATUS.md docs/project/PRD.md docs/README.md`
-- [ ] `git add docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] `git add vscode_scanner/_version.py README.md CLAUDE.md docs/project/PRD.md`
+- [ ] `git add CHANGELOG.md docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] Note: 6 files total (3 auto-updated + 2 manual + release notes)
 - [ ] `git status` (verify staged files)
-- [ ] `git commit -m "Release vX.Y.Z: [description]..."`
+- [ ] `git commit -m "chore(release): bump version to X.Y.Z"`
 
 ### Create Tag
 

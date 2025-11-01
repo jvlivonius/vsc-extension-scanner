@@ -308,7 +308,7 @@ ERROR_HELP = {
     "An unexpected error occurred",
     "Try running the command again",
     "Use --verbose for more details: vscan scan --verbose",
-    "If problem persists, report at: https://github.com/username/vsc-extension-scanner/issues",
+    "If problem persists, report at: https://github.com/jvlivonius/vsc-extension-scanner/issues",
 ]
 ```
 

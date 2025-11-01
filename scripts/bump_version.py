@@ -3,12 +3,13 @@
 Version Bump Helper Script
 
 Automatically updates the version number in vscode_scanner/_version.py
-and validates consistency across all files.
+and optionally updates documentation files.
 
 Usage:
-    python scripts/bump_version.py 2.3.0          # Set specific version
-    python scripts/bump_version.py --check        # Check version consistency
-    python scripts/bump_version.py --show         # Show current version
+    python scripts/bump_version.py 2.3.0                # Set version (manual doc update)
+    python scripts/bump_version.py 2.3.0 --auto-update  # Set version + auto-update docs
+    python scripts/bump_version.py --check              # Check version consistency
+    python scripts/bump_version.py --show               # Show current version
 """
 
 import re
@@ -63,6 +64,49 @@ def set_version(new_version):
     print(f"✓ Updated version to {new_version} in {version_file}")
 
 
+def auto_update_docs(new_version):
+    """Auto-update version in documentation files."""
+    root = Path(__file__).parent.parent
+
+    # Files that can be automatically updated with simple pattern replacement
+    auto_update_files = {
+        "README.md": [(r"(\*\*Version:\*\*\s+)\d+\.\d+\.\d+", rf"\g<1>{new_version}")],
+        "CLAUDE.md": [(r"(\*\*Version:\*\*\s+)\d+\.\d+\.\d+", rf"\g<1>{new_version}")],
+        "docs/project/PRD.md": [
+            (r"(\*\*Version:\*\*\s+)\d+\.\d+\.\d+", rf"\g<1>{new_version}")
+        ],
+    }
+
+    updated_files = []
+
+    for doc_file, patterns in auto_update_files.items():
+        full_path = root / doc_file
+        if not full_path.exists():
+            print(f"  ⚠ {doc_file}: File not found (skipping)")
+            continue
+
+        content = full_path.read_text(encoding="utf-8")
+        modified = False
+
+        for pattern, replacement in patterns:
+            new_content, count = re.subn(pattern, replacement, content)
+            if count > 0:
+                content = new_content
+                modified = True
+
+        if modified:
+            full_path.write_text(content, encoding="utf-8")
+            updated_files.append(doc_file)
+            print(f"  ✓ {doc_file}: Version updated to {new_version}")
+
+    if updated_files:
+        print(f"\n✓ Auto-updated {len(updated_files)} documentation file(s)")
+    else:
+        print("\n⚠ No documentation files were auto-updated")
+
+    return updated_files
+
+
 def check_consistency():
     """Check that all files import from _version.py correctly and docs have consistent versions."""
     root = Path(__file__).parent.parent
@@ -89,7 +133,6 @@ def check_consistency():
         "output_formatter.py",
         "cache_manager.py",
         "html_report_generator.py",
-        "setup.py",
     ]
 
     for file_path in files_to_check:
@@ -129,25 +172,16 @@ def check_consistency():
     print("Documentation Files:")
 
     # Documentation files that should have consistent version numbers
+    # Using standardized pattern: **Version:** X.Y.Z (no 'v' prefix)
     doc_checks = {
         "README.md": [
             (r"\*\*Version:\*\*\s+(\d+\.\d+\.\d+)", "version badge"),
-            (r"Version.*?(\d+\.\d+\.\d+)", "version number"),
         ],
         "CLAUDE.md": [
-            (r"Current Status:.*?v(\d+\.\d+\.\d+)", "Current Status section"),
-            (r"\*\*Current Status:\*\*.*?v(\d+\.\d+\.\d+)", "Current Status field"),
-        ],
-        "docs/project/STATUS.md": [
-            (r"\*\*Current Version:\*\*\s+(\d+\.\d+\.\d+)", "Current Version field"),
-            (r"Current Version:\s+(\d+\.\d+\.\d+)", "Current Version line"),
+            (r"\*\*Version:\*\*\s+(\d+\.\d+\.\d+)", "Current Status version"),
         ],
         "docs/project/PRD.md": [
             (r"\*\*Version:\*\*\s+(\d+\.\d+\.\d+)", "Version field"),
-            (r"Version:\s+(\d+\.\d+\.\d+)", "Version line"),
-        ],
-        "DISTRIBUTION.md": [
-            (r"vscode_extension_scanner-(\d+\.\d+\.\d+)", "version in examples"),
         ],
     }
 
@@ -218,7 +252,18 @@ def main():
     else:
         # Treat as version number
         try:
+            # Check for --auto-update flag
+            auto_update = len(sys.argv) > 2 and sys.argv[2] == "--auto-update"
+
+            # Update _version.py
             set_version(arg)
+
+            # Auto-update documentation files if flag is set
+            if auto_update:
+                print("\nAuto-updating documentation files:")
+                auto_update_docs(arg)
+
+            # Validate consistency
             print()
             check_consistency()
         except ValueError as e:

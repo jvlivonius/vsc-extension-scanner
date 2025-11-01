@@ -397,29 +397,26 @@ python3 scripts/bump_version.py X.Y.Z
 # Verify version consistency
 python3 scripts/bump_version.py --check
 
-# Expected: All 8 files have matching version
+# Expected: 3 auto-updated files + 2 manual files have matching version
 ```
 
 #### 3. Update Documentation
 
-Update the following files (per RELEASE_CHECKLIST.md):
-- `CHANGELOG.md` - Add release notes
-- `README.md` - Update version references if needed
-- `docs/project/STATUS.md` - Update current version
-- `pyproject.toml` - Auto-updated by bump_version.py
-- `vscode_scanner/_version.py` - Auto-updated by bump_version.py
-- Other docs as needed
+With automated documentation updates:
+- **Automated (3 files):** `README.md`, `CLAUDE.md`, `docs/project/PRD.md` - Updated by `--auto-update` flag
+- **Manual (2 files):** `CHANGELOG.md` (add release section), `docs/archive/summaries/vX.Y.Z-release-notes.md` (create new)
+- **Source:** `vscode_scanner/_version.py` - Auto-updated by bump_version.py
 
 #### 4. Commit Release Changes
 
 ```bash
-# Stage all release-related files
-git add CHANGELOG.md \
+# Stage all release-related files (6 files total)
+git add vscode_scanner/_version.py \
         README.md \
-        docs/project/STATUS.md \
-        pyproject.toml \
-        vscode_scanner/_version.py \
-        [other modified docs]
+        CLAUDE.md \
+        docs/project/PRD.md \
+        CHANGELOG.md \
+        docs/archive/summaries/vX.Y.Z-release-notes.md
 
 # Create release commit
 git commit -m "Release vX.Y.Z: Brief description

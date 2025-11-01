@@ -33,9 +33,7 @@ class VscanAPIClient:
     """Client for vscan.dev API."""
 
     BASE_URL = "https://vscan.dev/api/extensions"
-    USER_AGENT = (
-        "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)"
-    )
+    USER_AGENT = "VSCodeExtensionScanner/3.5.6 (+https://github.com/jvlivonius/vsc-extension-scanner)"
 
     def __init__(
         self,

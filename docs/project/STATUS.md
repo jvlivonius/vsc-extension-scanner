@@ -1,8 +1,9 @@
 # Project Status
 
 **Last Updated:** 2025-10-31
-**Current Version:** 3.5.6 (Production Ready)
 **Status:** Post-Refactoring Fixes - Complete ✅
+
+> **Note:** For current version number, see [PRD.md](PRD.md)
 
 ---
 

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Documentation**: Fixed placeholder GitHub URLs across all documentation
+  - Updated User-Agent version from outdated versions (1.0.0, 3.5.2, 3.5.3) to current 3.5.6
+  - Replaced placeholder "username" and "your-repo" with actual "jvlivonius" in 12 files
+  - Fixed files: README.md (4 instances), ATTRIBUTION.md (2 instances), vscan_api.py, vscan.py, API_REFERENCE.md, ERROR_HANDLING.md, TESTING_COVERAGE.md, and 4 archived documentation files
+  - Ensures accurate repository links and proper API identification
+
+### Changed
+
+- **Documentation**: Simplified CODE_OF_CONDUCT.md for solo maintainer project (70% reduction: 84 → 25 lines)
+- **Documentation**: Modernized DISTRIBUTION.md to prioritize GitHub Releases over manual distribution
+  - Added comprehensive GitHub Releases download & install instructions
+  - Restructured to make automated releases primary distribution method
+  - Updated PyPI section to reflect "planned for future" status
+  - Aligned README.md installation instructions with GitHub Releases workflow
+- **Documentation**: Modernized SECURITY.md with current security posture and testing guidance
+  - Updated version support table with explicit EOL dates and support policy
+  - Added "Running Security Tests" section with practical commands
+  - Enhanced security features list with CWE mappings and comprehensive coverage
+  - Added "Security Fixes History" section for transparency (v3.5.6, v3.5.1 fixes)
+  - Improved contact information for solo-maintained project context
+  - Added cross-references to comprehensive security documentation
+- **License**: Added SPDX-License-Identifier to LICENSE file for machine-readable licensing
+
 ## [3.5.6] - 2025-11-01
 
 ### Added
@@ -662,7 +687,7 @@ vscan scan --workers 5      # 5 workers
 
 ### Added
 - Centralized version management with _version.py
-- Dynamic versioning in setup.py and pyproject.toml
+- Dynamic versioning in pyproject.toml
 - Version bump helper script (scripts/bump_version.py)
 
 ### Changed
