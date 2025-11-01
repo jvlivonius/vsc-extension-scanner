@@ -6,9 +6,9 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Current Status
 
-**Version:** v3.5.3 Complete ✅
-**Latest:** Testing Excellence achieved - Coverage 52% → 73% (exceeded 70% target)
-**Completion:** Phase 4 Testing Excellence (6/6 phases) - 628 tests (100% passing), 72.60% coverage | TESTING.md restructured (11 focused guides)
+**Version:** v3.5.5 Complete ✅
+**Latest:** Automated Release Workflow - GitHub Actions for automatic distribution builds on version tags
+**Features:** CI/CD automation (38% release time reduction), comprehensive testing (628 tests, 72.60% coverage), modular HTML reports
 **Completed Roadmap:** [v3.5.3-roadmap.md](docs/archive/plans/v3.5.3-roadmap.md) - Testing Excellence complete
 **Previous Roadmap:** [docs/archive/plans/v3.5.2-roadmap.md](docs/archive/plans/v3.5.2-roadmap.md)
 

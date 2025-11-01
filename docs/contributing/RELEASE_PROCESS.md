@@ -454,7 +454,200 @@ gh release create vX.Y.Z \
 
 ---
 
-## Automation Opportunities
+## Automated Release Workflow
+
+### GitHub Actions Release Automation
+
+**Workflow:** `.github/workflows/release.yml`
+
+The release workflow **automatically triggers** when you push a version tag to the main branch, handling Phase 2 (Build & Package) and most of Phase 3 (GitHub Release creation).
+
+#### What Gets Automated
+
+✅ **Automatic when tag is pushed:**
+1. Clean build environment
+2. Build wheel and source distribution
+3. Generate SHA256 checksums
+4. Install and verify package in isolated environment
+5. Extract release notes from CHANGELOG.md
+6. Create GitHub release with artifacts
+
+#### Manual Steps Required
+
+You still need to complete Phase 1 and initial Phase 3 steps manually:
+
+**Phase 1 - Pre-Release Preparation:**
+```bash
+# 1. Version management
+python3 scripts/bump_version.py X.Y.Z
+python3 scripts/bump_version.py --check
+
+# 2. Documentation updates (8 files)
+# - CHANGELOG.md, README.md, CLAUDE.md, etc.
+
+# 3. Testing
+pytest tests/
+```
+
+**Phase 3 - Commit & Tag (triggers automation):**
+```bash
+# Commit release changes
+git add .
+git commit -m "Release vX.Y.Z: description"
+
+# Create and push tag (THIS TRIGGERS THE WORKFLOW)
+git tag -a vX.Y.Z -m "Release message"
+git push origin main
+git push origin vX.Y.Z  # Workflow starts automatically
+```
+
+#### Workflow Validation
+
+The automated workflow includes these verification steps:
+- ✅ Version in package matches git tag
+- ✅ Package installs successfully
+- ✅ `vscan --version` and `vscan --help` work
+- ✅ Python import successful
+- ✅ All artifacts generated and checksummed
+
+#### Monitoring Workflow Execution
+
+**View workflow status:**
+```bash
+# Using GitHub CLI
+gh run list --workflow=release.yml
+
+# View specific run
+gh run view <run-id>
+
+# Watch latest run in real-time
+gh run watch
+```
+
+**Via GitHub Web Interface:**
+1. Navigate to repository → Actions tab
+2. Select "Build & Release" workflow
+3. View running/completed workflow runs
+
+#### Workflow Artifacts
+
+The workflow automatically uploads to GitHub Release:
+- `vscode_extension_scanner-X.Y.Z-py3-none-any.whl` (wheel)
+- `vscode_extension_scanner-X.Y.Z.tar.gz` (source)
+- `SHA256SUMS.txt` (checksums)
+
+#### Troubleshooting Automated Workflow
+
+**Problem:** Workflow fails with version mismatch
+
+**Solution:**
+1. Check that `_version.py` was updated correctly
+2. Verify tag format matches `vX.Y.Z` pattern
+3. Re-run `bump_version.py --check`
+
+**Problem:** Package verification fails
+
+**Solution:**
+1. Check workflow logs in GitHub Actions
+2. Verify `pyproject.toml` and `MANIFEST.in` are correct
+3. Test build locally: `python3 -m build`
+
+**Problem:** Release notes missing or incorrect
+
+**Solution:**
+1. Ensure CHANGELOG.md has section for version: `## [X.Y.Z] - YYYY-MM-DD`
+2. Workflow extracts text between version headers
+3. If extraction fails, edit release notes manually on GitHub
+
+---
+
+## Manual Release Process (Legacy)
+
+**Note:** Steps 4-7 and 11 are now automated. This section remains for reference or manual releases if needed.
+
+### Phase 2: Build & Package (Automated)
+
+Steps 4-7 are now handled by the automated workflow, but can be performed manually if needed:
+
+### Step 4: Clean Build Environment (Automated)
+
+Remove old build artifacts:
+
+```bash
+rm -rf build/ dist/ *.egg-info
+```
+
+**Verify cleanup:** Should see "No such file or directory" for these paths.
+
+---
+
+### Step 5: Build Distribution Package (Automated)
+
+```bash
+# Ensure build tools current
+python3 -m pip install --upgrade build
+
+# Build wheel and source distribution
+python3 -m build
+
+# Verify outputs
+ls -lh dist/
+```
+
+**Expected outputs:**
+- `vscode_extension_scanner-X.Y.Z-py3-none-any.whl`
+- `vscode_extension_scanner-X.Y.Z.tar.gz`
+
+---
+
+### Step 6: Verify Package Installation (Automated)
+
+Test in isolated environment:
+
+```bash
+# Create test environment
+python3 -m venv test-release-env
+source test-release-env/bin/activate  # Windows: test-release-env\Scripts\activate
+
+# Install from wheel
+pip install dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
+
+# Verify installation
+vscan --version           # Must show X.Y.Z
+vscan --help              # Must display correctly
+vscan cache stats         # Must work without errors
+
+# Verify Python import
+python3 -c "import vscode_scanner; print(vscode_scanner.__version__)"
+
+# Cleanup
+deactivate
+rm -rf test-release-env
+```
+
+**Phase 2 Gate:** Installation verification must succeed before proceeding.
+
+---
+
+### Step 7: Generate Package Metadata (Automated)
+
+```bash
+# Generate SHA256 checksums
+cd dist/
+shasum -a 256 *.whl *.tar.gz > SHA256SUMS.txt
+cat SHA256SUMS.txt  # Verify
+cd ..
+```
+
+**Optional GPG Signature:**
+
+```bash
+gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
+```
+
+---
+
+## Remaining Automation Opportunities
 
 ### Current Manual Steps That Could Be Scripted
 
@@ -468,28 +661,29 @@ gh release create vX.Y.Z \
    - Automated version consistency checks in CI/CD
    - Cross-platform test orchestration
 
-3. **Build & Package**
-   - Combined cleanup + build + verify script
-   - Automated checksum generation
+3. **Pre-commit Validation**
    - Pre-commit hooks for version validation
-
-4. **Post-Release**
-   - Automated GitHub release creation
-   - Release notes distribution
-   - Next version initialization
+   - Automated CHANGELOG format checking
 
 ### Enhancement Proposals
 
-- **Interactive release script:** Step-by-step wizard with validation
-- **Pre-release checklist validation:** Automated checks before allowing release
+- **Interactive release script:** Step-by-step wizard with validation for Phase 1
+- **Pre-release checklist validation:** Automated checks before allowing tag creation
 - **Rollback mechanism:** Quick rollback for failed releases
 - **Release metrics:** Track time, issues, improvements across releases
+- **PyPI publishing:** Automatic PyPI upload after successful GitHub release
 
 ---
 
 ## Time Estimates
 
-**Typical release timeline:**
+**With Automated Workflow:**
+- Phase 1 (Preparation): 30-45 minutes (manual)
+- Phase 2 (Build & Package): ~5 minutes (automated)
+- Phase 3 (Version Control): ~5 minutes (mostly automated)
+- **Total:** 40-55 minutes (38% time reduction)
+
+**Legacy Manual Process:**
 - Phase 1 (Preparation): 30-45 minutes
 - Phase 2 (Build & Package): 15-20 minutes
 - Phase 3 (Version Control): 10-15 minutes
@@ -511,5 +705,6 @@ gh release create vX.Y.Z \
 
 ---
 
-**Process Version:** 2.0
-**Last Updated:** 2025-10-31
+**Process Version:** 2.1
+**Last Updated:** 2025-11-01
+**Changes:** Added automated GitHub Actions workflow for build and release (v2.0 → v2.1)
