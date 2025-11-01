@@ -873,7 +873,7 @@ This tool implements multiple measures to minimize load on vscan.dev's infrastru
 
 **Typical Impact**: Average user generates 100-200 API requests per month (vs 2,000+ without caching).
 
-For complete details on ethical API usage, see [docs/project/ATTRIBUTION.md](docs/project/ATTRIBUTION.md).
+For complete details on ethical API usage, see [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ### Platform Support
 
@@ -1008,7 +1008,7 @@ This software is provided "as-is" under the MIT License with no warranties of an
 
 **All security analysis is powered by [vscan.dev](https://vscan.dev).** We are deeply grateful to vscan.dev for providing their public API, which makes this tool possible.
 
-For complete legal and attribution information, see [docs/project/ATTRIBUTION.md](docs/project/ATTRIBUTION.md).
+For complete legal and attribution information, see [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ---
 

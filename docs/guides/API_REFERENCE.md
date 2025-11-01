@@ -20,7 +20,7 @@ The vscan.dev API provides security analysis for VS Code extensions through thre
 - **No Circumvention**: Does not bypass any technical protections or access controls
 - **Compliance Commitment**: Will cease API usage immediately if requested by vscan.dev
 
-For complete legal and attribution details, see [ATTRIBUTION.md](../project/ATTRIBUTION.md).
+For complete legal and attribution details, see [ATTRIBUTION.md](../../ATTRIBUTION.md).
 
 ### Ethical Usage Commitment
 

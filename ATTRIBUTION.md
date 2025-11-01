@@ -1,7 +1,7 @@
 # Attribution & Legal Notice
 
 **Document Type:** Legal & Attribution
-**Last Updated:** 2025-10-30
+**Last Updated:** 2025-11-01
 **Status:** Official Project Documentation
 
 ---
@@ -24,7 +24,7 @@ We use **vscan.dev's publicly accessible API** to provide security analysis func
 - The API is accessed without authentication or technical barriers
 - We make requests to publicly available HTTP endpoints
 - We do not circumvent any security measures or access controls
-- We implement respectful usage patterns (see [Respectful Usage](#respectful-usage) below)
+- We implement respectful usage patterns (see [Respectful Usage](#respectful-usage-practices) below)
 
 ### Compliance Commitment
 
@@ -46,7 +46,7 @@ In the event of such a request, we will:
 
 This tool is provided "as-is" under the **MIT License** with no warranties of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.
 
-See [LICENSE](../../LICENSE) for complete legal terms.
+See [LICENSE](LICENSE) for complete legal terms.
 
 ---
 
@@ -95,37 +95,27 @@ We take API usage ethics seriously and have implemented multiple measures to min
 
 ### 1. Rate Limiting
 
-**Default Delay**: 2.0 seconds between API requests (configurable)
-
-```python
-# Default configuration
-delay = 2.0  # seconds between requests
-```
+**Default Delay**: 2.0 seconds between API requests (configurable 1.0-5.0s)
 
 **Benefits**:
 - Prevents API overload
 - Respects vscan.dev's server resources
-- Configurable up to 5.0s for extra caution
 - Automatically applied to all API calls
 
 ### 2. Intelligent Caching
 
 **Cache Hit Rate**: 70-90% in typical usage
-
-```python
-# Cached results avoid API calls entirely
-cache_max_age = 14  # days (default)
-```
+**Cache Duration**: 14 days (default, configurable)
 
 **Benefits**:
-- Typical scan makes 10-30% new API calls (rest from cache)
+- Typical scan makes only 10-30% new API calls (rest from cache)
 - Repeated scans are 50x faster (instant from cache)
 - Dramatically reduces vscan.dev server load
 - Users benefit from faster results
 
 **Implementation**:
 - SQLite database with HMAC integrity protection
-- Configurable cache expiration (default: 14 days)
+- Configurable cache expiration
 - Users can disable caching if desired (`--no-cache`)
 - Cache statistics available (`vscan cache stats`)
 
@@ -133,11 +123,6 @@ cache_max_age = 14  # days (default)
 
 **Max Retries**: 3 attempts (default)
 **Backoff Strategy**: Exponential with jitter
-
-```python
-# Retry delays: 2s → 4s → 8s (with random jitter)
-retry_delay = base_delay * (2 ** attempt) + random(0, 1)
-```
 
 **Benefits**:
 - Graceful handling of temporary failures
@@ -156,14 +141,14 @@ retry_delay = base_delay * (2 ** attempt) + random(0, 1)
 - Respects rate limits across all workers
 
 **Benefits**:
-- Faster user experience (4.88x speedup)
+- Faster user experience (~5x speedup)
 - Still respects API rate limits
 - No concurrent request storms
 - Conservative parallelism (max 5 workers)
 
 ### 5. Transparent User-Agent
 
-**Identification**: `VSCodeExtensionScanner/3.5.6 (+https://github.com/jvlivonius/vsc-extension-scanner)`
+**Identification**: Tool identifies itself with project URL in User-Agent header
 
 **Benefits**:
 - vscan.dev can identify our tool
@@ -174,11 +159,6 @@ retry_delay = base_delay * (2 ** attempt) + random(0, 1)
 ### 6. HTTPS-Only Communication
 
 **Security**: All API calls use HTTPS with certificate validation
-
-```python
-# No insecure HTTP requests allowed
-validate_https_only(url)
-```
 
 **Benefits**:
 - Protects user data in transit
@@ -257,7 +237,7 @@ This project is open source under the **MIT License**:
 - Free to use, modify, and distribute
 - No commercial restrictions
 - No warranty or liability
-- See [LICENSE](../../LICENSE) for full terms
+- See [LICENSE](LICENSE) for full terms
 
 ### Community Contributions
 
@@ -267,20 +247,7 @@ We welcome:
 - Documentation enhancements
 - Security vulnerability reports
 
-See [CONTRIBUTING.md](../contributing/CONTRIBUTING.md) for guidelines.
-
----
-
-## Changes to This Document
-
-This attribution and legal notice may be updated to:
-- Reflect changes in vscan.dev API usage terms
-- Incorporate feedback from vscan.dev team
-- Clarify legal or ethical aspects
-- Update contact information
-
-**Last Updated**: 2025-10-30
-**Version**: 1.0
+See [docs/contributing/CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -300,5 +267,5 @@ This attribution and legal notice may be updated to:
 
 - **vscan.dev**: [https://vscan.dev](https://vscan.dev)
 - **This Project**: [GitHub Repository](https://github.com/jvlivonius/vsc-extension-scanner)
-- **License**: [MIT License](../../LICENSE)
-- **API Documentation**: [API_REFERENCE.md](../guides/API_REFERENCE.md)
+- **License**: [MIT License](LICENSE)
+- **API Documentation**: [docs/guides/API_REFERENCE.md](docs/guides/API_REFERENCE.md)
