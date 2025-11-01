@@ -11,6 +11,7 @@ Branching strategy and git workflow guidelines for VS Code Extension Scanner dev
 - [Branch Types](#branch-types)
 - [Branch Naming Conventions](#branch-naming-conventions)
 - [Feature Development Workflow](#feature-development-workflow)
+- [Branch Cleanup](#branch-cleanup)
 - [Release Workflow](#release-workflow)
 - [Hotfix Workflow](#hotfix-workflow)
 - [Pull Request Guidelines](#pull-request-guidelines)
@@ -355,10 +356,189 @@ git pull origin main
 
 # Delete local feature branch
 git branch -d feature/your-feature-name
+# Note: Use -D if branch was squash-merged (commits differ from main)
 
-# Verify remote branch was auto-deleted
-# Or delete manually if needed
-git push origin --delete feature/your-feature-name
+# Remote branch is auto-deleted by GitHub
+# (deleteBranchOnMerge is enabled for this repository)
+```
+
+**Important:** GitHub automatically deletes remote branches after PR merge, but **local branches must be manually deleted**. See [Branch Cleanup](#branch-cleanup) section for automated cleanup options.
+
+---
+
+## Branch Cleanup
+
+After PRs are merged, GitHub automatically deletes remote branches (via `deleteBranchOnMerge` setting), but **local branches remain**. This section covers how to clean up local branches efficiently.
+
+### Understanding Branch Cleanup
+
+**Why Local Branches Aren't Auto-Deleted:**
+- Git keeps local and remote branches independent for safety
+- Prevents accidental loss of uncommitted work
+- You must explicitly delete local branches after PR merge
+
+**Identifying Stale Branches:**
+```bash
+# Show all local branches with tracking status
+git branch -vv
+
+# Branches marked [origin/branch-name: gone] have been deleted remotely
+```
+
+### Manual Cleanup (Recommended)
+
+#### Delete Specific Branch
+
+```bash
+# Safe delete (only if merged)
+git branch -d feature/branch-name
+
+# Force delete (use after squash-merge or if commits differ)
+git branch -D feature/branch-name
+
+# Why -D? Squash-merges create new commits, so git sees branch as "unmerged"
+```
+
+#### Delete All Merged Branches
+
+```bash
+# Prune remote tracking references first
+git fetch --prune
+
+# List branches safe to delete
+git branch --merged main | grep -v "^\*" | grep -v "main"
+
+# Delete all merged branches
+git branch --merged main | grep -v "^\*" | grep -v "main" | xargs git branch -d
+```
+
+### Automated Cleanup with Git Aliases
+
+Add these helpful aliases to your git configuration:
+
+#### Option 1: Project-Level Config (Recommended)
+
+Add to `.git/config` in project root:
+
+```ini
+[alias]
+    # Clean up all merged branches
+    cleanup = !git fetch --prune && git branch --merged main | grep -v 'main' | xargs git branch -d 2>/dev/null || true && echo '✅ Cleanup complete'
+
+    # Show branches that can be deleted (preview)
+    cleanable = !git branch --merged main | grep -v 'main'
+
+    # Clean up branches whose remotes are gone (after squash-merge)
+    cleanup-gone = !git fetch --prune && git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true && echo '✅ Cleanup complete'
+```
+
+#### Option 2: Global Config
+
+Add to `~/.gitconfig` for all repositories:
+
+```bash
+# Add globally
+git config --global alias.cleanup "!git fetch --prune && git branch --merged main | grep -v 'main' | xargs git branch -d 2>/dev/null || true && echo '✅ Cleanup complete'"
+git config --global alias.cleanable "!git branch --merged main | grep -v 'main'"
+git config --global alias.cleanup-gone "!git fetch --prune && git branch -vv | grep ': gone]' | awk '{print \$1}' | xargs git branch -D 2>/dev/null || true && echo '✅ Cleanup complete'"
+```
+
+#### Using the Aliases
+
+```bash
+# Preview branches that will be deleted
+git cleanable
+
+# Clean up merged branches (safe)
+git cleanup
+
+# Clean up squash-merged branches (after PR merge)
+git cleanup-gone
+
+# Or do both
+git cleanup && git cleanup-gone
+```
+
+### Automated Cleanup via Git Hooks
+
+For automatic cleanup after pulling main, create `.git/hooks/post-merge`:
+
+```bash
+#!/bin/bash
+# Auto-cleanup after merging to main
+
+# Only run on main branch
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo "🧹 Cleaning up merged branches..."
+
+    # Prune remote references
+    git fetch --prune > /dev/null 2>&1
+
+    # Delete merged branches
+    DELETED=$(git branch --merged main | grep -v "main" | xargs git branch -d 2>/dev/null)
+
+    # Delete branches whose remotes are gone
+    DELETED_GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null)
+
+    if [ -n "$DELETED" ] || [ -n "$DELETED_GONE" ]; then
+        echo "✅ Cleaned up stale branches"
+    fi
+fi
+```
+
+Make it executable:
+```bash
+chmod +x .git/hooks/post-merge
+```
+
+### Best Practices
+
+**Weekly Cleanup Routine:**
+```bash
+# Update main
+git checkout main
+git pull
+
+# Clean up everything
+git cleanup && git cleanup-gone
+
+# Verify clean state
+git branch -vv
+```
+
+**After Each PR Merge:**
+```bash
+# Merge PR via GitHub
+gh pr merge --squash
+
+# Update local main
+git checkout main
+git pull
+
+# Delete the feature branch
+git branch -D feature/branch-name
+```
+
+**Troubleshooting:**
+
+**Branch won't delete with `-d`:**
+```bash
+# This happens with squash-merge (commits differ)
+# Safe to use -D if PR was merged
+git branch -D feature/branch-name
+```
+
+**Want to keep branch for reference:**
+```bash
+# Tag it first
+git tag archive/feature-name feature/branch-name
+
+# Then delete branch
+git branch -d feature/branch-name
+
+# Later: restore from tag if needed
+git checkout -b feature/branch-name archive/feature-name
 ```
 
 ---
