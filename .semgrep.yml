@@ -409,3 +409,174 @@ rules:
       confidence: MEDIUM
       likelihood: LOW
       impact: HIGH
+
+  # ============================================================================
+  # Rule 9: Hardcoded Secrets Detection (Phase 3)
+  # ============================================================================
+  - id: hardcoded-secrets
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "..."
+          - pattern: $VAR = '...'
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(api[_-]?key|password|secret[_-]?key|access[_-]?key|auth[_-]?token|private[_-]?key|secret|token|credentials)
+      - pattern-not: $VAR = ""
+      - pattern-not: $VAR = "test"
+      - pattern-not: $VAR = "placeholder"
+      - pattern-not: $VAR = "your-api-key-here"
+      - pattern-not: $VAR = "YOUR_API_KEY"
+      - pattern-not: $VAR = "***"
+    message: |
+      Potential hardcoded secret detected.
+
+      Hardcoded secrets in code pose serious security risks:
+      - Secrets exposed in version control
+      - Cannot be rotated without code changes
+      - Risk of exposure in logs, error messages, backups
+
+      Best practices:
+      - Use environment variables: os.getenv("API_KEY")
+      - Use configuration files outside version control
+      - Use secret management services (Vault, AWS Secrets Manager)
+      - Never commit secrets to git
+
+      If this is a placeholder or test value, add a comment explaining it.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+    metadata:
+      category: security
+      cwe: "CWE-798: Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: CRITICAL
+
+  # ============================================================================
+  # Rule 10: Insecure Deserialization (Phase 3)
+  # ============================================================================
+  - id: insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads(...)
+          - pattern: pickle.load(...)
+          - pattern: yaml.load($DATA)
+          - pattern: yaml.load($DATA, ...)
+          - pattern: marshal.loads(...)
+          - pattern: marshal.load(...)
+      - pattern-not: yaml.load($DATA, Loader=yaml.SafeLoader)
+      - pattern-not: yaml.load($DATA, Loader=yaml.BaseLoader)
+    message: |
+      Insecure deserialization detected.
+
+      Deserialization of untrusted data can lead to:
+      - Arbitrary code execution
+      - Object injection attacks
+      - Denial of service
+
+      Security recommendations:
+      - pickle: Never deserialize untrusted data (fundamentally unsafe)
+      - yaml: Use yaml.safe_load() or yaml.load(data, Loader=yaml.SafeLoader)
+      - marshal: Avoid for untrusted data, use JSON instead
+      - json: Safe for deserialization (use json.loads())
+
+      If you must use pickle/yaml.load, ensure data source is fully trusted
+      and add security controls (signature verification, sandboxing).
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: CRITICAL
+
+  # ============================================================================
+  # Rule 11: Threading Race Conditions (Phase 3)
+  # ============================================================================
+  - id: threading-race-condition
+    patterns:
+      - pattern-either:
+          - pattern: |
+              class $CLASS:
+                ...
+                $ATTR = ...
+                ...
+                def $METHOD(self, ...):
+                  ...
+                  self.$ATTR = ...
+                  ...
+          - pattern: |
+              $GLOBAL = ...
+              ...
+              def $FUNC(...):
+                ...
+                global $GLOBAL
+                ...
+                $GLOBAL = ...
+                ...
+      - pattern-not-inside: |
+          ...
+          with $LOCK:
+            ...
+      - pattern-not-inside: |
+          ...
+          $LOCK.acquire()
+          ...
+          $LOCK.release()
+          ...
+    message: |
+      Potential threading race condition detected.
+
+      Shared mutable state without synchronization can cause:
+      - Data corruption
+      - Inconsistent state
+      - Hard-to-reproduce bugs
+
+      This project uses parallel processing (ThreadPoolExecutor).
+      All shared state MUST be protected with locks.
+
+      Best practices:
+      - Use threading.Lock() for shared mutable state
+      - Use ThreadSafeStats class pattern (see vscode_scanner/scanner.py)
+      - Prefer immutable data structures
+      - Use thread-local storage when possible
+      - Document thread-safety guarantees
+
+      Example safe pattern:
+        class ThreadSafeCounter:
+          def __init__(self):
+            self._lock = threading.Lock()
+            self._count = 0
+
+          def increment(self):
+            with self._lock:
+              self._count += 1
+
+      See docs/guides/PERFORMANCE.md for threading architecture details.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+        - "**/scanner.py"  # Already uses ThreadSafeStats with proper locking
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization"
+      owasp: "A04:2021 - Insecure Design"
+      confidence: LOW
+      likelihood: MEDIUM
+      impact: MEDIUM

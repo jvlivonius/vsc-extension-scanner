@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Security**: Semgrep Phase 3 - Advanced security rules and GitHub Security integration
+  - **GitHub Security Tab Integration**: SARIF upload for Semgrep findings visibility
+    - Added SARIF output generation to CI workflow (`.github/workflows/semgrep.yml`)
+    - Automated upload to GitHub Security tab using CodeQL action
+    - All custom Semgrep findings now visible in repository Security dashboard
+    - Benefits: Better security visibility, integration with GitHub security features
+  - **Rule 9: Hardcoded Secrets Detection** (ERROR severity)
+    - Detects hardcoded API keys, passwords, tokens, and credentials
+    - Pattern matching for common secret variable names: `api_key`, `password`, `secret_key`, `auth_token`, etc.
+    - Excludes test placeholders and mock values
+    - CWE-798: Hard-coded Credentials
+  - **Rule 10: Insecure Deserialization** (ERROR severity)
+    - Detects unsafe `pickle.load()`, `yaml.load()`, and `marshal.load()` usage
+    - Flags deserialization of untrusted data (arbitrary code execution risk)
+    - Recommends `yaml.safe_load()` and `json.loads()` as safe alternatives
+    - CWE-502: Deserialization of Untrusted Data
+  - **Rule 11: Threading Race Conditions** (WARNING severity)
+    - Detects shared mutable state without lock protection
+    - Identifies global variables and class attributes modified across threads
+    - Recommends `threading.Lock()` and `ThreadSafeStats` pattern
+    - CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization
+  - **Results**: 93 total findings (11 rules total: 8 from Phase 1-2.5, 3 new Phase 3 rules)
+    - 0 ERRORs (maintained - no hardcoded secrets or insecure deserialization detected)
+    - 66 WARNINGs (65 from Phase 2.5 + 1 new threading false positive in utils.py)
+    - 27 INFOs (Rich console monitoring - unchanged)
+  - **Impact**: Comprehensive security coverage across 11 custom rules + SARIF visibility in GitHub Security tab
 - **Security**: Enhanced Semgrep configuration with Phase 1 improvements
   - Added pre-commit hook integration for Semgrep custom security scans
   - Added Rule 7: Rich console output sanitization detection (27 console.print instances monitored)
