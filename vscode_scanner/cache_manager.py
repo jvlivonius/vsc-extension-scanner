@@ -25,6 +25,7 @@ from .utils import (
     safe_touch,
     safe_chmod,
     sanitize_error_message,
+    sanitize_string,
     validate_path,
 )
 from ._version import SCHEMA_VERSION
@@ -778,8 +779,11 @@ class CacheManager:
                             scan_result_json, integrity_signature
                         ):
                             # Signature mismatch - cache entry has been tampered with
+                            # Sanitize extension_id and version (user-controlled filesystem input)
+                            sanitized_id = sanitize_string(extension_id)
+                            sanitized_ver = sanitize_string(version)
                             print(
-                                f"[WARNING] Cache integrity check failed for {extension_id} v{version}",
+                                f"[WARNING] Cache integrity check failed for {sanitized_id} v{sanitized_ver}",
                                 file=sys.stderr,
                             )
                             print(
@@ -790,8 +794,11 @@ class CacheManager:
                     else:
                         # No signature (old cache entry from v2.1 or earlier)
                         # Treat as cache miss to force re-scan with signature
+                        # Sanitize extension_id and version (user-controlled filesystem input)
+                        sanitized_id = sanitize_string(extension_id)
+                        sanitized_ver = sanitize_string(version)
                         print(
-                            f"[INFO] Unsigned cache entry for {extension_id} v{version} (will re-scan)",
+                            f"[INFO] Unsigned cache entry for {sanitized_id} v{sanitized_ver} (will re-scan)",
                             file=sys.stderr,
                         )
                         return None

@@ -102,6 +102,19 @@ repos:
         pass_filenames: false
         always_run: true
 
+  # Semgrep custom security rules
+  - repo: https://github.com/returntocorp/semgrep
+    rev: v1.52.0
+    hooks:
+      - id: semgrep
+        name: Semgrep Custom Security Scan
+        args: ['--config=.semgrep.yml', 'vscode_scanner/', '--metrics=off', '--quiet']
+        pass_filenames: false
+        always_run: true  # Phase 2: Automatic execution enabled (false positives eliminated)
+
+  # Local version validation
+  - repo: local
+    hooks:
       - id: version-consistency
         name: Version Consistency Check
         entry: python3 scripts/bump_version.py --check

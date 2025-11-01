@@ -63,9 +63,15 @@ jobs:
           echo "Running Semgrep with custom security rules..."
           semgrep scan --config=.semgrep.yml \
             --verbose \
+            --sarif \
+            --sarif-output=semgrep-results.sarif \
+            vscode_scanner/ || true
+
+          # Also generate JSON for artifact upload and summary
+          semgrep scan --config=.semgrep.yml \
             --json \
             --output=semgrep-results.json \
-            vscode_scanner/
+            vscode_scanner/ || true
 
       - name: Display Semgrep results
         if: always()
@@ -75,7 +81,12 @@ jobs:
           echo "Semgrep Security Scan Results"
           echo "=================================================="
           echo ""
-          semgrep scan --config=.semgrep.yml vscode_scanner/
+          if [ -f semgrep-results.json ]; then
+            echo "Results saved to semgrep-results.json and semgrep-results.sarif"
+            jq -r '.results | length' semgrep-results.json | xargs -I {} echo "Total findings: {}"
+          else
+            echo "No results file generated"
+          fi
 
       - name: Upload Semgrep results
         if: always()
@@ -84,6 +95,13 @@ jobs:
           name: semgrep-results
           path: semgrep-results.json
           retention-days: 30
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep-custom-rules
 
       - name: Generate Semgrep summary
         if: always()

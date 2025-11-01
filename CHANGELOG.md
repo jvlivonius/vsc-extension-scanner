@@ -7,8 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Security**: Semgrep Phase 3 - Advanced security rules and GitHub Security integration
+  - **GitHub Security Tab Integration**: SARIF upload for Semgrep findings visibility
+    - Added SARIF output generation to CI workflow (`.github/workflows/semgrep.yml`)
+    - Automated upload to GitHub Security tab using CodeQL action
+    - All custom Semgrep findings now visible in repository Security dashboard
+    - Benefits: Better security visibility, integration with GitHub security features
+  - **Rule 9: Hardcoded Secrets Detection** (ERROR severity)
+    - Detects hardcoded API keys, passwords, tokens, and credentials
+    - Pattern matching for common secret variable names: `api_key`, `password`, `secret_key`, `auth_token`, etc.
+    - Excludes test placeholders and mock values
+    - CWE-798: Hard-coded Credentials
+  - **Rule 10: Insecure Deserialization** (ERROR severity)
+    - Detects unsafe `pickle.load()`, `yaml.load()`, and `marshal.load()` usage
+    - Flags deserialization of untrusted data (arbitrary code execution risk)
+    - Recommends `yaml.safe_load()` and `json.loads()` as safe alternatives
+    - CWE-502: Deserialization of Untrusted Data
+  - **Rule 11: Threading Race Conditions** (WARNING severity)
+    - Detects shared mutable state without lock protection
+    - Identifies global variables and class attributes modified across threads
+    - Recommends `threading.Lock()` and `ThreadSafeStats` pattern
+    - CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization
+  - **Results**: 93 total findings (11 rules total: 8 from Phase 1-2.5, 3 new Phase 3 rules)
+    - 0 ERRORs (maintained - no hardcoded secrets or insecure deserialization detected)
+    - 66 WARNINGs (65 from Phase 2.5 + 1 new threading false positive in utils.py)
+    - 27 INFOs (Rich console monitoring - unchanged)
+  - **Impact**: Comprehensive security coverage across 11 custom rules + SARIF visibility in GitHub Security tab
+- **Security**: Enhanced Semgrep configuration with Phase 1 improvements
+  - Added pre-commit hook integration for Semgrep custom security scans
+  - Added Rule 7: Rich console output sanitization detection (27 console.print instances monitored)
+  - Added Rule 8: HTTPS enforcement reminder for urllib requests
+  - Total: 8 Semgrep rules (6 existing + 2 new Phase 1 rules)
+  - New rules set to INFO level for non-blocking monitoring
+  - Security tests: All 127 tests passing
+
 ### Fixed
 
+- **Security**: Semgrep Phase 2.5 - Fixed vulnerabilities and improved rule precision (50% noise reduction)
+  - **SECURITY FIX**: Sanitized `extension_id` and `version` in cache_manager.py print statements (2 instances)
+    - Lines 783-784: Cache integrity check failed message
+    - Lines 798-799: Unsigned cache entry message
+    - Issue: Extension IDs from filesystem are user-controlled input (potential injection attack)
+    - Fix: Added `sanitize_string()` before printing to prevent terminal injection
+    - Validation: All 127 security tests passing
+  - **Improved Semgrep Rule 2** (`missing-string-sanitization-print`): Enhanced pattern matching
+    - Added exclusions for static strings: `print("static text")`
+    - Added exclusions for already-sanitized variables: `sanitized_error`, `sanitize_error_message()`
+    - Added exclusion for utils.py (contains intentional test/demo print statements)
+    - Updated rule message with clearer guidance and verification steps
+  - **Results**: 92 total findings (down from 156, 41% reduction)
+    - 0 ERRORs (maintained - perfect!)
+    - 65 WARNINGs (down from 129, 50% reduction in false positives)
+    - 27 INFOs (Phase 1 Rich console monitoring - unchanged)
+  - **Impact**: More actionable security monitoring - developers will review WARNINGs instead of ignoring noise
+- **Security**: Semgrep Phase 2 - Corrected rule syntax and eliminated false positives
+  - Fixed all 6 existing rules to use correct Semgrep `patterns:` syntax (replaced invalid `pattern-not-inside` and `pattern-not-either`)
+  - Eliminated 16 ERROR-level false positives from path validation rule (dataflow tracking limitations)
+  - Updated file exclusions to use `**/` prefix for Semgrepignore v2 compliance
+  - Results: 156 total findings (down from 172), 0 ERRORs, 129 WARNINGs (monitoring), 27 INFOs (correct)
+  - Validation: All 127 security tests passing, no Semgrep syntax warnings
 - **Documentation**: Fixed placeholder GitHub URLs across all documentation
   - Updated User-Agent version from outdated versions (1.0.0, 3.5.2, 3.5.3) to current 3.5.6
   - Replaced placeholder "username" and "your-repo" with actual "jvlivonius" in 12 files
