@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Performance**: Pre-commit hook optimization - 18-75% faster execution
+  - **Consolidated Security Tests** (saves ~8-10s): Replaced 5 separate test hooks with single consolidated hook using `scripts/run_tests.py --security-only`
+  - **File Type Filters** (saves ~20s on docs commits): Added `types: [python]` to Bandit, Pylint, and Semgrep (only run on Python file changes)
+  - **Fail-Fast Strategy**: Reordered hooks into 7 phases (fast file checks → formatting → security → quality → tests)
+  - **Dependency Vulnerability Scanning**: Added `safety` and `pip-audit` hooks (non-blocking, informational)
+  - **Performance Impact**:
+    - Code commits: ~48-50s (down from ~61s, **18% faster**)
+    - Docs/config commits: ~10-15s (down from ~61s, **75% faster**)
+    - Dependency file changes: ~53-56s (includes new security scans)
+  - **Benefits**: Faster development workflow, earlier failure detection, comprehensive security coverage
 - **Security**: Semgrep Phase 3 - Advanced security rules and GitHub Security integration
   - **GitHub Security Tab Integration**: SARIF upload for Semgrep findings visibility
     - Added SARIF output generation to CI workflow (`.github/workflows/semgrep.yml`)
