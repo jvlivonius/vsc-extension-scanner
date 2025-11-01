@@ -428,6 +428,12 @@ git add .                                  # Stage all changes
 git commit -m "type(scope): subject"       # Follow commit message standards
 git push origin feature/branch-name        # Push to feature branch
 gh pr create --title "..." --body "..."    # Create pull request
+
+# 8. After PR merge - Clean up local branches
+git checkout main && git pull              # Update main branch
+git branch -D feature/branch-name          # Delete local feature branch (use -D for squash-merge)
+# Remote branch auto-deleted by GitHub (deleteBranchOnMerge enabled)
+# See docs/contributing/GIT_WORKFLOW.md#branch-cleanup for automated cleanup options
 ```
 
 → **Git workflow details:** See [GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md) for complete branching strategy, PR guidelines, and commit standards
