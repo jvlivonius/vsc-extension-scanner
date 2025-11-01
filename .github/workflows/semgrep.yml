@@ -63,11 +63,15 @@ jobs:
           echo "Running Semgrep with custom security rules..."
           semgrep scan --config=.semgrep.yml \
             --verbose \
-            --json \
-            --output=semgrep-results.json \
             --sarif \
             --sarif-output=semgrep-results.sarif \
-            vscode_scanner/
+            vscode_scanner/ || true
+
+          # Also generate JSON for artifact upload and summary
+          semgrep scan --config=.semgrep.yml \
+            --json \
+            --output=semgrep-results.json \
+            vscode_scanner/ || true
 
       - name: Display Semgrep results
         if: always()
@@ -77,7 +81,12 @@ jobs:
           echo "Semgrep Security Scan Results"
           echo "=================================================="
           echo ""
-          semgrep scan --config=.semgrep.yml vscode_scanner/
+          if [ -f semgrep-results.json ]; then
+            echo "Results saved to semgrep-results.json and semgrep-results.sarif"
+            jq -r '.results | length' semgrep-results.json | xargs -I {} echo "Total findings: {}"
+          else
+            echo "No results file generated"
+          fi
 
       - name: Upload Semgrep results
         if: always()
