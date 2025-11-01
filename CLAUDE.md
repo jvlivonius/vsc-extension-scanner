@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Current Status
 
-**Version:** v3.5.5 Complete ✅
+**Version:** v3.5.6 Complete ✅
 **Latest:** Automated Release Workflow - GitHub Actions for automatic distribution builds on version tags
 **Features:** CI/CD automation (38% release time reduction), comprehensive testing (628 tests, 72.60% coverage), modular HTML reports
 **Completed Roadmap:** [v3.5.3-roadmap.md](docs/archive/plans/v3.5.3-roadmap.md) - Testing Excellence complete
