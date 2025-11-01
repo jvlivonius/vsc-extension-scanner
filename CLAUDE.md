@@ -26,7 +26,7 @@ These documents define critical constraints and requirements that must be follow
 
 VS Code Extension Security Scanner is a standalone Python CLI tool that performs manual security audits of installed VS Code extensions by leveraging the vscan.dev security analysis service.
 
-**IMPORTANT**: This is an **unofficial, community-maintained tool**. All security analysis is **powered by [vscan.dev](https://vscan.dev)**. We are deeply grateful to vscan.dev for providing their public API. This tool is NOT affiliated with or endorsed by vscan.dev. For complete legal and attribution information, see [docs/project/ATTRIBUTION.md](docs/project/ATTRIBUTION.md).
+**IMPORTANT**: This is an **unofficial, community-maintained tool**. All security analysis is **powered by [vscan.dev](https://vscan.dev)**. We are deeply grateful to vscan.dev for providing their public API. This tool is NOT affiliated with or endorsed by vscan.dev. For complete legal and attribution information, see [ATTRIBUTION.md](ATTRIBUTION.md).
 
 **See:** [README.md](README.md) for features and [docs/project/STATUS.md](docs/project/STATUS.md) for current development status.
 
