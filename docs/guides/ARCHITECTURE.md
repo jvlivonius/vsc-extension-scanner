@@ -299,13 +299,10 @@ app = typer.Typer(
 - Each command has comprehensive help text with examples
 
 **Console Script Entry Points:**
-```python
-# setup.py configuration
-entry_points={
-    'console_scripts': [
-        'vscan=vscode_scanner.vscan:main',
-    ],
-}
+```toml
+# pyproject.toml configuration
+[project.scripts]
+vscan = "vscode_scanner.vscan:cli_main"
 ```
 
 **Key Design Decisions:**

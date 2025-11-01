@@ -101,3 +101,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      - id: version-consistency
+        name: Version Consistency Check
+        entry: python3 scripts/bump_version.py --check
+        language: system
+        pass_filenames: false
+        files: '(_version\.py|README\.md|CLAUDE\.md|PRD\.md)$'

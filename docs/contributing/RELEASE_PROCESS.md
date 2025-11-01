@@ -11,9 +11,9 @@
 
 ### Three-Phase Workflow
 
-**Phase 1: Pre-Release Preparation** (30-45 min)
-- Version management and consistency validation
-- Documentation updates across 8 files
+**Phase 1: Pre-Release Preparation** (20-30 min)
+- Version management with automated documentation updates (3 files auto-updated)
+- Manual documentation updates (2 files: CHANGELOG.md, release notes)
 - Comprehensive testing (automated + manual)
 
 **Phase 2: Build & Package** (15-20 min)
@@ -112,7 +112,7 @@ python3 scripts/bump_version.py --check
 The `--check` command validates:
 - Python files import from `_version.py` (no hardcoded versions)
 - Documentation version references match
-- Dynamic versioning in `setup.py` and `pyproject.toml`
+- Dynamic versioning in `pyproject.toml`
 
 **Expected output:** All files report version consistency with ✓ marks.
 
@@ -122,9 +122,28 @@ The `--check` command validates:
 
 ### Step 2: Documentation Updates
 
-Update **8 core documentation files** in this recommended order:
+#### Automated Updates (3 files - handled by bump_version.py)
 
-#### 2.1 CHANGELOG.md (Root)
+The following files are **automatically updated** when using the `--auto-update` flag:
+
+**2.1 README.md (Root)** ✅ Automated
+- Version badge updated automatically
+- **Manual (if needed):** Update installation examples if changed
+- **Manual (if needed):** Update feature list if new features added
+
+**2.2 CLAUDE.md (Root)** ✅ Automated
+- `## Current Status` section version updated automatically
+- **Manual (if needed):** Move in-progress work to previous updates section
+- **Manual (if needed):** Update latest features/roadmap references
+
+**2.3 docs/project/PRD.md** ✅ Automated
+- Version field updated automatically
+- **Manual (if needed):** Update requirements, constraints, or success criteria if changed
+
+#### Manual Updates Required (2 files)
+
+**2.4 CHANGELOG.md (Root)** ⚠️ Manual Required
+
 Add new release section using [Keep a Changelog](https://keepachangelog.com/) format:
 
 ```markdown
@@ -147,37 +166,7 @@ Add new release section using [Keep a Changelog](https://keepachangelog.com/) fo
 - Include migration notes for breaking changes
 - Update comparison links at bottom
 
-#### 2.2 README.md (Root)
-- Update version badge in header section
-- Update installation examples if changed
-- Update feature list if new features added
-
-#### 2.3 CLAUDE.md (Root)
-- Update `## Current Status` section with new version
-- Move in-progress work to previous updates
-- Verify all version references match `_version.py`
-
-#### 2.4 DISTRIBUTION.md (Root)
-- Update version references in installation examples
-- Update wheel filename examples throughout
-- Update troubleshooting section if new issues discovered
-
-#### 2.5 docs/project/STATUS.md
-- Update `**Current Version:**` field
-- Update `**Schema Version:**` field if changed
-- Add new release section at top
-- Update "Next Release" section
-
-#### 2.6 docs/project/PRD.md
-- Update version number if requirements changed
-- Update feature scope, constraints, success criteria if applicable
-
-#### 2.7 docs/README.md
-- Verify navigation table is current
-- Verify all links work
-- Update if new documentation added
-
-#### 2.8 Release Notes (Required for Automated Releases)
+**2.5 Release Notes (Required for Automated Releases)** ⚠️ Manual Required
 
 Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - Summary and key features
@@ -193,6 +182,12 @@ Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - If this file doesn't exist, it will fall back to extracting from CHANGELOG.md
 - Release notes provide comprehensive user-facing information vs brief CHANGELOG bullets
 - File must be created and committed **before** pushing the version tag
+
+#### Time Savings
+
+**Old workflow:** 8 files requiring manual updates (~20-30 min)
+**New workflow:** 2 files requiring manual updates + 3 auto-updated (~8-12 min)
+**Time reduction:** ~60% faster documentation phase
 
 ---
 
@@ -266,7 +261,23 @@ ls -lh dist/
 
 ### Step 6: Verify Package Installation
 
-Test in isolated environment:
+**Automated Smoke Test (Recommended):**
+
+```bash
+# Run comprehensive smoke tests (creates temp virtualenv automatically)
+python3 scripts/run_tests.py --smoke dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
+```
+
+**Expected output:** All 5 validation steps pass with ✓ marks:
+1. Wheel file validation
+2. Virtualenv creation
+3. Package installation
+4. CLI accessibility test (`vscan --version`)
+5. Help command test (`vscan --help`)
+
+**Manual Verification (Alternative):**
+
+If you need to manually verify the package:
 
 ```bash
 # Create test environment
@@ -316,10 +327,11 @@ gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
 ### Step 8: Commit Release Changes
 
 ```bash
-# Stage all updated files
-git add vscode_scanner/_version.py CHANGELOG.md README.md CLAUDE.md DISTRIBUTION.md
-git add docs/project/STATUS.md docs/project/PRD.md docs/README.md
-git add docs/archive/summaries/vX.Y.Z-release-notes.md
+# Stage all updated files (automated + manual)
+git add vscode_scanner/_version.py README.md CLAUDE.md docs/project/PRD.md
+git add CHANGELOG.md docs/archive/summaries/vX.Y.Z-release-notes.md
+
+# Note: 6 files total (3 auto-updated + 2 manual + release notes)
 
 # Verify staged files
 git status
@@ -485,12 +497,12 @@ You still need to complete Phase 1 and initial Phase 3 steps manually:
 
 **Phase 1 - Pre-Release Preparation:**
 ```bash
-# 1. Version management
-python3 scripts/bump_version.py X.Y.Z
-python3 scripts/bump_version.py --check
+# 1. Version management with auto-update
+python3 scripts/bump_version.py X.Y.Z --auto-update
+# This automatically updates: README.md, CLAUDE.md, docs/project/PRD.md
 
-# 2. Documentation updates (8 files)
-# - CHANGELOG.md, README.md, CLAUDE.md, etc.
+# 2. Manual documentation updates (2 files)
+# - CHANGELOG.md (add release section)
 # - IMPORTANT: Create docs/archive/summaries/vX.Y.Z-release-notes.md
 
 # 3. Testing
@@ -685,16 +697,24 @@ gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
 
 ## Time Estimates
 
-**With Automated Workflow:**
-- Phase 1 (Preparation): 30-45 minutes (manual)
-- Phase 2 (Build & Package): ~5 minutes (automated)
+**With Automated Workflow + Version Management:**
+- Phase 1 (Preparation): 20-30 minutes (60% automated)
+  - Version bump with auto-update: ~1 minute
+  - Manual doc updates (2 files): ~8-12 minutes
+  - Testing: ~12-18 minutes
+- Phase 2 (Build & Package): ~5 minutes (fully automated)
 - Phase 3 (Version Control): ~5 minutes (mostly automated)
-- **Total:** 40-55 minutes (38% time reduction)
+- **Total:** 30-40 minutes (50-60% time reduction from original 55-80 min)
+
+**Breakdown of improvements:**
+- Version automation: 50% reduction in doc update time (8 files → 2 files manual)
+- Build automation: 38% reduction in build/package time
+- **Combined:** ~50% overall time reduction
 
 **Legacy Manual Process:**
-- Phase 1 (Preparation): 30-45 minutes
-- Phase 2 (Build & Package): 15-20 minutes
-- Phase 3 (Version Control): 10-15 minutes
+- Phase 1 (Preparation): 30-45 minutes (all manual doc updates)
+- Phase 2 (Build & Package): 15-20 minutes (manual build)
+- Phase 3 (Version Control): 10-15 minutes (manual steps)
 - **Total:** 55-80 minutes for complete release
 
 **First-time release:** Add 15-30 minutes for familiarization.

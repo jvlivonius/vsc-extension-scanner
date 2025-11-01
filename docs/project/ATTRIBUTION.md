@@ -163,7 +163,7 @@ retry_delay = base_delay * (2 ** attempt) + random(0, 1)
 
 ### 5. Transparent User-Agent
 
-**Identification**: `VSCodeExtensionScanner/3.5.2 (+https://github.com/username/vsc-extension-scanner)`
+**Identification**: `VSCodeExtensionScanner/3.5.6 (+https://github.com/jvlivonius/vsc-extension-scanner)`
 
 **Benefits**:
 - vscan.dev can identify our tool
@@ -299,6 +299,6 @@ This attribution and legal notice may be updated to:
 ## Links
 
 - **vscan.dev**: [https://vscan.dev](https://vscan.dev)
-- **This Project**: [GitHub Repository](https://github.com/username/vsc-extension-scanner)
+- **This Project**: [GitHub Repository](https://github.com/jvlivonius/vsc-extension-scanner)
 - **License**: [MIT License](../../LICENSE)
 - **API Documentation**: [API_REFERENCE.md](../guides/API_REFERENCE.md)

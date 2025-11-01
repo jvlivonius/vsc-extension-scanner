@@ -197,7 +197,7 @@ Use the following User-Agent to identify the tool:
 
 ```python
 headers = {
-    "User-Agent": "VSCodeExtensionScanner/1.0.0 (+https://github.com/user/vsc-extension-scanner)",
+    "User-Agent": "VSCodeExtensionScanner/3.5.6 (+https://github.com/jvlivonius/vsc-extension-scanner)",
     "Accept": "application/json",
     "Content-Type": "application/json"  # For POST requests
 }

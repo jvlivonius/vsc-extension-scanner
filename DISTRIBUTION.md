@@ -1,13 +1,37 @@
 # Distribution Guide for VS Code Extension Security Scanner
 
 **Package Name:** `vscode-extension-scanner`
-**Distribution Method:** Python wheel file (`.whl`)
+**Current Version:** 3.5.6
+**Distribution Methods:** GitHub Releases (primary), Manual wheel distribution (alternative)
 
 ---
 
-## Quick Start for Distribution
+## Quick Start
 
-### For Package Maintainers
+### For Users (Download & Install)
+
+**Recommended: Download from GitHub Releases**
+
+```bash
+# 1. Visit GitHub Releases page
+open https://github.com/jvlivonius/vsc-extension-scanner/releases
+
+# 2. Download latest wheel file
+# Click on latest release → Assets → vscode_extension_scanner-X.Y.Z-py3-none-any.whl
+
+# 3. Install downloaded wheel
+pip install ~/Downloads/vscode_extension_scanner-*.whl
+
+# 4. Verify installation
+vscan --version
+vscan --help
+```
+
+**See [Method 1: GitHub Releases](#method-1-github-releases-recommended) for complete instructions.**
+
+---
+
+### For Package Maintainers (Build & Release)
 
 **Build the distribution wheel:**
 
@@ -93,7 +117,108 @@ python3 --version
 
 ---
 
-## Distribution Scenarios
+## Distribution Methods
+
+### Method 1: GitHub Releases (Recommended)
+
+**Best for:** Public distribution, team access, automated updates
+
+#### Download & Install
+
+**Step 1: Navigate to Releases Page**
+
+Visit: **https://github.com/jvlivonius/vsc-extension-scanner/releases**
+
+Or use command line:
+```bash
+# macOS/Linux
+open https://github.com/jvlivonius/vsc-extension-scanner/releases
+
+# Windows (PowerShell)
+start https://github.com/jvlivonius/vsc-extension-scanner/releases
+```
+
+**Step 2: Download Latest Release**
+
+1. Click on the **latest release** (top of the page)
+2. Scroll to **Assets** section
+3. Download files:
+   - `vscode_extension_scanner-X.Y.Z-py3-none-any.whl` (required)
+   - `SHA256SUMS.txt` (optional, for verification)
+
+**Step 3: Verify Checksum (Optional but Recommended)**
+
+```bash
+# macOS/Linux
+cd ~/Downloads
+shasum -a 256 -c SHA256SUMS.txt
+
+# Windows (PowerShell)
+cd $env:USERPROFILE\Downloads
+Get-FileHash vscode_extension_scanner-*.whl -Algorithm SHA256
+# Compare with value in SHA256SUMS.txt
+```
+
+**Step 4: Install**
+
+```bash
+# Standard installation
+pip install vscode_extension_scanner-*.whl
+
+# If pip not in PATH
+python3 -m pip install vscode_extension_scanner-*.whl
+
+# User installation (no admin rights)
+pip install --user vscode_extension_scanner-*.whl
+```
+
+**Step 5: Verify Installation**
+
+```bash
+vscan --version  # Should show installed version
+vscan --help     # Should display help menu
+```
+
+#### Benefits of GitHub Releases
+
+- ✅ **Automated Builds**: GitHub Actions builds packages automatically on version tags
+- ✅ **Quality Assurance**: Package installation verified before release creation
+- ✅ **Checksums**: SHA256 checksums automatically generated for integrity verification
+- ✅ **Release Notes**: Changelog entries included with each release
+- ✅ **Public Access**: Team members can download anytime
+- ✅ **Version History**: All previous versions available
+- ✅ **No Manual Building**: Maintainers don't need to build/distribute manually
+
+#### How Releases Are Created (For Maintainers)
+
+GitHub Releases are **fully automated** via GitHub Actions:
+
+1. Maintainer bumps version in `vscode_scanner/_version.py`
+2. Maintainer updates CHANGELOG.md
+3. Maintainer pushes version tag: `git tag v3.5.6 && git push origin v3.5.6`
+4. GitHub Actions automatically:
+   - Builds wheel and source distribution
+   - Generates SHA256 checksums
+   - Verifies package installation
+   - Extracts release notes from CHANGELOG.md
+   - Creates GitHub Release with all artifacts
+
+**See:** [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) for complete release workflow
+
+**Workflow:** `.github/workflows/release.yml` contains automation logic
+
+---
+
+### Method 2: Manual Wheel Distribution (Alternative)
+
+**Best for:** Offline environments, internal-only distribution, air-gapped systems
+
+#### When to Use Manual Distribution
+
+- No access to GitHub (firewall/network restrictions)
+- Internal company distribution only
+- Offline installation requirements
+- Custom build/modification needed
 
 ### Scenario 1: Email Distribution
 
@@ -591,20 +716,34 @@ pip uninstall vscode-extension-scanner
 
 ---
 
-### Q: Can I publish this to PyPI later?
+### Q: Is this available on PyPI?
 
-**A:** Yes! If you decide to make it public:
+**A:** Not yet. Currently distributed via:
+
+- ✅ **Primary**: GitHub Releases (automated, public)
+- ✅ **Alternative**: Manual wheel distribution (offline/internal)
+
+**Future PyPI Publishing:**
+
+PyPI publication is planned but not yet implemented. When published, users will be able to install with:
+
+```bash
+pip install vscode-extension-scanner
+```
+
+**For Maintainers (when ready for PyPI):**
 
 ```bash
 # Install twine
 pip install twine
 
-# Upload to PyPI (requires PyPI account)
+# Upload to PyPI (requires PyPI account and credentials)
 twine upload dist/vscode_extension_scanner-*.whl
 
-# Users can then install via
-pip install vscode-extension-scanner
+# Or configure in GitHub Actions for automated PyPI publishing
 ```
+
+**Current Status:** GitHub Releases provides public distribution without PyPI overhead.
 
 ---
 

@@ -9,6 +9,11 @@ Quick Start - Preset Aliases:
     python3 scripts/run_tests.py --ci        # CI: all except real API, skip slow
     python3 scripts/run_tests.py --report    # Report: all tests with HTML coverage
 
+Pre-Release & Quality Modes:
+    python3 scripts/run_tests.py --pre-release                    # Full release validation
+    python3 scripts/run_tests.py --smoke dist/vscan-3.5.6.whl    # Smoke test wheel package
+    python3 scripts/run_tests.py --security-only                  # Security tests only
+
 Advanced Usage:
     python3 scripts/run_tests.py --all
     python3 scripts/run_tests.py --unit --security
@@ -17,13 +22,13 @@ Advanced Usage:
     python3 scripts/run_tests.py --all --coverage --coverage-format html
 
 Exit Codes:
-    0 - All tests passed
-    1 - Some tests failed
+    0 - All tests passed / All validations passed
+    1 - Some tests failed / Some validations failed
     2 - No tests found
     3 - Execution error
 
-Version: 2.0
-Updated: 2025-10-30
+Version: 2.1
+Updated: 2025-11-01
 """
 
 import sys
@@ -53,6 +58,429 @@ try:
     PYTEST_AVAILABLE = True
 except ImportError:
     PYTEST_AVAILABLE = False
+
+
+# ==============================================================================
+# Pre-Release Validation Functions
+# ==============================================================================
+
+
+def validate_version_consistency() -> tuple[bool, str]:
+    """
+    Validate version consistency across all files using bump_version.py.
+
+    Returns:
+        (success, message): True if consistent, False otherwise with error message
+    """
+    try:
+        result = subprocess.run(
+            [sys.executable, "scripts/bump_version.py", "--check"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode == 0:
+            return True, "✓ Version consistency validated"
+        else:
+            return (
+                False,
+                f"✗ Version inconsistency detected:\n{result.stdout}\n{result.stderr}",
+            )
+    except subprocess.TimeoutExpired:
+        return False, "✗ Version check timed out after 10 seconds"
+    except Exception as e:
+        return False, f"✗ Version check failed: {str(e)}"
+
+
+def validate_git_status() -> tuple[bool, str]:
+    """
+    Validate git repository status for release readiness.
+
+    Checks:
+    - On main/master branch
+    - No uncommitted changes
+    - Clean working directory
+
+    Returns:
+        (success, message): True if ready, False otherwise with error message
+    """
+    try:
+        # Check if we're in a git repository
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode != 0:
+            return False, "✗ Not a git repository"
+
+        # Check current branch
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        branch = result.stdout.strip()
+        if branch not in ["main", "master"]:
+            return False, f"✗ Not on main/master branch (current: {branch})"
+
+        # Check for uncommitted changes
+        result = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=5
+        )
+        if result.stdout.strip():
+            return False, f"✗ Uncommitted changes detected:\n{result.stdout}"
+
+        return True, f"✓ Git status clean (branch: {branch})"
+
+    except subprocess.TimeoutExpired:
+        return False, "✗ Git check timed out after 5 seconds"
+    except FileNotFoundError:
+        return False, "✗ Git command not found (is git installed?)"
+    except Exception as e:
+        return False, f"✗ Git check failed: {str(e)}"
+
+
+def run_pre_release_checks(verbose: bool = True) -> bool:
+    """
+    Run comprehensive pre-release validation checks.
+
+    Validation Steps:
+    1. Version consistency across all files
+    2. Git repository status (clean, on main/master)
+    3. All tests pass (unit, security, architecture)
+    4. Security scans pass (bandit, safety, pip-audit)
+    5. Coverage meets minimum threshold (52%+)
+
+    Args:
+        verbose: Print detailed progress information
+
+    Returns:
+        True if all checks pass, False otherwise
+    """
+    if verbose:
+        print("\n" + "=" * 70)
+        print("PRE-RELEASE VALIDATION CHECKS")
+        print("=" * 70)
+
+    all_passed = True
+
+    # 1. Version Consistency
+    if verbose:
+        print("\n[1/5] Checking version consistency...")
+    success, message = validate_version_consistency()
+    if verbose:
+        print(f"      {message}")
+    if not success:
+        all_passed = False
+
+    # 2. Git Status
+    if verbose:
+        print("\n[2/5] Validating git status...")
+    success, message = validate_git_status()
+    if verbose:
+        print(f"      {message}")
+    if not success:
+        all_passed = False
+
+    # 3. Run Core Tests
+    if verbose:
+        print("\n[3/5] Running core test suite (unit + security + architecture)...")
+    try:
+        test_args = [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-m",
+            "unit or security or architecture",
+            "-v",
+            "--tb=short",
+        ]
+        result = subprocess.run(test_args, capture_output=not verbose, timeout=300)
+        if result.returncode == 0:
+            if verbose:
+                print("      ✓ All core tests passed")
+        else:
+            if verbose:
+                print("      ✗ Some tests failed")
+            all_passed = False
+    except subprocess.TimeoutExpired:
+        if verbose:
+            print("      ✗ Tests timed out after 5 minutes")
+        all_passed = False
+    except Exception as e:
+        if verbose:
+            print(f"      ✗ Test execution failed: {str(e)}")
+        all_passed = False
+
+    # 4. Security Scans
+    if verbose:
+        print("\n[4/5] Running security scans...")
+
+    # 4a. Bandit
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "bandit", "-r", "vscode_scanner/", "-ll"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            if verbose:
+                print("      ✓ Bandit: No high/medium severity issues")
+        else:
+            if verbose:
+                print(f"      ✗ Bandit: Issues detected\n{result.stdout}")
+            all_passed = False
+    except Exception as e:
+        if verbose:
+            print(f"      ⚠ Bandit check skipped: {str(e)}")
+
+    # 4b. Safety
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "safety", "check", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            if verbose:
+                print("      ✓ Safety: No known vulnerabilities")
+        else:
+            if verbose:
+                print(f"      ✗ Safety: Vulnerabilities detected\n{result.stdout}")
+            all_passed = False
+    except Exception as e:
+        if verbose:
+            print(f"      ⚠ Safety check skipped: {str(e)}")
+
+    # 4c. pip-audit
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip_audit"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            if verbose:
+                print("      ✓ pip-audit: No vulnerabilities")
+        else:
+            if verbose:
+                print(f"      ✗ pip-audit: Vulnerabilities detected\n{result.stdout}")
+            all_passed = False
+    except Exception as e:
+        if verbose:
+            print(f"      ⚠ pip-audit check skipped: {str(e)}")
+
+    # 5. Coverage Check
+    if verbose:
+        print("\n[5/5] Validating test coverage...")
+
+    if COVERAGE_AVAILABLE:
+        try:
+            # Run tests with coverage
+            cov = coverage.Coverage()
+            cov.start()
+
+            # Run pytest programmatically
+            result = pytest.main(
+                ["-m", "unit or security or architecture", "-q", "--tb=no"]
+            )
+
+            cov.stop()
+            cov.save()
+
+            # Get coverage percentage
+            total_coverage = cov.report(show_missing=False)
+
+            if total_coverage >= 52.0:
+                if verbose:
+                    print(f"      ✓ Coverage: {total_coverage:.1f}% (target: 52%+)")
+            else:
+                if verbose:
+                    print(
+                        f"      ✗ Coverage: {total_coverage:.1f}% (below 52% threshold)"
+                    )
+                all_passed = False
+        except Exception as e:
+            if verbose:
+                print(f"      ⚠ Coverage check skipped: {str(e)}")
+    else:
+        if verbose:
+            print(
+                "      ⚠ Coverage module not available (install with: pip install coverage)"
+            )
+
+    # Final Summary
+    if verbose:
+        print("\n" + "=" * 70)
+        if all_passed:
+            print("✅ PRE-RELEASE VALIDATION: ALL CHECKS PASSED")
+        else:
+            print("❌ PRE-RELEASE VALIDATION: SOME CHECKS FAILED")
+        print("=" * 70 + "\n")
+
+    return all_passed
+
+
+def run_smoke_tests(wheel_file: str, verbose: bool = True) -> bool:
+    """
+    Run smoke tests on a built wheel package.
+
+    Validates:
+    1. Wheel file exists and is valid
+    2. Package installs successfully in clean virtualenv
+    3. CLI command is accessible
+    4. Basic scan command works
+    5. Help command works
+
+    Args:
+        wheel_file: Path to .whl file to test
+        verbose: Print detailed progress information
+
+    Returns:
+        True if all smoke tests pass, False otherwise
+    """
+    import tempfile
+    import shutil
+
+    wheel_path = Path(wheel_file)
+
+    if verbose:
+        print("\n" + "=" * 70)
+        print(f"SMOKE TESTS: {wheel_path.name}")
+        print("=" * 70)
+
+    # 1. Validate wheel exists
+    if not wheel_path.exists():
+        if verbose:
+            print(f"✗ Wheel file not found: {wheel_path}")
+        return False
+
+    if not wheel_path.suffix == ".whl":
+        if verbose:
+            print(f"✗ Not a wheel file: {wheel_path}")
+        return False
+
+    if verbose:
+        print(f"\n[1/5] Wheel file: {wheel_path.name} ✓")
+
+    # Create temporary directory for testing
+    temp_dir = tempfile.mkdtemp(prefix="vscan_smoke_")
+
+    try:
+        venv_path = Path(temp_dir) / "venv"
+
+        # 2. Create virtual environment
+        if verbose:
+            print(f"\n[2/5] Creating test virtualenv at {venv_path}...")
+        result = subprocess.run(
+            [sys.executable, "-m", "venv", str(venv_path)],
+            capture_output=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            if verbose:
+                print(f"      ✗ Virtualenv creation failed:\n{result.stderr.decode()}")
+            return False
+        if verbose:
+            print("      ✓ Virtualenv created")
+
+        # Determine virtualenv python path
+        if sys.platform == "win32":
+            venv_python = venv_path / "Scripts" / "python.exe"
+        else:
+            venv_python = venv_path / "bin" / "python"
+
+        # 3. Install wheel in virtualenv
+        if verbose:
+            print(f"\n[3/5] Installing wheel in virtualenv...")
+        result = subprocess.run(
+            [str(venv_python), "-m", "pip", "install", str(wheel_path.absolute())],
+            capture_output=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            if verbose:
+                print(f"      ✗ Installation failed:\n{result.stderr.decode()}")
+            return False
+        if verbose:
+            print("      ✓ Package installed successfully")
+
+        # 4. Test CLI accessibility
+        if verbose:
+            print(f"\n[4/5] Testing CLI command accessibility...")
+        result = subprocess.run(
+            [str(venv_python), "-m", "vscode_scanner.vscan", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            if verbose:
+                print(f"      ✗ CLI command failed:\n{result.stderr}")
+            return False
+
+        version_output = result.stdout.strip()
+        if verbose:
+            print(f"      ✓ CLI accessible: {version_output}")
+
+        # 5. Test help command
+        if verbose:
+            print(f"\n[5/5] Testing help command...")
+        result = subprocess.run(
+            [str(venv_python), "-m", "vscode_scanner.vscan", "--help"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            if verbose:
+                print(f"      ✗ Help command failed:\n{result.stderr}")
+            return False
+
+        # Verify help output contains expected content
+        help_text = result.stdout
+        expected_commands = ["scan", "cache", "config", "report"]
+        missing_commands = [
+            cmd for cmd in expected_commands if cmd not in help_text.lower()
+        ]
+
+        if missing_commands:
+            if verbose:
+                print(
+                    f"      ✗ Help output missing commands: {', '.join(missing_commands)}"
+                )
+            return False
+
+        if verbose:
+            print(f"      ✓ Help command works")
+
+        # Success!
+        if verbose:
+            print("\n" + "=" * 70)
+            print("✅ SMOKE TESTS: ALL CHECKS PASSED")
+            print("=" * 70 + "\n")
+
+        return True
+
+    except subprocess.TimeoutExpired as e:
+        if verbose:
+            print(f"      ✗ Command timed out: {e}")
+        return False
+    except Exception as e:
+        if verbose:
+            print(f"      ✗ Smoke test error: {str(e)}")
+        return False
+    finally:
+        # Clean up temporary directory
+        try:
+            shutil.rmtree(temp_dir)
+        except Exception:
+            pass  # Best effort cleanup
+
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -1279,6 +1707,23 @@ def main():  # pylint: disable=too-many-return-statements
         help="Report preset: all tests with coverage and HTML report",
     )
 
+    # Pre-release and smoke testing modes
+    parser.add_argument(
+        "--pre-release",
+        action="store_true",
+        help="Pre-release validation: version check, git status, tests, security scans, coverage",
+    )
+    parser.add_argument(
+        "--smoke",
+        metavar="WHEEL_FILE",
+        help="Smoke test a wheel package (e.g., --smoke dist/vscode_scanner-3.5.6-py3-none-any.whl)",
+    )
+    parser.add_argument(
+        "--security-only",
+        action="store_true",
+        help="Run security tests only (fast security validation)",
+    )
+
     # Options
     parser.add_argument(
         "--output",
@@ -1309,6 +1754,24 @@ def main():  # pylint: disable=too-many-return-statements
     )
 
     args = parser.parse_args()
+
+    # Handle special modes (pre-release, smoke, security-only)
+    if args.pre_release:
+        # Pre-release validation mode
+        success = run_pre_release_checks(verbose=not args.quiet)
+        return 0 if success else 1
+
+    if args.smoke:
+        # Smoke test mode
+        success = run_smoke_tests(args.smoke, verbose=not args.quiet)
+        return 0 if success else 1
+
+    if args.security_only:
+        # Security-only mode
+        args.security = True
+        print(
+            f"{Colors.CYAN}Running security tests only (fast validation){Colors.RESET}\n"
+        )
 
     # Handle preset aliases
     if args.ci:

@@ -238,7 +238,7 @@ pytest tests/test_cache_manager.py --cov=vscode_scanner.cache_manager --cov-repo
 
 ```markdown
 # README.md
-[![Coverage](https://codecov.io/gh/username/vsc-extension-scanner/branch/main/graph/badge.svg)](https://codecov.io/gh/username/vsc-extension-scanner)
+[![Coverage](https://codecov.io/gh/jvlivonius/vsc-extension-scanner/branch/main/graph/badge.svg)](https://codecov.io/gh/jvlivonius/vsc-extension-scanner)
 ```
 
 ---

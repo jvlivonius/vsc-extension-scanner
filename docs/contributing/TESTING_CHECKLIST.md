@@ -445,19 +445,51 @@ Comprehensive testing checklist for functional, performance, security, and compa
 
 ### Automated Testing
 
+**Quick Test Modes:**
+```bash
+# Security-only (fast validation, ~1 min)
+python3 scripts/run_tests.py --security-only
+
+# Pre-release validation (comprehensive, ~5 min)
+python3 scripts/run_tests.py --pre-release
+
+# Smoke test built package
+python3 scripts/run_tests.py --smoke dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
+```
+
+**Standard Test Modes:**
 ```bash
 # Run all tests
 pytest tests/
 
-# Run individually
-for test in tests/test_*.py; do python3 "$test"; done
+# Run with test runner
+python3 scripts/run_tests.py --all
+
+# Fast development tests
+python3 scripts/run_tests.py --fast
+
+# CI preset
+python3 scripts/run_tests.py --ci
 ```
 
 **Current modules:** Run `pytest --collect-only -q tests/` for complete list.
 
 ### Manual Testing
 
-**Pre-Release**
+**Pre-Release (Automated)**
+```bash
+# Comprehensive pre-release validation
+python3 scripts/run_tests.py --pre-release
+```
+
+Validates:
+1. Version consistency across all files
+2. Git repository status (clean working directory, on main/master)
+3. Core test suite (unit + security + architecture)
+4. Security scans (bandit, safety, pip-audit)
+5. Test coverage threshold (52%+)
+
+**Pre-Release (Manual Alternative)**
 1. Build package
 2. Install in clean virtualenv
 3. Run through checklist
