@@ -1,6 +1,6 @@
 # VS Code Extension Security Scanner
 
-[![CI Status](https://github.com/jvlivonius/vsc-extension-scanner/workflows/CI/badge.svg)](https://github.com/jvlivonius/vsc-extension-scanner/actions)
+[![CI Status](https://github.com/jvlivonius/vsc-extension-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/jvlivonius/vsc-extension-scanner/actions)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
