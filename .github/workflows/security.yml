@@ -62,7 +62,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e .[test]
-          pip install bandit safety pip-audit
+          pip install bandit safety pip-audit bandit-sarif-formatter
 
       - name: Bandit Security Scanner (High Severity - Blocking)
         id: bandit-high
@@ -87,7 +87,8 @@ jobs:
         continue-on-error: true
         run: |
           echo "Generating SARIF report for GitHub Security tab..."
-          bandit -r vscode_scanner/ -ll -f sarif -o bandit-report.sarif
+          # Generate SARIF report using Microsoft's bandit-sarif-formatter plugin
+          bandit --format sarif -r vscode_scanner/ -ll -o bandit-report.sarif || true
           echo "✅ SARIF report generated"
 
       - name: Upload SARIF to GitHub Security
