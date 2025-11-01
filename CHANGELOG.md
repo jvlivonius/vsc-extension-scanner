@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Security**: Enhanced Semgrep configuration with Phase 1 improvements
+  - Added pre-commit hook integration for Semgrep custom security scans
+  - Added Rule 7: Rich console output sanitization detection (27 console.print instances monitored)
+  - Added Rule 8: HTTPS enforcement reminder for urllib requests
+  - Total: 8 Semgrep rules (6 existing + 2 new Phase 1 rules)
+  - New rules set to INFO level for non-blocking monitoring
+  - Security tests: All 127 tests passing
+
 ### Fixed
 
 - **Documentation**: Fixed placeholder GitHub URLs across all documentation

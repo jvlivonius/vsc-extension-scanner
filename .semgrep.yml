@@ -247,3 +247,74 @@ rules:
       confidence: MEDIUM
       likelihood: LOW
       impact: MEDIUM
+
+  # ============================================================================
+  # Rule 7: Rich Console Output Sanitization (Phase 1 Enhancement)
+  # ============================================================================
+  - id: missing-string-sanitization-rich-console
+    patterns:
+      - pattern-either:
+          - pattern: $CONSOLE.print($MSG, ...)
+          - pattern: Console(...).print($MSG, ...)
+      - pattern-not: $CONSOLE.print(Table(...), ...)
+      - pattern-not: $CONSOLE.print(Panel(...), ...)
+      - pattern-not: $CONSOLE.print(Group(...), ...)
+      - pattern-not: $CONSOLE.print()
+    message: |
+      Rich console output containing user input should use sanitize_string() to prevent injection attacks.
+
+      This is a reminder to review console.print() calls for user input.
+
+      Example of safe usage:
+        sanitized = sanitize_string(user_input, context="error")
+        console.print(f"[red]Error: {sanitized}[/red]")
+
+      Exception: Rich objects (Table, Panel, Group) have built-in escaping.
+
+      See docs/guides/SECURITY.md for sanitization contexts.
+    languages: [python]
+    severity: INFO
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+    metadata:
+      category: security
+      cwe: "CWE-74: Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: LOW
+      likelihood: LOW
+      impact: MEDIUM
+
+  # ============================================================================
+  # Rule 8: HTTPS Enforcement for URL Requests (Phase 1 Enhancement)
+  # ============================================================================
+  - id: missing-https-validation
+    pattern-either:
+      - pattern: urllib.request.urlopen($URL, ...)
+      - pattern: urllib.request.Request($URL, ...)
+    message: |
+      URL requests should be validated to ensure HTTPS-only communication.
+
+      This project enforces HTTPS-only for all API calls.
+      Review this usage to ensure HTTPS validation is present.
+
+      Reference implementation: vscode_scanner/vscan_api.py
+
+      See docs/guides/SECURITY.md for network security requirements.
+    languages: [python]
+    severity: INFO
+    paths:
+      include:
+        - vscode_scanner/
+      exclude:
+        - tests/
+        - vscode_scanner/vscan_api.py  # Already implements HTTPS validation
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission"
+      owasp: "A02:2021 - Cryptographic Failures"
+      confidence: MEDIUM
+      likelihood: LOW
+      impact: HIGH
