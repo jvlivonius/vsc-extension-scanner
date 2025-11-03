@@ -208,11 +208,11 @@ Actionable rules for enhanced Claude Code framework operation.
 - **Best Tool Selection**: Always use the most powerful tool for each task (MCP > Native > Basic)
 - **Parallel Everything**: Execute independent operations in parallel, never sequentially
 - **Agent Delegation**: Use Task agents for complex multi-step operations (>3 steps)
-- **MCP Server Usage**: Leverage specialized MCP servers for their strengths (morphllm for bulk edits, sequential-thinking for analysis)
+- **MCP Server Usage**: Leverage specialized MCP servers for their strengths (serena for symbols, sequential for analysis, context7 for docs)
 - **Batch Operations**: Use MultiEdit over multiple Edits, batch Read calls, group operations
 - **Powerful Search**: Use Grep tool over bash grep, Glob over find, specialized search tools
 - **Efficiency First**: Choose speed and power over familiarity - use the fastest method available
-- **Tool Specialization**: Match tools to their designed purpose (e.g., playwright for web, context7 for docs)
+- **Tool Specialization**: Match tools to their designed purpose (e.g., serena for symbols, context7 for docs, sequential for complex reasoning)
 
 ✅ **Right**: Use MultiEdit for 3+ file changes, parallel Read calls
 ❌ **Wrong**: Sequential Edit calls, bash grep instead of Grep tool
@@ -280,15 +280,15 @@ New feature request?
 └─ Framework deps? → Check package.json first
 ```
 
-**🟢 Tool Selection Matrix**
+**🟢 Tool Selection Matrix (Python CLI)**
 ```
 Task type → Best tool:
 ├─ Multi-file edits → MultiEdit > individual Edits
-├─ Complex analysis → Task agent > native reasoning
+├─ Symbol operations → Serena MCP > manual search
+├─ Complex analysis → Sequential MCP / Task agent > native reasoning
 ├─ Code search → Grep > bash grep
-├─ UI components → Magic MCP > manual coding
-├─ Documentation → Context7 MCP > web search
-└─ Browser testing → Playwright MCP > unit tests
+├─ Library docs → Context7 MCP > web search
+└─ Testing → pytest + hypothesis > manual tests
 ```
 
 ### Priority-Based Quick Actions

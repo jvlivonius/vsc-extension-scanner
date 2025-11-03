@@ -7,7 +7,7 @@ both Rich-formatted and plain text output.
 
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -219,7 +219,7 @@ def run_scan(
         log("", "INFO")
 
     start_time = time.time()
-    scan_timestamp = datetime.utcnow().isoformat() + "Z"
+    scan_timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     # Create args-like object for compatibility with existing functions
     from types import SimpleNamespace

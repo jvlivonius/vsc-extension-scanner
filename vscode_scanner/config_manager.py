@@ -505,3 +505,74 @@ def delete_config() -> bool:
 
     config_path.unlink()
     return True
+
+
+def merge_scan_config(
+    config: Dict[str, Dict[str, Any]], cli_args: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Merge config file values with CLI arguments.
+
+    Priority: hardcoded default < config file < CLI argument
+    This function applies config file values only when CLI args are still at their defaults.
+
+    Args:
+        config: Loaded configuration dictionary (from load_config())
+        cli_args: Dictionary of CLI arguments with their current values
+
+    Returns:
+        Dictionary with merged values (CLI args override config file)
+
+    Example:
+        config, warnings = load_config()
+        cli_args = {
+            "delay": 1.5,  # default value
+            "publisher": "microsoft",  # user-specified
+            ...
+        }
+        merged = merge_scan_config(config, cli_args)
+        # merged["delay"] will be from config if set
+        # merged["publisher"] will be "microsoft" (CLI override)
+    """
+    merged = cli_args.copy()
+
+    # Map CLI argument names to their default values and config paths
+    # Format: (cli_key, default_value, config_section, config_option)
+    merge_rules = [
+        ("delay", 1.5, "scan", "delay"),
+        ("max_retries", 3, "scan", "max_retries"),
+        ("retry_delay", 2.0, "scan", "retry_delay"),
+        ("cache_max_age", 7, "cache", "cache_max_age"),
+        ("quiet", False, "output", "quiet"),
+        ("plain", False, "output", "plain"),
+        ("no_cache", False, "cache", "no_cache"),
+        ("publisher", None, "scan", "publisher"),
+        ("min_risk_level", None, "scan", "min_risk_level"),
+        ("exclude_ids", None, "scan", "exclude_ids"),
+        ("workers", 3, "scan", "workers"),
+    ]
+
+    # Apply config values for parameters still at defaults
+    for cli_key, default_value, config_section, config_option in merge_rules:
+        if cli_key in cli_args:
+            cli_value = cli_args[cli_key]
+            config_value = config.get(config_section, {}).get(config_option)
+
+            # Apply config value if CLI arg is at default and config has a value
+            if cli_value == default_value and config_value is not None:
+                merged[cli_key] = config_value
+
+    # Handle Path arguments separately (extensions_dir, cache_dir)
+    # Note: Path already imported at module level (line 62)
+
+    if "extensions_dir" in cli_args:
+        extensions_dir_config = config.get("scan", {}).get("extensions_dir")
+        if cli_args["extensions_dir"] is None and extensions_dir_config is not None:
+            merged["extensions_dir"] = Path(extensions_dir_config).expanduser()
+
+    if "cache_dir" in cli_args:
+        cache_dir_config = config.get("cache", {}).get("cache_dir")
+        if cli_args["cache_dir"] is None and cache_dir_config is not None:
+            merged["cache_dir"] = Path(cache_dir_config).expanduser()
+
+    return merged
