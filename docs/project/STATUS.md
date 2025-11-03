@@ -55,9 +55,9 @@
 
 **Phase 1: Core Business Logic** (Week 1) - IN PROGRESS
 
-**Progress: 43/225 tests (19% complete)**
-**Coverage: 77.83% → 77.88% (+0.05%)**
-**Total Tests: 779 → 821 (+42 tests)**
+**Progress: 49/225 tests (22% complete)**
+**Coverage: 77.83% → 78.09% (+0.26%)**
+**Total Tests: 779 → 827 (+48 tests)**
 
 **Completed:**
 - ✅ test_scanner_filters.py created (28 tests)
@@ -68,13 +68,18 @@
   - Error categorization: timeout, network, rate limit, API errors (10 tests)
   - Error message simplification (5 tests)
   - Covers error handling functions comprehensively
+- ✅ test_scanner_edge_cases.py created (6 tests)
+  - Cache initialization messages: warning/error/info display (3 tests)
+  - Extension discovery exception handling (1 test)
+  - Empty extension list with output file handling (2 tests)
+  - Covers run_scan() error paths comprehensively
 
 **Next Steps:**
-- 🔄 More scanner.py coverage improvements needed (target 75%, currently 65.16%)
+- 🔄 More scanner.py coverage improvements needed (target 75%, currently 69.93%)
 - ⏳ CLI coverage improvements (target 75%, currently 67.55%)
 
 **Modules:**
-- scanner.py: 64.91% → 65.16% → target 75% (+9.84% remaining)
+- scanner.py: 64.91% → 65.16% → 69.93% → target 75% (+5.07% remaining)
 - cli.py: 67.55% → target 75% (+7.45% remaining)
 
 **Phase 2: API & Cache Hardening** (Week 2)
