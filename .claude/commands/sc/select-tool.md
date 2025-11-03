@@ -1,9 +1,10 @@
 ---
 name: select-tool
-description: "Intelligent MCP tool selection based on complexity scoring and operation analysis"
+description: "Intelligent MCP tool selection (Python CLI - Serena focus)"
 category: special
 complexity: high
-mcp-servers: [serena, morphllm]
+# PYTHON CLI OPTIMIZATION: Removed morphllm (use Serena for all symbol operations)
+mcp-servers: [serena]
 personas: []
 ---
 
@@ -33,10 +34,13 @@ Key behaviors:
 - Decision logic matrix with direct mappings and threshold-based routing rules
 - Tool capability matching for Serena (semantic operations) vs Morphllm (pattern operations)
 
-## MCP Integration
-- **Serena MCP**: Optimal for semantic operations, LSP functionality, symbol navigation, and project context
-- **Morphllm MCP**: Optimal for pattern-based edits, bulk transformations, and speed-critical operations
-- **Decision Matrix**: Intelligent routing based on complexity scoring and operation characteristics
+## MCP Integration (Python CLI Optimized)
+- **Serena MCP**: All symbol operations, LSP functionality, refactoring, project context ✅
+
+<!-- ARCHIVED MCP INTEGRATION:
+- Morphllm MCP: Pattern-based edits (archived - Serena handles all Python symbol operations)
+- Decision Matrix: Simplified - use Serena for all Python code operations
+-->
 
 ## Tool Coordination
 - **get_current_config**: System configuration analysis for tool capability assessment

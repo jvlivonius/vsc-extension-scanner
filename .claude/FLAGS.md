@@ -26,45 +26,82 @@ Behavioral flags for Claude Code to enable specific execution modes and tool sel
 
 ## MCP Server Flags
 
+**Python CLI Optimization Status:**
+
+✅ **Available MCPs** (Python CLI development):
+- `--c7 / --context7`: Python library documentation (pytest, typer, rich, hypothesis)
+- `--seq / --sequential`: Complex debugging, architecture analysis, systematic reasoning
+- `--serena`: Symbol operations, project memory, session persistence
+
+⚠️ **Archived MCPs** (not applicable to Python CLI):
+- `--magic`: UI component generation (web frontend tool) → See `.claude/archive/MCP_Magic.md`
+- `--morph / --morphllm`: Pattern edits (Serena handles Python symbols better) → See `.claude/archive/MCP_Morphllm.md`
+- `--play / --playwright`: Browser automation (E2E web testing) → See `.claude/archive/MCP_Playwright.md`
+- `--tavily`: Multi-source web research (single API: vscan.dev) → See `.claude/archive/MCP_Tavily.md`
+- `--chrome / --devtools`: Browser inspection (frontend tool)
+- `--frontend-verify`: Frontend testing combination → See `.claude/archive/`
+
+---
+
+### Available MCP Server Flags
+
 **--c7 / --context7**
 - Trigger: Library imports, framework questions, official documentation needs
 - Behavior: Enable Context7 for curated documentation lookup and pattern guidance
+- **Python CLI Context**: pytest patterns, typer CLI design, rich formatting, hypothesis property testing
 
 **--seq / --sequential**
 - Trigger: Complex debugging, system design, multi-component analysis
 - Behavior: Enable Sequential for structured multi-step reasoning and hypothesis testing
-
-**--magic**
-- Trigger: UI component requests (/ui, /21), design system queries, frontend development
-- Behavior: Enable Magic for modern UI generation from 21st.dev patterns
-
-**--morph / --morphllm**
-- Trigger: Bulk code transformations, pattern-based edits, style enforcement
-- Behavior: Enable Morphllm for efficient multi-file pattern application
+- **Python CLI Context**: Root cause analysis (scanner + API + cache), 3-layer architecture validation, performance investigation
 
 **--serena**
 - Trigger: Symbol operations, project memory needs, large codebase navigation
 - Behavior: Enable Serena for semantic understanding and session persistence
+- **Python CLI Context**: Symbol refactoring (rename/extract/move), multi-session work (/sc:load, /sc:save), testability improvements
 
-**--play / --playwright**
-- Trigger: Browser testing, E2E scenarios, visual validation, accessibility testing
-- Behavior: Enable Playwright for real browser automation and testing
+---
 
-**--chrome / --devtools**
-- Trigger: Performance auditing, debugging, layout issues, network analysis, console errors
-- Behavior: Enable Chrome DevTools for real-time browser inspection and performance analysis
+### Archived MCP Server Flags
 
-**--tavily**
-- Trigger: Web search requests, real-time information needs, research queries, current events
-- Behavior: Enable Tavily for web search and real-time information gathering
+**⚠️ --magic** [ARCHIVED - Not applicable to Python CLI]
+- ~~Trigger: UI component requests (/ui, /21), design system queries, frontend development~~
+- ~~Behavior: Enable Magic for modern UI generation from 21st.dev patterns~~
+- **Archived**: See `.claude/archive/MCP_Magic.md` for original documentation
 
-**--frontend-verify**
-- Trigger: UI testing requests, frontend debugging, layout validation, component verification
-- Behavior: Enable Playwright + Chrome DevTools + Serena for comprehensive frontend verification and debugging
+**⚠️ --morph / --morphllm** [ARCHIVED - Serena handles Python symbol operations]
+- ~~Trigger: Bulk code transformations, pattern-based edits, style enforcement~~
+- ~~Behavior: Enable Morphllm for efficient multi-file pattern application~~
+- **Archived**: See `.claude/archive/MCP_Morphllm.md` for original documentation
+
+**⚠️ --play / --playwright** [ARCHIVED - Use pytest for Python testing]
+- ~~Trigger: Browser testing, E2E scenarios, visual validation, accessibility testing~~
+- ~~Behavior: Enable Playwright for real browser automation and testing~~
+- **Archived**: See `.claude/archive/MCP_Playwright.md` for original documentation
+
+**⚠️ --chrome / --devtools** [ARCHIVED - Frontend debugging tool]
+- ~~Trigger: Performance auditing, debugging, layout issues, network analysis, console errors~~
+- ~~Behavior: Enable Chrome DevTools for real-time browser inspection and performance analysis~~
+- **Archived**: See `.claude/archive/` for original documentation
+
+**⚠️ --tavily** [ARCHIVED - Single API source (vscan.dev), use WebSearch]
+- ~~Trigger: Web search requests, real-time information needs, research queries, current events~~
+- ~~Behavior: Enable Tavily for web search and real-time information gathering~~
+- **Archived**: See `.claude/archive/MCP_Tavily.md` for original documentation
+
+**⚠️ --frontend-verify** [ARCHIVED - Frontend testing combination]
+- ~~Trigger: UI testing requests, frontend debugging, layout validation, component verification~~
+- ~~Behavior: Enable Playwright + Chrome DevTools + Serena for comprehensive frontend verification and debugging~~
+- **Archived**: See `.claude/archive/` for original documentation
+
+---
+
+### MCP Control Flags
 
 **--all-mcp**
 - Trigger: Maximum complexity scenarios, multi-domain problems
-- Behavior: Enable all MCP servers for comprehensive capability
+- Behavior: Enable all **available** MCP servers (serena, sequential, context7)
+- **Note**: Only enables Python CLI relevant MCPs, not archived frontend/web tools
 
 **--no-mcp**
 - Trigger: Native-only execution needs, performance priority
@@ -75,14 +112,17 @@ Behavioral flags for Claude Code to enable specific execution modes and tool sel
 **--think**
 - Trigger: Multi-component analysis needs, moderate complexity
 - Behavior: Standard structured analysis (~4K tokens), enables Sequential
+- **Python CLI Context**: Module-level refactoring, test strategy planning
 
 **--think-hard**
 - Trigger: Architectural analysis, system-wide dependencies
 - Behavior: Deep analysis (~10K tokens), enables Sequential + Context7
+- **Python CLI Context**: 3-layer architecture compliance, threading model analysis, security validation
 
 **--ultrathink**
 - Trigger: Critical system redesign, legacy modernization, complex debugging
-- Behavior: Maximum depth analysis (~32K tokens), enables all MCP servers
+- Behavior: Maximum depth analysis (~32K tokens), enables all **available** MCP servers (serena, sequential, context7)
+- **Python CLI Context**: v3.6 testability refactoring, comprehensive security audit, parallel processing optimization
 
 ## Execution Control Flags
 

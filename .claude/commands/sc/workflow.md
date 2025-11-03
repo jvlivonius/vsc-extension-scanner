@@ -1,10 +1,11 @@
 ---
 name: workflow
-description: "Generate structured implementation workflows from PRDs and feature requirements"
+description: "Generate structured workflows from PRDs (Python CLI optimized)"
 category: orchestration
 complexity: advanced
-mcp-servers: [sequential, context7, magic, playwright, morphllm, serena]
-personas: [architect, analyzer, frontend, backend, security, devops, project-manager]
+# PYTHON CLI OPTIMIZATION: Removed magic, playwright, morphllm (frontend/browser/pattern tools)
+mcp-servers: [sequential, context7, serena]
+personas: [architect, analyzer, backend, security, devops, project-manager]
 ---
 
 # /sc:workflow - Implementation Workflow Generator

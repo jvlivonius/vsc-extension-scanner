@@ -1,9 +1,10 @@
 ---
 name: test
-description: "Execute tests with coverage analysis and automated quality reporting"
+description: "Execute tests with coverage analysis (Python CLI - pytest/hypothesis)"
 category: utility
 complexity: enhanced
-mcp-servers: [playwright]
+# PYTHON CLI OPTIMIZATION: Removed playwright (browser tool, use pytest for Python testing)
+mcp-servers: []
 personas: [qa-specialist]
 ---
 

@@ -1,10 +1,11 @@
 ---
 name: task
-description: "Execute complex tasks with intelligent workflow management and delegation"
+description: "Execute complex tasks with intelligent workflow management (Python CLI optimized)"
 category: special
 complexity: advanced
-mcp-servers: [sequential, context7, magic, playwright, morphllm, serena]
-personas: [architect, analyzer, frontend, backend, security, devops, project-manager]
+# PYTHON CLI OPTIMIZATION: Removed magic, playwright, morphllm (frontend/browser/pattern tools)
+mcp-servers: [sequential, context7, serena]
+personas: [architect, analyzer, backend, security, devops, project-manager]
 ---
 
 # /sc:task - Enhanced Task Management
@@ -33,13 +34,16 @@ Key behaviors:
 - Systematic execution with progressive task enhancement and cross-session persistence
 - Advanced task delegation with hierarchical breakdown and dependency management
 
-## MCP Integration
-- **Sequential MCP**: Complex multi-step task analysis and systematic execution planning
-- **Context7 MCP**: Framework-specific patterns and implementation best practices
-- **Magic MCP**: UI/UX task coordination and design system integration
-- **Playwright MCP**: Testing workflow integration and validation automation
-- **Morphllm MCP**: Large-scale task transformation and pattern-based optimization
-- **Serena MCP**: Cross-session task persistence and project memory management
+## MCP Integration (Python CLI Optimized)
+- **Sequential MCP**: Complex multi-step task analysis and systematic execution planning ✅
+- **Context7 MCP**: Python patterns, pytest/typer/hypothesis best practices ✅
+- **Serena MCP**: Cross-session task persistence and project memory management ✅
+
+<!-- ARCHIVED MCP INTEGRATION (Frontend/Browser/Pattern Tools):
+- Magic MCP: UI/UX coordination (archived - frontend tool, not applicable to Python CLI)
+- Playwright MCP: Browser testing (archived - E2E web tool, use pytest instead)
+- Morphllm MCP: Pattern-based editing (archived - use Serena for symbol operations)
+-->
 
 ## Tool Coordination
 - **TodoWrite**: Hierarchical task breakdown and progress tracking across Epic → Story → Task levels

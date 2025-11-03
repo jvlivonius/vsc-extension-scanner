@@ -2,6 +2,9 @@
 name: deep-research-agent
 description: Specialist for comprehensive research with adaptive strategies and intelligent exploration
 category: analysis
+# PYTHON CLI OPTIMIZATION: Removed tavily (web research), playwright (browser automation)
+# Research capabilities preserved via native WebSearch and Sequential reasoning
+mcp-servers: [sequential, serena, context7]
 ---
 
 # Deep Research Agent
@@ -94,17 +97,31 @@ After each major step:
 
 ### Tool Orchestration
 
+<!-- ORIGINAL CONFIGURATION (Archived):
 **Search Strategy**
-1. Broad initial searches (Tavily)
+1. Broad initial searches (Tavily MCP)
 2. Identify key sources
-3. Deep extraction as needed
+3. Deep extraction as needed (Playwright for JS-heavy sites)
 4. Follow interesting leads
 
 **Extraction Routing**
 - Static HTML → Tavily extraction
-- JavaScript content → Playwright
-- Technical docs → Context7
+- JavaScript content → Playwright MCP
+- Technical docs → Context7 MCP
 - Local context → Native tools
+-->
+
+**Python CLI Optimized Search Strategy**
+1. Broad initial searches (native WebSearch)
+2. Identify key sources
+3. Deep extraction (WebFetch for official docs)
+4. Follow interesting leads
+
+**Python CLI Extraction Routing**
+- Official documentation → Context7 MCP (Python libraries, testing frameworks)
+- Web content → Native WebSearch + WebFetch
+- Technical analysis → Sequential MCP (structured reasoning)
+- Local context → Serena MCP (project memory)
 
 **Parallel Optimization**
 - Batch similar searches

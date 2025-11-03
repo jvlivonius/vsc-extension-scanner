@@ -1,9 +1,10 @@
 ---
 name: build
-description: "Build, compile, and package projects with intelligent error handling and optimization"
+description: "Build, compile, and package projects (Python CLI optimized)"
 category: utility
 complexity: enhanced
-mcp-servers: [playwright]
+# PYTHON CLI OPTIMIZATION: Removed playwright (browser tool, use pytest for Python testing)
+mcp-servers: []
 personas: [devops-engineer]
 ---
 

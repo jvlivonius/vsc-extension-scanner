@@ -11,26 +11,24 @@ The SuperClaude framework components will be automatically imported below.
 
 # Core Framework
 @FLAGS.md
+@PRINCIPLES.md
 @RULES.md
+@RESEARCH_CONFIG.md
 
-# Behavioral Modes (Python CLI Relevant)
+# Behavioral Modes
+@MODE_Brainstorming.md
+@MODE_DeepResearch.md
 @MODE_Introspection.md
 @MODE_Orchestration.md
 @MODE_Task_Management.md
 @MODE_Token_Efficiency.md
 
 # MCP Tools Reference
-@MCP_TOOLS_REFERENCE.md
+@MCP_Context7.md
+@MCP_Sequential.md
+@MCP_Serena.md
 
 # ===================================================
 # Archived Components
 # ===================================================
-# The following components are archived in .claude/archive/ as they're
-# not applicable to Python CLI development:
-#
-# Business Analysis: BUSINESS_PANEL_EXAMPLES, BUSINESS_SYMBOLS, MODE_Business_Panel
-# Frontend Tools: MCP_Magic, MCP_Playwright
-# Research Tools: MODE_DeepResearch, MCP_Tavily, RESEARCH_CONFIG
-# Other: MODE_Brainstorming, MCP_Morphllm, PRINCIPLES
-#
-# See .claude/archive/README.md for details on retrieving archived content.
+# Some components are archived in .claude/archive/

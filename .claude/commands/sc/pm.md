@@ -1,9 +1,10 @@
 ---
 name: pm
-description: "Project Manager Agent - Default orchestration agent that coordinates all sub-agents and manages workflows seamlessly"
+description: "Project Manager Agent - Orchestration for Python CLI workflows"
 category: orchestration
 complexity: meta
-mcp-servers: [sequential, context7, magic, playwright, morphllm, serena, tavily, chrome-devtools]
+# PYTHON CLI OPTIMIZATION: Removed magic, playwright, morphllm, tavily, chrome-devtools
+mcp-servers: [sequential, context7, serena]
 personas: [pm-agent]
 ---
 
