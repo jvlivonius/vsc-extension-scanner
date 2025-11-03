@@ -7,61 +7,103 @@
 
 ---
 
-## Planning: v3.6 (Coverage Excellence)
+## Active: v3.6 (Coverage Excellence)
 
-**Status:** Planning Phase
-**Target:** 75% Coverage Per File (Minimum)
+**Status:** Phase 0 Complete - Starting Implementation
+**Started:** 2025-11-03
+**Target:** 75% Coverage Per File (Minimum), 82%+ Overall
+**Plan:** [v3.6 Implementation Plan](v3.6-implementation-plan.md)
 **Roadmap:** [v3.6 Coverage Improvement Roadmap](v3.6-coverage-improvement-roadmap.md)
+
+### Phase 0: Setup & Documentation ✅ COMPLETE
+
+**Completed:** 2025-11-03
+**Deliverables:**
+- ✅ Implementation plan document created (comprehensive 4-phase roadmap)
+- ✅ Baseline coverage report generated and archived
+- ✅ pytest-xdist verified (12 workers, parallel execution ready)
+- ✅ STATUS.md updated with v3.6 active development
+
+**Baseline Metrics (v3.5.3+):**
+- Overall coverage: **77.83%** (improved from 72.60%)
+- Total tests: 778 passed, 1 skipped
+- Test execution time: 131.82s (2m 11s)
+- Security coverage: 95%+
+- Archived: `docs/archive/coverage/v3.6-baseline/`
 
 ### Objectives
 
-**Primary Goal:** Achieve 75%+ coverage for all main modules (excluding CLI)
+**Primary Goal:** Achieve 75%+ coverage for all main modules (50%+ for CLI)
 
 **Target Improvements:**
-- config_manager.py: 57.48% → 75% (+17.52%)
-- scanner.py: 60.29% → 75% (+14.71%)
-- cache_manager.py: 60.54% → 75% (+14.46%)
-- utils.py: 64.50% → 75% (+10.50%)
-- output_formatter.py: 62.30% → 75% (+12.70%)
-- extension_discovery.py: 63.98% → 75% (+11.02%)
-- cli.py: 17.55% → 50% (+32.45%, revised target)
+- cache_manager.py: 71.10% → 75% (+3.90%)
+- scanner.py: 64.91% → 75% (+10.09%)
+- config_manager.py: 96.26% → maintain ✅ (already excellent)
+- utils.py: 82.85% → maintain ✅ (already exceeds target)
+- output_formatter.py: 91.80% → maintain ✅ (already excellent)
+- extension_discovery.py: 85.78% → maintain ✅ (already exceeds target)
+- vscan_api.py: 74.79% → 75% (+0.21%)
+- cli.py: 67.55% → 75% (+7.45%)
 
 **Expected Outcomes:**
-- Overall coverage: 80%+ (currently 72.60%)
-- Total tests: 1,000+ (currently 628)
-- New test cases: ~375
+- Overall coverage: 82%+ (currently 77.83%)
+- Total tests: 1,000+ (currently 779)
+- New test cases: ~225+ (revised from 375, baseline improved)
 - Branch coverage: 85%+
 
-### Implementation Phases
+### Implementation Phases (Revised Based on Baseline)
 
-**Phase 1: Security Module Hardening** (Week 1)
-- cache_manager.py + utils.py → 75%+
-- 110 new test cases
-- Focus: Error recovery, threading, batch operations
+**Phase 1: Core Business Logic** (Week 1) - IN PROGRESS
 
-**Phase 2: Core Business Logic** (Week 2)
-- scanner.py + config_manager.py → 75%+
-- 130 new test cases (240 cumulative)
-- Focus: Error paths, filters, validation
+**Progress: 43/225 tests (19% complete)**
+**Coverage: 77.83% → 77.88% (+0.05%)**
+**Total Tests: 779 → 821 (+42 tests)**
 
-**Phase 3: Infrastructure Layer** (Week 3)
-- extension_discovery.py + output_formatter.py → 75%+
-- 75 new test cases (315 cumulative)
-- Focus: Edge cases, large datasets, file operations
+**Completed:**
+- ✅ test_scanner_filters.py created (28 tests)
+  - Pre-scan filters: publisher, include/exclude IDs (13 tests)
+  - Post-scan filters: risk level, verification, vulnerabilities (15 tests)
+  - Comprehensive filter combinations and edge cases
+- ✅ test_scanner_error_recovery.py created (15 tests)
+  - Error categorization: timeout, network, rate limit, API errors (10 tests)
+  - Error message simplification (5 tests)
+  - Covers error handling functions comprehensively
 
-**Phase 4: CLI Enhancement** (Week 4 - Stretch Goal)
-- cli.py → 50%+
-- 60 new test cases (375 cumulative)
-- Focus: Integration tests, critical paths
+**Next Steps:**
+- 🔄 More scanner.py coverage improvements needed (target 75%, currently 65.16%)
+- ⏳ CLI coverage improvements (target 75%, currently 67.55%)
 
-### Milestones
+**Modules:**
+- scanner.py: 64.91% → 65.16% → target 75% (+9.84% remaining)
+- cli.py: 67.55% → target 75% (+7.45% remaining)
 
-- **M1 (Week 1):** Security modules at 75%+, overall ~74%
-- **M2 (Week 2):** Core logic at 75%+, overall ~77%
-- **M3 (Week 3):** Infrastructure at 75%+, overall ~80% ✅
-- **M4 (Week 4):** CLI enhanced to 50%+, overall ~82%
+**Phase 2: API & Cache Hardening** (Week 2)
+- cache_manager.py: 71.10% → 75% (+3.90%)
+- vscan_api.py: 74.79% → 75% (+0.21%)
+- ~50 new test cases (130 cumulative)
+- Focus: Error recovery, threading, API edge cases
 
-**See:** [Complete v3.6 Roadmap](v3.6-coverage-improvement-roadmap.md) for detailed implementation plan
+**Phase 3: Quality Polish** (Week 3) - STRETCH GOAL
+- Increase overall to 82%+
+- Property-based testing expansion
+- ~95 new test cases (225 cumulative)
+- Focus: Branch coverage improvements, edge cases
+
+**Note:** Many modules already exceed 75% target thanks to recent improvements:
+- config_manager.py: 96.26% ✅
+- output_formatter.py: 91.80% ✅
+- extension_discovery.py: 85.78% ✅
+- utils.py: 82.85% ✅
+- display.py: 94.90% ✅
+
+### Milestones (Revised)
+
+- **M0 (Phase 0):** Setup & baseline ✅ COMPLETE (77.83% baseline)
+- **M1 (Week 1):** scanner.py + cli.py at 75%+, overall ~79%
+- **M2 (Week 2):** cache_manager.py + vscan_api.py at 75%+, overall ~80% ✅
+- **M3 (Week 3):** Branch coverage + edge cases, overall ~82%+ (stretch)
+
+**See:** [v3.6 Implementation Plan](v3.6-implementation-plan.md) for comprehensive details
 
 ---
 
