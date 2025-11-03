@@ -85,12 +85,14 @@ class CacheManager:
             current_version = self._get_schema_version()
 
             if current_version == "1.0":
-                # Migrate from v1.0 to v2.0
-                self._migrate_v1_to_v2()
-                # Then migrate from v2.0 to v2.1
-                self._migrate_v2_0_to_v2_1()
-                # Then migrate from v2.1 to v2.2
-                self._migrate_v2_1_to_v2_2()
+                # v1.0 schema is no longer supported
+                raise ValueError(
+                    "Cache database schema v1.0 detected. "
+                    "This version is no longer supported in v3.6.0+. "
+                    "Please upgrade to v3.5.x first to migrate your cache, "
+                    "then upgrade to v3.6.0. "
+                    "Alternatively, delete ~/.vscan/cache.db to start fresh."
+                )
             elif current_version == "2.0":
                 # Migrate from v2.0 to v2.1
                 self._migrate_v2_0_to_v2_1()
@@ -480,174 +482,23 @@ class CacheManager:
         try:
             with self._db_connection() as conn:
                 cursor = conn.cursor()
+
+                # Check if metadata table exists
+                cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'"
+                )
+                if not cursor.fetchone():
+                    # No metadata table = empty/unknown database, not v1.0
+                    return "unknown"
+
+                # Metadata table exists, check for version
                 cursor.execute(
                     "SELECT value FROM metadata WHERE key = 'schema_version'"
                 )
                 row = cursor.fetchone()
-                return row[0] if row else "1.0"  # Default to 1.0 if not found
+                return row[0] if row else "unknown"  # No version = empty/unknown
         except sqlite3.Error:
-            return "1.0"  # If table doesn't exist, assume v1
-
-    def _process_migration_batch(self, cursor, batch: List[Tuple]):
-        """
-        Process a batch of migration updates.
-
-        Args:
-            cursor: Database cursor
-            batch: List of tuples (security_score, dependencies_count, publisher_verified, has_risk_factors, row_id)
-        """
-        cursor.executemany(
-            """
-            UPDATE scan_cache
-            SET security_score = ?,
-                dependencies_count = ?,
-                publisher_verified = ?,
-                has_risk_factors = ?
-            WHERE id = ?
-        """,
-            batch,
-        )
-
-    def _migrate_v1_to_v2(self):
-        """Migrate cache database from v1.0 to v2.0 schema."""
-        try:
-            with self._db_connection() as conn:
-                cursor = conn.cursor()
-
-                # Check if we need to migrate (check for missing columns)
-                cursor.execute("PRAGMA table_info(scan_cache)")
-                columns = {row[1] for row in cursor.fetchall()}
-
-                if "security_score" in columns:
-                    # Already migrated
-                    return
-
-                # Add new columns to existing table
-                cursor.execute(
-                    """
-                    ALTER TABLE scan_cache
-                    ADD COLUMN security_score INTEGER
-                """
-                )
-                cursor.execute(
-                    """
-                    ALTER TABLE scan_cache
-                    ADD COLUMN dependencies_count INTEGER DEFAULT 0
-                """
-                )
-                cursor.execute(
-                    """
-                    ALTER TABLE scan_cache
-                    ADD COLUMN publisher_verified BOOLEAN DEFAULT 0
-                """
-                )
-                cursor.execute(
-                    """
-                    ALTER TABLE scan_cache
-                    ADD COLUMN has_risk_factors BOOLEAN DEFAULT 0
-                """
-                )
-
-                # Create new indexes
-                cursor.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_security_score
-                    ON scan_cache(security_score)
-                """
-                )
-                cursor.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_vulnerabilities
-                    ON scan_cache(vulnerabilities_count)
-                """
-                )
-                cursor.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_publisher_verified
-                    ON scan_cache(publisher_verified)
-                """
-                )
-
-                # Update existing rows with parsed data from scan_result JSON
-                # Use batch processing to avoid loading all entries into memory
-                cursor.execute("SELECT COUNT(*) FROM scan_cache")
-                total_rows = cursor.fetchone()[0]
-
-                if total_rows > 0:
-                    print(f"Migrating cache schema (v1.0 → v2.0)...")
-                    print(f"Processing {total_rows} cached entries...")
-
-                updated_count = 0
-                batch = []
-                batch_size = 100
-
-                # Process entries using cursor as iterator (not fetchall)
-                cursor.execute("SELECT id, scan_result FROM scan_cache")
-                for idx, (row_id, scan_result_json) in enumerate(cursor, 1):
-                    try:
-                        result = json.loads(scan_result_json)
-
-                        # Extract new fields from result
-                        security_score = result.get("security_score")
-                        dependencies = result.get("dependencies", {})
-                        dependencies_count = dependencies.get("total_count", 0)
-                        metadata = result.get("metadata", {})
-                        publisher = metadata.get("publisher", {})
-                        publisher_verified = 1 if publisher.get("verified") else 0
-                        risk_factors = result.get("risk_factors", [])
-                        has_risk_factors = 1 if len(risk_factors) > 0 else 0
-
-                        # Add to batch
-                        batch.append(
-                            (
-                                security_score,
-                                dependencies_count,
-                                publisher_verified,
-                                has_risk_factors,
-                                row_id,
-                            )
-                        )
-
-                        # Process batch when it reaches batch_size
-                        if len(batch) >= batch_size:
-                            self._process_migration_batch(cursor, batch)
-                            updated_count += len(batch)
-                            batch = []
-
-                        # Show progress every 10 entries or at the end
-                        if idx % 10 == 0 or idx == total_rows:
-                            print(
-                                f"  Progress: {idx}/{total_rows} entries...",
-                                file=sys.stderr,
-                                end="\r",
-                            )
-
-                    except (json.JSONDecodeError, Exception):
-                        # Skip rows that can't be parsed
-                        continue
-
-                # Process remaining batch
-                if batch:
-                    self._process_migration_batch(cursor, batch)
-                    updated_count += len(batch)
-
-                if total_rows > 0:
-                    print()  # New line after progress
-                    print(
-                        f"Migration complete: {updated_count}/{total_rows} entries updated"
-                    )
-
-                # Update schema version
-                cursor.execute(
-                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                    ("schema_version", "2.0"),
-                )
-
-                conn.commit()
-
-        except sqlite3.Error as e:
-            sanitized_error = sanitize_error_message(str(e), context="cache migration")
-            print(f"Cache migration error: {sanitized_error}")
+            return "unknown"  # Error accessing = empty/unknown
 
     def _migrate_v2_0_to_v2_1(self):
         """Migrate cache database from v2.0 to v2.1 schema (add installed_at column)."""
