@@ -56,7 +56,7 @@ Domain-specific testing guides:
   - Thread-safe statistics validation (ThreadSafeStats)
   - Worker isolation and race condition prevention
 
-- **[TESTING_PERFORMANCE.md](TESTING_PERFORMANCE.md)** - Performance testing
+- **[PERFORMANCE.md](../PERFORMANCE.md)** § 2 - Performance testing (formerly TESTING_PERFORMANCE.md)
   - Cache speedup validation (50x+ improvement)
   - Memory usage and parallel performance benchmarks
 

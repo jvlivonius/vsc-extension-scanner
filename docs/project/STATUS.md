@@ -103,7 +103,7 @@
   - testing/TESTING_MOCKING.md (10K) - Mocking guidelines with canonical mocks
   - testing/TESTING_PROPERTY_BASED.md (4.5K) - Hypothesis property testing
   - testing/TESTING_CLI.md (2K) - CLI testing guide
-  - testing/TESTING_PERFORMANCE.md (2K) - Performance testing
+  - PERFORMANCE.md § 2 (2K) - Performance testing (consolidated)
   - testing/TESTING_PARALLEL.md (1.3K) - Parallel scanning tests
   - testing/TESTING_RETRY.md (1.8K) - Retry mechanism tests
   - testing/TESTING_HTML_REPORTS.md (1.1K) - HTML report testing

@@ -576,6 +576,15 @@ bandit -r vscode_scanner/ -ll
 
 # JSON report (for CI/CD)
 bandit -r vscode_scanner/ -ll -f json -o bandit-report.json
+
+# Find all suppressions in codebase
+grep -r "# nosec" vscode_scanner/
+
+# Find suppressions without rule codes (BAD)
+grep -r "# nosec[^B]" vscode_scanner/
+
+# Find suppressions without justification (BAD)
+grep -r "# nosec B[0-9]\\+$" vscode_scanner/
 ```
 
 **What it detects:**
@@ -591,6 +600,79 @@ bandit -r vscode_scanner/ -ll -f json -o bandit-report.json
 - Excludes: tests/, node_modules/, .git/
 
 **Expected Result:** Zero critical vulnerabilities
+
+#### Suppression Validation
+
+**Current Project Suppressions:** 4 approved suppressions across 2 files
+
+**Validating Suppressions:**
+```bash
+# Run Bandit with baseline to track changes
+bandit -r vscode_scanner/ -ll -f json -o bandit-current.json
+
+# Compare against baseline
+diff bandit-baseline.json bandit-current.json
+
+# Show only suppressed issues
+bandit -r vscode_scanner/ -ll --confidence-level MEDIUM --severity-level MEDIUM
+```
+
+**Suppression Quality Standards:**
+- ✅ Must include specific rule code (e.g., `B310`, `B608`)
+- ✅ Must reference validation function (e.g., `validate_url()`)
+- ✅ Must explain security control (e.g., "HTTPS enforcement")
+- ✅ Must be approved by security review for critical paths
+- ❌ Never suppress without justification
+- ❌ Never use generic "safe" without explanation
+
+**Test-Driven Suppressions:**
+
+All suppressions should reference security tests that validate the protection:
+
+```python
+# This pattern is validated by tests/test_path_validation.py::test_path_traversal
+# which confirms all ../ sequences are rejected
+sanitized_path = validate_path(user_path)  # nosec B108 - validated by path tests
+```
+
+**Current Approved Suppressions:**
+
+1. **urllib.request.urlopen** (vscan_api.py:311) - B310
+   - Justification: URL validated by `validate_url()` for HTTPS-only
+   - Security Controls: HTTPS enforcement, 10MB response limit, timeout, TLS validation
+   - Status: ✅ Approved
+
+2. **SQL Dynamic IN Clause** (cache_manager.py:1137, 1144) - B608
+   - Justification: Parameterized query with programmatically generated placeholders
+   - Security Controls: `validate_extension_id()`, parameterized tuple, no user data in f-string
+   - Status: ✅ Approved
+
+3. **XML Parsing** (scripts/run_tests.py:1671) - B318
+   - Justification: XML generated internally, not from external input
+   - Security Controls: Trusted data source, test report generation only
+   - Status: ✅ Approved
+
+**Suppression Anti-Patterns:**
+
+❌ **Bad - No rule code:**
+```python
+result = subprocess.run(cmd, shell=True)  # nosec - needed for pipeline
+```
+
+❌ **Bad - Vague justification:**
+```python
+xml_data = minidom.parseString(user_input)  # nosec B318 - safe
+```
+
+✅ **Good - Complete justification:**
+```python
+# nosec B608: Safe SQL - placeholders programmatically generated ("?", "?", ...),
+# actual extension IDs passed as parameterized tuple (validated_ids).
+# All IDs validated by validate_extension_id() before reaching this code.
+cursor.execute(f"DELETE FROM scan_cache WHERE extension_id NOT IN ({placeholders})", validated_ids)
+```
+
+**Reference:** See [SECURITY.md § Bandit Suppression Security](../SECURITY.md#9-bandit-suppression-security) for security policy and approval requirements.
 
 #### Layer 3: Safety & pip-audit (Dependency Security)
 

@@ -79,7 +79,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
   - [TESTING_MOCKING.md](docs/guides/testing/TESTING_MOCKING.md) - Canonical mocks
   - [TESTING_PROPERTY_BASED.md](docs/guides/testing/TESTING_PROPERTY_BASED.md) - Hypothesis (1,250+ scenarios)
   - [TESTING_CLI.md](docs/guides/testing/TESTING_CLI.md) - CLI testing
-  - [TESTING_PERFORMANCE.md](docs/guides/testing/TESTING_PERFORMANCE.md) - Performance benchmarks
+  - [PERFORMANCE.md](docs/guides/PERFORMANCE.md) § 2 - Performance testing and benchmarks
   - [TESTING_PARALLEL.md](docs/guides/testing/TESTING_PARALLEL.md) - Parallel execution
   - [TESTING_RETRY.md](docs/guides/testing/TESTING_RETRY.md) - Retry mechanism
   - [TESTING_HTML_REPORTS.md](docs/guides/testing/TESTING_HTML_REPORTS.md) - HTML report validation

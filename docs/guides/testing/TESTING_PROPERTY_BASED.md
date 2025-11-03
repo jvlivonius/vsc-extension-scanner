@@ -218,7 +218,7 @@ For complete property-based testing documentation including:
 - Debugging failed properties
 - Writing new property tests
 
-**See:** Original [TESTING.md](../TESTING.md) section "Property-Based Testing" (lines 1127-1840) or [docs/archive/summaries/v3.5.3-testing-phase-4-summary.md](../archive/summaries/v3.5.3-testing-phase-4-summary.md)
+**See:** Original [TESTING.md](../TESTING.md) section "Property-Based Testing" for complete implementation details
 
 ---
 

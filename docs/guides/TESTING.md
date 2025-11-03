@@ -186,7 +186,7 @@ tests/
 ### 6. Performance Tests
 **Purpose:** Verify performance characteristics
 **Focus:** Timing, memory, scalability
-**See:** [TESTING_PERFORMANCE.md](TESTING_PERFORMANCE.md)
+**See:** [PERFORMANCE.md](PERFORMANCE.md) § 2 (Performance Testing)
 
 ---
 
@@ -344,7 +344,7 @@ The following specialized guides provide comprehensive coverage of specific test
 - **[TESTING_HTML_REPORTS.md](testing/TESTING_HTML_REPORTS.md)** - HTML report testing (structure, charts, interactivity, browser compatibility)
 - **[TESTING_RETRY.md](testing/TESTING_RETRY.md)** - Retry mechanism testing (exponential backoff, error detection, Retry-After headers)
 - **[TESTING_PARALLEL.md](testing/TESTING_PARALLEL.md)** - Parallel scanning tests (thread safety, performance, worker isolation)
-- **[TESTING_PERFORMANCE.md](testing/TESTING_PERFORMANCE.md)** - Performance tests (cache speedup, memory usage, scalability)
+- **[PERFORMANCE.md](PERFORMANCE.md)** § 2 - Performance tests (cache speedup, memory usage, scalability)
 
 ### Supporting Documentation
 
