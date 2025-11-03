@@ -49,14 +49,13 @@
 5. **Checkpoint**: Periodic write_memory() for state preservation
 6. **Complete**: Final memory update with outcomes
 
-## Tool Selection
+## Tool Selection (Python CLI)
 
 | Task Type | Primary Tool | Memory Key |
 |-----------|-------------|------------|
 | Analysis | Sequential MCP | "analysis_results" |
-| Implementation | MultiEdit/Morphllm | "code_changes" |
-| UI Components | Magic MCP | "ui_components" |
-| Testing | Playwright MCP | "test_results" |
+| Symbol Operations | Serena MCP | "refactoring_state" |
+| Testing | pytest + property tests | "test_results" |
 | Documentation | Context7 MCP | "doc_patterns" |
 
 ## Memory Schema
@@ -71,33 +70,30 @@ blockers: Active impediments requiring attention
 decisions: Key architectural/design choices made
 ```
 
-## Examples
+## Example: v3.6 Testability Refactoring
 
-### Session 1: Start Authentication Task
+### Session 1: Start Refactoring
 ```
-list_memories() → Empty
-write_memory("plan_auth", "Implement JWT authentication system")
-write_memory("phase_1", "Analysis - security requirements review")
-write_memory("task_1.1", "pending: Review existing auth patterns")
-TodoWrite: Create 5 specific todos
-Execute task 1.1 → write_memory("task_1.1", "completed: Found 3 patterns")
-```
-
-### Session 2: Resume After Interruption
-```
-list_memories() → Shows plan_auth, phase_1, task_1.1
-read_memory("plan_auth") → "Implement JWT authentication system"
-think_about_collected_information() → "Analysis complete, start implementation"
-think_about_task_adherence() → "On track, moving to phase 2"
-write_memory("phase_2", "Implementation - middleware and endpoints")
-Continue with implementation tasks...
+list_memories() → Check existing state
+write_memory("plan_v3.6", "Extract ProgressCallback pattern for testability")
+write_memory("phase_1", "Analysis - identify hard-to-test components")
+TodoWrite: Create specific refactoring todos
+Execute analysis → write_memory("task_1.1", "completed: Found 3 tightly-coupled modules")
 ```
 
-### Session 3: Completion Check
+### Session 2: Resume Implementation
 ```
-think_about_whether_you_are_done() → "Testing phase remains incomplete"
-Complete remaining testing tasks
-write_memory("outcome_auth", "Successfully implemented with 95% test coverage")
+list_memories() → Shows plan_v3.6, phase_1, task_1.1
+read_memory("plan_v3.6") → Resume refactoring context
+think_about_collected_information() → "Analysis complete, start extraction"
+write_memory("phase_2", "Implementation - extract callback patterns")
+Continue with symbol operations via Serena...
+```
+
+### Session 3: Testing & Validation
+```
+think_about_whether_you_are_done() → "Test coverage validation needed"
+Run test suite with new patterns
+write_memory("outcome_v3.6", "Refactoring complete, coverage 78.94%")
 delete_memory("checkpoint_*") → Clean temporary states
-write_memory("session_summary", "Auth system complete and validated")
 ```

@@ -267,39 +267,46 @@ def scan(
         sys.exit(2)
 
     # Load configuration file (config values serve as defaults, CLI args override)
-    from .config_manager import load_config
+    from .config_manager import load_config, merge_scan_config
     from .types import ConfigWarning
 
     config, config_warnings = load_config()
 
-    # Apply config values for parameters that are still at hardcoded defaults
+    # Build CLI arguments dict for merging
+    cli_args = {
+        "delay": delay,
+        "max_retries": max_retries,
+        "retry_delay": retry_delay,
+        "cache_max_age": cache_max_age,
+        "quiet": quiet,
+        "plain": plain,
+        "no_cache": no_cache,
+        "publisher": publisher,
+        "min_risk_level": min_risk_level,
+        "exclude_ids": exclude_ids,
+        "workers": workers,
+        "extensions_dir": extensions_dir,
+        "cache_dir": cache_dir,
+    }
+
+    # Merge config file values with CLI arguments
     # Priority: hardcoded default < config file < CLI argument
-    if delay == 1.5 and config["scan"]["delay"] is not None:
-        delay = config["scan"]["delay"]
-    if max_retries == 3 and config["scan"]["max_retries"] is not None:
-        max_retries = config["scan"]["max_retries"]
-    if retry_delay == 2.0 and config["scan"]["retry_delay"] is not None:
-        retry_delay = config["scan"]["retry_delay"]
-    if cache_max_age == 7 and config["cache"]["cache_max_age"] is not None:
-        cache_max_age = config["cache"]["cache_max_age"]
-    if quiet is False and config["output"]["quiet"] is not None:
-        quiet = config["output"]["quiet"]
-    if plain is False and config["output"]["plain"] is not None:
-        plain = config["output"]["plain"]
-    if no_cache is False and config["cache"]["no_cache"] is not None:
-        no_cache = config["cache"]["no_cache"]
-    if publisher is None and config["scan"]["publisher"] is not None:
-        publisher = config["scan"]["publisher"]
-    if min_risk_level is None and config["scan"]["min_risk_level"] is not None:
-        min_risk_level = config["scan"]["min_risk_level"]
-    if exclude_ids is None and config["scan"]["exclude_ids"] is not None:
-        exclude_ids = config["scan"]["exclude_ids"]
-    if extensions_dir is None and config["scan"]["extensions_dir"] is not None:
-        extensions_dir = Path(config["scan"]["extensions_dir"]).expanduser()
-    if cache_dir is None and config["cache"]["cache_dir"] is not None:
-        cache_dir = Path(config["cache"]["cache_dir"]).expanduser()
-    if workers == 3 and config["scan"].get("workers") is not None:
-        workers = config["scan"]["workers"]
+    merged = merge_scan_config(config, cli_args)
+
+    # Extract merged values
+    delay = merged["delay"]
+    max_retries = merged["max_retries"]
+    retry_delay = merged["retry_delay"]
+    cache_max_age = merged["cache_max_age"]
+    quiet = merged["quiet"]
+    plain = merged["plain"]
+    no_cache = merged["no_cache"]
+    publisher = merged["publisher"]
+    min_risk_level = merged["min_risk_level"]
+    exclude_ids = merged["exclude_ids"]
+    workers = merged["workers"]
+    extensions_dir = merged["extensions_dir"]
+    cache_dir = merged["cache_dir"]
 
     # Validate parameters
     try:
@@ -393,7 +400,7 @@ def scan(
         raise typer.Exit(code=exit_code)
     except (typer.Exit, SystemExit):
         # Let these propagate naturally (they're expected exit mechanisms)
-        raise
+        raise  # pylint: disable=try-except-raise
     except KeyboardInterrupt:
         typer.echo("\n\nScan interrupted by user", err=True)
         raise typer.Exit(code=2)
@@ -584,7 +591,7 @@ def cache_stats(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2)
@@ -669,7 +676,7 @@ def cache_clear(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except Exception as e:
         if use_rich:
             display_error(f"Error clearing cache: {e}", use_rich=True)
@@ -728,7 +735,7 @@ def config_init(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except FileExistsError:
         if use_rich:
             display_error(
@@ -943,7 +950,7 @@ def config_set(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except ValueError as e:
         if use_rich:
             display_error(str(e), use_rich=True)
@@ -1035,7 +1042,7 @@ def config_get(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except ValueError as e:
         if use_rich:
             display_error(str(e), use_rich=True)
@@ -1115,7 +1122,7 @@ def config_reset(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except Exception as e:
         if use_rich:
             display_error(f"Error deleting config file: {e}", use_rich=True)
@@ -1376,7 +1383,7 @@ def report(
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
-        raise
+        raise  # pylint: disable=try-except-raise
     except Exception as e:
         if use_rich:
             display_error(f"Error generating report: {e}", use_rich=True)

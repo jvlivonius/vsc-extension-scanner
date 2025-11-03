@@ -1,15 +1,43 @@
 ---
 name: research
-description: Deep web research with adaptive planning and intelligent search
+description: Research with adaptive planning (Python CLI optimized - WebSearch/Context7)
 category: command
 complexity: advanced
-mcp-servers: [tavily, sequential, playwright, serena]
+# PYTHON CLI OPTIMIZATION: Removed tavily, playwright (multi-source/browser tools)
+# AVAILABLE: sequential, serena, WebSearch (native), WebFetch (native), context7
+mcp-servers: [sequential, serena, context7]
 personas: [deep-research-agent]
 ---
 
 # /sc:research - Deep Research Command
 
 > **Context Framework Note**: This command activates comprehensive research capabilities with adaptive planning, multi-hop reasoning, and evidence-based synthesis.
+
+## ⚠️ Python CLI Optimization Notice
+
+This command is optimized for **Python CLI development research**:
+
+**✅ Available Tools:**
+- Sequential MCP (multi-step reasoning)
+- Serena MCP (session persistence)
+- Context7 MCP (Python library docs)
+- WebSearch (native - simple queries)
+- WebFetch (native - single URLs)
+
+**⚠️ Archived (Limited Functionality):**
+- Tavily MCP - Advanced multi-source search
+- Playwright MCP - Complex content extraction
+
+**Best Use Cases:**
+- ✅ Python library research (Context7)
+- ✅ Technical documentation lookup
+- ✅ Best practices and patterns
+- ⚠️ Limited: Multi-source investigations
+
+<!-- ORIGINAL CONFIGURATION (Archived):
+mcp-servers: [tavily, sequential, playwright, serena]
+Full multi-source research with Tavily advanced search and Playwright extraction
+-->
 
 ## Triggers
 - Research questions beyond knowledge cutoff
@@ -79,11 +107,17 @@ personas: [deep-research-agent]
 - **Deep**: Comprehensive search, 3-4 hops, detailed analysis
 - **Exhaustive**: Maximum depth, 5 hops, complete investigation
 
-## MCP Integration
-- **Tavily**: Primary search and extraction engine
-- **Sequential**: Complex reasoning and synthesis
-- **Playwright**: JavaScript-heavy content extraction
-- **Serena**: Research session persistence
+## MCP Integration (Python CLI Optimized)
+- **Sequential MCP**: Complex reasoning and synthesis ✅
+- **Serena MCP**: Research session persistence ✅
+- **Context7 MCP**: Python library documentation ✅
+- **WebSearch** (native): Simple web queries ✅
+- **WebFetch** (native): Single URL extraction ✅
+
+<!-- ARCHIVED MCP INTEGRATION:
+- Tavily: Primary search and extraction engine (archived - multi-source research)
+- Playwright: JavaScript-heavy content extraction (archived - browser automation)
+-->
 
 ## Output Standards
 - Save reports to `claudedocs/research_[topic]_[timestamp].md`

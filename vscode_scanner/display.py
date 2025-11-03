@@ -104,6 +104,113 @@ def create_scan_progress() -> Optional[Progress]:
     )
 
 
+class ProgressCallback:
+    """
+    Progress display callback for scanning operations.
+
+    Decouples progress display from business logic, enabling:
+    - Unit testing of scan orchestration without Rich framework
+    - Multiple progress display implementations (Rich, plain, JSON logging)
+    - Easier testing and maintenance
+
+    Usage:
+        callback = ProgressCallback(use_rich=True, quiet=False, worker_info="3 workers")
+        # Pass to scanning function
+        callback("started", {"total": 10})
+        callback("completed", {"extension": ext, "result": result})
+        callback.cleanup()
+    """
+
+    def __init__(
+        self, use_rich: bool = True, quiet: bool = False, worker_info: str = ""
+    ):
+        """
+        Initialize progress callback.
+
+        Args:
+            use_rich: Whether to use Rich progress display
+            quiet: Minimal output mode (no progress display)
+            worker_info: Worker information for display (e.g., "3 workers")
+        """
+        self.use_rich = use_rich
+        self.quiet = quiet
+        self.worker_info = worker_info
+        self.progress = None
+        self.task = None
+        self.current_count = 0
+        self.total_count = 0
+
+    def __call__(self, event: str, data: Dict):
+        """
+        Handle progress events.
+
+        Args:
+            event: Event type ("started", "completed", "failed", "cached")
+            data: Event data (varies by event type)
+        """
+        if self.quiet:
+            return
+
+        if event == "started":
+            self._handle_started(data)
+        elif event in ("completed", "failed", "cached"):
+            self._handle_progress(event, data)
+
+    def _handle_started(self, data: Dict):
+        """Handle scan start event."""
+        self.total_count = data.get("total", 0)
+        self.current_count = 0
+
+        if self.use_rich:
+            # Create and start Rich progress bar
+            self.progress = create_scan_progress()
+            if self.progress:
+                self.progress.__enter__()  # pylint: disable=unnecessary-dunder-call
+                description = (
+                    f"Scanning ({self.worker_info})..."
+                    if self.worker_info
+                    else "Scanning..."
+                )
+                self.task = self.progress.add_task(description, total=self.total_count)
+
+    def _handle_progress(self, event: str, data: Dict):
+        """Handle progress update events."""
+        self.current_count += 1
+
+        if self.use_rich and self.progress and self.task is not None:
+            # Update Rich progress bar
+            self.progress.update(self.task, advance=1)
+        elif not self.use_rich:
+            # Plain mode: log progress
+            ext = data.get("extension", {})
+            result = data.get("result", {})
+            from_cache = data.get("from_cache", False)
+
+            if ext:
+                ext_id = ext.get("id", "")
+                version = ext.get("version", "")
+                progress_prefix = f"[{self.current_count}/{self.total_count}]"
+
+                if from_cache or event == "cached":
+                    from .utils import log
+
+                    log(f"{progress_prefix} {ext_id} v{version}... ⚡ Cached", "INFO")
+                elif event == "completed":
+                    from .utils import log
+
+                    log(f"{progress_prefix} {ext_id} v{version}... 🔍 Fresh", "INFO")
+
+    def cleanup(self):
+        """Clean up progress display resources."""
+        if self.progress:
+            try:
+                self.progress.__exit__(None, None, None)
+            except Exception:
+                pass  # Ignore cleanup errors
+            self.progress = None
+            self.task = None
+
+
 def create_results_table(
     scan_results: List[Dict], show_all: bool = False
 ) -> Optional[Table]:

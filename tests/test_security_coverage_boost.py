@@ -117,14 +117,14 @@ class TestCacheDatabaseMigration(unittest.TestCase):
         # Fresh install (no tables) should not need migration
         self.assertFalse(migration_needed)
 
-    def test_migration_needed_for_old_schema(self):
-        """Test migration check returns True for old schema (line 472)."""
-        # Create old schema without security_score column
+    def test_v1_schema_raises_helpful_error(self):
+        """Test v1.0 schema raises ValueError with helpful message."""
+        # Create v1.0 schema database with metadata table
         db_path = self.cache_dir / "cache.db"
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
 
-        # Create old table schema (without security_score)
+        # Create old table schema (v1.0)
         cursor.execute(
             """
             CREATE TABLE scan_cache (
@@ -134,24 +134,31 @@ class TestCacheDatabaseMigration(unittest.TestCase):
             )
         """
         )
+
+        # Create metadata table with v1.0 version
+        cursor.execute(
+            """
+            CREATE TABLE metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """
+        )
+        cursor.execute(
+            "INSERT INTO metadata (key, value) VALUES ('schema_version', '1.0')"
+        )
         conn.commit()
         conn.close()
 
-        # Create cache manager with mocked migration to prevent auto-migration
-        from unittest.mock import patch
+        # Try to create cache manager - should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            CacheManager(cache_dir=str(self.cache_dir))
 
-        with patch.object(CacheManager, "_migrate_v1_to_v2"), patch.object(
-            CacheManager, "_migrate_v2_0_to_v2_1"
-        ), patch.object(CacheManager, "_migrate_v2_1_to_v2_2"), patch.object(
-            CacheManager, "_init_database"
-        ):
-            cache_manager = CacheManager(cache_dir=str(self.cache_dir))
-
-        # Check if migration is needed (should detect old schema)
-        migration_needed = cache_manager._check_if_migration_needed()
-
-        # Old schema should need migration
-        self.assertTrue(migration_needed)
+        # Check error message is helpful
+        error_message = str(context.exception)
+        self.assertIn("v1.0 detected", error_message)
+        self.assertIn("no longer supported", error_message)
+        self.assertIn("upgrade to v3.5.x", error_message)
 
     def test_migration_check_handles_sqlite_error(self):
         """Test migration check returns False on SQLite error (line 474-475)."""

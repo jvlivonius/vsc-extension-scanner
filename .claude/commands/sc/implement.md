@@ -1,10 +1,11 @@
 ---
 name: implement
-description: "Feature and code implementation with intelligent persona activation and MCP integration"
+description: "Code implementation with intelligent persona activation (Python CLI optimized)"
 category: workflow
 complexity: standard
-mcp-servers: [context7, sequential, magic, playwright]
-personas: [architect, frontend, backend, security, qa-specialist]
+# PYTHON CLI OPTIMIZATION: Removed magic, playwright (frontend/browser tools)
+mcp-servers: [context7, sequential, serena]
+personas: [architect, backend, security, qa-specialist]
 ---
 
 # /sc:implement - Feature Implementation
@@ -36,11 +37,15 @@ Key behaviors:
 - Systematic multi-component coordination via Sequential MCP
 - Comprehensive testing integration with Playwright for validation
 
-## MCP Integration
-- **Context7 MCP**: Framework patterns and official documentation for React, Vue, Angular, Express
-- **Magic MCP**: Auto-activated for UI component generation and design system integration
-- **Sequential MCP**: Complex multi-step analysis and implementation planning
-- **Playwright MCP**: Testing validation and quality assurance integration
+## MCP Integration (Python CLI Optimized)
+- **Context7 MCP**: Python patterns, pytest/hypothesis/typer/rich official docs ✅
+- **Sequential MCP**: Complex multi-step analysis and implementation planning ✅
+- **Serena MCP**: Symbol operations, refactoring, session persistence ✅
+
+<!-- ARCHIVED MCP INTEGRATION (Frontend/Browser):
+- Magic MCP: UI generation (archived - use Rich for terminal UI)
+- Playwright MCP: Browser testing (archived - use pytest for Python testing)
+-->
 
 ## Tool Coordination
 - **Write/Edit/MultiEdit**: Code generation and modification for implementation

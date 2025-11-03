@@ -1,13 +1,14 @@
 ---
 name: help
-description: "List all available /sc commands and their functionality"
+description: "List all available /sc commands and their functionality (Python CLI optimized)"
 category: utility
 complexity: low
+# PYTHON CLI OPTIMIZATION: Updated to reflect available MCPs and archived commands
 mcp-servers: []
 personas: []
 ---
 
-# /sc:help - Command Reference Documentation
+# /sc:help - Command Reference Documentation (Python CLI)
 
 ## Triggers
 - Command discovery and reference lookup requests
@@ -22,14 +23,15 @@ Key behaviors:
 - Information display only - no execution or implementation
 - Reference documentation mode without action triggers
 
-Here is a complete list of all available SuperClaude (`/sc`) commands.
+Here is a complete list of all available SuperClaude (`/sc`) commands for Python CLI development.
+
+## ✅ Available Commands (Python CLI)
 
 | Command | Description |
 |---|---|
 | `/sc:analyze` | Comprehensive code analysis across quality, security, performance, and architecture domains |
 | `/sc:brainstorm` | Interactive requirements discovery through Socratic dialogue and systematic exploration |
 | `/sc:build` | Build, compile, and package projects with intelligent error handling and optimization |
-| `/sc:business-panel` | Multi-expert business analysis with adaptive interaction modes |
 | `/sc:cleanup` | Systematically clean up code, remove dead code, and optimize project structure |
 | `/sc:design` | Design system architecture, APIs, and component interfaces with comprehensive specifications |
 | `/sc:document` | Generate focused documentation for components, functions, APIs, and features |
@@ -41,7 +43,9 @@ Here is a complete list of all available SuperClaude (`/sc`) commands.
 | `/sc:improve` | Apply systematic improvements to code quality, performance, and maintainability |
 | `/sc:index` | Generate comprehensive project documentation and knowledge base with intelligent organization |
 | `/sc:load` | Session lifecycle management with Serena MCP integration for project context loading |
+| `/sc:pm` | Project Manager Agent - Default orchestration agent coordinating all sub-agents and managing workflows |
 | `/sc:reflect` | Task reflection and validation using Serena MCP analysis capabilities |
+| `/sc:research` | Deep research with adaptive strategies and intelligent exploration (updated for Python CLI) |
 | `/sc:save` | Session lifecycle management with Serena MCP integration for session context persistence |
 | `/sc:select-tool` | Intelligent MCP tool selection based on complexity scoring and operation analysis |
 | `/sc:spawn` | Meta-system task orchestration with intelligent breakdown and delegation |
@@ -50,6 +54,12 @@ Here is a complete list of all available SuperClaude (`/sc`) commands.
 | `/sc:test` | Execute tests with coverage analysis and automated quality reporting |
 | `/sc:troubleshoot` | Diagnose and resolve issues in code, builds, deployments, and system behavior |
 | `/sc:workflow` | Generate structured implementation workflows from PRDs and feature requirements |
+
+## ⚠️ Archived Commands (Not applicable to Python CLI)
+
+| Command | Reason | Archive Location |
+|---|---|---|
+| `/sc:business-panel` | Business analysis not applicable to Python CLI tool | `.claude/archive/commands/business-panel.md` |
 
 ## SuperClaude Framework Flags
 
@@ -67,16 +77,25 @@ SuperClaude supports behavioral flags to enable specific execution modes and too
 
 ### MCP Server Flags
 
+**✅ Available MCPs (Python CLI development):**
+
 | Flag | Trigger | Behavior |
 |------|---------|----------|
-| `--c7` / `--context7` | Library imports, framework questions | Enable Context7 for curated documentation lookup |
-| `--seq` / `--sequential` | Complex debugging, system design | Enable Sequential for structured multi-step reasoning |
-| `--magic` | UI component requests (/ui, /21) | Enable Magic for modern UI generation from 21st.dev |
-| `--morph` / `--morphllm` | Bulk code transformations | Enable Morphllm for efficient multi-file pattern application |
-| `--serena` | Symbol operations, project memory | Enable Serena for semantic understanding and session persistence |
-| `--play` / `--playwright` | Browser testing, E2E scenarios | Enable Playwright for real browser automation and testing |
-| `--all-mcp` | Maximum complexity scenarios | Enable all MCP servers for comprehensive capability |
-| `--no-mcp` | Native-only execution needs | Disable all MCP servers, use native tools |
+| `--c7` / `--context7` | Library imports, framework questions | Enable Context7 for Python library docs (pytest, typer, rich, hypothesis) |
+| `--seq` / `--sequential` | Complex debugging, system design | Enable Sequential for structured multi-step reasoning and root cause analysis |
+| `--serena` | Symbol operations, project memory | Enable Serena for symbol refactoring and session persistence (/sc:load, /sc:save) |
+| `--all-mcp` | Maximum complexity scenarios | Enable all **available** MCP servers (serena, sequential, context7) |
+| `--no-mcp` | Native-only execution needs | Disable all MCP servers, use native tools with WebSearch fallback |
+
+**⚠️ Archived MCPs (not applicable to Python CLI):**
+
+| Flag | Status | Archive Location |
+|------|--------|------------------|
+| ~~`--magic`~~ | Frontend UI generation tool | `.claude/archive/mcp/MCP_Magic.md` |
+| ~~`--morph` / `--morphllm`~~ | Pattern edits (Serena handles Python symbols) | `.claude/archive/mcp/MCP_Morphllm.md` |
+| ~~`--play` / `--playwright`~~ | Browser automation (use pytest) | `.claude/archive/mcp/MCP_Playwright.md` |
+| ~~`--tavily`~~ | Multi-source web research (use WebSearch) | `.claude/archive/mcp/MCP_Tavily.md` |
+| ~~`--chrome` / `--devtools`~~ | Browser inspection tool | `.claude/archive/mcp/` |
 
 ### Analysis Depth Flags
 
@@ -84,7 +103,7 @@ SuperClaude supports behavioral flags to enable specific execution modes and too
 |------|---------|----------|
 | `--think` | Multi-component analysis needs | Standard structured analysis (~4K tokens), enables Sequential |
 | `--think-hard` | Architectural analysis, system-wide dependencies | Deep analysis (~10K tokens), enables Sequential + Context7 |
-| `--ultrathink` | Critical system redesign, legacy modernization | Maximum depth analysis (~32K tokens), enables all MCP servers |
+| `--ultrathink` | Critical system redesign, legacy modernization | Maximum depth analysis (~32K tokens), enables all **available** MCPs (serena, sequential, context7) |
 
 ### Execution Control Flags
 
@@ -113,20 +132,28 @@ SuperClaude supports behavioral flags to enable specific execution modes and too
 - **MCP Control**: `--no-mcp` overrides all individual MCP flags
 - **Scope Precedence**: system > project > module > file
 
-### Usage Examples
+### Usage Examples (Python CLI)
 
 ```bash
-# Deep analysis with Context7 enabled
-/sc:analyze --think-hard --context7 src/
+# Deep analysis with Context7 for Python library patterns
+/sc:analyze --think-hard --context7 vscode_scanner/
 
-# UI development with Magic and validation
-/sc:implement --magic --validate "Add user dashboard"
+# Symbol refactoring with Serena and validation
+/sc:implement --serena --validate "Extract ProgressCallback interface"
 
-# Token-efficient task management
-/sc:task --token-efficient --delegate auto "Refactor authentication system"
+# Token-efficient task management with sequential reasoning
+/sc:task --token-efficient --seq --delegate auto "Improve test coverage to 80%"
 
-# Safe production deployment
+# Safe production build with comprehensive security focus
 /sc:build --safe-mode --validate --focus security
+
+# Multi-session refactoring with persistent state
+/sc:load  # Resume previous session context
+/sc:implement --serena "Continue v3.6 testability refactoring"
+/sc:save  # Save session state for later
+
+# Research Python testing best practices
+/sc:research "pytest property-based testing with hypothesis" --context7
 ```
 
 ## Boundaries

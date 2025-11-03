@@ -10,7 +10,7 @@ import json
 import time
 import urllib.request
 import urllib.error
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, Callable
 
 from .utils import sanitize_error_message
 from .constants import (
@@ -134,7 +134,10 @@ class VscanAPIClient:
         return False
 
     def _calculate_backoff_delay(
-        self, attempt: int, retry_after: Optional[int] = None
+        self,
+        attempt: int,
+        retry_after: Optional[int] = None,
+        jitter_fn: Optional[Callable[[float, float], float]] = None,
     ) -> float:
         """
         Calculate delay before next retry attempt using exponential backoff with jitter.
@@ -145,6 +148,8 @@ class VscanAPIClient:
         Args:
             attempt: Current retry attempt number (0-indexed)
             retry_after: Retry-After header value in seconds (if available)
+            jitter_fn: Optional function for jitter calculation (min, max) -> float
+                      If None, uses random.uniform for production randomness
 
         Returns:
             Delay in seconds before next retry (minimum 0.5s, maximum MAX_BACKOFF_DELAY)
@@ -161,7 +166,11 @@ class VscanAPIClient:
         backoff = self.retry_base_delay * (2**attempt)
 
         # Add jitter (±20% of backoff) to prevent thundering herd
-        jitter = random.uniform(-0.2 * backoff, 0.2 * backoff)
+        # Use injected jitter function if provided (for testing), otherwise random.uniform
+        if jitter_fn is not None:
+            jitter = jitter_fn(-0.2 * backoff, 0.2 * backoff)
+        else:
+            jitter = random.uniform(-0.2 * backoff, 0.2 * backoff)
         total_delay = backoff + jitter
 
         # Apply ceiling after jitter and ensure minimum delay of 0.5s

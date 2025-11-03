@@ -1,10 +1,11 @@
 ---
 name: brainstorm
-description: "Interactive requirements discovery through Socratic dialogue and systematic exploration"
+description: "Interactive requirements discovery through Socratic dialogue (Python CLI optimized)"
 category: orchestration
 complexity: advanced
-mcp-servers: [sequential, context7, magic, playwright, morphllm, serena]
-personas: [architect, analyzer, frontend, backend, security, devops, project-manager]
+# PYTHON CLI OPTIMIZATION: Removed magic, playwright, morphllm (frontend/browser tools)
+mcp-servers: [sequential, context7, serena]
+personas: [architect, analyzer, backend, security, devops, project-manager]
 ---
 
 # /sc:brainstorm - Interactive Requirements Discovery
@@ -36,13 +37,16 @@ Key behaviors:
 - Systematic execution with progressive dialogue enhancement and parallel exploration
 - Cross-session persistence with comprehensive requirements discovery documentation
 
-## MCP Integration
-- **Sequential MCP**: Complex multi-step reasoning for systematic exploration and validation
-- **Context7 MCP**: Framework-specific feasibility assessment and pattern analysis
-- **Magic MCP**: UI/UX feasibility and design system integration analysis
-- **Playwright MCP**: User experience validation and interaction pattern testing
-- **Morphllm MCP**: Large-scale content analysis and pattern-based transformation
-- **Serena MCP**: Cross-session persistence, memory management, and project context enhancement
+## MCP Integration (Python CLI Optimized)
+- **Sequential MCP**: Complex multi-step reasoning for systematic exploration and validation ✅
+- **Context7 MCP**: Python library patterns, pytest/hypothesis best practices ✅
+- **Serena MCP**: Cross-session persistence, memory management, project context ✅
+
+<!-- ARCHIVED MCPs (Frontend/Browser Tools - Python CLI Optimization):
+- Magic MCP: UI/UX feasibility (archived - frontend tool, not applicable to CLI)
+- Playwright MCP: Browser testing (archived - E2E web tool, use pytest instead)
+- Morphllm MCP: Pattern transformation (archived - use Serena for symbol operations)
+-->
 
 ## Tool Coordination
 - **Read/Write/Edit**: Requirements documentation and specification generation
