@@ -296,7 +296,7 @@ Created 117 new tests across 8 test files with 100% pass rate:
   5. `testing/TESTING_MOCKING.md` (10K) - Mocking guidelines with canonical mock objects
   6. `testing/TESTING_PROPERTY_BASED.md` (4.5K) - Hypothesis property-based testing (1,250+ scenarios)
   7. `testing/TESTING_CLI.md` (2K) - CLI testing guide
-  8. `testing/TESTING_PERFORMANCE.md` (2K) - Performance testing benchmarks
+  8. `testing/TESTING_PERFORMANCE.md` (2K) - Performance testing benchmarks (merged into PERFORMANCE.md v2.0)
   9. `testing/TESTING_PARALLEL.md` (1.3K) - Parallel scanning tests (thread safety)
   10. `testing/TESTING_RETRY.md` (1.8K) - Retry mechanism testing (exponential backoff)
   11. `testing/TESTING_HTML_REPORTS.md` (1.1K) - HTML report validation

@@ -215,6 +215,13 @@ docs/
 - Performance tests
 - Security tests
 
+**[contributing/CODE_REVIEW_CHECKLIST.md](contributing/CODE_REVIEW_CHECKLIST.md)** - Code review checklist
+- Security controls validation (path validation, input sanitization, access control)
+- Bandit suppression review (format, justification, security approval)
+- Architecture compliance (layer violations, design principles)
+- Testing requirements (coverage, security tests, regression tests)
+- Documentation updates and common anti-patterns
+
 **[contributing/VERSION_MANAGEMENT.md](contributing/VERSION_MANAGEMENT.md)** - Version management guide
 - Centralized version system (_version.py)
 - How to bump versions (semantic versioning)

@@ -505,6 +505,81 @@ See `constants.py:DEFAULT_MAX_RETRIES` and `constants.py:DEFAULT_RETRY_BASE_DELA
 
 ---
 
+### 9. Bandit Suppression Security
+
+**Requirement:** Bandit security warnings can only be suppressed with documented security justification.
+
+#### When Suppressions Are Acceptable
+
+Suppressions (`# nosec`) are security-acceptable ONLY when:
+
+1. **False Positive with Security Validation**
+   - Bandit flags code that appears unsafe but is protected by validation
+   - Security controls are in place and documented
+   - Example: URL access with `validate_url()` HTTPS enforcement
+
+2. **Required Unsafe Operation with Mitigation**
+   - Operation is necessary for functionality
+   - Comprehensive security mitigations are implemented
+   - Risk is understood and acceptable
+   - Example: Dynamic SQL with parameterized queries
+
+3. **Well-Documented Justification**
+   - Clear explanation of why code is safe
+   - References to validation functions or security controls
+   - Evidence that security was considered
+
+#### When Suppressions Are NEVER Acceptable
+
+❌ **Invalid Reasons for Suppression:**
+- "The code works fine" (Functionality ≠ Security)
+- "Too many warnings" (Fix root cause, don't hide symptoms)
+- "Deadline pressure" (Schedule pressure is not a security justification)
+- "Will fix later" (Create issue instead, suppressions become permanent)
+- "Bandit doesn't understand my code" (Refactor for clarity instead)
+
+#### Suppression Format Requirements
+
+```python
+# nosec <RULE_CODE> - <CLEAR_JUSTIFICATION_WITH_VALIDATION_DETAILS>
+```
+
+**Required Elements:**
+1. **Rule Code**: Specific Bandit test ID (e.g., `B310`, `B608`)
+2. **Justification**: Why this code is safe despite the warning
+3. **Validation Reference**: Function/control that makes it safe
+4. **Evidence**: Proof that security was considered
+
+**Example:**
+```python
+with urllib.request.urlopen(
+    req, timeout=timeout
+) as response:  # nosec B310 - URL validated by validate_url() for HTTPS enforcement
+```
+
+#### Security Review Requirements
+
+**All suppressions require security review for:**
+- Critical code paths (authentication, authorization)
+- User input handling
+- File system operations
+- Network operations
+- Cryptographic operations
+- SQL queries
+
+**Code Review Checklist:**
+- [ ] Rule code is specified (`# nosec BXXX`)
+- [ ] Justification is clear and specific
+- [ ] Validation function is referenced
+- [ ] Security control is actually implemented
+- [ ] Alternative approaches were considered
+- [ ] Risk is acceptable and documented
+- [ ] No better solution exists
+
+**Reference:** See [testing/TESTING_SECURITY.md](testing/TESTING_SECURITY.md) for Bandit usage and suppression validation procedures.
+
+---
+
 ## Threat Model
 
 ### Attack Vectors

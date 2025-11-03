@@ -309,6 +309,12 @@ Historical scripts and proof-of-concepts that are no longer actively used but pr
 - [v3.4-poc-parallel-scan.py](code/v3.4-poc-parallel-scan.py) - Parallel scanning PoC (feature shipped in v3.5.0)
 - [v3.5.2-migration-add-pytest-markers.py](code/v3.5.2-migration-add-pytest-markers.py) - Pytest marker migration (complete)
 - [v3.5.1-setup-security-tools.sh](code/v3.5.1-setup-security-tools.sh) - Security tools setup (superseded by `pip install -e .[dev]`)
+- [diagnose_performance.py](code/diagnose_performance.py) - Performance diagnostic tool (archived 2025-11-03)
+
+**Archived Documentation:**
+- [PERFORMANCE_DIAGNOSTICS.md](PERFORMANCE_DIAGNOSTICS.md) - Performance diagnostic guide (archived 2025-11-03)
+- [TESTING_PERFORMANCE.md](TESTING_PERFORMANCE.md) - Performance testing guide (merged into PERFORMANCE.md, archived 2025-11-03)
+- [GITHUB_SETTINGS_CHECKLIST.md](GITHUB_SETTINGS_CHECKLIST.md) - GitHub settings verification checklist (archived 2025-11-03)
 
 ---
 
