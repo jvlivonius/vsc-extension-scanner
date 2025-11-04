@@ -8,6 +8,7 @@ Improves vscan_api.py coverage without relying on random behavior.
 import sys
 import os
 import unittest
+import pytest
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vscode_scanner.vscan_api import VscanAPIClient
 
 
+@pytest.mark.unit
 class TestDeterministicRetry(unittest.TestCase):
     """Test retry logic with deterministic jitter functions."""
 

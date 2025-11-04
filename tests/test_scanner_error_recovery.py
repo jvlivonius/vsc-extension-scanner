@@ -7,9 +7,9 @@ and partial scan results.
 """
 
 import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from vscode_scanner.scanner import (
-    _scan_single_extension,
     _scan_extensions,
     _categorize_error,
     _simplify_error_message,
@@ -17,6 +17,7 @@ from vscode_scanner.scanner import (
 )
 
 
+@pytest.mark.unit
 class TestErrorCategorization(unittest.TestCase):
     """Test error categorization logic."""
 
@@ -131,6 +132,7 @@ class TestErrorCategorization(unittest.TestCase):
         self.assertEqual(category, "api_error")
 
 
+@pytest.mark.unit
 class TestErrorMessageSimplification(unittest.TestCase):
     """Test error message simplification."""
 

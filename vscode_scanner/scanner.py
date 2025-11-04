@@ -1,8 +1,8 @@
 """
 Scanner module for vscan - refactored main scan logic.
 
-This module provides the core scanning functionality with support for
-both Rich-formatted and plain text output.
+This module provides the core scanning functionality with Rich-formatted
+output and optional quiet mode for CI/CD environments.
 """
 
 import sys
@@ -28,7 +28,6 @@ from .utils import (
     safe_mkdir,
 )
 from .display import (
-    should_use_rich,
     create_scan_progress,
     create_results_table,
     create_cache_stats_table,
@@ -40,7 +39,6 @@ from .display import (
     display_info,
     display_success,
     display_failed_extensions,
-    display_results_plain,
 )
 
 
@@ -148,7 +146,6 @@ def run_scan(
     unverified_only: bool = False,
     with_vulnerabilities: bool = False,
     without_vulnerabilities: bool = False,
-    plain: bool = False,
     quiet: bool = False,
     verbose: bool = False,
     workers: int = 3,
@@ -171,7 +168,6 @@ def run_scan(
         include_ids: Comma-separated extension IDs to include
         exclude_ids: Comma-separated extension IDs to exclude
         min_risk_level: Minimum risk level filter
-        plain: Disable Rich formatting
         quiet: Minimal output (single-line summary only)
         workers: Number of concurrent workers (1-5, default: 3)
 
@@ -182,7 +178,7 @@ def run_scan(
     setup_logging(False)  # No verbose logging needed
 
     # Determine if we should use Rich output
-    use_rich = should_use_rich(plain_flag=plain) and not quiet
+    use_rich = not quiet  # Always use Rich formatting unless quiet mode
 
     # Initialize cache manager
     cache_manager = CacheManager(cache_dir=cache_dir) if not no_cache else None
@@ -209,14 +205,8 @@ def run_scan(
                 else:
                     log(f"INFO: {msg.message}", "INFO")
 
-    # Print banner (plain mode only, Rich mode shows dashboard)
-    if not use_rich and not quiet:
-        log("VS Code Extension Scanner", "INFO")
-        from ._version import __version__
-
-        log(f"Version {__version__}", "INFO")
-        log("=" * 60, "INFO")
-        log("", "INFO")
+    # Note: Banner display is now handled by Rich dashboard only
+    # Quiet mode suppresses all output except errors and summary
 
     start_time = time.time()
     scan_timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -717,147 +707,6 @@ def _scan_single_extension_worker(
     return result, False, should_cache  # from_cache=False, should_cache=True/False
 
 
-def _scan_single_extension(
-    ext: Dict,
-    idx: int,
-    total: int,
-    cache_manager: Optional[CacheManager],
-    args,
-    api_client: VscanAPIClient,
-    stats: Dict,
-    scan_results: List[Dict],
-    use_rich: bool,
-):
-    """Scan a single extension (extracted for clarity)."""
-    extension_id = ext["id"]
-    version = ext["version"]
-    progress_prefix = f"[{idx}/{total}]"
-
-    # Check cache first (unless refresh or no-cache is requested)
-    cached_result = None
-    if cache_manager and not args.refresh_cache:
-        cached_result = cache_manager.get_cached_result(
-            extension_id, version, max_age_days=args.cache_max_age
-        )
-
-    if cached_result:
-        # Use cached result
-        _process_cached_result(
-            cached_result,
-            ext,
-            extension_id,
-            version,
-            progress_prefix,
-            stats,
-            scan_results,
-            use_rich,
-        )
-    else:
-        # Scan fresh from API
-        _scan_extension_fresh(
-            ext,
-            extension_id,
-            version,
-            progress_prefix,
-            api_client,
-            cache_manager,
-            stats,
-            scan_results,
-            use_rich,
-        )
-
-
-def _process_cached_result(
-    cached_result: Dict,
-    ext: Dict,
-    extension_id: str,
-    version: str,
-    progress_prefix: str,
-    stats: Dict,
-    scan_results: List[Dict],
-    use_rich: bool,
-):
-    """Process a cached scan result."""
-    if not use_rich:
-        log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO")
-
-    # Merge with discovery metadata
-    result = {**ext, **cached_result}
-
-    # Add last_scanned_at from cache timestamp
-    if "_cached_at" in cached_result:
-        result["last_scanned_at"] = cached_result["_cached_at"]
-
-    scan_results.append(result)
-
-    # Update stats
-    if result.get("vulnerabilities", {}).get("count", 0) > 0:
-        stats["vulnerabilities_found"] += 1
-
-    stats["successful_scans"] += 1
-    stats["cached_results"] += 1
-
-
-def _scan_extension_fresh(
-    ext: Dict,
-    extension_id: str,
-    version: str,
-    progress_prefix: str,
-    api_client: VscanAPIClient,
-    cache_manager: Optional[CacheManager],
-    stats: Dict,
-    scan_results: List[Dict],
-    use_rich: bool,
-):
-    """Scan an extension fresh from the API."""
-    if not use_rich:
-        log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO")
-
-    # Scan via API with workflow-level retry
-    publisher = ext.get("publisher", "")
-    name = ext.get("name", "")
-
-    result = api_client.scan_extension_with_retry(publisher, name)
-
-    # Merge with discovery metadata
-    result = {**ext, **result}
-
-    # Add last_scanned_at for fresh scans (current time)
-    result["last_scanned_at"] = datetime.now().isoformat() + "Z"
-
-    # Cache the result if cache is enabled (using batch mode)
-    if cache_manager and result.get("scan_status") == "success":
-        try:
-            cache_manager.save_result_batch(extension_id, version, result)
-        except Exception:
-            # Cache errors should not fail the scan
-            # Error already logged by cache_manager
-            pass
-
-    scan_results.append(result)
-
-    # Update stats
-    if result.get("scan_status") == "success":
-        if result.get("vulnerabilities", {}).get("count", 0) > 0:
-            stats["vulnerabilities_found"] += 1
-        stats["successful_scans"] += 1
-    else:
-        stats["failed_scans"] += 1
-        # Track failed extension with categorized error
-        error_message = result.get("error", "")
-        error_type = _categorize_error(error_message)
-        stats["failed_extensions"].append(
-            {
-                "id": extension_id,
-                "name": ext.get("display_name", ext.get("name", extension_id)),
-                "error_type": error_type,
-                "error_message": _simplify_error_message(error_type),
-            }
-        )
-
-    stats["fresh_scans"] += 1
-
-
 def _get_verification_status(result: Dict) -> bool:
     """
     Get publisher verification status from result.
@@ -1228,100 +1077,6 @@ def _print_summary(
         # Display failed extensions if any (both standard and verbose modes)
         if stats.get("failed_extensions"):
             display_failed_extensions(stats["failed_extensions"], use_rich=True)
-    else:
-        # Plain output
-        log("", "INFO", force=True)
-        log("=" * 60, "INFO", force=True)
-        log("Scan Complete!", "SUCCESS", force=True)
-        log(f"Total extensions scanned: {len(extensions)}", "INFO", force=True)
-        log(f"Successful scans: {stats['successful_scans']}", "INFO", force=True)
-        log(
-            f"Failed scans: {stats['failed_scans']}",
-            "INFO" if stats["failed_scans"] == 0 else "WARNING",
-            force=True,
-        )
-
-        # Show scan results list (all extensions)
-        scan_results = results.get("extensions", [])
-        if scan_results:
-            display_results_plain(scan_results)
-
-        # Cache statistics (only in verbose mode)
-        if verbose and (
-            stats.get("cached_results", 0) > 0 or stats.get("fresh_scans", 0) > 0
-        ):
-            log("", "INFO", force=True)
-            log("Cache Statistics:", "INFO", force=True)
-            log(
-                f"  From cache: {stats['cached_results']} (⚡ instant)",
-                "INFO",
-                force=True,
-            )
-            log(
-                f"  Fresh scans: {stats['fresh_scans']} (🔍 API calls)",
-                "INFO",
-                force=True,
-            )
-            if len(extensions) > 0:
-                cache_hit_rate = (stats["cached_results"] / len(extensions)) * 100
-                log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
-
-        # Retry statistics (only in verbose mode and if retries occurred)
-        if verbose and "api_client" in stats and stats["api_client"] is not None:
-            retry_stats = stats["api_client"].get_retry_stats()
-            http_retries = retry_stats.get("total_retries", 0)
-            workflow_retries = retry_stats.get("total_workflow_retries", 0)
-
-            if http_retries > 0 or workflow_retries > 0:
-                log("", "INFO")
-                log("Retry Statistics:", "INFO")
-
-                # HTTP-level retries
-                if http_retries > 0:
-                    log(f"  HTTP retry attempts: {http_retries}", "INFO")
-                    log(
-                        f"    Successful: {retry_stats.get('successful_retries', 0)}",
-                        "INFO",
-                    )
-                    failed_http = retry_stats.get("failed_after_retries", 0)
-                    if failed_http > 0:
-                        log(f"    Failed: {failed_http}", "WARNING")
-
-                # Workflow-level retries
-                if workflow_retries > 0:
-                    log(f"  Workflow retry attempts: {workflow_retries}", "INFO")
-                    log(
-                        f"    Successful: {retry_stats.get('successful_workflow_retries', 0)}",
-                        "INFO",
-                    )
-                    failed_workflow = retry_stats.get(
-                        "failed_after_workflow_retries", 0
-                    )
-                    if failed_workflow > 0:
-                        log(
-                            f"    Failed (need manual rescan): {failed_workflow}",
-                            "WARNING",
-                        )
-
-        # Display failed extensions if any (both standard and verbose modes)
-        if stats.get("failed_extensions"):
-            display_failed_extensions(stats["failed_extensions"], use_rich=False)
-
-        log("", "INFO", force=True)
-        log(
-            f"Vulnerabilities found: {stats['vulnerabilities_found']}",
-            "INFO" if stats["vulnerabilities_found"] == 0 else "WARNING",
-            force=True,
-        )
-
-        # Timing details (only in verbose mode)
-        if verbose:
-            log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
-            if len(extensions) > 0:
-                avg_time = scan_duration / len(extensions)
-                log(f"Average time per extension: {avg_time:.1f}s", "INFO", force=True)
-
-        log("=" * 60, "INFO", force=True)
 
 
 def _calculate_exit_code(vulnerabilities_found: int) -> int:

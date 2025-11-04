@@ -40,8 +40,7 @@ retry_delay = 2.0               # Base HTTP retry delay in seconds
 cache_max_age = 14              # Cache expiration in days
 
 [output]
-quiet = false                   # Minimal output by default
-plain = false                   # Disable Rich formatting
+quiet = false                   # Minimal output by default (for CI/CD)
 ```
 
 Usage:
@@ -122,8 +121,7 @@ cache_max_age = {DEFAULT_CACHE_MAX_AGE_DAYS}           # Cache expiration in day
 
 [output]
 # Output preferences
-# plain = false             # Disable Rich formatting by default (true/false)
-# quiet = false             # Minimal output by default (true/false)
+# quiet = false             # Minimal output (for CI/CD) by default (true/false)
 """
 
 # Default configuration values
@@ -146,7 +144,6 @@ DEFAULT_CONFIG = {
         "no_cache": False,
     },
     "output": {
-        "plain": False,
         "quiet": False,
     },
 }
@@ -171,7 +168,6 @@ CONFIG_SCHEMA = {
         "no_cache": ("bool", None, None),
     },
     "output": {
-        "plain": ("bool", None, None),
         "quiet": ("bool", None, None),
     },
 }
@@ -544,7 +540,6 @@ def merge_scan_config(
         ("retry_delay", 2.0, "scan", "retry_delay"),
         ("cache_max_age", 7, "cache", "cache_max_age"),
         ("quiet", False, "output", "quiet"),
-        ("plain", False, "output", "plain"),
         ("no_cache", False, "cache", "no_cache"),
         ("publisher", None, "scan", "publisher"),
         ("min_risk_level", None, "scan", "min_risk_level"),

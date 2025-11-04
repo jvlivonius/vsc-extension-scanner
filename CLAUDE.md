@@ -58,6 +58,7 @@ VS Code Extension Security Scanner is a standalone Python CLI tool that performs
 **Adding Features:**
 - Check scope: [PRD.md](docs/project/PRD.md) - Is this feature in scope?
 - Check roadmap: [STATUS.md](docs/project/STATUS.md) - Current sprint priorities and active roadmap
+- **v3.7 Active Roadmap:** [v3.7-testability-maintainability-roadmap.md](docs/project/v3.7-testability-maintainability-roadmap.md) - Testability improvements, architectural refactoring
 
 **Security Changes:**
 - [SECURITY.md](docs/guides/SECURITY.md) - Complete security requirements, validation patterns, defense layers

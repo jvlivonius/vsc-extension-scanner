@@ -7,11 +7,13 @@ and output file handling.
 """
 
 import unittest
+import pytest
 from unittest.mock import Mock, patch
 import tempfile
 import os
 
 
+@pytest.mark.unit
 class TestCacheInitializationMessages(unittest.TestCase):
     """Test cache initialization message display."""
 
@@ -161,6 +163,7 @@ class TestCacheInitializationMessages(unittest.TestCase):
         mock_cache.get_init_messages.assert_called_once()
 
 
+@pytest.mark.unit
 class TestExtensionDiscoveryErrors(unittest.TestCase):
     """Test extension discovery error handling."""
 
@@ -185,6 +188,7 @@ class TestExtensionDiscoveryErrors(unittest.TestCase):
         mock_show_help.assert_called_once()
 
 
+@pytest.mark.unit
 class TestEmptyExtensionList(unittest.TestCase):
     """Test empty extension list handling."""
 

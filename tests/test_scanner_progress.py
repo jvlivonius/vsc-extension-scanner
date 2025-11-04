@@ -6,9 +6,11 @@ to verify the refactored progress display logic.
 """
 
 import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock, call
 
 
+@pytest.mark.unit
 class TestProgressCallback(unittest.TestCase):
     """Test ProgressCallback class for progress display abstraction."""
 
@@ -201,6 +203,7 @@ class TestProgressCallback(unittest.TestCase):
         assert callback.task is None
 
 
+@pytest.mark.unit
 class TestScanExtensionsWithCallback(unittest.TestCase):
     """Test _scan_extensions() integration with progress callback."""
 

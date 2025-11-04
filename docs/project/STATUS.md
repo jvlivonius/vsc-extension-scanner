@@ -1,7 +1,7 @@
 # Project Status
 
-**Last Updated:** 2025-11-04
-**Status:** v3.6.0 Released ✅ - No active development
+**Last Updated:** 2025-01-04
+**Status:** v3.7.0 Phase 0 Complete ✅ - Phase 1 Ready
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
 
@@ -9,11 +9,60 @@
 
 ## Active Development
 
-**Status:** No active development in progress
+**Status:** v3.7.0 Phase 0 Complete ✅
 
-v3.6.0 has been successfully completed and released. All v3.6 planning documents have been archived.
+**Branch:** `feature/v3.7-testability-maintainability`
 
-**Next Work:** Future architectural refactoring based on v3.6 analysis (see archived planning docs)
+### Phase 0: CLI Simplification (COMPLETE ✅)
+
+**Completed:** 2025-01-04
+**Effort:** 1 session
+**Results:**
+- ✅ Removed `--plain` mode from CLI (breaking change)
+- ✅ Simplified display.py (removed plain mode branching)
+- ✅ Fixed all import errors and test failures
+- ✅ 835 tests passing (0 failures)
+- ✅ 0 security vulnerabilities
+- ✅ Rich CLI fully functional
+
+**Summary:** [v3.7-phase0-completion-summary.md](../archive/summaries/v3.7-phase0-completion-summary.md)
+
+### Next: Phase 1 - Foundation
+
+**Status:** Ready to begin
+**Roadmap:** [v3.7-testability-maintainability-roadmap.md](v3.7-testability-maintainability-roadmap.md)
+
+**Phase 1 Goals:**
+- Extract business logic from CLI framework coupling
+- Simplify cache migration code (remove 115 LOC legacy code)
+- Improve unit test coverage of core logic
+- Target: 88-90% overall coverage
+
+**Estimated Effort:** 10 hours
+**Risk Level:** LOW (foundation refactoring)
+
+### Active Roadmap: v3.7.0
+
+**Document:** [v3.7-testability-maintainability-roadmap.md](v3.7-testability-maintainability-roadmap.md)
+
+**Goal:** Improve test coverage efficiency (78.94% → 88-90%) with fewer, better tests through architectural refactoring
+
+**Phases:**
+- ✅ **Phase 0:** CLI Simplification (COMPLETE)
+- 🔄 **Phase 1:** Foundation (READY - cache simplification, test consolidation)
+- ⏳ **Phase 2:** Architecture (PENDING - ScanOrchestrator pattern, CLI extraction)
+- ⏳ **Phase 3:** Polish (PENDING - parameterization, optimization)
+
+**Key Improvements:**
+- ✅ Remove plain mode (-150 LOC, simpler testing)
+- Remove legacy migration code (-115 LOC)
+- Extract ScanOrchestrator pattern (scanner.py 71% → 85%)
+- Property-based retry testing (48 tests → 18 with better coverage)
+- CLI validation extraction (cli.py 67% → 80%)
+- Overall: 831 tests → ~730 (-12%), better maintainability
+
+**Timeline:** 6-8 weeks
+**Risk Level:** LOW (Phase 0 complete, foundation solid)
 
 ---
 

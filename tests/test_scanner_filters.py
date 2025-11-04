@@ -7,6 +7,7 @@ Focuses on pre-scan filters (publisher, include/exclude IDs) and post-scan filte
 """
 
 import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 from vscode_scanner.scanner import (
     _apply_pre_scan_filters,
@@ -15,6 +16,7 @@ from vscode_scanner.scanner import (
 )
 
 
+@pytest.mark.unit
 class TestPreScanFilters(unittest.TestCase):
     """Test pre-scan filter logic."""
 
@@ -238,6 +240,7 @@ class TestPreScanFilters(unittest.TestCase):
         self.assertEqual(result[0]["id"], "ms-python.python")
 
 
+@pytest.mark.unit
 class TestPostScanFilters(unittest.TestCase):
     """Test post-scan filter logic."""
 

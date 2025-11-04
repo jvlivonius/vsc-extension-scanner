@@ -6,9 +6,11 @@ Focuses on _generate_output() exceptions in run_scan().
 """
 
 import unittest
+import pytest
 from unittest.mock import Mock, patch
 
 
+@pytest.mark.unit
 class TestOutputGenerationErrors(unittest.TestCase):
     """Test output generation exception handling."""
 

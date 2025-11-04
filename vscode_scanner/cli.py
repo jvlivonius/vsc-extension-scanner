@@ -16,7 +16,6 @@ from ._version import __version__
 from .scanner import run_scan
 from .cache_manager import CacheManager
 from .display import (
-    should_use_rich,
     create_cache_stats_table,
     display_error,
     display_success,
@@ -87,12 +86,6 @@ def scan(
         "--quiet",
         "-q",
         help="Minimal output (only show single-line summary)",
-        rich_help_panel="Options",
-    ),
-    plain: bool = typer.Option(
-        False,
-        "--plain",
-        help="Disable colors and rich formatting (for CI/scripts)",
         rich_help_panel="Options",
     ),
     verbose: bool = typer.Option(
@@ -246,9 +239,6 @@ def scan(
         [dim]# Export to CSV for spreadsheet analysis[/dim]
         $ vscan scan --output results.csv
 
-        [dim]# Use plain output for CI/CD pipelines[/dim]
-        $ vscan scan --plain --output results.json
-
         [dim]# Minimal output for scripting[/dim]
         $ vscan scan --quiet
 
@@ -279,7 +269,6 @@ def scan(
         "retry_delay": retry_delay,
         "cache_max_age": cache_max_age,
         "quiet": quiet,
-        "plain": plain,
         "no_cache": no_cache,
         "publisher": publisher,
         "min_risk_level": min_risk_level,
@@ -299,7 +288,6 @@ def scan(
     retry_delay = merged["retry_delay"]
     cache_max_age = merged["cache_max_age"]
     quiet = merged["quiet"]
-    plain = merged["plain"]
     no_cache = merged["no_cache"]
     publisher = merged["publisher"]
     min_risk_level = merged["min_risk_level"]
@@ -392,7 +380,6 @@ def scan(
             unverified_only=unverified_only,
             with_vulnerabilities=with_vulnerabilities,
             without_vulnerabilities=without_vulnerabilities,
-            plain=plain,
             quiet=quiet,
             verbose=verbose,
             workers=workers,
@@ -476,34 +463,6 @@ def _display_cache_stats_rich(formatted: Dict[str, Any]):
         console.print(f"[yellow]Extensions with vulnerabilities:[/yellow] {vuln_count}")
 
 
-def _display_cache_stats_plain(formatted: Dict[str, Any]):
-    """Display cache statistics with plain formatting."""
-    print("Cache Statistics")
-    print("=" * 60)
-    print(f"Database: {formatted['database_path']}")
-    print(f"Total entries: {formatted['total_entries']}")
-    print(f"Database size: {formatted['database_size']}")
-
-    if formatted["age_distribution"]:
-        print()
-        print("Age Distribution:")
-        for category, count in formatted["age_distribution"].items():
-            print(f"  {category}: {count}")
-
-    if formatted["risk_breakdown"]:
-        print()
-        print("Risk Breakdown:")
-        for risk, count in formatted["risk_breakdown"].items():
-            print(f"  {risk}: {count}")
-
-    vuln_count = formatted["extensions_with_vulnerabilities"]
-    if vuln_count > 0:
-        print()
-        print(f"Extensions with vulnerabilities: {vuln_count}")
-
-    print("=" * 60)
-
-
 @cache_app.command("stats")
 def cache_stats(
     cache_dir: Optional[Path] = typer.Option(
@@ -515,9 +474,6 @@ def cache_stats(
         min=1,
         max=365,
         help="Age threshold in days for stale entries",
-    ),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
     ),
 ):
     """
@@ -537,9 +493,6 @@ def cache_stats(
 
         [dim]# Check for stale entries older than 14 days[/dim]
         $ vscan cache stats --cache-max-age 14
-
-        [dim]# Show stats with plain output (no colors)[/dim]
-        $ vscan cache stats --plain
     """
     try:
         # Validate parameter
@@ -559,7 +512,6 @@ def cache_stats(
             raise typer.Exit(code=2)
 
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
-    use_rich = should_use_rich(plain_flag=plain)
 
     try:
         cache_manager = CacheManager(cache_dir=cache_dir_str)
@@ -570,22 +522,17 @@ def cache_stats(
         init_messages = cache_manager.get_init_messages()
         for msg in init_messages:
             if isinstance(msg, CacheWarning):
-                display_warning(msg.message, use_rich=use_rich)
+                display_warning(msg.message, use_rich=True)
             elif isinstance(msg, CacheError):
-                display_error(msg.message, use_rich=use_rich)
+                display_error(msg.message, use_rich=True)
             elif isinstance(msg, CacheInfo):
-                display_info(msg.message, use_rich=use_rich)
+                display_info(msg.message, use_rich=True)
 
         stats = cache_manager.get_cache_stats(max_age_days=cache_max_age)
 
-        # Format stats once (shared logic)
+        # Format and display stats with Rich formatting
         formatted = _format_cache_stats(stats)
-
-        # Display with appropriate formatter
-        if use_rich:
-            _display_cache_stats_rich(formatted)
-        else:
-            _display_cache_stats_plain(formatted)
+        _display_cache_stats_rich(formatted)
 
         raise typer.Exit(code=0)
 
@@ -603,9 +550,6 @@ def cache_clear(
         None, "--cache-dir", help="Custom cache directory path (default: ~/.vscan/)"
     ),
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
-    ),
 ):
     """
     Clear all cached scan results.
@@ -638,17 +582,13 @@ def cache_clear(
             raise typer.Exit(code=2)
 
     cache_dir_str = str(cache_dir.resolve()) if cache_dir else None
-    use_rich = should_use_rich(plain_flag=plain)
 
     try:
         # Confirm before clearing unless --force is used
         if not force:
             confirm = typer.confirm("Are you sure you want to clear all cached data?")
             if not confirm:
-                if use_rich:
-                    display_info("Operation cancelled", use_rich=True)
-                else:
-                    print("Operation cancelled")
+                display_info("Operation cancelled", use_rich=True)
                 raise typer.Exit(code=1)
 
         cache_manager = CacheManager(cache_dir=cache_dir_str)
@@ -659,29 +599,22 @@ def cache_clear(
         init_messages = cache_manager.get_init_messages()
         for msg in init_messages:
             if isinstance(msg, CacheWarning):
-                display_warning(msg.message, use_rich=use_rich)
+                display_warning(msg.message, use_rich=True)
             elif isinstance(msg, CacheError):
-                display_error(msg.message, use_rich=use_rich)
+                display_error(msg.message, use_rich=True)
             elif isinstance(msg, CacheInfo):
-                display_info(msg.message, use_rich=use_rich)
+                display_info(msg.message, use_rich=True)
 
         count = cache_manager.clear_cache()
 
-        if use_rich:
-            display_success(f"Cleared {count} cache entries", use_rich=True)
-        else:
-            print(f"✓ Cleared {count} cache entries")
-
+        display_success(f"Cleared {count} cache entries", use_rich=True)
         raise typer.Exit(code=0)
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
         raise  # pylint: disable=try-except-raise
     except Exception as e:
-        if use_rich:
-            display_error(f"Error clearing cache: {e}", use_rich=True)
-        else:
-            print(f"Error clearing cache: {e}")
+        display_error(f"Error clearing cache: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
 
@@ -694,9 +627,6 @@ def cache_clear(
 def config_init(
     force: bool = typer.Option(
         False, "--force", "-f", help="Overwrite existing config file"
-    ),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
     ),
 ):
     """
@@ -715,51 +645,32 @@ def config_init(
     """
     from .config_manager import create_default_config, get_config_path
 
-    use_rich = should_use_rich(plain_flag=plain)
-
     try:
         config_path = create_default_config(force=force)
 
-        if use_rich:
-            display_success(f"Created configuration file: {config_path}", use_rich=True)
-            display_info("Edit this file to customize default settings", use_rich=True)
-            display_info(
-                "Run 'vscan config show' to see current configuration", use_rich=True
-            )
-        else:
-            print(f"✓ Created configuration file: {config_path}")
-            print("\nEdit this file to customize default settings.")
-            print("Run 'vscan config show' to see current configuration.")
-
+        display_success(f"Created configuration file: {config_path}", use_rich=True)
+        display_info("Edit this file to customize default settings", use_rich=True)
+        display_info(
+            "Run 'vscan config show' to see current configuration", use_rich=True
+        )
         raise typer.Exit(code=0)
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
         raise  # pylint: disable=try-except-raise
     except FileExistsError:
-        if use_rich:
-            display_error(
-                f"Config file already exists at {get_config_path()}", use_rich=True
-            )
-            display_info("Use --force to overwrite", use_rich=True)
-        else:
-            print(f"Error: Config file already exists at {get_config_path()}")
-            print("Use --force to overwrite")
+        display_error(
+            f"Config file already exists at {get_config_path()}", use_rich=True
+        )
+        display_info("Use --force to overwrite", use_rich=True)
         raise typer.Exit(code=1)
     except Exception as e:
-        if use_rich:
-            display_error(f"Error creating config file: {e}", use_rich=True)
-        else:
-            print(f"Error creating config file: {e}")
+        display_error(f"Error creating config file: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
 
 @config_app.command("show")
-def config_show(
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
-    )
-):
+def config_show():
     """
     Display current configuration values.
 
@@ -778,18 +689,11 @@ def config_show(
         config_exists,
     )
 
-    use_rich = should_use_rich(plain_flag=plain)
     config_path = get_config_path()
 
     if not config_exists():
-        if use_rich:
-            display_warning(
-                f"No configuration file found at {config_path}", use_rich=True
-            )
-            display_info("Run 'vscan config init' to create one", use_rich=True)
-        else:
-            print(f"No configuration file found at {config_path}")
-            print("Run 'vscan config init' to create one.")
+        display_warning(f"No configuration file found at {config_path}", use_rich=True)
+        display_info("Run 'vscan config init' to create one", use_rich=True)
         raise typer.Exit(code=0)
 
     from .types import ConfigWarning
@@ -799,92 +703,52 @@ def config_show(
     # Display any config loading warnings
     if config_warnings:
         for warning in config_warnings:
-            if use_rich:
-                display_warning(warning.message, use_rich=True)
-            else:
-                print(f"Warning: {warning.message}")
-
+            display_warning(warning.message, use_rich=True)
     # Display configuration
-    if use_rich:
-        # pylint: disable=redefined-outer-name,reimported
-        from rich.console import Console
-        from rich.table import Table
+    # pylint: disable=redefined-outer-name,reimported
+    from rich.console import Console
+    from rich.table import Table
 
-        console = Console()
-        console.print(f"\n[bold]Configuration File:[/bold] {config_path}")
-        console.print("[green]Status: Found ✓[/green]\n")
+    console = Console()
+    console.print(f"\n[bold]Configuration File:[/bold] {config_path}")
+    console.print("[green]Status: Found ✓[/green]\n")
 
-        # Create single table with all options
-        table = Table(
-            title="Configuration Options", show_header=True, header_style="bold cyan"
-        )
-        table.add_column("Key", style="cyan", no_wrap=True)
-        table.add_column("Value", style="yellow")
-        table.add_column("Source", style="dim")
+    # Create single table with all options
+    table = Table(
+        title="Configuration Options", show_header=True, header_style="bold cyan"
+    )
+    table.add_column("Key", style="cyan", no_wrap=True)
+    table.add_column("Value", style="yellow")
+    table.add_column("Source", style="dim")
 
-        # Iterate through all sections and options
-        for section in ["scan", "cache", "output"]:
-            if section not in config:
-                continue
+    # Iterate through all sections and options
+    for section in ["scan", "cache", "output"]:
+        if section not in config:
+            continue
 
-            for option, value in config[section].items():
-                default_value = get_default_value(section, option)
-                is_default = value == default_value
-                source = "default" if is_default else "from config"
+        for option, value in config[section].items():
+            default_value = get_default_value(section, option)
+            is_default = value == default_value
+            source = "default" if is_default else "from config"
 
-                # Format value
-                if value is None:
-                    value_str = "<not set>"
-                elif isinstance(value, bool):
-                    value_str = "true" if value else "false"
-                else:
-                    value_str = str(value)
+            # Format value
+            if value is None:
+                value_str = "<not set>"
+            elif isinstance(value, bool):
+                value_str = "true" if value else "false"
+            else:
+                value_str = str(value)
 
-                # Use full key format: section.option
-                full_key = f"{section}.{option}"
-                table.add_row(full_key, value_str, source)
+            # Use full key format: section.option
+            full_key = f"{section}.{option}"
+            table.add_row(full_key, value_str, source)
 
-        console.print(table)
-        console.print()
-        console.print(
-            "[dim]Use 'vscan config set <key> <value>' to change settings (e.g., 'vscan config set scan.delay 2.0')[/dim]"
-        )
-        console.print("[dim]CLI arguments always override config file values.[/dim]\n")
-    else:
-        print(f"\nConfiguration File: {config_path}")
-        print("Status: Found ✓\n")
-        print("Configuration Options")
-        print("=" * 80)
-        print(f"{'Key':<30} {'Value':<25} {'Source':<15}")
-        print("-" * 80)
-
-        # Display all options in single table format
-        for section in ["scan", "cache", "output"]:
-            if section not in config:
-                continue
-
-            for option, value in config[section].items():
-                default_value = get_default_value(section, option)
-                is_default = value == default_value
-                source = "default" if is_default else "from config"
-
-                # Format value
-                if value is None:
-                    value_str = "<not set>"
-                elif isinstance(value, bool):
-                    value_str = "true" if value else "false"
-                else:
-                    value_str = str(value)
-
-                # Use full key format: section.option
-                full_key = f"{section}.{option}"
-                print(f"{full_key:<30} {value_str:<25} {source:<15}")
-
-        print("=" * 80)
-        print("\nUse 'vscan config set <key> <value>' to change settings")
-        print("Example: vscan config set scan.delay 2.0")
-        print("\nCLI arguments always override config file values.\n")
-
+    console.print(table)
+    console.print()
+    console.print(
+        "[dim]Use 'vscan config set <key> <value>' to change settings (e.g., 'vscan config set scan.delay 2.0')[/dim]"
+    )
+    console.print("[dim]CLI arguments always override config file values.[/dim]\n")
     raise typer.Exit(code=0)
 
 
@@ -894,9 +758,6 @@ def config_set(
         ..., help="Configuration key in format 'section.option' (e.g., scan.delay)"
     ),
     value: str = typer.Argument(..., help="Configuration value"),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
-    ),
 ):
     """
     Set a configuration value.
@@ -923,17 +784,11 @@ def config_set(
         config_exists,
     )
 
-    use_rich = should_use_rich(plain_flag=plain)
-
     try:
         # Create config file if it doesn't exist
         if not config_exists():
             create_default_config(force=False)
-            if use_rich:
-                display_info("Created new configuration file", use_rich=True)
-            else:
-                print("Created new configuration file")
-
+            display_info("Created new configuration file", use_rich=True)
         # Parse and validate
         section, option = parse_config_key(key)
         validated_value = validate_config_value(section, option, value)
@@ -941,29 +796,18 @@ def config_set(
         # Update config file
         update_config_value(section, option, validated_value)
 
-        if use_rich:
-            display_success(f"Updated {key} = {validated_value}", use_rich=True)
-        else:
-            print(f"✓ Updated {key} = {validated_value}")
-
+        display_success(f"Updated {key} = {validated_value}", use_rich=True)
         raise typer.Exit(code=0)
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
         raise  # pylint: disable=try-except-raise
     except ValueError as e:
-        if use_rich:
-            display_error(str(e), use_rich=True)
-            display_info("Run 'vscan config show' to see valid keys", use_rich=True)
-        else:
-            print(f"Error: {e}")
-            print("Run 'vscan config show' to see valid keys.")
+        display_error(str(e), use_rich=True)
+        display_info("Run 'vscan config show' to see valid keys", use_rich=True)
         raise typer.Exit(code=1)
     except Exception as e:
-        if use_rich:
-            display_error(f"Error updating config: {e}", use_rich=True)
-        else:
-            print(f"Error updating config: {e}")
+        display_error(f"Error updating config: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
 
@@ -971,9 +815,6 @@ def config_set(
 def config_get(
     key: str = typer.Argument(
         ..., help="Configuration key in format 'section.option' (e.g., scan.delay)"
-    ),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
     ),
 ):
     """
@@ -997,8 +838,6 @@ def config_get(
         config_exists,
     )
 
-    use_rich = should_use_rich(plain_flag=plain)
-
     try:
         from .types import ConfigWarning
 
@@ -1008,11 +847,7 @@ def config_get(
         # Display any config loading warnings
         if config_warnings:
             for warning in config_warnings:
-                if use_rich:
-                    display_warning(warning.message, use_rich=True)
-                else:
-                    print(f"Warning: {warning.message}")
-
+                display_warning(warning.message, use_rich=True)
         value = get_config_value(config, section, option)
         default_value = get_default_value(section, option)
 
@@ -1027,44 +862,30 @@ def config_get(
         else:
             value_str = str(value)
 
-        if use_rich:
-            # pylint: disable=redefined-outer-name,reimported
-            from rich.console import Console
+        # pylint: disable=redefined-outer-name,reimported
+        from rich.console import Console
 
-            console = Console()
-            console.print(
-                f"\n[cyan]{key}[/cyan] = [yellow]{value_str}[/yellow] [dim]({source})[/dim]\n"
-            )
-        else:
-            print(f"\n{key} = {value_str} ({source})\n")
-
+        console = Console()
+        console.print(
+            f"\n[cyan]{key}[/cyan] = [yellow]{value_str}[/yellow] [dim]({source})[/dim]\n"
+        )
         raise typer.Exit(code=0)
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
         raise  # pylint: disable=try-except-raise
     except ValueError as e:
-        if use_rich:
-            display_error(str(e), use_rich=True)
-            display_info("Run 'vscan config show' to see valid keys", use_rich=True)
-        else:
-            print(f"Error: {e}")
-            print("Run 'vscan config show' to see valid keys.")
+        display_error(str(e), use_rich=True)
+        display_info("Run 'vscan config show' to see valid keys", use_rich=True)
         raise typer.Exit(code=1)
     except Exception as e:
-        if use_rich:
-            display_error(f"Error reading config: {e}", use_rich=True)
-        else:
-            print(f"Error reading config: {e}")
+        display_error(f"Error reading config: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
 
 @config_app.command("reset")
 def config_reset(
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
-    ),
 ):
     """
     Reset configuration to defaults by deleting the config file.
@@ -1082,14 +903,10 @@ def config_reset(
     """
     from .config_manager import delete_config, get_config_path, config_exists
 
-    use_rich = should_use_rich(plain_flag=plain)
     config_path = get_config_path()
 
     if not config_exists():
-        if use_rich:
-            display_info("No configuration file to reset", use_rich=True)
-        else:
-            print("No configuration file to reset.")
+        display_info("No configuration file to reset", use_rich=True)
         raise typer.Exit(code=0)
 
     # Confirm before deleting unless --force is used
@@ -1098,36 +915,24 @@ def config_reset(
             f"This will delete your configuration file: {config_path}\n" "Are you sure?"
         )
         if not confirm:
-            if use_rich:
-                display_info("Operation cancelled", use_rich=True)
-            else:
-                print("Operation cancelled.")
+            display_info("Operation cancelled", use_rich=True)
             raise typer.Exit(code=1)
 
     try:
         delete_config()
 
-        if use_rich:
-            display_success("Configuration file deleted", use_rich=True)
-            display_info("All settings reset to defaults", use_rich=True)
-            display_info(
-                "Run 'vscan config init' to create a new config file", use_rich=True
-            )
-        else:
-            print("✓ Configuration file deleted.")
-            print("All settings reset to defaults.")
-            print("Run 'vscan config init' to create a new config file.")
-
+        display_success("Configuration file deleted", use_rich=True)
+        display_info("All settings reset to defaults", use_rich=True)
+        display_info(
+            "Run 'vscan config init' to create a new config file", use_rich=True
+        )
         raise typer.Exit(code=0)
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
         raise  # pylint: disable=try-except-raise
     except Exception as e:
-        if use_rich:
-            display_error(f"Error deleting config file: {e}", use_rich=True)
-        else:
-            print(f"Error deleting config file: {e}")
+        display_error(f"Error deleting config file: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
 
@@ -1168,9 +973,6 @@ def report(
         max=365,
         help="Maximum age of cached data to include (days)",
     ),
-    plain: bool = typer.Option(
-        False, "--plain", help="Disable colors and rich formatting"
-    ),
 ):
     """
     Generate a report from cached scan results without performing new scans.
@@ -1202,8 +1004,6 @@ def report(
     from .html_report_generator import HTMLReportGenerator
     from .utils import validate_path, safe_mkdir
 
-    use_rich = should_use_rich(plain_flag=plain)
-
     try:
         # Validate parameter
         cache_max_age = bounded_int_validator(cache_max_age, 1, 365, "cache-max-age")
@@ -1233,10 +1033,7 @@ def report(
         output_parent = Path(output_str).parent
         safe_mkdir(output_parent)
     except (ValueError, PermissionError) as e:
-        if use_rich:
-            display_error(f"Invalid output path: {e}", use_rich=True)
-        else:
-            print(f"Error: Invalid output path: {e}")
+        display_error(f"Invalid output path: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
     # Determine output format from extension
@@ -1244,26 +1041,17 @@ def report(
     output_format = output_path.suffix.lower()
 
     if output_format not in [".json", ".html", ".csv"]:
-        if use_rich:
-            display_error(
-                "Output file must have .json, .html, or .csv extension", use_rich=True
-            )
-        else:
-            print("Error: Output file must have .json, .html, or .csv extension")
+        display_error(
+            "Output file must have .json, .html, or .csv extension", use_rich=True
+        )
         raise typer.Exit(code=2)
 
     try:
         # Notify user that we're using cache only
-        if use_rich:
-            display_info(
-                "Generating report from cached data only (no new scans will be performed)",
-                use_rich=True,
-            )
-        else:
-            print(
-                "ℹ Generating report from cached data only (no new scans will be performed)"
-            )
-
+        display_info(
+            "Generating report from cached data only (no new scans will be performed)",
+            use_rich=True,
+        )
         # Retrieve all cached results
         cache_manager = CacheManager(cache_dir=cache_dir_str)
 
@@ -1273,11 +1061,11 @@ def report(
         init_messages = cache_manager.get_init_messages()
         for msg in init_messages:
             if isinstance(msg, CacheWarning):
-                display_warning(msg.message, use_rich=use_rich)
+                display_warning(msg.message, use_rich=True)
             elif isinstance(msg, CacheError):
-                display_error(msg.message, use_rich=use_rich)
+                display_error(msg.message, use_rich=True)
             elif isinstance(msg, CacheInfo):
-                display_info(msg.message, use_rich=use_rich)
+                display_info(msg.message, use_rich=True)
 
         cached_results = cache_manager.get_all_cached_results(
             max_age_days=cache_max_age
@@ -1289,44 +1077,25 @@ def report(
 
             if not extensions_exist:
                 # No extensions installed - cannot generate report
-                if use_rich:
-                    display_warning(
-                        "No VS Code extensions found. Cannot generate report.",
-                        use_rich=True,
-                    )
-                else:
-                    print(
-                        "⚠ Warning: No VS Code extensions found. Cannot generate report."
-                    )
+                display_warning(
+                    "No VS Code extensions found. Cannot generate report.",
+                    use_rich=True,
+                )
                 raise typer.Exit(code=1)
             else:
                 # Extensions exist but cache is empty - fail fast
-                if use_rich:
-                    display_error(
-                        "Cache is empty. Run 'vscan scan' first to populate the cache.",
-                        use_rich=True,
-                    )
-                    display_info(
-                        f"Found {extension_count} installed extensions ready to scan.",
-                        use_rich=True,
-                    )
-                else:
-                    print(
-                        f"✗ Error: Cache is empty. Run 'vscan scan' first to populate the cache."
-                    )
-                    print(
-                        f"ℹ Found {extension_count} installed extensions ready to scan."
-                    )
+                display_error(
+                    "Cache is empty. Run 'vscan scan' first to populate the cache.",
+                    use_rich=True,
+                )
+                display_info(
+                    f"Found {extension_count} installed extensions ready to scan.",
+                    use_rich=True,
+                )
                 raise typer.Exit(code=2)
 
         # Show cache statistics
-        if use_rich:
-            display_info(
-                f"Found {len(cached_results)} cached extensions", use_rich=True
-            )
-        else:
-            print(f"ℹ Found {len(cached_results)} cached extensions")
-
+        display_info(f"Found {len(cached_results)} cached extensions", use_rich=True)
         # Format output with all available data
         from datetime import datetime
 
@@ -1351,11 +1120,7 @@ def report(
             with open(output_str, "w", encoding="utf-8") as f:
                 f.write(html_content)
 
-            if use_rich:
-                display_success(f"HTML report generated: {output_str}", use_rich=True)
-            else:
-                print(f"✓ HTML report generated: {output_str}")
-
+            display_success(f"HTML report generated: {output_str}", use_rich=True)
         elif output_format == ".csv":
             # Generate CSV export
             csv_content = formatter.format_csv(formatted_results.get("extensions", []))
@@ -1363,32 +1128,21 @@ def report(
             with open(output_str, "w", encoding="utf-8", newline="") as f:
                 f.write(csv_content)
 
-            if use_rich:
-                display_success(f"CSV export generated: {output_str}", use_rich=True)
-            else:
-                print(f"✓ CSV export generated: {output_str}")
-
+            display_success(f"CSV export generated: {output_str}", use_rich=True)
         else:  # JSON
             import json
 
             with open(output_str, "w", encoding="utf-8") as f:
                 json.dump(formatted_results, f, indent=2, ensure_ascii=False)
 
-            if use_rich:
-                display_success(f"JSON report generated: {output_str}", use_rich=True)
-            else:
-                print(f"✓ JSON report generated: {output_str}")
-
+            display_success(f"JSON report generated: {output_str}", use_rich=True)
         raise typer.Exit(code=0)
 
     except (typer.Exit, SystemExit):
         # Let these propagate naturally
         raise  # pylint: disable=try-except-raise
     except Exception as e:
-        if use_rich:
-            display_error(f"Error generating report: {e}", use_rich=True)
-        else:
-            print(f"Error generating report: {e}")
+        display_error(f"Error generating report: {e}", use_rich=True)
         raise typer.Exit(code=2)
 
 
@@ -1409,14 +1163,11 @@ def main(
     Use [bold cyan]--help[/bold cyan] with any command for detailed information.
     """
     if version:
-        use_rich = should_use_rich(plain_flag=False)
-        if use_rich:
-            console = Console()
-            console.print(
-                f"[bold cyan]vscan[/bold cyan] version [green]{__version__}[/green]"
-            )
-        else:
-            print(f"vscan version {__version__}")
+        # Always use Rich formatting for version display
+        console = Console()
+        console.print(
+            f"[bold cyan]vscan[/bold cyan] version [green]{__version__}[/green]"
+        )
         raise typer.Exit(code=0)
 
     # If no command and no version flag, show help
