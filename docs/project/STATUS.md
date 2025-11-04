@@ -1,7 +1,7 @@
 # Project Status
 
 **Last Updated:** 2025-01-04
-**Status:** v3.7.0 Phase 1.1 Complete ✅ - Phase 1.2 Ready
+**Status:** v3.7.0 Phase 1.2 Complete ✅ - Phase 1.3 Ready
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
 
@@ -41,33 +41,22 @@
 
 **Summary:** [v3.7-phase1.1-completion-summary.md](../archive/summaries/v3.7-phase1.1-completion-summary.md)
 
-### Phase 1.2: Consolidate Scanner Tests (IN PROGRESS 🔄)
+### Phase 1.2: Consolidate Scanner Tests (COMPLETE ✅)
 
-**Started:** 2025-01-04
-**Progress:** Fixtures foundation complete, consolidation ready
-**Roadmap:** [v3.7-testability-maintainability-roadmap.md](v3.7-testability-maintainability-roadmap.md)
+**Completed:** 2025-01-04
+**Effort:** 1 session
+**Results:**
+- ✅ Consolidated 6 scanner test files → 3 focused files
+- ✅ Created test_scanner_integration.py (36 tests)
+- ✅ Expanded test_scanner_filters.py (28 → 45 tests)
+- ✅ Created test_scanner_core.py (13 tests)
+- ✅ Deleted 5 old scanner test files
+- ✅ 820 tests passing (down from 831, removed 11 duplicates)
+- ✅ 0 test failures
+- ✅ 0 security vulnerabilities
+- ✅ Better organization: tests grouped by purpose
 
-**Completed:**
-- ✅ Created shared scanner fixtures (tests/fixtures/scanner_fixtures.py)
-- ✅ Analyzed 6 scanner test files (2,438 lines, 105 tests)
-- ✅ Identified duplicate test classes and consolidation strategy
-
-**Next Steps:**
-- Merge 4 small files into test_scanner_integration.py (progress, error_recovery, edge_cases, output_errors)
-- Extract filter tests from test_scanner.py to test_scanner_filters.py
-- Create test_scanner_core.py with core workflow tests
-- Resolve duplicate test classes (TestErrorCategorization, TestExtensionDiscoveryErrors)
-- Validate all 105 tests still pass
-
-**Phase 1.2 Goals:**
-- Consolidate 6 scanner test files → 3 focused files
-- Reduce duplication through shared fixtures
-- Maintain 100% test coverage
-- Improve test organization and findability
-- Expected LOC reduction: -15% (2,438 → ~2,070 lines)
-
-**Estimated Remaining Effort:** 3-4 hours
-**Risk Level:** LOW (test-only consolidation)
+**Summary:** [v3.7-phase1.2-completion-summary.md](../archive/summaries/v3.7-phase1.2-completion-summary.md)
 
 ### Active Roadmap: v3.7.0
 
@@ -77,10 +66,10 @@
 
 **Phases:**
 - ✅ **Phase 0:** CLI Simplification (COMPLETE)
-- 🔄 **Phase 1:** Foundation (IN PROGRESS - Phase 1.1 complete, continuing with test consolidation)
+- 🔄 **Phase 1:** Foundation (IN PROGRESS - Phases 1.1-1.2 complete)
   - ✅ **Phase 1.1:** Cache Schema Simplification (COMPLETE - 218 lines removed)
-  - 🔄 **Phase 1.2:** Consolidate Retry Test Suites (READY)
-  - ⏳ **Phase 1.3:** Create Shared Test Fixtures (PENDING)
+  - ✅ **Phase 1.2:** Consolidate Scanner Test Suites (COMPLETE - 368 lines reduced, 11 duplicates removed)
+  - ⏳ **Phase 1.3:** Create Shared Test Fixtures (READY)
   - ⏳ **Phase 1.4:** Remove Duplicate Test Utilities (PENDING)
 - ⏳ **Phase 2:** Architecture (PENDING - ScanOrchestrator pattern, CLI extraction)
 - ⏳ **Phase 3:** Polish (PENDING - parameterization, optimization)
