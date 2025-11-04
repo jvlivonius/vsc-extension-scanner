@@ -1,7 +1,7 @@
 # Project Status
 
 **Last Updated:** 2025-01-04
-**Status:** v3.7.0 Phase 0 Complete ✅ - Phase 1 Ready
+**Status:** v3.7.0 Phase 1.1 Complete ✅ - Phase 1.2 Ready
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
 
@@ -9,7 +9,7 @@
 
 ## Active Development
 
-**Status:** v3.7.0 Phase 0 Complete ✅
+**Status:** v3.7.0 Phase 1.1 Complete ✅
 
 **Branch:** `feature/v3.7-testability-maintainability`
 
@@ -21,25 +21,39 @@
 - ✅ Removed `--plain` mode from CLI (breaking change)
 - ✅ Simplified display.py (removed plain mode branching)
 - ✅ Fixed all import errors and test failures
-- ✅ 835 tests passing (0 failures)
+- ✅ 836 tests passing (0 failures)
 - ✅ 0 security vulnerabilities
 - ✅ Rich CLI fully functional
 
 **Summary:** [v3.7-phase0-completion-summary.md](../archive/summaries/v3.7-phase0-completion-summary.md)
 
-### Next: Phase 1 - Foundation
+### Phase 1.1: Cache Schema Simplification (COMPLETE ✅)
+
+**Completed:** 2025-01-04
+**Effort:** 1 session
+**Results:**
+- ✅ Replaced complex migration logic with auto-regenerate pattern
+- ✅ Removed 218 lines of code (118 production + 100 test)
+- ✅ Schema version bumped: 2.1 → 3.0 (breaking change)
+- ✅ 831 tests passing (0 failures, 5 obsolete tests removed)
+- ✅ 0 security vulnerabilities
+- ✅ Improved cache_manager.py maintainability
+
+**Summary:** [v3.7-phase1.1-completion-summary.md](../archive/summaries/v3.7-phase1.1-completion-summary.md)
+
+### Next: Phase 1.2 - Consolidate Retry Test Suites
 
 **Status:** Ready to begin
 **Roadmap:** [v3.7-testability-maintainability-roadmap.md](v3.7-testability-maintainability-roadmap.md)
 
-**Phase 1 Goals:**
-- Extract business logic from CLI framework coupling
-- Simplify cache migration code (remove 115 LOC legacy code)
-- Improve unit test coverage of core logic
-- Target: 88-90% overall coverage
+**Phase 1.2 Goals:**
+- Consolidate 3 retry test files into 1-2 files
+- Use property-based testing for retry scenarios
+- Reduce test count: 48 tests → ~18 tests
+- Improve coverage of edge cases
 
-**Estimated Effort:** 10 hours
-**Risk Level:** LOW (foundation refactoring)
+**Estimated Effort:** 3-4 hours
+**Risk Level:** LOW (test consolidation)
 
 ### Active Roadmap: v3.7.0
 
@@ -49,13 +63,17 @@
 
 **Phases:**
 - ✅ **Phase 0:** CLI Simplification (COMPLETE)
-- 🔄 **Phase 1:** Foundation (READY - cache simplification, test consolidation)
+- 🔄 **Phase 1:** Foundation (IN PROGRESS - Phase 1.1 complete, continuing with test consolidation)
+  - ✅ **Phase 1.1:** Cache Schema Simplification (COMPLETE - 218 lines removed)
+  - 🔄 **Phase 1.2:** Consolidate Retry Test Suites (READY)
+  - ⏳ **Phase 1.3:** Create Shared Test Fixtures (PENDING)
+  - ⏳ **Phase 1.4:** Remove Duplicate Test Utilities (PENDING)
 - ⏳ **Phase 2:** Architecture (PENDING - ScanOrchestrator pattern, CLI extraction)
 - ⏳ **Phase 3:** Polish (PENDING - parameterization, optimization)
 
 **Key Improvements:**
 - ✅ Remove plain mode (-150 LOC, simpler testing)
-- Remove legacy migration code (-115 LOC)
+- ✅ Remove legacy migration code (-218 LOC, auto-regenerate pattern)
 - Extract ScanOrchestrator pattern (scanner.py 71% → 85%)
 - Property-based retry testing (48 tests → 18 with better coverage)
 - CLI validation extraction (cli.py 67% → 80%)
