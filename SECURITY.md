@@ -4,9 +4,9 @@
 
 | Version | Supported          | Status | End of Life |
 | ------- | ------------------ | ------ | ----------- |
-| 3.5.6   | :white_check_mark: | Latest stable | - |
-| 3.5.5   | :white_check_mark: | Maintenance | 2025-12-01 |
-| 3.5.0-3.5.4 | :x: | Security fixes only | Upgrade recommended |
+| 3.6.0   | :white_check_mark: | Latest stable | - |
+| 3.5.6   | :white_check_mark: | Maintenance | 2026-01-04 |
+| 3.5.0-3.5.5 | :x: | Security fixes only | Upgrade recommended |
 | < 3.5   | :x: | Unsupported | Immediate upgrade required |
 
 **Support Policy:** Latest stable release + previous minor version receive full support. Older versions receive critical security fixes only. Users should upgrade to latest stable version.
