@@ -1,7 +1,7 @@
 # Project Status
 
 **Last Updated:** 2025-01-04
-**Status:** v3.7.0 Phase 1.3 Complete ✅ - Phase 1.4 Ready
+**Status:** v3.7.0 Phase 1 Complete ✅ - Phase 2 Ready
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
 
@@ -73,6 +73,21 @@
 
 **Handoff:** [v3.7-phase1.3-handoff.md](v3.7-phase1.3-handoff.md)
 
+### Phase 1.4: Remove Duplicate Test Utilities (COMPLETE ✅)
+
+**Completed:** 2025-01-04
+**Effort:** <1 hour
+**Results:**
+- ✅ Removed unused scanner_fixtures.py (267 lines)
+- ✅ Integrated canonical fixtures into conftest.py
+- ✅ Eliminated all fixture duplication
+- ✅ Simplified test infrastructure
+- ✅ 820 tests passing (0 failures, 1 skipped)
+- ✅ 0 security vulnerabilities
+- ✅ All fixtures available via conftest autodiscovery
+
+**Summary:** [v3.7-phase1.4-completion-summary.md](../archive/summaries/v3.7-phase1.4-completion-summary.md)
+
 ### Active Roadmap: v3.7.0
 
 **Document:** [v3.7-testability-maintainability-roadmap.md](v3.7-testability-maintainability-roadmap.md)
@@ -81,12 +96,12 @@
 
 **Phases:**
 - ✅ **Phase 0:** CLI Simplification (COMPLETE)
-- 🔄 **Phase 1:** Foundation (IN PROGRESS - Phases 1.1-1.3 complete)
+- ✅ **Phase 1:** Foundation (COMPLETE - All phases 1.1-1.4 complete)
   - ✅ **Phase 1.1:** Cache Schema Simplification (COMPLETE - 218 lines removed)
   - ✅ **Phase 1.2:** Consolidate Scanner Test Suites (COMPLETE - 368 lines reduced, 11 duplicates removed)
-  - ✅ **Phase 1.3:** Create Shared Test Fixtures (COMPLETE - 502 lines, 17 fixtures, ~362 lines duplication eliminated)
-  - ⏳ **Phase 1.4:** Remove Duplicate Test Utilities (READY - Optional migration)
-- ⏳ **Phase 2:** Architecture (PENDING - ScanOrchestrator pattern, CLI extraction)
+  - ✅ **Phase 1.3:** Create Shared Test Fixtures (COMPLETE - 502 lines, 17 fixtures)
+  - ✅ **Phase 1.4:** Remove Duplicate Test Utilities (COMPLETE - 267 lines removed, all duplication eliminated)
+- ⏳ **Phase 2:** Architecture (READY - ScanOrchestrator pattern, CLI extraction)
 - ⏳ **Phase 3:** Polish (PENDING - parameterization, optimization)
 
 **Key Improvements:**
