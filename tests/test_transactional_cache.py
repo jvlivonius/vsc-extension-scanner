@@ -73,7 +73,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             workers=2,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -140,7 +140,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             workers=2,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -198,7 +198,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             workers=1,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -207,7 +207,8 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             mock_api_class.return_value = mock_api
 
             # Should not crash even though save_result fails
-            with patch("vscode_scanner.scanner.log") as mock_log:
+            # Note: log is now called from scan_orchestrator (via utils), not scanner
+            with patch("vscode_scanner.utils.log") as mock_log:
                 results, stats = _scan_extensions(
                     extensions,
                     args,
@@ -297,7 +298,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             workers=1,  # Use 1 worker for predictable ordering
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -360,7 +361,7 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             workers=1,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -369,7 +370,8 @@ class TestTransactionalCacheWrites(unittest.TestCase):
             mock_api_class.return_value = mock_api
 
             # Should not crash even though save_result fails
-            with patch("vscode_scanner.scanner.log") as mock_log:
+            # Note: log is now called from scan_orchestrator (via utils), not scanner
+            with patch("vscode_scanner.utils.log") as mock_log:
                 results, stats = _scan_extensions(
                     extensions,
                     args,

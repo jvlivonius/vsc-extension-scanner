@@ -220,74 +220,18 @@ class TestProgressCallback(unittest.TestCase):
 
 @pytest.mark.unit
 class TestScanExtensionsWithCallback(unittest.TestCase):
-    """Test _scan_extensions() integration with progress callback."""
+    """Test _scan_extensions() integration with progress callback via ScanOrchestrator."""
 
-    @patch("vscode_scanner.scanner.ThreadPoolExecutor")
-    @patch("vscode_scanner.scanner._scan_single_extension_worker")
-    def test_scan_extensions_calls_callback_on_start(
-        self, mock_worker, mock_executor_class
-    ):
-        """_scan_extensions calls callback with started event."""
+    @patch("vscode_scanner.scan_orchestrator.ScanOrchestrator")
+    def test_scan_extensions_calls_callback_on_start(self, mock_orchestrator_class):
+        """_scan_extensions passes callback to ScanOrchestrator."""
         from vscode_scanner.scanner import _scan_extensions
 
         # Arrange
         mock_callback = Mock()
-        mock_executor = Mock()
-        mock_executor_class.return_value.__enter__.return_value = mock_executor
-        mock_executor.submit = Mock(return_value=Mock())
-
-        # Mock futures - empty for quick test
-        mock_executor.submit.return_value = Mock()
-        mock_worker.return_value = ({"scan_status": "success"}, False, False)
-
-        from unittest.mock import MagicMock
-
-        mock_future = MagicMock()
-        mock_future.result.return_value = ({"scan_status": "success"}, False, False)
-
-        with patch("vscode_scanner.scanner.as_completed", return_value=[]):
-            extensions = [{"id": "test.ext", "version": "1.0"}]
-            args = Mock(
-                workers=1, refresh_cache=False, no_cache=False, cache_max_age=30
-            )
-
-            # Act
-            _scan_extensions(
-                extensions,
-                args,
-                None,
-                "2024-11-03T00:00:00Z",
-                use_rich=False,
-                quiet=False,
-                on_progress=mock_callback,
-            )
-
-            # Assert - callback called with started event
-            mock_callback.assert_any_call("started", {"total": 1})
-
-    @patch("vscode_scanner.scanner.ThreadPoolExecutor")
-    @patch("vscode_scanner.scanner._scan_single_extension_worker")
-    @patch("vscode_scanner.scanner.as_completed")
-    def test_scan_extensions_calls_callback_on_completion(
-        self, mock_as_completed, mock_worker, mock_executor_class
-    ):
-        """_scan_extensions calls callback with completed event."""
-        from vscode_scanner.scanner import _scan_extensions
-
-        # Arrange
-        mock_callback = Mock()
-        mock_executor = Mock()
-        mock_executor_class.return_value.__enter__.return_value = mock_executor
-
-        # Mock successful scan
-        mock_future = Mock()
-        mock_future.result.return_value = (
-            {"scan_status": "success", "id": "test.ext"},
-            False,  # not from cache
-            True,  # should cache
-        )
-        mock_executor.submit.return_value = mock_future
-        mock_as_completed.return_value = [mock_future]
+        mock_orchestrator = Mock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.scan.return_value = ([], {})
 
         extensions = [{"id": "test.ext", "version": "1.0"}]
         args = Mock(workers=1, refresh_cache=False, no_cache=False, cache_max_age=30)
@@ -303,7 +247,45 @@ class TestScanExtensionsWithCallback(unittest.TestCase):
             on_progress=mock_callback,
         )
 
-        # Assert - callback called with completed event
+        # Assert - orchestrator created with callback
+        mock_orchestrator_class.assert_called_once()
+        call_kwargs = mock_orchestrator_class.call_args[1]
+        assert call_kwargs["on_progress"] == mock_callback
+
+        # Assert - scan was called
+        mock_orchestrator.scan.assert_called_once_with(extensions)
+
+    @patch("vscode_scanner.scan_orchestrator._scan_single_extension_worker")
+    def test_scan_extensions_calls_callback_on_completion(self, mock_worker):
+        """_scan_extensions via ScanOrchestrator calls callback with completed event."""
+        from vscode_scanner.scanner import _scan_extensions
+
+        # Arrange
+        mock_callback = Mock()
+
+        # Mock successful scan
+        mock_worker.return_value = (
+            {"scan_status": "success", "id": "test.ext"},
+            False,  # not from cache
+            True,  # should cache
+        )
+
+        extensions = [{"id": "test.ext", "version": "1.0"}]
+        args = Mock(workers=1, refresh_cache=False, no_cache=False, cache_max_age=30)
+
+        # Act
+        _scan_extensions(
+            extensions,
+            args,
+            None,
+            "2024-11-03T00:00:00Z",
+            use_rich=False,
+            quiet=False,
+            on_progress=mock_callback,
+        )
+
+        # Assert - callback called with started and completed events
+        assert any(call[0][0] == "started" for call in mock_callback.call_args_list)
         completed_calls = [
             c for c in mock_callback.call_args_list if c[0][0] == "completed"
         ]
@@ -315,28 +297,20 @@ class TestScanExtensionsWithCallback(unittest.TestCase):
         assert event_data["index"] == 1
         assert event_data["total"] == 1
 
-    @patch("vscode_scanner.scanner.ThreadPoolExecutor")
-    @patch("vscode_scanner.scanner.as_completed")
-    def test_scan_extensions_calls_callback_on_cached(
-        self, mock_as_completed, mock_executor_class
-    ):
-        """_scan_extensions calls callback with cached event for cached results."""
+    @patch("vscode_scanner.scan_orchestrator._scan_single_extension_worker")
+    def test_scan_extensions_calls_callback_on_cached(self, mock_worker):
+        """_scan_extensions via ScanOrchestrator calls callback with cached event."""
         from vscode_scanner.scanner import _scan_extensions
 
         # Arrange
         mock_callback = Mock()
-        mock_executor = Mock()
-        mock_executor_class.return_value.__enter__.return_value = mock_executor
 
         # Mock cached result
-        mock_future = Mock()
-        mock_future.result.return_value = (
+        mock_worker.return_value = (
             {"scan_status": "success", "id": "cached.ext"},
             True,  # from cache
             False,  # should not cache again
         )
-        mock_executor.submit.return_value = mock_future
-        mock_as_completed.return_value = [mock_future]
 
         extensions = [{"id": "cached.ext", "version": "1.0"}]
         args = Mock(workers=1, refresh_cache=False, no_cache=False, cache_max_age=30)
@@ -360,24 +334,16 @@ class TestScanExtensionsWithCallback(unittest.TestCase):
         assert event_data["extension"]["id"] == "cached.ext"
         assert event_data["from_cache"] is True
 
-    @patch("vscode_scanner.scanner.ThreadPoolExecutor")
-    @patch("vscode_scanner.scanner.as_completed")
-    def test_scan_extensions_calls_callback_on_failure(
-        self, mock_as_completed, mock_executor_class
-    ):
-        """_scan_extensions calls callback with failed event on exceptions."""
+    @patch("vscode_scanner.scan_orchestrator._scan_single_extension_worker")
+    def test_scan_extensions_calls_callback_on_failure(self, mock_worker):
+        """_scan_extensions via ScanOrchestrator calls callback with failed event."""
         from vscode_scanner.scanner import _scan_extensions
 
         # Arrange
         mock_callback = Mock()
-        mock_executor = Mock()
-        mock_executor_class.return_value.__enter__.return_value = mock_executor
 
         # Mock future that raises exception
-        mock_future = Mock()
-        mock_future.result.side_effect = Exception("Scan failed")
-        mock_executor.submit.return_value = mock_future
-        mock_as_completed.return_value = [mock_future]
+        mock_worker.side_effect = Exception("Scan failed")
 
         extensions = [{"id": "failed.ext", "version": "1.0"}]
         args = Mock(workers=1, refresh_cache=False, no_cache=False, cache_max_age=30)
@@ -401,22 +367,13 @@ class TestScanExtensionsWithCallback(unittest.TestCase):
         assert event_data["extension"]["id"] == "failed.ext"
         assert "Scan failed" in event_data["error"]
 
-    @patch("vscode_scanner.scanner.ThreadPoolExecutor")
-    @patch("vscode_scanner.scanner.as_completed")
-    def test_scan_extensions_works_without_callback(
-        self, mock_as_completed, mock_executor_class
-    ):
-        """_scan_extensions works correctly when callback is None."""
+    @patch("vscode_scanner.scan_orchestrator._scan_single_extension_worker")
+    def test_scan_extensions_works_without_callback(self, mock_worker):
+        """_scan_extensions via ScanOrchestrator works correctly when callback is None."""
         from vscode_scanner.scanner import _scan_extensions
 
         # Arrange
-        mock_executor = Mock()
-        mock_executor_class.return_value.__enter__.return_value = mock_executor
-
-        mock_future = Mock()
-        mock_future.result.return_value = ({"scan_status": "success"}, False, True)
-        mock_executor.submit.return_value = mock_future
-        mock_as_completed.return_value = [mock_future]
+        mock_worker.return_value = ({"scan_status": "success"}, False, True)
 
         extensions = [{"id": "test.ext", "version": "1.0"}]
         args = Mock(workers=1, refresh_cache=False, no_cache=False, cache_max_age=30)

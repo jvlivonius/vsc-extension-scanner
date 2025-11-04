@@ -31,9 +31,9 @@ VS Code Extension Security Scanner uses a **Simple Layered Architecture** design
 
 **Current Metrics:** Run `cloc vscode_scanner/ --by-file` for current line counts and `ls vscode_scanner/*.py | wc -l` for module count
 
-**Baseline (v3.5.x):**
-- ~9,800 lines of Python code
-- 14 modules organized in flat structure
+**Baseline (v3.7.x):**
+- ~10,000 lines of Python code
+- 20 modules organized in flat structure (Phase 2.1-2.2: Added parallel_executor, scan_orchestrator, scan_helpers, output_writer, summary_formatter, filter_help_generator)
 - 3 architectural layers (Presentation, Application, Infrastructure)
 - No sub-packages (flat structure sufficient for this size)
 
@@ -430,24 +430,220 @@ def _generate_scripts(self) -> str:
 - Print-friendly format for documentation and compliance
 - Performance optimized for reports with 100+ extensions
 
+### parallel_executor.py (Application)
+
+```python
+# Responsibilities:
+# 1. Generic parallel execution pattern
+# 2. ThreadPoolExecutor abstraction
+# 3. Progress callback coordination
+# 4. Worker task preparation and result processing
+
+# Key Classes:
+- ParallelExecutor - Base class for parallel operations (Generic[T, R])
+
+# Design Pattern:
+- Template Method pattern for parallel execution
+- Subclasses implement: prepare_task(), process_result(), handle_error()
+```
+
+**Lines of Code:** ~210
+**Dependencies:** concurrent.futures (standard library), typing
+**Added:** v3.7.0 (Phase 2.1 - ScanOrchestrator extraction)
+
+### scan_orchestrator.py (Application)
+
+```python
+# Responsibilities:
+# 1. Orchestrate vulnerability scanning with parallel execution
+# 2. Integrate cache persistence (instant save)
+# 3. Collect thread-safe statistics
+# 4. Emit progress notifications (started, completed, cached, failed)
+
+# Key Classes:
+- ScanOrchestrator - Extends ParallelExecutor for scanning
+
+# Architecture:
+- Separates business logic from ThreadPoolExecutor mechanics
+- Delegates to _scan_single_extension_worker for actual scanning
+- Handles cache failures gracefully (logs warnings, continues scan)
+```
+
+**Lines of Code:** ~230
+**Dependencies:** parallel_executor, cache_manager, scan_helpers
+**Added:** v3.7.0 (Phase 2.1 - Improved testability through orchestration pattern)
+
+### scan_helpers.py (Application)
+
+```python
+# Responsibilities:
+# 1. Thread-safe statistics collection (ThreadSafeStats class)
+# 2. Worker function for scanning individual extensions
+# 3. Error categorization and message simplification helpers
+
+# Key Classes:
+- ThreadSafeStats - Thread-safe statistics with Lock-based synchronization
+
+# Key Functions:
+- _scan_single_extension_worker() - Thread-safe worker for single extension scan
+- _categorize_error() - Categorize error messages into types
+- _simplify_error_message() - Convert error types to user-friendly messages
+
+# Architecture:
+- Shared code between scanner.py and scan_orchestrator.py
+- Breaks circular dependency through isolated helper module
+- No dependencies on other application modules
+```
+
+**Lines of Code:** ~225
+**Dependencies:** cache_manager, vscan_api (imported locally in worker function)
+**Added:** v3.7.0 (Phase 2.1 - Extracted to resolve circular dependency)
+
 ### scanner.py (Application)
 
 ```python
 # Responsibilities:
-# 1. Orchestrate scan workflow
+# 1. Main scan entry point and coordination
 # 2. Apply filtering (publisher, risk level, IDs)
-# 3. Coordinate cache and API operations
-# 4. Aggregate results
+# 3. Delegate to ScanOrchestrator for parallel execution
+# 4. Aggregate results and build summary
 
 # Key Functions:
 - perform_scan() - Main scan orchestration
 - _filter_extensions() - Apply user filters
-- _scan_extension() - Scan single extension
+- _scan_extensions() - Delegates to ScanOrchestrator (refactored v3.7)
+- _scan_single_extension_worker() - Worker function for scanning
 - _build_summary() - Aggregate statistics
+
+# Refactored v3.7:
+- Removed ThreadPoolExecutor logic (→ parallel_executor.py)
+- Reduced _scan_extensions from 149 lines to 72 lines (-52%)
+- Improved testability through orchestration pattern
 ```
 
-**Lines of Code:** Run `wc -l vscode_scanner/scanner.py` for current count (baseline: ~800)
-**Dependencies:** vscan_api, cache_manager, extension_discovery, display
+**Lines of Code:** Run `wc -l vscode_scanner/scanner.py` for current count (baseline: ~650, reduced from ~800)
+**Dependencies:** scan_orchestrator, vscan_api, cache_manager, extension_discovery, display
+
+### parallel_executor.py (Application) [Phase 2.1]
+
+```python
+# Responsibilities:
+# 1. Generic parallel execution pattern using ThreadPoolExecutor
+# 2. Template Method pattern for customizable parallel workflows
+# 3. Progress notification through callbacks
+# 4. Error handling for worker failures
+
+# Key Methods:
+- prepare_task() - Abstract method for task preparation
+- process_result() - Abstract method for result processing
+- handle_error() - Abstract method for error handling
+- execute() - Template method for parallel execution
+```
+
+**Lines of Code:** Run `wc -l vscode_scanner/parallel_executor.py` for current count (baseline: ~210)
+**Dependencies:** None (pure generic pattern)
+**Test Coverage:** 96% (37 tests)
+
+### scan_orchestrator.py (Application) [Phase 2.1]
+
+```python
+# Responsibilities:
+# 1. Specialized orchestrator for vulnerability scanning
+# 2. Extends ParallelExecutor with scan-specific logic
+# 3. Instant cache persistence (zero data loss)
+# 4. Thread-safe statistics aggregation
+
+# Key Methods:
+- prepare_task() - Prepares extension for worker
+- process_result() - Handles scan results + instant cache save
+- handle_error() - Categorizes and logs scan errors
+- update_stats_for_result() - Thread-safe stats updates
+```
+
+**Lines of Code:** Run `wc -l vscode_scanner/scan_orchestrator.py` for current count (baseline: ~230)
+**Dependencies:** scan_helpers, cache_manager, vscan_api, utils
+**Test Coverage:** 100% (37 tests)
+
+### scan_helpers.py (Application) [Phase 2.1]
+
+```python
+# Responsibilities:
+# 1. Shared code between scanner and scan_orchestrator
+# 2. ThreadSafeStats class for parallel statistics
+# 3. Worker function for single extension scanning
+# 4. Error categorization and simplification
+
+# Key Components:
+- ThreadSafeStats - Lock-based thread-safe statistics
+- _scan_single_extension_worker() - Worker for parallel scan
+- _categorize_error() - Error type classification
+- _simplify_error_message() - User-friendly error messages
+```
+
+**Lines of Code:** Run `wc -l vscode_scanner/scan_helpers.py` for current count (baseline: ~225)
+**Dependencies:** vscan_api, cache_manager, utils
+**Test Coverage:** 97.33%
+
+**Why scan_helpers.py exists:** Created to break circular dependency between scanner.py and scan_orchestrator.py. Both modules needed ThreadSafeStats and worker functions, so extracting to a separate module maintained clean layering.
+
+### output_writer.py (Application) [Phase 2.2]
+
+```python
+# Responsibilities:
+# 1. Output format detection (CSV, HTML, JSON)
+# 2. Content generation delegation to formatters
+# 3. File writing with proper encoding
+# 4. Output orchestration and progress logging
+
+# Key Methods:
+- detect_format() - Pure function: file extension → format
+- generate_content() - Pure function: results + format → content
+- write_to_file() - I/O operation: content → file
+- write_output() - Orchestrates full workflow
+```
+
+**Lines of Code:** Run `wc -l vscode_scanner/output_writer.py` for current count (baseline: ~220)
+**Dependencies:** output_formatter, html_report_generator, display, utils
+**Test Coverage:** 100% (31 tests)
+
+### summary_formatter.py (Application) [Phase 2.2]
+
+```python
+# Responsibilities:
+# 1. Quiet mode summary text generation
+# 2. Retry statistics extraction
+# 3. Conditional display logic (cache/retry stats)
+# 4. Pure functions for testable formatting
+
+# Key Methods:
+- format_quiet_summary() - Pure function: counts → summary text
+- extract_retry_stats() - Pure function: stats dict → retry stats
+- should_show_cache_stats() - Pure function: results + verbose → bool
+- should_show_retry_stats() - Pure function: retry_stats + verbose → bool
+```
+
+**Lines of Code:** Run `wc -l vscode_scanner/summary_formatter.py` for current count (baseline: ~160)
+**Dependencies:** None (pure functions)
+**Test Coverage:** 100% (29 tests)
+
+### filter_help_generator.py (Application) [Phase 2.2]
+
+```python
+# Responsibilities:
+# 1. Active filter extraction from args
+# 2. Publisher filter detection
+# 3. Suggestion message generation
+# 4. Pure functions for testable help text
+
+# Key Methods:
+- extract_active_filters() - Pure function: args → filter list
+- has_publisher_filter() - Pure function: args → bool
+- generate_suggestion_messages() - Pure function: counts + filters → messages
+```
+
+**Lines of Code:** Run `wc -l vscode_scanner/filter_help_generator.py` for current count (baseline: ~110)
+**Dependencies:** None (pure functions)
+**Test Coverage:** 100% (18 tests)
 
 ### vscan_api.py (Infrastructure)
 
@@ -902,7 +1098,7 @@ Retry Statistics:
 The architecture intentionally **avoids** these patterns to maintain simplicity:
 
 ❌ **Dependency Injection Frameworks**
-- Not needed for 14 modules
+- Not needed for 16 modules
 - Adds complexity without benefit
 - Manual dependency passing is clear
 
@@ -937,7 +1133,7 @@ The architecture intentionally **avoids** these patterns to maintain simplicity:
 - Simple deployment
 
 ❌ **Sub-Packages**
-- Flat structure works well for 14 modules
+- Flat structure works well for 16 modules
 - Consider sub-packages only after 20+ modules
 - Current organization is clear
 
