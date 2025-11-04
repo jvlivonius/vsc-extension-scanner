@@ -5,8 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
-[![Tests: 628 passed](https://img.shields.io/badge/tests-628%20passed-success.svg)](tests/)
-[![Coverage: 72%](https://img.shields.io/badge/coverage-72%25-green.svg)](htmlcov/)
+[![Tests: 831 passed](https://img.shields.io/badge/tests-831%20passed-success.svg)](tests/)
+[![Coverage: 78.94%](https://img.shields.io/badge/coverage-78.94%25-green.svg)](htmlcov/)
 
 **Know what's running in your editor. Stay secure.**
 
@@ -14,7 +14,7 @@ A command-line tool that scans your installed VS Code extensions for security vu
 
 **Version:** See [releases](https://github.com/jvlivonius/vsc-extension-scanner/releases) | **Status:** Production Ready ✅
 
-**Latest:** v3.5.6 - Security Hardening (0 vulnerabilities, 9.5/10 security score)
+**Latest:** v3.6.0 - Coverage Improvement & Testability (831 tests, 78.94% coverage, 0 vulnerabilities)
 
 ---
 
@@ -135,7 +135,7 @@ pip install "$(curl -s https://api.github.com/repos/jvlivonius/vsc-extension-sca
 
 # ✅ Verify installation:
 vscan --version
-# Expected: vscode-extension-scanner, version 3.5.6
+# Expected: vscode-extension-scanner, version 3.6.0
 ```
 
 **✅ Installation complete!** Run `vscan scan` to get started.
@@ -264,7 +264,7 @@ vscan scan --quiet
 ### ✅ Zero Vulnerabilities Achieved
 - **Security Score:** 9.5/10 (improved from 7/10 in v3.5.0)
 - **Vulnerabilities:** 0 remaining (100% resolved)
-- **Test Coverage:** 72.60% overall, **95%+ for security modules**
+- **Test Coverage:** 78.94% overall, **95%+ for security modules**
 
 ### 🔒 Security-First Architecture
 
@@ -277,10 +277,10 @@ vscan scan --quiet
 | **HTTPS Only** | Certificate validation, no downgrades | 100% |
 
 ### 🧪 Comprehensive Testing
-- **628 tests** - All passing (100% success rate)
-- **35+ security tests** - Path traversal, injection, integrity
+- **831 tests** - All passing (100% success rate)
+- **127 security tests** - Path traversal, injection, integrity, HMAC validation
 - **1,250+ property-based scenarios** - Hypothesis framework
-- **Pre-commit hooks** - Bandit, safety, pip-audit
+- **Pre-commit hooks** - Bandit, safety, pip-audit, Semgrep
 
 ### 🛡️ Security Measures
 - ✅ **No code execution** - Read-only analysis, never modifies extensions
@@ -716,6 +716,21 @@ vscan cache clear --force
 ## 📰 What's New
 
 <details open>
+<summary><strong>Version 3.6.0 - Coverage Improvement & Testability Refactoring</strong></summary>
+
+- **Coverage improvement**: 77.83% → 78.94% (+1.11%, exceeds 75% target by 5.3%)
+- **scanner.py improvement**: 64.91% → 71.03% (+6.12%)
+- **Test count**: 779 → 831 (+52 high-quality tests)
+- **Testability refactoring**: 4-phase architectural improvements
+  - Phase 1: ProgressCallback pattern (+1.43% coverage, 13 tests)
+  - Phase 2: CLI business logic extraction (+0.25% coverage, 13 tests)
+  - Phase 3: Legacy migration removal (+0.56% coverage, -160 lines)
+  - Phase 4: Retry logic simplification (+0.02% coverage, 9 tests)
+- **Benefits**: Business logic now testable without Rich/Typer frameworks
+- See CHANGELOG.md for complete v3.6.0 improvements
+</details>
+
+<details>
 <summary><strong>Version 3.5.6 - Automated Release Workflow</strong></summary>
 
 - **GitHub Actions automation** - Automatic distribution builds on version tags

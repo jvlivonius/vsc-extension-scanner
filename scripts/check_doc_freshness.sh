@@ -137,6 +137,94 @@ if [ -f "$PROJECT_ROOT/docs/guides/PERFORMANCE.md" ]; then
 fi
 echo
 
+# Check 7: README.md version consistency with STATUS.md
+echo "📋 Check 7: README.md version consistency"
+if [ -f "$PROJECT_ROOT/README.md" ] && [ -f "$PROJECT_ROOT/docs/project/STATUS.md" ]; then
+    # Extract current version from STATUS.md (format: "**Status:** v3.6.0 Released")
+    CURRENT_VERSION=$(grep -E '^\*\*Status:\*\* v[0-9]+\.[0-9]+\.[0-9]+' "$PROJECT_ROOT/docs/project/STATUS.md" | head -1 | sed -E 's/.*v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+    if [ -n "$CURRENT_VERSION" ]; then
+        # Check if README mentions an older version in "Latest:" line
+        if grep -E "^\*\*Latest:\*\* v[0-9]+\.[0-9]+\.[0-9]+" "$PROJECT_ROOT/README.md" > /dev/null 2>&1; then
+            README_VERSION=$(grep -E "^\*\*Latest:\*\* v[0-9]+\.[0-9]+\.[0-9]+" "$PROJECT_ROOT/README.md" | head -1 | sed -E 's/.*v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+            if [ "$README_VERSION" != "$CURRENT_VERSION" ]; then
+                echo -e "${YELLOW}⚠ WARNING:${NC} README.md version mismatch"
+                echo "   README shows: v$README_VERSION"
+                echo "   STATUS.md shows: v$CURRENT_VERSION"
+                echo "   → Update README.md to match current version"
+                WARNINGS=$((WARNINGS + 1))
+            else
+                echo -e "${GREEN}✓${NC} README.md version matches STATUS.md (v$CURRENT_VERSION)"
+            fi
+        fi
+
+        # Check badges for outdated test counts
+        if grep -E 'tests-[0-9]+%20passed' "$PROJECT_ROOT/README.md" > /dev/null 2>&1; then
+            BADGE_TESTS=$(grep -oE 'tests-[0-9]+%20passed' "$PROJECT_ROOT/README.md" | head -1 | sed -E 's/tests-([0-9]+)%20passed/\1/')
+            # Extract test count from STATUS.md (format: "**Total Tests:** 831")
+            STATUS_TESTS=$(grep -E '^\*\*Total Tests:\*\* [0-9]+' "$PROJECT_ROOT/docs/project/STATUS.md" | head -1 | sed -E 's/.*\*\* ([0-9]+).*/\1/')
+            if [ -n "$STATUS_TESTS" ] && [ "$BADGE_TESTS" != "$STATUS_TESTS" ]; then
+                echo -e "${YELLOW}⚠ WARNING:${NC} README.md test badge mismatch"
+                echo "   Badge shows: $BADGE_TESTS tests"
+                echo "   STATUS.md shows: $STATUS_TESTS tests"
+                echo "   → Update README.md badge"
+                WARNINGS=$((WARNINGS + 1))
+            fi
+        fi
+
+        # Check badges for outdated coverage
+        if grep -E 'coverage-[0-9.]+%25' "$PROJECT_ROOT/README.md" > /dev/null 2>&1; then
+            BADGE_COV=$(grep -oE 'coverage-[0-9.]+%25' "$PROJECT_ROOT/README.md" | head -1 | sed 's/coverage-//;s/%25//')
+            # Extract coverage from STATUS.md (format: "**Final Coverage:** 78.94%")
+            STATUS_COV=$(grep -E '^\*\*Final Coverage:\*\* [0-9.]+%' "$PROJECT_ROOT/docs/project/STATUS.md" | head -1 | sed -E 's/.*\*\* ([0-9.]+)%.*/\1/')
+            if [ -n "$STATUS_COV" ] && [ "$BADGE_COV" != "$STATUS_COV" ]; then
+                echo -e "${YELLOW}⚠ WARNING:${NC} README.md coverage badge mismatch"
+                echo "   Badge shows: $BADGE_COV%"
+                echo "   STATUS.md shows: $STATUS_COV%"
+                echo "   → Update README.md badge"
+                WARNINGS=$((WARNINGS + 1))
+            fi
+        fi
+    fi
+fi
+echo
+
+# Check 8: SECURITY.md version support table
+echo "📋 Check 8: SECURITY.md version support table"
+if [ -f "$PROJECT_ROOT/SECURITY.md" ] && [ -f "$PROJECT_ROOT/docs/project/STATUS.md" ]; then
+    CURRENT_VERSION=$(grep -E '^\*\*Status:\*\* v[0-9]+\.[0-9]+\.[0-9]+' "$PROJECT_ROOT/docs/project/STATUS.md" | head -1 | sed -E 's/.*v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+    if [ -n "$CURRENT_VERSION" ]; then
+        # Check if SECURITY.md lists current version as "Latest stable"
+        if ! grep -E "^\| $CURRENT_VERSION.*Latest stable" "$PROJECT_ROOT/SECURITY.md" > /dev/null 2>&1; then
+            echo -e "${YELLOW}⚠ WARNING:${NC} SECURITY.md doesn't list v$CURRENT_VERSION as latest"
+            echo "   → Update version support table in SECURITY.md"
+            WARNINGS=$((WARNINGS + 1))
+        else
+            echo -e "${GREEN}✓${NC} SECURITY.md lists v$CURRENT_VERSION as latest"
+        fi
+    fi
+fi
+echo
+
+# Check 9: CHANGELOG.md has entry for current version
+echo "📋 Check 9: CHANGELOG.md current version entry"
+if [ -f "$PROJECT_ROOT/CHANGELOG.md" ] && [ -f "$PROJECT_ROOT/docs/project/STATUS.md" ]; then
+    CURRENT_VERSION=$(grep -E '^\*\*Status:\*\* v[0-9]+\.[0-9]+\.[0-9]+' "$PROJECT_ROOT/docs/project/STATUS.md" | head -1 | sed -E 's/.*v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+    if [ -n "$CURRENT_VERSION" ]; then
+        # Check if CHANGELOG has an entry for current version (format: "## [3.6.0]")
+        if ! grep -E "^## \[$CURRENT_VERSION\]" "$PROJECT_ROOT/CHANGELOG.md" > /dev/null 2>&1; then
+            echo -e "${RED}✗ ERROR:${NC} CHANGELOG.md missing entry for v$CURRENT_VERSION"
+            echo "   → Add release notes for current version"
+            ERRORS=$((ERRORS + 1))
+        else
+            echo -e "${GREEN}✓${NC} CHANGELOG.md has entry for v$CURRENT_VERSION"
+        fi
+    fi
+fi
+echo
+
 # Summary
 echo "=================================="
 echo "📊 Summary"

@@ -16,14 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Phase 2: CLI Business Logic Extraction** - merge_scan_config() for config priority testing (+0.25% coverage, 13 tests)
   - **Phase 3: Legacy Migration Removal** - Removed 160 lines of v1→v2 migration code (+0.56% coverage)
   - **Phase 4: Retry Logic Simplification** - Injectable jitter function for deterministic testing (+0.02% coverage, 9 tests)
-  - **Results**: 866 tests (+88 from v3.5.3), 81.20% overall coverage (from 77.83%)
+  - **Results**: 831 tests (+52 from v3.5.6 baseline), 78.94% overall coverage (from 77.83%)
   - **Benefits**: Business logic testable without Rich/Typer frameworks, reduced code complexity (-145 net lines)
 
 ### Changed
 
 - **Testing**: Pivoted from integration testing to architectural refactoring approach
   - Previous approach hit integration complexity barriers (ThreadPoolExecutor, Typer framework coupling)
-  - New approach achieves 81.20% coverage vs projected 82% with complex integration tests
+  - New approach achieves 78.94% coverage (exceeds 75% target by 5.3%)
   - Improved maintainability through separation of business logic from framework code
 
 ### Deprecated

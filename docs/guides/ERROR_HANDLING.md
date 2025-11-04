@@ -188,7 +188,7 @@ ERROR_HELP = {
 ```python
 "timeout": [
     "The request to vscan.dev timed out",
-    "(Current timeout: constants.py:API_TIMEOUT_SECONDS = 30 seconds)",
+    f"(Current timeout: {constants.API_TIMEOUT_SECONDS} seconds)",
     "This can happen with slow connections or vscan.dev server issues",
     "Try increasing retries: vscan scan --max-retries 5",
     "Check your internet connection",
@@ -326,7 +326,7 @@ ERROR_HELP = {
 
 ```python
 # Example in vscan_api.py
-# Timeout value: constants.py:API_TIMEOUT_SECONDS = 30 seconds
+# Timeout value: see constants.API_TIMEOUT_SECONDS
 try:
     response = urllib.request.urlopen(request, timeout=API_TIMEOUT_SECONDS)
 except urllib.error.HTTPError as e:
@@ -491,10 +491,10 @@ delay = min(base_delay * (2 ^ retry_count) * (0.8 + random(0, 0.4)), MAX_BACKOFF
 ```
 
 Where:
-- **base_delay** = Configurable base delay (constants.py:DEFAULT_RETRY_BASE_DELAY = 2.0 seconds)
+- **base_delay** = Configurable base delay (see `constants.DEFAULT_RETRY_BASE_DELAY`)
 - **retry_count** = Number of retries attempted (0-indexed)
 - **jitter** = Random factor between 0.8 and 1.2 (±20%)
-- **MAX_BACKOFF_DELAY** = Maximum delay ceiling (constants.py:MAX_BACKOFF_DELAY = 30 seconds, prevents DoS)
+- **MAX_BACKOFF_DELAY** = Maximum delay ceiling (see `constants.MAX_BACKOFF_DELAY`, prevents DoS)
 
 **Example Backoff Progression:**
 
