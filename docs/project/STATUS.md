@@ -41,19 +41,33 @@
 
 **Summary:** [v3.7-phase1.1-completion-summary.md](../archive/summaries/v3.7-phase1.1-completion-summary.md)
 
-### Next: Phase 1.2 - Consolidate Retry Test Suites
+### Phase 1.2: Consolidate Scanner Tests (IN PROGRESS 🔄)
 
-**Status:** Ready to begin
+**Started:** 2025-01-04
+**Progress:** Fixtures foundation complete, consolidation ready
 **Roadmap:** [v3.7-testability-maintainability-roadmap.md](v3.7-testability-maintainability-roadmap.md)
 
-**Phase 1.2 Goals:**
-- Consolidate 3 retry test files into 1-2 files
-- Use property-based testing for retry scenarios
-- Reduce test count: 48 tests → ~18 tests
-- Improve coverage of edge cases
+**Completed:**
+- ✅ Created shared scanner fixtures (tests/fixtures/scanner_fixtures.py)
+- ✅ Analyzed 6 scanner test files (2,438 lines, 105 tests)
+- ✅ Identified duplicate test classes and consolidation strategy
 
-**Estimated Effort:** 3-4 hours
-**Risk Level:** LOW (test consolidation)
+**Next Steps:**
+- Merge 4 small files into test_scanner_integration.py (progress, error_recovery, edge_cases, output_errors)
+- Extract filter tests from test_scanner.py to test_scanner_filters.py
+- Create test_scanner_core.py with core workflow tests
+- Resolve duplicate test classes (TestErrorCategorization, TestExtensionDiscoveryErrors)
+- Validate all 105 tests still pass
+
+**Phase 1.2 Goals:**
+- Consolidate 6 scanner test files → 3 focused files
+- Reduce duplication through shared fixtures
+- Maintain 100% test coverage
+- Improve test organization and findability
+- Expected LOC reduction: -15% (2,438 → ~2,070 lines)
+
+**Estimated Remaining Effort:** 3-4 hours
+**Risk Level:** LOW (test-only consolidation)
 
 ### Active Roadmap: v3.7.0
 
