@@ -18,7 +18,7 @@ from typing import Dict, Optional, Tuple
 
 from .output_formatter import OutputFormatter
 from .html_report_generator import HTMLReportGenerator
-from .utils import safe_mkdir, sanitize_string, log
+from .utils import safe_mkdir, sanitize_string, validate_path, log
 from .display import display_info, display_success
 
 
@@ -108,7 +108,13 @@ class OutputWriter:
 
         Note:
             CSV files use newline="" for proper line ending handling
+
+        Raises:
+            ValueError: If output_path fails security validation
         """
+        # Validate path before use (security requirement)
+        validate_path(str(output_path), path_type="output")
+
         # Create parent directories with restricted permissions
         safe_mkdir(output_path.parent, mode=0o755)
 

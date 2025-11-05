@@ -230,6 +230,92 @@ class TestOutputWriterFileWriting(unittest.TestCase):
 
 
 @pytest.mark.unit
+@pytest.mark.security
+class TestOutputWriterSecurity(unittest.TestCase):
+    """Test security validation in file writing."""
+
+    def setUp(self):
+        """Create temporary directory for test files."""
+        self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up temporary directory."""
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_write_to_file_rejects_path_traversal(self):
+        """Test that write_to_file rejects path traversal attempts."""
+        malicious_paths = [
+            "../../etc/passwd",
+            "../../../etc/passwd",
+            "subdir/../../etc/passwd",
+        ]
+
+        for malicious_path in malicious_paths:
+            with self.subTest(path=malicious_path):
+                with self.assertRaises(ValueError) as ctx:
+                    OutputWriter.write_to_file(Path(malicious_path), "content", "json")
+                # Verify error message mentions path traversal
+                error_msg = str(ctx.exception)
+                self.assertTrue(
+                    ".." in error_msg or "traversal" in error_msg.lower(),
+                    f"Expected path traversal error for {malicious_path}, got: {error_msg}",
+                )
+
+    def test_write_to_file_rejects_url_encoded_paths(self):
+        """Test that write_to_file rejects URL-encoded malicious paths."""
+        malicious_paths = [
+            "%2e%2e%2f%2e%2e%2fetc%2fpasswd",  # ../../etc/passwd
+            "test%2e%2e%2fmalicious.json",  # test../malicious.json
+        ]
+
+        for malicious_path in malicious_paths:
+            with self.subTest(path=malicious_path):
+                with self.assertRaises(ValueError) as ctx:
+                    OutputWriter.write_to_file(Path(malicious_path), "content", "json")
+                # Verify error message mentions URL encoding
+                error_msg = str(ctx.exception)
+                self.assertTrue(
+                    "URL" in error_msg
+                    or "%" in error_msg
+                    or "encoded" in error_msg.lower(),
+                    f"Expected URL encoding error for {malicious_path}, got: {error_msg}",
+                )
+
+    def test_write_to_file_rejects_system_directories(self):
+        """Test that write_to_file rejects system directory access."""
+        system_paths = [
+            "/etc/vscan/malicious.json",
+            "/sys/kernel/test.json",
+            "/proc/self/malicious.json",
+        ]
+
+        for system_path in system_paths:
+            with self.subTest(path=system_path):
+                with self.assertRaises(ValueError) as ctx:
+                    OutputWriter.write_to_file(Path(system_path), "content", "json")
+                # Verify error message mentions system directories
+                error_msg = str(ctx.exception)
+                self.assertTrue(
+                    "system" in error_msg.lower(),
+                    f"Expected system directory error for {system_path}, got: {error_msg}",
+                )
+
+    def test_write_to_file_accepts_valid_paths(self):
+        """Test that write_to_file accepts valid, safe paths."""
+        valid_paths = [
+            Path(self.test_dir) / "report.json",
+            Path(self.test_dir) / "subdir" / "report.html",
+            Path(self.test_dir) / "data" / "output.csv",
+        ]
+
+        for valid_path in valid_paths:
+            with self.subTest(path=str(valid_path)):
+                # Should not raise
+                OutputWriter.write_to_file(valid_path, '{"test": "data"}', "json")
+                self.assertTrue(valid_path.exists())
+
+
+@pytest.mark.unit
 class TestOutputWriterHelperMethods(unittest.TestCase):
     """Test helper methods (message generation, logging)."""
 
@@ -427,6 +513,7 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestOutputWriterFormatDetection))
     suite.addTests(loader.loadTestsFromTestCase(TestOutputWriterContentGeneration))
     suite.addTests(loader.loadTestsFromTestCase(TestOutputWriterFileWriting))
+    suite.addTests(loader.loadTestsFromTestCase(TestOutputWriterSecurity))
     suite.addTests(loader.loadTestsFromTestCase(TestOutputWriterHelperMethods))
     suite.addTests(loader.loadTestsFromTestCase(TestOutputWriterOrchestration))
 
