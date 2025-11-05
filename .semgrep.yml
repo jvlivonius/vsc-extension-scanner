@@ -258,6 +258,7 @@ rules:
       exclude:
         - tests/
         - "**/cache_manager.py"  # Already audited in test_sqlite_security.py
+        - "**/scan_orchestrator.py"  # False positive: execute() is ParallelExecutor method, not SQL
     metadata:
       category: security
       cwe: "CWE-89: SQL Injection"

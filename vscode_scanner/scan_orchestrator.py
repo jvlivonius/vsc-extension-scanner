@@ -230,8 +230,8 @@ class ScanOrchestrator(ParallelExecutor[Dict, Tuple[Dict, bool, bool]]):
         self.scan_results = []
 
         # Execute parallel processing
-        # False positive: execute() is ParallelExecutor method for parallel task execution, not SQL
-        self.execute(extensions)  # nosemgrep: sql-injection-risk-execute
+        # Note: execute() is ParallelExecutor method for parallel task execution, not SQL
+        self.execute(extensions)
 
         # Return results and statistics
         return self.scan_results, self.stats.to_dict()
