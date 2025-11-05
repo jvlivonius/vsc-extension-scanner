@@ -45,6 +45,26 @@
 - [ ] **CHANGELOG.md** - Update comparison links at bottom
 - [ ] **docs/archive/summaries/vX.Y.Z-release-notes.md** - Create from template
 
+#### Step 2a: Release Documentation Consolidation (Multi-Phase Releases Only)
+
+**For releases with multiple phases (roadmap + handoffs + summaries):**
+
+- [ ] Consolidate into comprehensive release notes:
+  - [ ] Roadmap objectives → Key Features section
+  - [ ] Handoff documents → Implementation Details
+  - [ ] Phase summaries → Key Achievements section
+  - [ ] Test metrics → Testing section
+- [ ] Verify all breaking changes documented with migration guides
+- [ ] Verify release notes file created in correct location
+
+**Tools:**
+- Manual: Extract key information from source documents
+- Automated (future): Use `scripts/archive_release_docs.py vX.Y.Z` (documentation archival only)
+
+**Reference:** [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOCUMENTATION_CONVENTIONS.md#release-documentation-archival-pattern)
+
+**Note:** Single-phase releases can skip this step.
+
 #### Optional Review (as needed)
 - [ ] **README.md** - Update installation examples (if changed)
 - [ ] **README.md** - Update feature list (if new features added)
@@ -113,6 +133,44 @@
 
 ---
 
+## Phase 2.5: Release Documentation Archival (Multi-Phase Only) (10-15 min)
+
+**For releases with intermediate documents (handoffs, phase summaries):**
+
+### Archive Release Documentation
+
+**Option 1: Automated (Recommended)**
+
+- [ ] `python3 scripts/archive_release_docs.py vX.Y.Z --dry-run` (preview)
+- [ ] Review dry-run output (verify documents detected correctly)
+- [ ] `python3 scripts/archive_release_docs.py vX.Y.Z` (execute)
+- [ ] `git status` (verify changes)
+
+**Option 2: Manual**
+
+- [ ] `git mv docs/project/vX.Y-roadmap.md docs/archive/plans/vX.Y-roadmap.md`
+- [ ] `git rm docs/project/vX.Y-phase*-handoff.md` (remove handoffs)
+- [ ] `git rm docs/project/vX.Y-phase*-summary.md` (remove phase summaries)
+- [ ] `git rm docs/archive/summaries/vX.Y-phase*-completion-summary.md` (remove summaries)
+- [ ] Edit `docs/archive/README.md` (add version entry)
+- [ ] Edit `docs/project/STATUS.md` (change to "Released")
+- [ ] `git add docs/archive/README.md docs/project/STATUS.md`
+
+### Commit Documentation Changes
+
+- [ ] `git status` (verify all changes staged)
+- [ ] `git commit -m "docs(vX.Y): Archive release documentation"`
+- [ ] `git push origin feature/vX.Y-docs` (or appropriate branch)
+- [ ] Create PR: "docs(vX.Y): Finalize release documentation"
+- [ ] Get approval and merge PR
+- [ ] `git checkout main && git pull` (switch back to main)
+
+**Reference:** [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOCUMENTATION_CONVENTIONS.md#release-documentation-archival-pattern)
+
+**Note:** Single-phase releases without intermediate documents can skip this phase entirely.
+
+---
+
 ## Phase 3: Version Control (10-15 min)
 
 ### Commit Release
@@ -136,10 +194,36 @@
 - [ ] `git ls-remote --heads origin main` (verify commit pushed)
 - [ ] `git ls-remote --tags origin | grep vX.Y.Z` (verify tag pushed)
 
-### GitHub Release
+### GitHub Release (Automated via Workflow)
+
+**Primary: GitHub Actions (Automatic)**
+
+- [ ] Tag push triggers GitHub Actions workflow automatically
+- [ ] `gh run watch` (monitor workflow execution)
+- [ ] `gh run list --workflow=release.yml` (check status)
+- [ ] Verify workflow completes successfully
+- [ ] Verify GitHub release created with artifacts
+
+**If Workflow Fails: Manual Creation (Fallback)**
 
 - [ ] **CLI:** `gh release create vX.Y.Z dist/*.whl dist/SHA256SUMS.txt --title "vX.Y.Z" --notes-file docs/archive/summaries/vX.Y.Z-release-notes.md`
 - [ ] **Web:** Repository → Releases → Draft → Select tag → Upload → Publish
+
+### Correcting Releases (If Needed)
+
+**If release notes need updates after tag push:**
+
+- [ ] `git checkout main && git pull origin main`
+- [ ] `gh release delete vX.Y.Z --yes`
+- [ ] `git tag -d vX.Y.Z`
+- [ ] `git push origin --delete vX.Y.Z`
+- [ ] Update `docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] `git add docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] `git commit -m "docs: Update vX.Y.Z release notes"`
+- [ ] `git push origin main`
+- [ ] `git tag -a vX.Y.Z -F docs/archive/summaries/vX.Y.Z-release-notes.md`
+- [ ] `git push origin vX.Y.Z`
+- [ ] `gh run watch` (monitor automated release creation)
 
 ---
 

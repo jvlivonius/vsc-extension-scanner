@@ -128,6 +128,76 @@ git commit -m "Archive: Move v3.2 roadmap after completion"
 - `contributing/*` - Active processes
 - These are living documents defining current practices
 
+### Release Documentation Archival Pattern
+
+**For version releases (vX.Y.Z):**
+
+Release documentation follows a consolidation pattern where multiple intermediate documents are combined into comprehensive release notes, then intermediate documents are removed.
+
+**Intermediate Document Naming Conventions:**
+
+| Document Type | Pattern | Location | Example | Lifecycle |
+|---------------|---------|----------|---------|-----------|
+| **Handoff Documents** | `vX.Y-phaseN-handoff.md` | `docs/project/` | `v3.7-phase2-handoff.md` | REMOVE after release |
+| **Phase Summaries** | `vX.Y-phaseN-completion-summary.md` | `docs/archive/summaries/` | `v3.7-phase1.2-completion-summary.md` | REMOVE after release |
+| **Phase Summaries** | `vX.Y-phaseN-summary.md` | `docs/project/` or `docs/archive/summaries/` | `v3.7-phase2-summary.md` | REMOVE after release |
+| **Roadmaps** | `vX.Y-roadmap.md` or `vX.Y-{description}-roadmap.md` | `docs/project/` | `v3.7-testability-maintainability-roadmap.md` | ARCHIVE to `docs/archive/plans/` |
+| **Release Notes** | `vX.Y.Z-release-notes.md` | `docs/archive/summaries/` | `v3.7.0-release-notes.md` | KEEP (created in archive) |
+
+**Release Documentation Workflow:**
+
+1. **Consolidate** intermediate documents into release notes:
+   ```markdown
+   docs/archive/summaries/vX.Y.Z-release-notes.md
+
+   Sources:
+   - Roadmap objectives → Key Features
+   - Handoff docs → Implementation Details
+   - Phase summaries → Key Achievements
+   - Test metrics → Testing Section
+   ```
+
+2. **Archive** permanent documents:
+   ```bash
+   git mv docs/project/vX.Y-roadmap.md docs/archive/plans/vX.Y-roadmap.md
+   ```
+
+3. **Remove** intermediate documents (superseded by release notes):
+   ```bash
+   # Handoff docs
+   git rm docs/project/vX.Y-phase*-handoff.md
+
+   # Phase summaries
+   git rm docs/project/vX.Y-phase*-summary.md
+   git rm docs/archive/summaries/vX.Y-phase*-completion-summary.md
+   ```
+
+4. **Update** indexes:
+   - Add version entry to `docs/archive/README.md`
+   - Update `docs/project/STATUS.md`
+
+**Decision Framework:**
+
+| Keep or Remove? | Document Type | Rationale |
+|----------------|---------------|-----------|
+| ✅ **KEEP** | Roadmaps | Historical planning record |
+| ✅ **KEEP** | Release notes | Comprehensive user-facing summary |
+| ❌ **REMOVE** | Handoff docs | Internal coordination, superseded by release notes |
+| ❌ **REMOVE** | Phase summaries | Consolidated into release notes |
+
+**Automation:**
+
+Use `scripts/archive_release_docs.py` to automate this workflow:
+```bash
+# Preview changes
+python3 scripts/archive_release_docs.py vX.Y.Z --dry-run
+
+# Execute archival
+python3 scripts/archive_release_docs.py vX.Y.Z
+```
+
+See [RELEASE_DOCUMENTATION.md](RELEASE_DOCUMENTATION.md) for complete guide.
+
 ---
 
 ## Maintainability Patterns

@@ -183,6 +183,25 @@ Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - Release notes provide comprehensive user-facing information vs brief CHANGELOG bullets
 - File must be created and committed **before** pushing the version tag
 
+**2.6 Consolidate Release Documentation (Multi-Phase Releases)** ⚠️ Manual or Automated
+
+For releases with multiple phases (roadmap + handoff docs + phase summaries):
+
+**Sources to consolidate:**
+- Roadmap objectives → Key Features section
+- Handoff documents → Implementation Details
+- Phase completion summaries → Key Achievements section
+- Test metrics and coverage reports → Testing section
+
+**Consolidation approaches:**
+
+1. **Manual:** Extract key information from source documents
+2. **Future:** Use AI assistant to consolidate multiple documents
+
+The release notes supersede intermediate documents but preserve essential details for archival.
+
+See [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOCUMENTATION_CONVENTIONS.md#release-documentation-archival-pattern) for naming conventions and decision framework.
+
 #### Time Savings
 
 **Old workflow:** 8 files requiring manual updates (~20-30 min)
@@ -376,6 +395,70 @@ git log --oneline -1 vX.Y.Z
 
 ---
 
+### Step 9b: Archive Release Documentation (Multi-Phase Releases)
+
+**For releases with intermediate documents (handoffs, phase summaries):**
+
+After creating comprehensive release notes, organize documentation following the archival workflow.
+
+**Option 1: Automated (Recommended)**
+
+```bash
+# Preview changes
+python3 scripts/archive_release_docs.py vX.Y.Z --dry-run
+
+# Execute archival
+python3 scripts/archive_release_docs.py vX.Y.Z
+
+# Verify changes
+git status
+```
+
+**Option 2: Manual**
+
+```bash
+# 1. Archive roadmap
+git mv docs/project/vX.Y-roadmap.md docs/archive/plans/vX.Y-roadmap.md
+
+# 2. Remove intermediate documents
+git rm docs/project/vX.Y-phase*-handoff.md
+git rm docs/project/vX.Y-phase*-summary.md
+git rm docs/archive/summaries/vX.Y-phase*-completion-summary.md
+
+# 3. Update indexes
+# Edit docs/archive/README.md (add version entry)
+# Edit docs/project/STATUS.md (change to "Released")
+
+# 4. Stage changes
+git add docs/archive/README.md docs/project/STATUS.md
+
+# 5. Commit
+git commit -m "docs(vX.Y): Archive release documentation
+
+Archived:
+- Roadmap to docs/archive/plans/
+
+Removed (superseded by release notes):
+- X handoff documents
+- Y phase summaries
+
+Updated:
+- docs/archive/README.md (version entry)
+- docs/project/STATUS.md (released status)"
+```
+
+**Document Naming Conventions:**
+- Handoffs: `vX.Y-phaseN-handoff.md` → REMOVE
+- Phase summaries: `vX.Y-phaseN-*-summary.md` → REMOVE
+- Roadmaps: `vX.Y-*-roadmap.md` → ARCHIVE to `docs/archive/plans/`
+- Release notes: `vX.Y.Z-release-notes.md` → KEEP
+
+See [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOCUMENTATION_CONVENTIONS.md#release-documentation-archival-pattern) for complete details.
+
+**Note:** Single-phase releases without intermediate documents can skip this step.
+
+---
+
 ### Step 10: Push to Remote
 
 ```bash
@@ -397,10 +480,70 @@ git ls-remote --tags origin | grep vX.Y.Z
 
 ---
 
-### Step 11: Create GitHub Release
+### Step 11: GitHub Release (Automated)
 
-**Using GitHub CLI:**
+**Primary Method: GitHub Actions (Automatic)**
 
+When you push the version tag in Step 10, the GitHub Actions workflow automatically:
+1. Builds distribution packages
+2. Generates checksums
+3. Verifies package installation
+4. Extracts release notes from `docs/archive/summaries/vX.Y.Z-release-notes.md`
+5. Creates GitHub release with artifacts
+
+**Monitor workflow:**
+
+```bash
+# Watch latest workflow run
+gh run watch
+
+# View recent release workflows
+gh run list --workflow=release.yml
+
+# Check workflow status
+gh run list --limit 1
+```
+
+**Phase 3 Gate:** Verify GitHub release created with downloadable artifacts.
+
+---
+
+#### Correcting Releases After Creation
+
+**If release notes need updates after tag push:**
+
+```bash
+# 1. Checkout main and pull latest changes
+git checkout main && git pull origin main
+
+# 2. Delete existing GitHub release
+gh release delete vX.Y.Z --yes
+
+# 3. Delete local and remote tags
+git tag -d vX.Y.Z
+git push origin --delete vX.Y.Z
+
+# 4. Update release notes
+# Edit: docs/archive/summaries/vX.Y.Z-release-notes.md
+git add docs/archive/summaries/vX.Y.Z-release-notes.md
+git commit -m "docs: Update vX.Y.Z release notes"
+git push origin main
+
+# 5. Recreate tag from updated release notes
+git tag -a vX.Y.Z -F docs/archive/summaries/vX.Y.Z-release-notes.md
+
+# 6. Push tag to trigger automated workflow
+git push origin vX.Y.Z
+
+# 7. Monitor workflow completion
+gh run watch
+```
+
+**Note:** Only use manual release creation if GitHub Actions workflow fails.
+
+**Manual Release Creation (Fallback Only):**
+
+Using GitHub CLI:
 ```bash
 gh release create vX.Y.Z \
   dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl \
@@ -409,15 +552,13 @@ gh release create vX.Y.Z \
   --notes-file docs/archive/summaries/vX.Y.Z-release-notes.md
 ```
 
-**Fallback - Web Interface:**
+Using Web Interface:
 1. Navigate to repository → Releases → Draft new release
 2. Select tag vX.Y.Z
 3. Set title: vX.Y.Z
 4. Copy release notes from archive
 5. Upload wheel and SHA256SUMS.txt
 6. Publish release
-
-**Phase 3 Gate:** Verify GitHub release created with downloadable artifacts.
 
 ---
 
