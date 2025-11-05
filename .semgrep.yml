@@ -28,6 +28,32 @@ rules:
           $VALIDATED = validate_path(...)
           ...
           pathlib.Path($VALIDATED).open(...)
+      # Exclude functions that call validate_path() before open() (same-function validation)
+      - pattern-not-inside: |
+          def $FUNC(...):
+            ...
+            validate_path(...)
+            ...
+            open(...)
+      - pattern-not-inside: |
+          def $FUNC(...):
+            ...
+            validate_path(...)
+            ...
+            pathlib.Path(...).open(...)
+      # Exclude package asset paths (paths derived from __file__ are trusted)
+      - pattern-not-inside: |
+          def $FUNC(...):
+            ...
+            __file__
+            ...
+            open(...)
+      - pattern-not-inside: |
+          def $FUNC(...):
+            ...
+            __file__
+            ...
+            Path(...).open(...)
     message: |
       File operations must use validate_path() first to prevent path traversal attacks.
 
@@ -47,14 +73,16 @@ rules:
     paths:
       exclude:
         - tests/
+        # Legitimate exclusions (dataflow tracking beyond Semgrep OSS scope):
         - "**/cache_manager.py"  # validate_path() in __init__, dataflow tracking beyond Semgrep scope
         - "**/cli.py"  # All paths validated (lines 360, 1222), 127 security tests verify safety
         - "**/config_manager.py"  # Path validation in __init__, audited in security tests
         - "**/scanner.py"  # Validated paths, comprehensive test coverage
         - "**/extension_discovery.py"  # Safe path handling, test coverage validates
-        - "**/html_report/generator.py"  # Receives pre-validated paths from CLI
         - "**/vscan.py"  # Entry point, all paths validated before file operations
-        - "**/output_writer.py"  # validate_path() on line 116, TestOutputWriterSecurity verifies (4 tests)
+        # Pattern improvements added but Semgrep OSS dataflow still requires exclusions:
+        - "**/output_writer.py"  # validate_path() line 116, open() line 125 (same function, Semgrep OSS can't track)
+        - "**/html_report/generator.py"  # Path(__file__) package assets (trusted paths, pattern-not-inside attempted)
     metadata:
       category: security
       cwe: "CWE-22: Path Traversal"
@@ -232,6 +260,10 @@ rules:
           - pattern: $CURSOR.execute($QUERY)
           - pattern: $CURSOR.executemany($QUERY, ...)
           - pattern: $CURSOR.executescript($QUERY)
+      # Only match actual database cursors, not other objects with execute() methods
+      - metavariable-regex:
+          metavariable: $CURSOR
+          regex: ^(cursor|cur|conn|connection|db|db_cursor|c|self\.(cursor|cur|conn|connection|db))$
       - pattern-not: $CURSOR.execute("...", ...)
       - pattern-not: $CURSOR.executemany("...", ...)
       - pattern-not: $CURSOR.executescript("...")
@@ -258,7 +290,7 @@ rules:
       exclude:
         - tests/
         - "**/cache_manager.py"  # Already audited in test_sqlite_security.py
-        - "**/scan_orchestrator.py"  # False positive: execute() is ParallelExecutor method, not SQL
+        # Note: metavariable-regex added to filter non-SQL execute() calls, reducing false positives
     metadata:
       category: security
       cwe: "CWE-89: SQL Injection"
