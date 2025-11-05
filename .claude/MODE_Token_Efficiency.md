@@ -16,40 +16,11 @@
 
 ## Symbol Systems
 
-### Core Logic & Flow
-| Symbol | Meaning | Example |
-|--------|---------|----------|
-| → | leads to, implies | `auth.js:45 → 🛡️ security risk` |
-| ⇒ | transforms to | `input ⇒ validated_output` |
-| ← | rollback, reverse | `migration ← rollback` |
-| ⇄ | bidirectional | `sync ⇄ remote` |
-| & | and, combine | `🛡️ security & ⚡ performance` |
-| \| | separator, or | `react\|vue\|angular` |
-| : | define, specify | `scope: file\|module` |
-| » | sequence, then | `build » test » deploy` |
-| ∴ | therefore | `tests ❌ ∴ code broken` |
-| ∵ | because | `slow ∵ O(n²) algorithm` |
+**Logic**: → (implies) • ⇒ (transforms) • ← (reverse) • ⇄ (bidirectional) • & (and) • | (or) • : (define) • » (then) • ∴ (therefore) • ∵ (because)
 
-### Status & Progress
-| Symbol | Meaning | Usage |
-|--------|---------|-------|
-| ✅ | completed, passed | Task finished successfully |
-| ❌ | failed, error | Immediate attention needed |
-| ⚠️ | warning | Review required |
-| 🔄 | in progress | Currently active |
-| ⏳ | waiting, pending | Scheduled for later |
-| 🚨 | critical, urgent | High priority action |
+**Status**: ✅ (done) • ❌ (failed) • ⚠️ (warning) • 🔄 (active) • ⏳ (pending) • 🚨 (critical)
 
-### Technical Domains
-| Symbol | Domain | Usage |
-|--------|---------|-------|
-| ⚡ | Performance | Speed, optimization |
-| 🔍 | Analysis | Search, investigation |
-| 🔧 | Configuration | Setup, tools |
-| 🛡️ | Security | Protection, safety |
-| 📦 | Deployment | Package, bundle |
-| 🎨 | Design | UI, frontend |
-| 🏗️ | Architecture | System structure |
+**Domains**: ⚡ (performance) • 🔍 (analysis) • 🔧 (config) • 🛡️ (security) • 📦 (deploy) • 🎨 (design) • 🏗️ (architecture)
 
 ## Abbreviation Systems
 
