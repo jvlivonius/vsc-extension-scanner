@@ -88,7 +88,7 @@ class TestParallelScanningBasic(unittest.TestCase):
         """Test that parallel scan completes successfully."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             # Mock successful API responses
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
@@ -169,7 +169,7 @@ class TestWorkerIsolation(unittest.TestCase):
         """Test that each worker creates its own API client."""
         cache_manager = CacheManager(cache_dir=str(self.cache_dir))
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -212,7 +212,7 @@ class TestWorkerIsolation(unittest.TestCase):
             workers=3,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {"scan_status": "success"}
             mock_api_class.return_value = mock_api
@@ -268,7 +268,7 @@ class TestThreadSafety(unittest.TestCase):
             workers=5,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",
@@ -385,7 +385,7 @@ class TestErrorHandling(unittest.TestCase):
             workers=3,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             # First call succeeds, second fails, third succeeds
             mock_api.scan_extension_with_retry.side_effect = [
@@ -434,7 +434,7 @@ class TestErrorHandling(unittest.TestCase):
             workers=2,
         )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.side_effect = Exception("API timeout")
             mock_api_class.return_value = mock_api
@@ -492,7 +492,7 @@ class TestResultConsistency(unittest.TestCase):
             ext_id = f"{publisher}.{name}"
             return mock_responses.get(ext_id, {"scan_status": "error"})
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.side_effect = mock_scan
             mock_api_class.return_value = mock_api
@@ -523,7 +523,7 @@ class TestResultConsistency(unittest.TestCase):
                 quiet=True,
             )
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.side_effect = mock_scan
             mock_api_class.return_value = mock_api
@@ -593,7 +593,7 @@ class TestIntegration(unittest.TestCase):
         """Test end-to-end parallel scan from discovery to results."""
         cache_dir = Path(self.temp_dir) / "cache"
 
-        with patch("vscode_scanner.scanner.VscanAPIClient") as mock_api_class:
+        with patch("vscode_scanner.vscan_api.VscanAPIClient") as mock_api_class:
             mock_api = Mock()
             mock_api.scan_extension_with_retry.return_value = {
                 "scan_status": "success",

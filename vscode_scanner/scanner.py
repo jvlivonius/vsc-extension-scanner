@@ -1,8 +1,8 @@
 """
 Scanner module for vscan - refactored main scan logic.
 
-This module provides the core scanning functionality with support for
-both Rich-formatted and plain text output.
+This module provides the core scanning functionality with Rich-formatted
+output and optional quiet mode for CI/CD environments.
 """
 
 import sys
@@ -10,7 +10,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Internal imports
 from .extension_discovery import ExtensionDiscovery
@@ -18,6 +17,12 @@ from .vscan_api import VscanAPIClient
 from .output_formatter import OutputFormatter
 from .cache_manager import CacheManager
 from .constants import DATABASE_BATCH_SIZE
+from .scan_helpers import (
+    ThreadSafeStats,
+    _categorize_error,
+    _scan_single_extension_worker,
+    _simplify_error_message,
+)
 from .utils import (
     log,
     setup_logging,
@@ -28,7 +33,6 @@ from .utils import (
     safe_mkdir,
 )
 from .display import (
-    should_use_rich,
     create_scan_progress,
     create_results_table,
     create_cache_stats_table,
@@ -40,94 +44,7 @@ from .display import (
     display_info,
     display_success,
     display_failed_extensions,
-    display_results_plain,
 )
-
-
-class ThreadSafeStats:
-    """
-    Thread-safe statistics collection for parallel scanning.
-
-    This class provides thread-safe operations for collecting scan statistics
-    from multiple worker threads. All operations are protected by a threading.Lock
-    to prevent race conditions.
-
-    Attributes:
-        _lock: Threading lock for synchronization
-        _stats: Internal statistics dictionary
-    """
-
-    def __init__(self):
-        """Initialize thread-safe stats collection."""
-        from threading import Lock
-
-        self._lock = Lock()
-        self._stats = {
-            "successful_scans": 0,
-            "failed_scans": 0,
-            "vulnerabilities_found": 0,
-            "cached_results": 0,
-            "fresh_scans": 0,
-            "failed_extensions": [],
-            "api_client": None,
-        }
-
-    def increment(self, key: str, amount: int = 1):
-        """
-        Thread-safe increment operation.
-
-        Args:
-            key: Statistics key to increment
-            amount: Amount to increment by (default: 1)
-        """
-        with self._lock:
-            if key not in self._stats:
-                self._stats[key] = 0
-            self._stats[key] += amount
-
-    def append_failed(self, ext_info: Dict):
-        """
-        Thread-safe list append for failed extensions.
-
-        Args:
-            ext_info: Extension failure information dict
-        """
-        with self._lock:
-            self._stats["failed_extensions"].append(ext_info)
-
-    def set(self, key: str, value):
-        """
-        Thread-safe set operation.
-
-        Args:
-            key: Statistics key to set
-            value: Value to set
-        """
-        with self._lock:
-            self._stats[key] = value
-
-    def to_dict(self) -> Dict:
-        """
-        Get immutable copy of stats.
-
-        Returns:
-            Copy of statistics dictionary
-        """
-        with self._lock:
-            return self._stats.copy()
-
-    def get(self, key: str):
-        """
-        Thread-safe read operation.
-
-        Args:
-            key: Statistics key to read
-
-        Returns:
-            Value of the statistics key
-        """
-        with self._lock:
-            return self._stats.get(key)
 
 
 def run_scan(
@@ -148,7 +65,6 @@ def run_scan(
     unverified_only: bool = False,
     with_vulnerabilities: bool = False,
     without_vulnerabilities: bool = False,
-    plain: bool = False,
     quiet: bool = False,
     verbose: bool = False,
     workers: int = 3,
@@ -171,7 +87,6 @@ def run_scan(
         include_ids: Comma-separated extension IDs to include
         exclude_ids: Comma-separated extension IDs to exclude
         min_risk_level: Minimum risk level filter
-        plain: Disable Rich formatting
         quiet: Minimal output (single-line summary only)
         workers: Number of concurrent workers (1-5, default: 3)
 
@@ -182,7 +97,7 @@ def run_scan(
     setup_logging(False)  # No verbose logging needed
 
     # Determine if we should use Rich output
-    use_rich = should_use_rich(plain_flag=plain) and not quiet
+    use_rich = not quiet  # Always use Rich formatting unless quiet mode
 
     # Initialize cache manager
     cache_manager = CacheManager(cache_dir=cache_dir) if not no_cache else None
@@ -209,14 +124,8 @@ def run_scan(
                 else:
                     log(f"INFO: {msg.message}", "INFO")
 
-    # Print banner (plain mode only, Rich mode shows dashboard)
-    if not use_rich and not quiet:
-        log("VS Code Extension Scanner", "INFO")
-        from ._version import __version__
-
-        log(f"Version {__version__}", "INFO")
-        log("=" * 60, "INFO")
-        log("", "INFO")
+    # Note: Banner display is now handled by Rich dashboard only
+    # Quiet mode suppresses all output except errors and summary
 
     start_time = time.time()
     scan_timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -509,9 +418,17 @@ def _scan_extensions(
     on_progress: Optional[callable] = None,  # NEW: Progress callback
 ) -> Tuple[List[Dict], Dict]:
     """
-    Scan extensions for vulnerabilities using ThreadPoolExecutor.
+    Scan extensions for vulnerabilities using ScanOrchestrator.
 
     Uses configurable number of workers (1-5). Workers=1 provides sequential behavior.
+
+    This function now delegates to ScanOrchestrator for improved testability
+    and separation of concerns. The orchestrator handles:
+    - Parallel execution via ThreadPoolExecutor
+    - Cache integration and persistence
+    - Thread-safe statistics collection
+    - Progress callback notifications
+    - Error handling and categorization
 
     Args:
         extensions: List of extension metadata dicts
@@ -525,6 +442,9 @@ def _scan_extensions(
     Returns:
         Tuple of (scan_results, stats_dict)
     """
+    # Import here to avoid circular dependency
+    from .scan_orchestrator import ScanOrchestrator
+
     # Validate and cap worker count (1-5, default: 3)
     max_workers = min(max(args.workers, 1), 5)  # Range: 1-5
     worker_info = f"{max_workers} worker{'s' if max_workers > 1 else ''}"
@@ -543,319 +463,22 @@ def _scan_extensions(
         elif args.refresh_cache:
             log("Forcing cache refresh for scanned extensions", "INFO")
 
-    # Initialize thread-safe stats collection
-    stats = ThreadSafeStats()
+    # Create orchestrator with cache, args, and progress callback
+    orchestrator = ScanOrchestrator(
+        cache_manager=cache_manager,
+        args=args,
+        max_workers=max_workers,
+        on_progress=on_progress,
+    )
 
-    scan_results = []
-
-    # Notify progress callback of scan start
-    if on_progress:
-        on_progress("started", {"total": len(extensions)})
-
-    # Execute parallel scanning (unified code path)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all scan tasks
-        futures = {}
-        for idx, ext in enumerate(extensions, 1):
-            future = executor.submit(
-                _scan_single_extension_worker, ext, cache_manager, args
-            )
-            futures[future] = (ext, idx)
-
-        # Collect results as they complete
-        for future in as_completed(futures):
-            ext, idx = futures[future]
-            try:
-                result, from_cache, should_cache = future.result()
-
-                scan_results.append(result)
-
-                # Instant cache persistence (zero data loss on interruption)
-                if should_cache and cache_manager:
-                    try:
-                        cache_manager.save_result(ext["id"], ext["version"], result)
-                    except Exception as e:
-                        # Cache errors should not fail the scan
-                        log(
-                            f"Cache save failed for {ext['id']}: {e}",
-                            "WARNING",
-                        )
-
-                # Update stats (thread-safe operations)
-                if result.get("scan_status") == "success":
-                    if result.get("vulnerabilities", {}).get("count", 0) > 0:
-                        stats.increment("vulnerabilities_found")
-                    stats.increment("successful_scans")
-                else:
-                    stats.increment("failed_scans")
-                    # Track failed extension
-                    error_message = result.get("error", "")
-                    error_type = _categorize_error(error_message)
-                    stats.append_failed(
-                        {
-                            "id": ext["id"],
-                            "name": ext.get("display_name", ext.get("name", ext["id"])),
-                            "error_type": error_type,
-                            "error_message": _simplify_error_message(error_type),
-                        }
-                    )
-
-                if from_cache:
-                    stats.increment("cached_results")
-                else:
-                    stats.increment("fresh_scans")
-
-                # Notify progress callback
-                if on_progress:
-                    event = "cached" if from_cache else "completed"
-                    on_progress(
-                        event,
-                        {
-                            "extension": ext,
-                            "result": result,
-                            "from_cache": from_cache,
-                            "index": idx,
-                            "total": len(extensions),
-                        },
-                    )
-
-            except Exception as e:
-                # Handle worker failure
-                stats.increment("failed_scans")
-                error_type = _categorize_error(str(e))
-                stats.append_failed(
-                    {
-                        "id": ext["id"],
-                        "name": ext.get("display_name", ext.get("name", ext["id"])),
-                        "error_type": error_type,
-                        "error_message": _simplify_error_message(error_type),
-                    }
-                )
-
-                # Notify progress callback of failure
-                if on_progress:
-                    on_progress(
-                        "failed",
-                        {
-                            "extension": ext,
-                            "error": str(e),
-                            "index": idx,
-                            "total": len(extensions),
-                        },
-                    )
+    # Execute parallel scanning (all complexity handled by orchestrator)
+    scan_results, stats = orchestrator.scan(extensions)
 
     if not quiet and not use_rich:
         log("", "INFO")
 
-    # Convert thread-safe stats to dict for return
-    return scan_results, stats.to_dict()
-
-
-def _scan_single_extension_worker(
-    ext: Dict, cache_manager: Optional[CacheManager], args
-) -> Tuple[Dict, bool, bool]:
-    """
-    Worker function to scan a single extension (thread-safe).
-
-    Each worker gets its own API client instance for thread isolation.
-
-    IMPORTANT: This function does NOT write to cache to avoid SQLite thread
-    safety issues. Cache writes are handled by the main thread after all
-    workers complete.
-
-    Args:
-        ext: Extension metadata dict
-        cache_manager: Cache manager (used for reads only)
-        args: Scan configuration
-
-    Returns:
-        Tuple of (result_dict, from_cache_bool, should_cache_bool)
-    """
-    extension_id = ext["id"]
-    version = ext["version"]
-
-    # Check cache first (read-only, thread-safe)
-    cached_result = None
-    if cache_manager and not args.refresh_cache:
-        cached_result = cache_manager.get_cached_result(
-            extension_id, version, max_age_days=args.cache_max_age
-        )
-
-    if cached_result:
-        # Use cached result
-        result = {**ext, **cached_result}
-
-        # Add last_scanned_at from cache timestamp
-        if "_cached_at" in cached_result:
-            result["last_scanned_at"] = cached_result["_cached_at"]
-
-        return result, True, False  # from_cache=True, should_cache=False
-
-    # Create API client for this worker (thread isolation)
-    api_client = VscanAPIClient(
-        delay=args.delay,
-        verbose=False,
-        max_retries=args.max_retries,
-        retry_base_delay=args.retry_delay,
-    )
-
-    # Scan via API
-    publisher = ext.get("publisher", "")
-    name = ext.get("name", "")
-
-    result = api_client.scan_extension_with_retry(publisher, name)
-
-    # Merge with discovery metadata
-    result = {**ext, **result}
-
-    # Add last_scanned_at for fresh scans
-    result["last_scanned_at"] = datetime.now().isoformat() + "Z"
-
-    # Determine if result should be cached (main thread will handle actual caching)
-    should_cache = result.get("scan_status") == "success"
-
-    return result, False, should_cache  # from_cache=False, should_cache=True/False
-
-
-def _scan_single_extension(
-    ext: Dict,
-    idx: int,
-    total: int,
-    cache_manager: Optional[CacheManager],
-    args,
-    api_client: VscanAPIClient,
-    stats: Dict,
-    scan_results: List[Dict],
-    use_rich: bool,
-):
-    """Scan a single extension (extracted for clarity)."""
-    extension_id = ext["id"]
-    version = ext["version"]
-    progress_prefix = f"[{idx}/{total}]"
-
-    # Check cache first (unless refresh or no-cache is requested)
-    cached_result = None
-    if cache_manager and not args.refresh_cache:
-        cached_result = cache_manager.get_cached_result(
-            extension_id, version, max_age_days=args.cache_max_age
-        )
-
-    if cached_result:
-        # Use cached result
-        _process_cached_result(
-            cached_result,
-            ext,
-            extension_id,
-            version,
-            progress_prefix,
-            stats,
-            scan_results,
-            use_rich,
-        )
-    else:
-        # Scan fresh from API
-        _scan_extension_fresh(
-            ext,
-            extension_id,
-            version,
-            progress_prefix,
-            api_client,
-            cache_manager,
-            stats,
-            scan_results,
-            use_rich,
-        )
-
-
-def _process_cached_result(
-    cached_result: Dict,
-    ext: Dict,
-    extension_id: str,
-    version: str,
-    progress_prefix: str,
-    stats: Dict,
-    scan_results: List[Dict],
-    use_rich: bool,
-):
-    """Process a cached scan result."""
-    if not use_rich:
-        log(f"{progress_prefix} {extension_id} v{version}... ⚡ Cached", "INFO")
-
-    # Merge with discovery metadata
-    result = {**ext, **cached_result}
-
-    # Add last_scanned_at from cache timestamp
-    if "_cached_at" in cached_result:
-        result["last_scanned_at"] = cached_result["_cached_at"]
-
-    scan_results.append(result)
-
-    # Update stats
-    if result.get("vulnerabilities", {}).get("count", 0) > 0:
-        stats["vulnerabilities_found"] += 1
-
-    stats["successful_scans"] += 1
-    stats["cached_results"] += 1
-
-
-def _scan_extension_fresh(
-    ext: Dict,
-    extension_id: str,
-    version: str,
-    progress_prefix: str,
-    api_client: VscanAPIClient,
-    cache_manager: Optional[CacheManager],
-    stats: Dict,
-    scan_results: List[Dict],
-    use_rich: bool,
-):
-    """Scan an extension fresh from the API."""
-    if not use_rich:
-        log(f"{progress_prefix} Scanning {extension_id} v{version}... 🔍", "INFO")
-
-    # Scan via API with workflow-level retry
-    publisher = ext.get("publisher", "")
-    name = ext.get("name", "")
-
-    result = api_client.scan_extension_with_retry(publisher, name)
-
-    # Merge with discovery metadata
-    result = {**ext, **result}
-
-    # Add last_scanned_at for fresh scans (current time)
-    result["last_scanned_at"] = datetime.now().isoformat() + "Z"
-
-    # Cache the result if cache is enabled (using batch mode)
-    if cache_manager and result.get("scan_status") == "success":
-        try:
-            cache_manager.save_result_batch(extension_id, version, result)
-        except Exception:
-            # Cache errors should not fail the scan
-            # Error already logged by cache_manager
-            pass
-
-    scan_results.append(result)
-
-    # Update stats
-    if result.get("scan_status") == "success":
-        if result.get("vulnerabilities", {}).get("count", 0) > 0:
-            stats["vulnerabilities_found"] += 1
-        stats["successful_scans"] += 1
-    else:
-        stats["failed_scans"] += 1
-        # Track failed extension with categorized error
-        error_message = result.get("error", "")
-        error_type = _categorize_error(error_message)
-        stats["failed_extensions"].append(
-            {
-                "id": extension_id,
-                "name": ext.get("display_name", ext.get("name", extension_id)),
-                "error_type": error_type,
-                "error_message": _simplify_error_message(error_type),
-            }
-        )
-
-    stats["fresh_scans"] += 1
+    # Return results and statistics
+    return scan_results, stats
 
 
 def _get_verification_status(result: Dict) -> bool:
@@ -974,51 +597,6 @@ def _apply_post_scan_filters(
     return filtered
 
 
-def _categorize_error(error_message: str) -> str:
-    """
-    Categorize error message into user-friendly error type.
-
-    Args:
-        error_message: The error message from API client
-
-    Returns:
-        Error type: 'rate_limit', 'network_timeout', 'network_error', or 'api_error'
-    """
-    if not error_message:
-        return "api_error"
-
-    error_lower = error_message.lower()
-
-    # Check for specific error patterns
-    if "rate limit" in error_lower or "429" in error_lower:
-        return "rate_limit"
-    elif "timeout" in error_lower or "timed out" in error_lower:
-        return "network_timeout"
-    elif "network" in error_lower or "connection" in error_lower:
-        return "network_error"
-    else:
-        return "api_error"
-
-
-def _simplify_error_message(error_type: str) -> str:
-    """
-    Convert error type to user-friendly message.
-
-    Args:
-        error_type: Categorized error type
-
-    Returns:
-        User-friendly error message
-    """
-    messages = {
-        "rate_limit": "Rate limit",
-        "network_timeout": "Network timeout",
-        "network_error": "Network error",
-        "api_error": "API error",
-    }
-    return messages.get(error_type, "API error")
-
-
 def _generate_output(
     scan_results: List[Dict],
     scan_duration: float,
@@ -1069,82 +647,21 @@ def _generate_output(
 def _write_output_file(
     output_path_str: str, results: Dict, is_html_output: bool, use_rich: bool
 ):
-    """Write output to file (JSON, HTML, or CSV)."""
-    # Path validation happens in cli.py before resolve() to preserve relative/absolute distinction
-    # Here we receive already-resolved absolute paths
-    output_path = Path(output_path_str)
+    """
+    Write output to file (JSON, HTML, or CSV).
 
-    # Create parent directories with restricted permissions (cross-platform)
-    safe_mkdir(output_path.parent, mode=0o755)
+    Delegates to OutputWriter for all format handling and file operations.
 
-    # Detect CSV format
-    is_csv_output = output_path.suffix.lower() == ".csv"
+    Args:
+        output_path_str: Absolute path to output file
+        results: Scan results dictionary
+        is_html_output: Legacy parameter (unused, kept for backward compatibility)
+        use_rich: Whether to use rich display for progress messages
+    """
+    from .output_writer import OutputWriter
 
-    # Generate CSV, HTML, or JSON based on file extension
-    if is_csv_output:
-        # CSV output
-        if use_rich:
-            display_info("Generating CSV export...", use_rich=True)
-        else:
-            log("Generating CSV export...", "INFO")
-
-        formatter = OutputFormatter()
-        csv_content = formatter.format_csv(results.get("extensions", []))
-
-        with open(output_path, "w", encoding="utf-8", newline="") as f:
-            f.write(csv_content)
-
-        if use_rich:
-            display_success(
-                f"CSV export written to {sanitize_string(output_path_str, max_length=100)}",
-                use_rich=True,
-            )
-        else:
-            log(
-                f"CSV export written to {sanitize_string(output_path_str, max_length=100)}",
-                "SUCCESS",
-            )
-    elif is_html_output:
-        from .html_report_generator import HTMLReportGenerator
-
-        if use_rich:
-            display_info("Generating HTML report...", use_rich=True)
-        else:
-            log("Generating HTML report...", "INFO")
-
-        html_gen = HTMLReportGenerator()
-        html_content = html_gen.generate_report(results)
-
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
-
-        if use_rich:
-            display_success(
-                f"HTML report written to {sanitize_string(output_path_str, max_length=100)}",
-                use_rich=True,
-            )
-        else:
-            log(
-                f"HTML report written to {sanitize_string(output_path_str, max_length=100)}",
-                "SUCCESS",
-            )
-    else:
-        # JSON output
-        import json
-
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2)
-
-        if use_rich:
-            display_success(
-                f"Results written to {sanitize_string(output_path_str, max_length=100)}",
-                use_rich=True,
-            )
-        else:
-            log(
-                f"Results written to {sanitize_string(output_path_str, max_length=100)}",
-                "SUCCESS",
-            )
+    writer = OutputWriter()
+    writer.write_output(output_path_str, results, use_rich)
 
 
 def _print_summary(
@@ -1159,6 +676,8 @@ def _print_summary(
     """
     Print scan summary statistics.
 
+    Delegates formatting logic to SummaryFormatter for testability.
+
     Args:
         extensions: List of discovered extensions
         stats: Scan statistics dict
@@ -1168,23 +687,23 @@ def _print_summary(
         quiet: Show minimal single-line summary only
         verbose: Show all operational details (cache, retry stats, timing)
     """
+    from .summary_formatter import SummaryFormatter
+
+    formatter = SummaryFormatter()
+
     # Quiet mode: show minimal single-line summary
     if quiet:
-        total = len(extensions)
-        vulns = stats["vulnerabilities_found"]
-        if vulns > 0:
-            print(f"Scanned {total} extensions - Found {vulns} vulnerabilities")
-        else:
-            print(f"Scanned {total} extensions - No vulnerabilities found ✓")
+        summary_text = formatter.format_quiet_summary(
+            len(extensions), stats["vulnerabilities_found"]
+        )
+        print(summary_text)
         return
 
     # Standard mode (default): security-focused, hide operational details
     # Verbose mode: show everything (cache stats, retry stats, timing)
     if use_rich:
         # Get retry stats if available
-        retry_stats = None
-        if "api_client" in stats and stats["api_client"] is not None:
-            retry_stats = stats["api_client"].get_retry_stats()
+        retry_stats = formatter.extract_retry_stats(stats)
 
         # Use Rich formatted summary (pass verbose flag)
         display_summary(
@@ -1196,28 +715,27 @@ def _print_summary(
         )
 
         # Show results table
-        scan_results = results.get("extensions", [])
-        if scan_results:
+        if formatter.has_scan_results(results):
             from rich.console import Console
 
             console = Console()
 
+            scan_results = formatter.get_scan_results(results)
             table = create_results_table(scan_results, show_all=True)
             if table:
                 console.print()
                 console.print(table)
 
             # Cache stats table (only in verbose mode)
-            if verbose:
-                cache_stats = results.get("summary", {}).get("cache_statistics")
-                if cache_stats:
-                    cache_table = create_cache_stats_table(cache_stats)
-                    if cache_table:
-                        console.print()
-                        console.print(cache_table)
+            if formatter.should_show_cache_stats(results, verbose):
+                cache_stats = formatter.get_cache_stats(results)
+                cache_table = create_cache_stats_table(cache_stats)
+                if cache_table:
+                    console.print()
+                    console.print(cache_table)
 
             # Retry stats table (only in verbose mode)
-            if verbose and retry_stats:
+            if formatter.should_show_retry_stats(retry_stats, verbose):
                 from .display import create_retry_stats_table
 
                 retry_table = create_retry_stats_table(retry_stats)
@@ -1228,100 +746,6 @@ def _print_summary(
         # Display failed extensions if any (both standard and verbose modes)
         if stats.get("failed_extensions"):
             display_failed_extensions(stats["failed_extensions"], use_rich=True)
-    else:
-        # Plain output
-        log("", "INFO", force=True)
-        log("=" * 60, "INFO", force=True)
-        log("Scan Complete!", "SUCCESS", force=True)
-        log(f"Total extensions scanned: {len(extensions)}", "INFO", force=True)
-        log(f"Successful scans: {stats['successful_scans']}", "INFO", force=True)
-        log(
-            f"Failed scans: {stats['failed_scans']}",
-            "INFO" if stats["failed_scans"] == 0 else "WARNING",
-            force=True,
-        )
-
-        # Show scan results list (all extensions)
-        scan_results = results.get("extensions", [])
-        if scan_results:
-            display_results_plain(scan_results)
-
-        # Cache statistics (only in verbose mode)
-        if verbose and (
-            stats.get("cached_results", 0) > 0 or stats.get("fresh_scans", 0) > 0
-        ):
-            log("", "INFO", force=True)
-            log("Cache Statistics:", "INFO", force=True)
-            log(
-                f"  From cache: {stats['cached_results']} (⚡ instant)",
-                "INFO",
-                force=True,
-            )
-            log(
-                f"  Fresh scans: {stats['fresh_scans']} (🔍 API calls)",
-                "INFO",
-                force=True,
-            )
-            if len(extensions) > 0:
-                cache_hit_rate = (stats["cached_results"] / len(extensions)) * 100
-                log(f"  Cache hit rate: {cache_hit_rate:.1f}%", "INFO", force=True)
-
-        # Retry statistics (only in verbose mode and if retries occurred)
-        if verbose and "api_client" in stats and stats["api_client"] is not None:
-            retry_stats = stats["api_client"].get_retry_stats()
-            http_retries = retry_stats.get("total_retries", 0)
-            workflow_retries = retry_stats.get("total_workflow_retries", 0)
-
-            if http_retries > 0 or workflow_retries > 0:
-                log("", "INFO")
-                log("Retry Statistics:", "INFO")
-
-                # HTTP-level retries
-                if http_retries > 0:
-                    log(f"  HTTP retry attempts: {http_retries}", "INFO")
-                    log(
-                        f"    Successful: {retry_stats.get('successful_retries', 0)}",
-                        "INFO",
-                    )
-                    failed_http = retry_stats.get("failed_after_retries", 0)
-                    if failed_http > 0:
-                        log(f"    Failed: {failed_http}", "WARNING")
-
-                # Workflow-level retries
-                if workflow_retries > 0:
-                    log(f"  Workflow retry attempts: {workflow_retries}", "INFO")
-                    log(
-                        f"    Successful: {retry_stats.get('successful_workflow_retries', 0)}",
-                        "INFO",
-                    )
-                    failed_workflow = retry_stats.get(
-                        "failed_after_workflow_retries", 0
-                    )
-                    if failed_workflow > 0:
-                        log(
-                            f"    Failed (need manual rescan): {failed_workflow}",
-                            "WARNING",
-                        )
-
-        # Display failed extensions if any (both standard and verbose modes)
-        if stats.get("failed_extensions"):
-            display_failed_extensions(stats["failed_extensions"], use_rich=False)
-
-        log("", "INFO", force=True)
-        log(
-            f"Vulnerabilities found: {stats['vulnerabilities_found']}",
-            "INFO" if stats["vulnerabilities_found"] == 0 else "WARNING",
-            force=True,
-        )
-
-        # Timing details (only in verbose mode)
-        if verbose:
-            log(f"Scan duration: {scan_duration:.1f} seconds", "INFO", force=True)
-            if len(extensions) > 0:
-                avg_time = scan_duration / len(extensions)
-                log(f"Average time per extension: {avg_time:.1f}s", "INFO", force=True)
-
-        log("=" * 60, "INFO", force=True)
 
 
 def _calculate_exit_code(vulnerabilities_found: int) -> int:
@@ -1345,23 +769,22 @@ def _show_filter_help(args, original_count: int, use_rich: bool):
     """
     Show helpful information about active filters when no extensions match.
 
+    Delegates formatting logic to FilterHelpGenerator for testability.
+
     Args:
         args: Scan configuration
         original_count: Number of extensions before filtering
         use_rich: Whether to use Rich formatting
     """
-    active_filters = []
+    from .filter_help_generator import FilterHelpGenerator
 
-    if args.publisher:
-        active_filters.append(f"  --publisher: {args.publisher}")
-    if args.include_ids:
-        active_filters.append(f"  --include-ids: {args.include_ids}")
-    if args.exclude_ids:
-        active_filters.append(f"  --exclude-ids: {args.exclude_ids}")
-    if args.min_risk_level:
-        active_filters.append(f"  --min-risk-level: {args.min_risk_level}")
+    generator = FilterHelpGenerator()
+
+    # Extract active filters
+    active_filters = generator.extract_active_filters(args)
 
     if active_filters:
+        # Display main message
         if use_rich:
             display_warning("No extensions match the specified filters:", use_rich=True)
             for filter_info in active_filters:
@@ -1373,20 +796,14 @@ def _show_filter_help(args, original_count: int, use_rich: bool):
                 log(filter_info, "INFO")
             log("", "INFO")
 
-        # Provide helpful suggestions
-        if original_count > 0:
-            msg = f"Tip: {original_count} extensions were found, but all were filtered out."
-            if use_rich:
-                display_info(msg, use_rich=True)
-            else:
-                log(msg, "INFO")
+        # Generate and display suggestions
+        has_publisher = generator.has_publisher_filter(args)
+        suggestions = generator.generate_suggestion_messages(
+            original_count, has_publisher
+        )
 
-        if args.publisher:
-            msg1 = "Tip: Publisher names are case-insensitive but must match exactly."
-            msg2 = "     Run without filters to see available publishers."
+        for suggestion in suggestions:
             if use_rich:
-                display_info(msg1, use_rich=True)
-                display_info(msg2, use_rich=True)
+                display_info(suggestion, use_rich=True)
             else:
-                log(msg1, "INFO")
-                log(msg2, "INFO")
+                log(suggestion, "INFO")

@@ -52,39 +52,6 @@ RISK_DISPLAY = {
 }
 
 
-def should_use_rich(plain_flag: bool = False) -> bool:
-    """
-    Determine if Rich output should be used.
-
-    Args:
-        plain_flag: Explicit --plain flag from CLI
-
-    Returns:
-        bool: True if Rich should be used, False for plain output
-    """
-    if plain_flag:
-        return False
-
-    # Don't use Rich if stdout is not a TTY (piped/redirected)
-    if not sys.stdout.isatty():
-        return False
-
-    # Don't use Rich if TERM is dumb
-    if os.environ.get("TERM") == "dumb":
-        return False
-
-    # Don't use Rich if NO_COLOR is set
-    if os.environ.get("NO_COLOR"):
-        return False
-
-    # Don't use Rich in CI environments (common CI env vars)
-    ci_vars = ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "TRAVIS"]
-    if any(os.environ.get(var) for var in ci_vars):
-        return False
-
-    return True
-
-
 def create_scan_progress() -> Optional[Progress]:
     """
     Create a Rich Progress bar for scanning operations.
@@ -335,106 +302,6 @@ def create_results_table(
         )
 
     return table
-
-
-def display_results_plain(scan_results: List[Dict]) -> None:
-    """
-    Display scan results in plain text format.
-
-    Args:
-        scan_results: List of extension scan results
-
-    Shows all extensions sorted by risk level (descending) then vulnerability count (descending).
-    Format: emoji name version (publisher) - RISK - Score: N/100 - N vulns
-    """
-    if not scan_results:
-        return
-
-    # Define risk hierarchy for sorting (same as create_results_table)
-    risk_hierarchy = {"critical": 3, "high": 2, "medium": 1, "low": 0, "unknown": -1}
-
-    # Sort results by risk level (descending) then by vulnerability count (descending)
-    def sort_key(result):
-        security = result.get("security", {})
-        risk_level = (
-            security.get("risk_level") or result.get("risk_level", "unknown")
-        ).lower()
-        vulns = security.get("vulnerabilities") or result.get("vulnerabilities", {})
-        vuln_count = vulns.get("count", 0) if isinstance(vulns, dict) else 0
-
-        risk_priority = risk_hierarchy.get(risk_level, -1)
-        return (-risk_priority, -vuln_count)  # Negative for descending order
-
-    sorted_results = sorted(scan_results, key=sort_key)
-
-    # Print header
-    print(
-        f"\nScan Results ({len(scan_results)} extension{'s' if len(scan_results) != 1 else ''}):"
-    )
-    print("=" * 60)
-    print()
-
-    # Display each extension
-    for result in sorted_results:
-        # Get security data (handle both flat and nested structures)
-        security = result.get("security", {})
-        risk_level = (
-            security.get("risk_level") or result.get("risk_level", "unknown")
-        ).lower()
-        vulns = security.get("vulnerabilities") or result.get("vulnerabilities", {})
-        score = security.get("score") or result.get("security_score", 0)
-
-        # Get risk display (emoji and label)
-        emoji, label = RISK_DISPLAY.get(risk_level, RISK_DISPLAY["unknown"])
-
-        # Get vulnerability count
-        vuln_count = vulns.get("count", 0) if isinstance(vulns, dict) else 0
-        vuln_text = "vuln" if vuln_count == 1 else "vulns"
-
-        # Format extension name and version
-        ext_name = result.get("display_name") or result.get("name", "Unknown")
-        ext_version = result.get("version", "N/A")
-
-        # Format security score
-        score_display = f"{score}/100" if score else "N/A"
-
-        # Get publisher information (handle both nested and flat structures)
-        metadata = result.get("metadata", {})
-        publisher_info = metadata.get("publisher", {})
-
-        # Extract publisher name (handle dict or string)
-        publisher_name = (
-            publisher_info.get("name") if isinstance(publisher_info, dict) else None
-        )
-        if not publisher_name:
-            # Fallback to top-level publisher field
-            pub_field = result.get("publisher", "Unknown")
-            if isinstance(pub_field, dict):
-                publisher_name = pub_field.get("name", "Unknown")
-            else:
-                publisher_name = pub_field if pub_field else "Unknown"
-
-        # Get verification status
-        is_verified = (
-            publisher_info.get("verified", False)
-            if isinstance(publisher_info, dict)
-            else False
-        )
-        if not is_verified:
-            pub_field = result.get("publisher", {})
-            if isinstance(pub_field, dict):
-                is_verified = pub_field.get("verified", False)
-
-        # Format publisher display with verification indicator
-        publisher_display = f"{publisher_name} ✓" if is_verified else publisher_name
-
-        # Print extension line
-        print(
-            f"{emoji} {ext_name} v{ext_version} ({publisher_display}) - {label.upper()} - Score: {score_display} - {vuln_count} {vuln_text}"
-        )
-
-    print()
-    print("=" * 60)
 
 
 def create_cache_stats_table(stats: Dict) -> Optional[Table]:
@@ -855,15 +722,12 @@ def display_failed_extensions(
 
     Args:
         failed_extensions: List of failed extension dicts with id, name, error_type, error_message
-        use_rich: Whether to use Rich formatting
+        use_rich: Whether to use Rich formatting (deprecated parameter, always uses Rich)
     """
     if not failed_extensions:
         return
 
-    if use_rich:
-        _display_failed_extensions_rich(failed_extensions)
-    else:
-        _display_failed_extensions_plain(failed_extensions)
+    _display_failed_extensions_rich(failed_extensions)
 
 
 def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
@@ -894,15 +758,3 @@ def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
     console.print(
         "\n[dim]Suggestion: Re-run with --delay 3.0 or --max-retries 5[/dim]\n"
     )
-
-
-def _display_failed_extensions_plain(failed_extensions: List[Dict]) -> None:
-    """Display failed extensions in plain format."""
-    count = len(failed_extensions)
-    print(f"\n⚠ Failed to Scan ({count} extension{'s' if count != 1 else ''})")
-    print("=" * 60)
-
-    for ext in failed_extensions:
-        print(f"{ext['name']} - {ext['error_message']}")
-
-    print("\nSuggestion: Re-run with --delay 3.0 or --max-retries 5\n")

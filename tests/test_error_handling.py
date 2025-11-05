@@ -68,7 +68,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         mock_scan.side_effect = KeyboardInterrupt()
 
         # Act
-        result = self.runner.invoke(cli.app, ["scan", "--plain"])
+        result = self.runner.invoke(cli.app, ["scan"])
 
         # Assert
         self.assertNotEqual(
@@ -90,7 +90,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         mock_scan.side_effect = KeyboardInterrupt()
 
         # Act
-        result = self.runner.invoke(cli.app, ["scan", "--plain"])
+        result = self.runner.invoke(cli.app, ["scan"])
 
         # Assert
         self.assertNotEqual(
@@ -145,7 +145,7 @@ class TestReportPermissionErrors(unittest.TestCase):
         mock_cache_class.return_value = mock_cache
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", output_file])
 
         # Assert
         self.assertEqual(
@@ -181,7 +181,7 @@ class TestReportPermissionErrors(unittest.TestCase):
         mock_formatter_class.return_value = mock_formatter
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", output_file])
 
         # Assert
         self.assertEqual(
@@ -221,7 +221,7 @@ class TestExtensionDiscoveryPermissionErrors(unittest.TestCase):
         )
 
         # Act
-        result = self.runner.invoke(cli.app, ["scan", "--plain"])
+        result = self.runner.invoke(cli.app, ["scan"])
 
         # Assert
         self.assertNotEqual(
@@ -261,7 +261,7 @@ class TestGenericErrorHandling(unittest.TestCase):
         mock_scan.side_effect = RuntimeError("Unexpected error occurred")
 
         # Act
-        result = self.runner.invoke(cli.app, ["scan", "--plain"])
+        result = self.runner.invoke(cli.app, ["scan"])
 
         # Assert
         self.assertIn(
@@ -288,7 +288,7 @@ class TestGenericErrorHandling(unittest.TestCase):
         mock_cache_class.side_effect = RuntimeError("Unexpected error")
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", output_file])
 
         # Assert
         self.assertEqual(result.exit_code, 2, msg="Should exit with code 2 on error")
@@ -330,7 +330,7 @@ class TestExitCodeConsistency(unittest.TestCase):
     def test_keyboard_interrupt_exit_code_nonzero(self, mock_scan):
         """Verify KeyboardInterrupt exits with non-zero code."""
         mock_scan.side_effect = KeyboardInterrupt()
-        result = self.runner.invoke(cli.app, ["scan", "--plain"])
+        result = self.runner.invoke(cli.app, ["scan"])
         self.assertNotEqual(
             result.exit_code, 0, msg="KeyboardInterrupt should exit with non-zero code"
         )
@@ -339,7 +339,7 @@ class TestExitCodeConsistency(unittest.TestCase):
     def test_runtime_error_exit_code_nonzero(self, mock_scan):
         """Verify RuntimeError exits with non-zero code."""
         mock_scan.side_effect = RuntimeError("Error")
-        result = self.runner.invoke(cli.app, ["scan", "--plain"])
+        result = self.runner.invoke(cli.app, ["scan"])
         self.assertNotEqual(
             result.exit_code, 0, msg="RuntimeError should exit with non-zero code"
         )
@@ -357,7 +357,7 @@ class TestExitCodeConsistency(unittest.TestCase):
         mock_cache.get_all_cached_results.return_value = [{}]
         mock_cache_class.return_value = mock_cache
 
-        result = self.runner.invoke(cli.app, ["report", output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", output_file])
         self.assertEqual(result.exit_code, 2)
 
         import shutil

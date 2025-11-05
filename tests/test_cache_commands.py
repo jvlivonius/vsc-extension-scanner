@@ -90,7 +90,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "stats"])
 
         # Assert
         self.assertEqual(
@@ -109,7 +109,7 @@ class TestCacheStatsCommand(unittest.TestCase):
 
         # Act
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-max-age", "14", "--plain"]
+            cli.app, ["cache", "stats", "--cache-max-age", "14"]
         )
 
         # Assert
@@ -130,7 +130,7 @@ class TestCacheStatsCommand(unittest.TestCase):
 
         # Act
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-dir", custom_dir, "--plain"]
+            cli.app, ["cache", "stats", "--cache-dir", custom_dir]
         )
 
         # Assert
@@ -144,9 +144,7 @@ class TestCacheStatsCommand(unittest.TestCase):
     def test_stats_invalid_max_age_below_minimum(self):
         """Test that cache-max-age below 1 is rejected."""
         # Act
-        result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-max-age", "0", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["cache", "stats", "--cache-max-age", "0"])
 
         # Assert
         self.assertEqual(result.exit_code, 2, msg="Should reject max_age below minimum")
@@ -161,7 +159,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         """Test that cache-max-age above 365 is rejected."""
         # Act
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-max-age", "400", "--plain"]
+            cli.app, ["cache", "stats", "--cache-max-age", "400"]
         )
 
         # Assert
@@ -177,7 +175,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         """Test that invalid cache directory paths are rejected."""
         # Act
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-dir", "../../../etc/passwd", "--plain"]
+            cli.app, ["cache", "stats", "--cache-dir", "../../../etc/passwd"]
         )
 
         # Assert
@@ -195,7 +193,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "stats"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed with plain output")
@@ -211,7 +209,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         mock_cache_manager_class.side_effect = Exception("Database error")
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "stats"])
 
         # Assert
         self.assertEqual(
@@ -238,7 +236,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "stats"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed despite warnings")
@@ -292,7 +290,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed when confirmed")
@@ -313,7 +311,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear"])
 
         # Assert
         self.assertEqual(
@@ -333,7 +331,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--force"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed without confirmation")
@@ -350,7 +348,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "-f", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "-f"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should accept -f shorthand")
@@ -370,7 +368,7 @@ class TestCacheClearCommand(unittest.TestCase):
 
         # Act
         result = self.runner.invoke(
-            cli.app, ["cache", "clear", "--force", "--cache-dir", custom_dir, "--plain"]
+            cli.app, ["cache", "clear", "--force", "--cache-dir", custom_dir]
         )
 
         # Assert
@@ -385,15 +383,7 @@ class TestCacheClearCommand(unittest.TestCase):
         """Test that invalid cache directory paths are rejected."""
         # Act
         result = self.runner.invoke(
-            cli.app,
-            [
-                "cache",
-                "clear",
-                "--force",
-                "--cache-dir",
-                "../../../etc/passwd",
-                "--plain",
-            ],
+            cli.app, ["cache", "clear", "--force", "--cache-dir", "../../../etc/passwd"]
         )
 
         # Assert
@@ -411,7 +401,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--force"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed")
@@ -424,7 +414,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.side_effect = Exception("Database locked")
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--force"])
 
         # Assert
         self.assertEqual(
@@ -451,7 +441,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager_class.return_value = mock_instance
 
         # Act
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--force"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed despite warnings")

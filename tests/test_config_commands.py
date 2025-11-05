@@ -89,7 +89,7 @@ class TestConfigInitCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Act
-        result = self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init"])
 
         # Assert
         self.assertEqual(
@@ -106,10 +106,10 @@ class TestConfigInitCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Create initial config
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act - Force overwrite
-        result = self.runner.invoke(cli.app, ["config", "init", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init", "--force"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed with --force")
@@ -128,10 +128,10 @@ class TestConfigInitCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Create initial config
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act - Try to init again without force
-        result = self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init"])
 
         # Assert
         # Should either warn or fail (both are acceptable behaviors)
@@ -150,7 +150,7 @@ class TestConfigInitCommand(unittest.TestCase):
         mock_config_path.return_value = Path(nested_path)
 
         # Act
-        result = self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init"])
 
         # Assert
         self.assertEqual(
@@ -200,10 +200,10 @@ class TestConfigShowCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Create config first
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(cli.app, ["config", "show", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "show"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed")
@@ -220,7 +220,7 @@ class TestConfigShowCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Act - Show without creating config first
-        result = self.runner.invoke(cli.app, ["config", "show", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "show"])
 
         # Assert
         # Should either show defaults or warn about missing file
@@ -240,10 +240,10 @@ class TestConfigShowCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(cli.app, ["config", "show", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "show"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -294,12 +294,10 @@ class TestConfigSetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(
-            cli.app, ["config", "set", "scan.max_retries", "5", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "set", "scan.max_retries", "5"])
 
         # Assert
         self.assertEqual(
@@ -314,12 +312,10 @@ class TestConfigSetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(
-            cli.app, ["config", "set", "scan.delay", "2.5", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "set", "scan.delay", "2.5"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed setting float")
@@ -330,12 +326,10 @@ class TestConfigSetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(
-            cli.app, ["config", "set", "output.quiet", "true", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "set", "output.quiet", "true"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed setting boolean")
@@ -350,12 +344,10 @@ class TestConfigSetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act - Invalid key format (no section)
-        result = self.runner.invoke(
-            cli.app, ["config", "set", "invalidkey", "value", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "set", "invalidkey", "value"])
 
         # Assert
         self.assertNotEqual(result.exit_code, 0, msg="Should reject invalid key format")
@@ -366,11 +358,11 @@ class TestConfigSetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act - Nonexistent key
         result = self.runner.invoke(
-            cli.app, ["config", "set", "scan.nonexistent", "value", "--plain"]
+            cli.app, ["config", "set", "scan.nonexistent", "value"]
         )
 
         # Assert
@@ -389,9 +381,7 @@ class TestConfigSetCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Act - Try to set without creating config first
-        result = self.runner.invoke(
-            cli.app, ["config", "set", "scan.delay", "2.5", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "set", "scan.delay", "2.5"])
 
         # Assert
         # Should either fail or create file
@@ -441,10 +431,10 @@ class TestConfigGetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed getting value")
@@ -461,10 +451,10 @@ class TestConfigGetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act - Invalid key format
-        result = self.runner.invoke(cli.app, ["config", "get", "invalidkey", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "get", "invalidkey"])
 
         # Assert
         self.assertNotEqual(result.exit_code, 0, msg="Should reject invalid key format")
@@ -475,12 +465,10 @@ class TestConfigGetCommand(unittest.TestCase):
         # Arrange
         mock_config_path.return_value = Path(self.test_config_path)
 
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(
-            cli.app, ["config", "get", "scan.nonexistent", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "get", "scan.nonexistent"])
 
         # Assert
         # Should either error or show nothing
@@ -498,7 +486,7 @@ class TestConfigGetCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Act - Try to get without creating config first
-        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay"])
 
         # Assert
         # Should return default value when config missing
@@ -553,10 +541,10 @@ class TestConfigResetCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Create config first
-        self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        self.runner.invoke(cli.app, ["config", "init"])
 
         # Act
-        result = self.runner.invoke(cli.app, ["config", "reset", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "reset", "--force"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg="Should succeed with --force")
@@ -576,7 +564,7 @@ class TestConfigResetCommand(unittest.TestCase):
         mock_config_path.return_value = Path(self.test_config_path)
 
         # Act - Reset without creating config first
-        result = self.runner.invoke(cli.app, ["config", "reset", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "reset", "--force"])
 
         # Assert
         # Should either succeed (idempotent) or warn about missing file

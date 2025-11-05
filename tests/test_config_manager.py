@@ -178,7 +178,6 @@ plain = true
         self.assertEqual(config["scan"]["delay"], 3.0)
         self.assertEqual(config["scan"]["max_retries"], 5)
         self.assertEqual(config["cache"]["cache_max_age"], 30)
-        self.assertTrue(config["output"]["plain"])
 
     @patch("vscode_scanner.config_manager.get_config_path")
     def test_load_generates_warnings_for_invalid_values(self, mock_path):
@@ -271,21 +270,21 @@ class TestValueValidation(unittest.TestCase):
         """Test that boolean true values are parsed correctly."""
         # Act & Assert
         for value in ["true", "TRUE", "yes", "YES", "1", "on", "ON"]:
-            result = validate_config_value("output", "plain", value)
+            result = validate_config_value("output", "quiet", value)
             self.assertTrue(result, f"Failed to parse {value} as True")
 
     def test_validate_bool_false_values(self):
         """Test that boolean false values are parsed correctly."""
         # Act & Assert
         for value in ["false", "FALSE", "no", "NO", "0", "off", "OFF"]:
-            result = validate_config_value("output", "plain", value)
+            result = validate_config_value("output", "quiet", value)
             self.assertFalse(result, f"Failed to parse {value} as False")
 
     def test_validate_bool_invalid_raises_error(self):
         """Test that invalid boolean values raise ValueError."""
         # Act & Assert
         with self.assertRaises(ValueError):
-            validate_config_value("output", "plain", "maybe")
+            validate_config_value("output", "quiet", "maybe")
 
     def test_validate_int_within_range(self):
         """Test that integers within range are accepted."""
@@ -389,7 +388,7 @@ class TestConfigKeyParsing(unittest.TestCase):
         # Act & Assert
         self.assertTrue(is_valid_config_key("scan", "delay"))
         self.assertTrue(is_valid_config_key("cache", "cache_max_age"))
-        self.assertTrue(is_valid_config_key("output", "plain"))
+        self.assertTrue(is_valid_config_key("output", "quiet"))
 
     def test_is_valid_config_key_returns_false_for_invalid(self):
         """Test that is_valid_config_key returns False for invalid keys."""

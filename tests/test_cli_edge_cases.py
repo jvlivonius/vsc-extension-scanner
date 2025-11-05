@@ -6,9 +6,11 @@ Focuses on scan validation flags.
 """
 
 import unittest
+import pytest
 from typer.testing import CliRunner
 
 
+@pytest.mark.unit
 class TestScanValidation(unittest.TestCase):
     """Test scan command validation logic."""
 

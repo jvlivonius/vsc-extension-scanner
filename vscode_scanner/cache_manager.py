@@ -75,40 +75,43 @@ class CacheManager:
 
         self.cache_db = self.cache_dir / "cache.db"
 
-        # Verify database integrity if it exists
+        # Check for schema version mismatch and auto-regenerate if needed (v3.7.0)
+        # Philosophy: Cache is ephemeral data - can always be regenerated from source
         if self.cache_db.exists():
+            # Verify database integrity first
             if not self._verify_database_integrity():
                 self._init_messages.extend(self._handle_corrupted_database())
 
-        # Check if migration is needed before init
-        if self.cache_db.exists():
-            current_version = self._get_schema_version()
+            # Check schema version
+            existing_version = self._get_schema_version()
 
-            if current_version == "1.0":
-                # v1.0 schema is no longer supported
-                raise ValueError(
-                    "Cache database schema v1.0 detected. "
-                    "This version is no longer supported in v3.6.0+. "
-                    "Please upgrade to v3.5.x first to migrate your cache, "
-                    "then upgrade to v3.6.0. "
-                    "Alternatively, delete ~/.vscan/cache.db to start fresh."
+            if existing_version != self.SCHEMA_VERSION:
+                # Schema mismatch - remove old cache and regenerate
+                self._init_messages.append(
+                    CacheInfo(
+                        message=(
+                            f"Cache schema version {existing_version} detected. "
+                            f"Current version is {self.SCHEMA_VERSION}. "
+                            "Removing old cache and regenerating with new schema..."
+                        ),
+                        context="schema_migration",
+                    )
                 )
-            elif current_version == "2.0":
-                # Migrate from v2.0 to v2.1
-                self._migrate_v2_0_to_v2_1()
-                # Then migrate from v2.1 to v2.2
-                self._migrate_v2_1_to_v2_2()
-            elif current_version == "2.1":
-                # Migrate from v2.1 to v2.2
-                self._migrate_v2_1_to_v2_2()
-            elif current_version == "2.2":
-                # Already at latest version
-                pass
-            else:
-                # Unknown version, init fresh
-                self._init_database()
-        else:
-            self._init_database()
+                try:
+                    self.cache_db.unlink()  # Remove old database
+                except OSError as e:
+                    sanitized_error = sanitize_error_message(
+                        str(e), context="cache removal"
+                    )
+                    self._init_messages.append(
+                        CacheWarning(
+                            message=f"Could not remove old cache: {sanitized_error}",
+                            context="cache_removal",
+                        )
+                    )
+
+        # Initialize database with current schema
+        self._init_database()
 
         # Initialize secret key for HMAC integrity checking (v3.5.1)
         self._secret_key = self._get_or_create_secret_key()
@@ -448,35 +451,6 @@ class CacheManager:
 
             conn.commit()
 
-    def _check_if_migration_needed(self) -> bool:
-        """Check if database exists and needs migration."""
-        if not self.cache_db.exists():
-            return False  # New database, no migration needed
-
-        try:
-            with self._db_connection() as conn:
-                cursor = conn.cursor()
-
-                # Check if scan_cache table exists
-                cursor.execute(
-                    """
-                    SELECT name FROM sqlite_master
-                    WHERE type='table' AND name='scan_cache'
-                """
-                )
-                if not cursor.fetchone():
-                    return False  # No table yet, fresh install
-
-                # Check if new columns exist
-                cursor.execute("PRAGMA table_info(scan_cache)")
-                columns = {row[1] for row in cursor.fetchall()}
-
-                # If security_score column doesn't exist, we need migration
-                return "security_score" not in columns
-
-        except sqlite3.Error:
-            return False
-
     def _get_schema_version(self) -> str:
         """Get current schema version from database."""
         try:
@@ -499,89 +473,6 @@ class CacheManager:
                 return row[0] if row else "unknown"  # No version = empty/unknown
         except sqlite3.Error:
             return "unknown"  # Error accessing = empty/unknown
-
-    def _migrate_v2_0_to_v2_1(self):
-        """Migrate cache database from v2.0 to v2.1 schema (add installed_at column)."""
-        try:
-            with self._db_connection() as conn:
-                cursor = conn.cursor()
-
-                # Check if we need to migrate (check for missing column)
-                cursor.execute("PRAGMA table_info(scan_cache)")
-                columns = {row[1] for row in cursor.fetchall()}
-
-                if "installed_at" in columns:
-                    # Already migrated
-                    return
-
-                print("Migrating cache schema (v2.0 → v2.1)...")
-
-                # Add new column to existing table
-                cursor.execute(
-                    """
-                    ALTER TABLE scan_cache
-                    ADD COLUMN installed_at TIMESTAMP
-                """
-                )
-
-                # Update schema version
-                cursor.execute(
-                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                    ("schema_version", "2.1"),
-                )
-
-                conn.commit()
-                print("Migration complete (v2.0 → v2.1)")
-
-        except sqlite3.Error as e:
-            sanitized_error = sanitize_error_message(
-                str(e), context="cache migration v2.0→v2.1"
-            )
-            print(f"Cache migration error: {sanitized_error}")
-
-    def _migrate_v2_1_to_v2_2(self):
-        """Migrate cache database from v2.1 to v2.2 schema (add integrity_signature column)."""
-        try:
-            with self._db_connection() as conn:
-                cursor = conn.cursor()
-
-                # Check if we need to migrate (check for missing column)
-                cursor.execute("PRAGMA table_info(scan_cache)")
-                columns = {row[1] for row in cursor.fetchall()}
-
-                if "integrity_signature" in columns:
-                    # Already migrated
-                    return
-
-                print("Migrating cache schema (v2.1 → v2.2)...")
-                print("Adding HMAC integrity checking to cache entries...")
-
-                # Add new column to existing table
-                cursor.execute(
-                    """
-                    ALTER TABLE scan_cache
-                    ADD COLUMN integrity_signature TEXT
-                """
-                )
-
-                # Note: Existing entries will have NULL signatures
-                # They will be re-signed on next access or treated as unsigned (cache miss)
-
-                # Update schema version
-                cursor.execute(
-                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                    ("schema_version", "2.2"),
-                )
-
-                conn.commit()
-                print("Migration complete (v2.1 → v2.2)")
-                print("Note: Existing cache entries will be re-signed on next access")
-
-        except sqlite3.Error as e:
-            sanitized_error = sanitize_error_message(
-                str(e), context="cache migration v2.1→v2.2"
-            )
-            print(f"Cache migration error: {sanitized_error}")
 
     def get_cached_result(
         self,

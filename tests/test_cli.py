@@ -90,7 +90,6 @@ class TestScanCommand(unittest.TestCase):
                 "--publisher",
                 "test",
                 "--no-cache",
-                "--plain",
                 "--quiet",
                 "--extensions-dir",
                 "/nonexistent",
@@ -147,7 +146,7 @@ class TestScanCommand(unittest.TestCase):
     def test_scan_invalid_risk_level(self):
         """Test scan with invalid risk level."""
         result = self.runner.invoke(
-            cli.app, ["scan", "--min-risk-level", "invalid", "--plain", "--quiet"]
+            cli.app, ["scan", "--min-risk-level", "invalid", "--quiet"]
         )
 
         self.assertNotEqual(result.exit_code, 0)
@@ -161,7 +160,7 @@ class TestScanCommand(unittest.TestCase):
     def test_scan_conflicting_cache_options(self):
         """Test scan with conflicting cache options."""
         result = self.runner.invoke(
-            cli.app, ["scan", "--no-cache", "--refresh-cache", "--plain", "--quiet"]
+            cli.app, ["scan", "--no-cache", "--refresh-cache", "--quiet"]
         )
 
         self.assertNotEqual(result.exit_code, 0)
@@ -197,16 +196,14 @@ class TestCacheStatsCommand(unittest.TestCase):
             "with_vulnerabilities": 3,
         }
 
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "stats"])
 
         self.assertEqual(result.exit_code, 0)
         mock_cache_manager.get_cache_stats.assert_called_once_with(max_age_days=7)
 
     def test_cache_stats_invalid_max_age_below_min(self):
         """Test cache stats rejects cache-max-age below minimum."""
-        result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-max-age", "0", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["cache", "stats", "--cache-max-age", "0"])
 
         self.assertEqual(result.exit_code, 2)
         # Typer validates before function runs, error in output
@@ -215,7 +212,7 @@ class TestCacheStatsCommand(unittest.TestCase):
     def test_cache_stats_invalid_max_age_above_max(self):
         """Test cache stats rejects cache-max-age above maximum."""
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-max-age", "1000", "--plain"]
+            cli.app, ["cache", "stats", "--cache-max-age", "1000"]
         )
 
         self.assertEqual(result.exit_code, 2)
@@ -228,7 +225,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         mock_validate.side_effect = ValueError("Invalid cache directory path")
 
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-dir", "../invalid", "--plain"]
+            cli.app, ["cache", "stats", "--cache-dir", "../invalid"]
         )
 
         self.assertEqual(result.exit_code, 2)
@@ -242,7 +239,7 @@ class TestCacheStatsCommand(unittest.TestCase):
         mock_cache_manager.get_init_messages.return_value = []
         mock_cache_manager.get_cache_stats.side_effect = Exception("Cache error")
 
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "stats"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Error", result.output)
@@ -265,7 +262,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager.get_init_messages.return_value = []
         mock_cache_manager.clear_cache.return_value = 10
 
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear", "--force"])
 
         self.assertEqual(result.exit_code, 0)
         mock_cache_manager.clear_cache.assert_called_once()
@@ -283,7 +280,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager.get_init_messages.return_value = []
         mock_cache_manager.clear_cache.return_value = 5
 
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear"])
 
         self.assertEqual(result.exit_code, 0)
         mock_confirm.assert_called_once()
@@ -295,7 +292,7 @@ class TestCacheClearCommand(unittest.TestCase):
         """Test cache clear cancelled when user declines confirmation."""
         mock_confirm.return_value = False
 
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear"])
 
         self.assertEqual(result.exit_code, 1)
         mock_confirm.assert_called_once()
@@ -307,8 +304,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_validate.side_effect = ValueError("Invalid cache directory path")
 
         result = self.runner.invoke(
-            cli.app,
-            ["cache", "clear", "--cache-dir", "../invalid", "--force", "--plain"],
+            cli.app, ["cache", "clear", "--cache-dir", "../invalid", "--force"]
         )
 
         self.assertEqual(result.exit_code, 2)
@@ -326,7 +322,7 @@ class TestCacheClearCommand(unittest.TestCase):
         mock_cache_manager.get_init_messages.return_value = []
         mock_cache_manager.clear_cache.side_effect = Exception("Cache error")
 
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--plain"])
+        result = self.runner.invoke(cli.app, ["cache", "clear"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Error", result.stdout)
@@ -368,7 +364,7 @@ class TestReportCommand(unittest.TestCase):
             "extensions": [{"extension_id": "test.ext", "risk_level": "low"}]
         }
 
-        result = self.runner.invoke(cli.app, ["report", "report.json", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.json"])
 
         self.assertEqual(result.exit_code, 0)
         mock_cache_manager.get_all_cached_results.assert_called_once()
@@ -408,7 +404,7 @@ class TestReportCommand(unittest.TestCase):
         mock_html_gen_class.return_value = mock_html_gen
         mock_html_gen.generate_report.return_value = "<html>Test Report</html>"
 
-        result = self.runner.invoke(cli.app, ["report", "report.html", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.html"])
 
         self.assertEqual(result.exit_code, 0)
         mock_html_gen.generate_report.assert_called_once()
@@ -442,7 +438,7 @@ class TestReportCommand(unittest.TestCase):
         }
         mock_formatter.format_csv.return_value = "extension_id,risk_level\ntest.ext,low"
 
-        result = self.runner.invoke(cli.app, ["report", "report.csv", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.csv"])
 
         self.assertEqual(result.exit_code, 0)
         mock_formatter.format_csv.assert_called_once()
@@ -451,7 +447,7 @@ class TestReportCommand(unittest.TestCase):
     @patch("vscode_scanner.cli.safe_mkdir")
     def test_report_invalid_extension(self, mock_safe_mkdir):
         """Test report command rejects unsupported file extension."""
-        result = self.runner.invoke(cli.app, ["report", "report.txt", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.txt"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("must have .json, .html, or .csv extension", result.output)
@@ -461,7 +457,7 @@ class TestReportCommand(unittest.TestCase):
         """Test report command handles invalid output path."""
         mock_validate.side_effect = ValueError("Invalid output path")
 
-        result = self.runner.invoke(cli.app, ["report", "../invalid.json", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "../invalid.json"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Invalid output path", result.output)
@@ -482,7 +478,7 @@ class TestReportCommand(unittest.TestCase):
         # Mock extensions exist
         mock_check_exts.return_value = (True, 5)
 
-        result = self.runner.invoke(cli.app, ["report", "report.json", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.json"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Cache is empty", result.output)
@@ -496,7 +492,7 @@ class TestReportCommand(unittest.TestCase):
         mock_cache_manager.get_init_messages.return_value = []
         mock_cache_manager.get_all_cached_results.side_effect = Exception("Cache error")
 
-        result = self.runner.invoke(cli.app, ["report", "report.json", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.json"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Error generating report", result.output)
@@ -528,7 +524,7 @@ class TestCLIErrorHandling(unittest.TestCase):
         # Simulate permission error on file write
         mock_open.side_effect = PermissionError("Permission denied")
 
-        result = self.runner.invoke(cli.app, ["report", "report.json", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.json"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Error generating report", result.output)
@@ -544,7 +540,7 @@ class TestCLIErrorHandling(unittest.TestCase):
         mock_validate.side_effect = ValueError("Path traversal detected")
 
         result = self.runner.invoke(
-            cli.app, ["cache", "stats", "--cache-dir", "../../etc", "--plain"]
+            cli.app, ["cache", "stats", "--cache-dir", "../../etc"]
         )
 
         self.assertEqual(result.exit_code, 2)
@@ -556,8 +552,7 @@ class TestCLIErrorHandling(unittest.TestCase):
         mock_validate.side_effect = ValueError("Path traversal detected")
 
         result = self.runner.invoke(
-            cli.app,
-            ["cache", "clear", "--cache-dir", "../../etc", "--force", "--plain"],
+            cli.app, ["cache", "clear", "--cache-dir", "../../etc", "--force"]
         )
 
         self.assertEqual(result.exit_code, 2)
@@ -576,43 +571,33 @@ class TestParameterValidation(unittest.TestCase):
     def test_delay_bounds(self):
         """Test delay parameter bounds."""
         # Test too small
-        result = self.runner.invoke(
-            cli.app, ["scan", "--delay", "0.05", "--plain", "--quiet"]
-        )
+        result = self.runner.invoke(cli.app, ["scan", "--delay", "0.05", "--quiet"])
         self.assertNotEqual(result.exit_code, 0)
 
         # Test too large
-        result = self.runner.invoke(
-            cli.app, ["scan", "--delay", "100", "--plain", "--quiet"]
-        )
+        result = self.runner.invoke(cli.app, ["scan", "--delay", "100", "--quiet"])
         self.assertNotEqual(result.exit_code, 0)
 
     def test_max_retries_bounds(self):
         """Test max-retries parameter bounds."""
         # Test negative
-        result = self.runner.invoke(
-            cli.app, ["scan", "--max-retries", "-1", "--plain", "--quiet"]
-        )
+        result = self.runner.invoke(cli.app, ["scan", "--max-retries", "-1", "--quiet"])
         self.assertNotEqual(result.exit_code, 0)
 
         # Test too large
         result = self.runner.invoke(
-            cli.app, ["scan", "--max-retries", "100", "--plain", "--quiet"]
+            cli.app, ["scan", "--max-retries", "100", "--quiet"]
         )
         self.assertNotEqual(result.exit_code, 0)
 
     def test_cache_max_age_bounds(self):
         """Test cache-max-age parameter bounds."""
         # Test zero
-        result = self.runner.invoke(
-            cli.app, ["cache-stats", "--cache-max-age", "0", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["cache-stats", "--cache-max-age", "0"])
         self.assertNotEqual(result.exit_code, 0)
 
         # Test too large
-        result = self.runner.invoke(
-            cli.app, ["cache-stats", "--cache-max-age", "1000", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["cache-stats", "--cache-max-age", "1000"])
         self.assertNotEqual(result.exit_code, 0)
 
 
@@ -632,7 +617,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_get_path.return_value = Path("/tmp/.vscanrc")
         mock_create.return_value = Path("/tmp/.vscanrc")
 
-        result = self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init"])
 
         self.assertEqual(result.exit_code, 0)
         mock_create.assert_called_once_with(force=False)
@@ -645,7 +630,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_get_path.return_value = Path("/tmp/.vscanrc")
         mock_create.return_value = Path("/tmp/.vscanrc")
 
-        result = self.runner.invoke(cli.app, ["config", "init", "--force", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init", "--force"])
 
         self.assertEqual(result.exit_code, 0)
         mock_create.assert_called_once_with(force=True)
@@ -657,7 +642,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_get_path.return_value = Path("/tmp/.vscanrc")
         mock_create.side_effect = FileExistsError("Config file already exists")
 
-        result = self.runner.invoke(cli.app, ["config", "init", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "init"])
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("already exists", result.stdout)
@@ -688,7 +673,7 @@ class TestConfigCommands(unittest.TestCase):
             ("cache", "cache_max_age"): 7,
         }.get((s, o))
 
-        result = self.runner.invoke(cli.app, ["config", "show", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "show"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Configuration File", result.stdout)
@@ -702,7 +687,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_exists.return_value = False
         mock_path.return_value = Path("/tmp/.vscanrc")
 
-        result = self.runner.invoke(cli.app, ["config", "show", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "show"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("No configuration file found", result.stdout)
@@ -716,9 +701,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_exists.return_value = True
         mock_path.return_value = Path("/tmp/.vscanrc")
 
-        result = self.runner.invoke(
-            cli.app, ["config", "set", "scan.delay", "2.0", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["config", "set", "scan.delay", "2.0"])
 
         self.assertEqual(result.exit_code, 0)
         mock_update.assert_called_once()
@@ -737,7 +720,7 @@ class TestConfigCommands(unittest.TestCase):
             mock_create.return_value = Path("/tmp/.vscanrc")
             with patch("vscode_scanner.config_manager.update_config_value"):
                 result = self.runner.invoke(
-                    cli.app, ["config", "set", "scan.delay", "2.0", "--plain"]
+                    cli.app, ["config", "set", "scan.delay", "2.0"]
                 )
 
                 # Should create config first
@@ -755,7 +738,7 @@ class TestConfigCommands(unittest.TestCase):
             [],
         )
 
-        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("2.5", result.stdout)
@@ -771,7 +754,7 @@ class TestConfigCommands(unittest.TestCase):
         )
         mock_default.return_value = 1.5
 
-        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "get", "scan.delay"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("1.5", result.stdout)
@@ -789,7 +772,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_path.return_value = Path("/tmp/.vscanrc")
         mock_confirm.return_value = True
 
-        result = self.runner.invoke(cli.app, ["config", "reset", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "reset"])
 
         self.assertEqual(result.exit_code, 0)
         mock_delete.assert_called_once()
@@ -807,7 +790,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_path.return_value = Path("/tmp/.vscanrc")
         mock_confirm.return_value = False
 
-        result = self.runner.invoke(cli.app, ["config", "reset", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "reset"])
 
         self.assertEqual(result.exit_code, 1)  # Exit code 1 when cancelled
         mock_delete.assert_not_called()
@@ -820,7 +803,7 @@ class TestConfigCommands(unittest.TestCase):
         mock_exists.return_value = False
         mock_path.return_value = Path("/tmp/.vscanrc")
 
-        result = self.runner.invoke(cli.app, ["config", "reset", "--plain"])
+        result = self.runner.invoke(cli.app, ["config", "reset"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("No configuration file to reset", result.stdout)

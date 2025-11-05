@@ -12,6 +12,11 @@ Usage:
         # mock_vscan_api is already patched
 
 Created: 2025-10-24 (Phase 4.0: Test Infrastructure)
+Updated: 2025-01-04 (Phase 1.4: Integrated with canonical_fixtures)
+
+Note: Core test data fixtures (extensions, scan results, etc.) are now
+      provided by tests/fixtures/canonical_fixtures.py. This conftest.py
+      focuses on test infrastructure fixtures (temp directories, API mocks).
 """
 
 import pytest
@@ -21,11 +26,43 @@ from pathlib import Path
 from typing import Generator
 from unittest import mock
 
+# Import canonical fixtures for reuse (Phase 1.4)
+# These can be used directly in tests via pytest's fixture discovery
+from tests.fixtures.canonical_fixtures import (
+    sample_extension,
+    sample_extension_list,
+    minimal_extension,
+    sample_scan_result_success,
+    sample_scan_result_with_vulns,
+    sample_scan_result_error,
+    mock_api_client,
+    create_mock_extension,
+    create_mock_scan_result,
+)
+
+# Re-export canonical fixtures so they're available to all tests
+# (pytest autodiscovers them through conftest.py)
+__all__ = [
+    "sample_extension",
+    "sample_extension_list",
+    "minimal_extension",
+    "sample_scan_result_success",
+    "sample_scan_result_with_vulns",
+    "sample_scan_result_error",
+    "mock_api_client",
+    "create_mock_extension",
+    "create_mock_scan_result",
+]
+
 
 @pytest.fixture
 def temp_cache_dir() -> Generator[Path, None, None]:
     """
     Provide a temporary cache directory for tests.
+
+    Note: This overrides the temp_cache_dir from canonical_fixtures.py
+    because tests historically used this implementation (tempfile.mkdtemp).
+    Both implementations are functionally equivalent.
 
     Automatically creates a temporary directory before the test
     and cleans it up after the test completes.

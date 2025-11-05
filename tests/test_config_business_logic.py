@@ -6,10 +6,12 @@ config merging: hardcoded default < config file < CLI argument
 """
 
 import unittest
+import pytest
 from pathlib import Path
 from vscode_scanner.config_manager import merge_scan_config
 
 
+@pytest.mark.unit
 class TestMergeScanConfig(unittest.TestCase):
     """Test merge_scan_config() business logic."""
 
@@ -54,7 +56,7 @@ class TestMergeScanConfig(unittest.TestCase):
         config = {
             "scan": {"delay": 2.5, "max_retries": 5, "workers": 4},
             "cache": {"cache_max_age": 14, "no_cache": True},
-            "output": {"quiet": True, "plain": True},
+            "output": {"quiet": True},
         }
         cli_args = {
             "delay": 1.5,  # default
@@ -62,7 +64,6 @@ class TestMergeScanConfig(unittest.TestCase):
             "retry_delay": 2.0,  # default
             "cache_max_age": 7,  # default
             "quiet": False,  # default
-            "plain": False,  # default
             "no_cache": False,  # default
             "publisher": None,
             "min_risk_level": None,
@@ -81,7 +82,6 @@ class TestMergeScanConfig(unittest.TestCase):
         assert merged["cache_max_age"] == 14
         assert merged["no_cache"] is True
         assert merged["quiet"] is True
-        assert merged["plain"] is True
 
         # Unchanged defaults
         assert merged["retry_delay"] == 2.0
@@ -268,11 +268,11 @@ class TestMergeScanConfig(unittest.TestCase):
         assert merged["cache_dir"] == custom_path
 
     def test_merge_boolean_flags(self):
-        """Boolean flags (quiet, plain, no_cache) merge correctly."""
+        """Boolean flags (quiet, no_cache) merge correctly."""
         config = {
             "scan": {},
             "cache": {"no_cache": True},
-            "output": {"quiet": True, "plain": True},
+            "output": {"quiet": True},
         }
         cli_args = {
             "delay": 1.5,
@@ -280,7 +280,6 @@ class TestMergeScanConfig(unittest.TestCase):
             "retry_delay": 2.0,
             "cache_max_age": 7,
             "quiet": False,  # default
-            "plain": False,  # default
             "no_cache": False,  # default
             "publisher": None,
             "min_risk_level": None,
@@ -294,7 +293,6 @@ class TestMergeScanConfig(unittest.TestCase):
 
         # Config boolean flags should override defaults
         assert merged["quiet"] is True
-        assert merged["plain"] is True
         assert merged["no_cache"] is True
 
     def test_merge_workers_boundary(self):

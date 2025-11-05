@@ -108,7 +108,7 @@ class TestReportJSONGeneration(unittest.TestCase):
         mock_formatter_class.return_value = mock_formatter
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", self.output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", self.output_file])
 
         # Assert
         self.assertEqual(
@@ -127,7 +127,7 @@ class TestReportJSONGeneration(unittest.TestCase):
         mock_cache_class.return_value = mock_cache
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", self.output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", self.output_file])
 
         # Assert
         # Should fail with empty cache (exit code 1 or 2)
@@ -157,7 +157,7 @@ class TestReportJSONGeneration(unittest.TestCase):
 
         # Act
         result = self.runner.invoke(
-            cli.app, ["report", self.output_file, "--cache-max-age", "30", "--plain"]
+            cli.app, ["report", self.output_file, "--cache-max-age", "30"]
         )
 
         # Assert
@@ -168,7 +168,7 @@ class TestReportJSONGeneration(unittest.TestCase):
         """Test JSON report with invalid cache_max_age."""
         # Act
         result = self.runner.invoke(
-            cli.app, ["report", self.output_file, "--cache-max-age", "0", "--plain"]
+            cli.app, ["report", self.output_file, "--cache-max-age", "0"]
         )
 
         # Assert
@@ -251,7 +251,7 @@ class TestReportHTMLGeneration(unittest.TestCase):
         mock_html_class.return_value = mock_html_gen
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", self.output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", self.output_file])
 
         # Assert
         self.assertEqual(
@@ -269,7 +269,7 @@ class TestReportHTMLGeneration(unittest.TestCase):
         mock_cache_class.return_value = mock_cache
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", self.output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", self.output_file])
 
         # Assert
         # Should fail with empty cache (exit code 1 or 2)
@@ -312,7 +312,7 @@ class TestReportHTMLGeneration(unittest.TestCase):
 
         # Act
         result = self.runner.invoke(
-            cli.app, ["report", self.output_file, "--cache-dir", custom_dir, "--plain"]
+            cli.app, ["report", self.output_file, "--cache-dir", custom_dir]
         )
 
         # Assert
@@ -388,7 +388,7 @@ class TestReportCSVGeneration(unittest.TestCase):
         mock_formatter_class.return_value = mock_formatter
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", self.output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", self.output_file])
 
         # Assert
         self.assertEqual(
@@ -406,7 +406,7 @@ class TestReportCSVGeneration(unittest.TestCase):
         mock_cache_class.return_value = mock_cache
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", self.output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", self.output_file])
 
         # Assert
         # Should fail with empty cache (exit code 1 or 2)
@@ -453,7 +453,7 @@ class TestReportPathValidation(unittest.TestCase):
         output_file = os.path.join(self.temp_dir, "report.txt")
 
         # Act
-        result = self.runner.invoke(cli.app, ["report", output_file, "--plain"])
+        result = self.runner.invoke(cli.app, ["report", output_file])
 
         # Assert
         self.assertEqual(
@@ -464,9 +464,7 @@ class TestReportPathValidation(unittest.TestCase):
     def test_report_invalid_output_path(self):
         """Test that invalid output paths are rejected."""
         # Act
-        result = self.runner.invoke(
-            cli.app, ["report", "../../../etc/passwd", "--plain"]
-        )
+        result = self.runner.invoke(cli.app, ["report", "../../../etc/passwd"])
 
         # Assert
         self.assertEqual(
@@ -480,8 +478,7 @@ class TestReportPathValidation(unittest.TestCase):
 
         # Act
         result = self.runner.invoke(
-            cli.app,
-            ["report", output_file, "--cache-dir", "../../../etc/passwd", "--plain"],
+            cli.app, ["report", output_file, "--cache-dir", "../../../etc/passwd"]
         )
 
         # Assert

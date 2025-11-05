@@ -26,65 +26,6 @@ except ImportError:
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.unit
-class TestCacheStatsDisplayModes(unittest.TestCase):
-    """Test cache stats display mode selection (Rich vs Plain)."""
-
-    def setUp(self):
-        """Set up test runner."""
-        self.runner = CliRunner()
-
-    @patch("vscode_scanner.cli.should_use_rich", return_value=True)
-    @patch("vscode_scanner.cli.CacheManager")
-    @patch("vscode_scanner.cli._display_cache_stats_rich")
-    def test_cache_stats_calls_rich_display(
-        self, mock_display_rich, mock_cache_manager_class, mock_should_use_rich
-    ):
-        """Test cache stats calls _display_cache_stats_rich when not plain."""
-        # Mock CacheManager
-        mock_cache_manager = MagicMock()
-        mock_cache_manager_class.return_value = mock_cache_manager
-        mock_cache_manager.get_init_messages.return_value = []
-        mock_cache_manager.get_cache_stats.return_value = {
-            "database_path": "/path/to/cache.db",
-            "total_entries": 15,
-            "database_size_kb": 2048,
-            "age_distribution": {"< 1 day": 5},
-            "risk_breakdown": {"low": 8},
-            "extensions_with_vulnerabilities": 4,
-        }
-
-        result = self.runner.invoke(cli.app, ["cache", "stats"])
-
-        self.assertEqual(result.exit_code, 0)
-        # Verify Rich display was called
-        mock_display_rich.assert_called_once()
-
-    @patch("vscode_scanner.cli.CacheManager")
-    @patch("vscode_scanner.cli._display_cache_stats_plain")
-    def test_cache_stats_calls_plain_display(
-        self, mock_display_plain, mock_cache_manager_class
-    ):
-        """Test cache stats calls _display_cache_stats_plain when --plain specified."""
-        # Mock CacheManager
-        mock_cache_manager = MagicMock()
-        mock_cache_manager_class.return_value = mock_cache_manager
-        mock_cache_manager.get_init_messages.return_value = []
-        mock_cache_manager.get_cache_stats.return_value = {
-            "database_path": "/path/to/cache.db",
-            "total_entries": 15,
-            "database_size_kb": 2048,
-            "age_distribution": {"< 1 day": 5},
-            "risk_breakdown": {"low": 8},
-            "extensions_with_vulnerabilities": 4,
-        }
-
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
-
-        self.assertEqual(result.exit_code, 0)
-        # Verify Plain display was called
-        mock_display_plain.assert_called_once()
-
-
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.unit
 class TestBoundedValidators(unittest.TestCase):
@@ -171,7 +112,7 @@ class TestReportCommandErrors(unittest.TestCase):
             "extensions": [{"extension_id": "test.ext", "risk_level": "low"}]
         }
 
-        result = self.runner.invoke(cli.app, ["report", "report.json", "--plain"])
+        result = self.runner.invoke(cli.app, ["report", "report.json"])
 
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Error", result.output)
@@ -212,104 +153,6 @@ class TestScanCommandConflictingFilters(unittest.TestCase):
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.unit
-class TestCacheStatsInitMessages(unittest.TestCase):
-    """Test cache stats command displays cache initialization messages."""
-
-    def setUp(self):
-        """Set up test runner."""
-        self.runner = CliRunner()
-
-    @patch("vscode_scanner.cli.CacheManager")
-    @patch("vscode_scanner.cli._display_cache_stats_plain")
-    def test_cache_stats_displays_warning_message(
-        self, mock_display_plain, mock_cache_manager_class
-    ):
-        """Test cache stats displays CacheWarning init messages."""
-        from vscode_scanner.types import CacheWarning
-
-        # Mock CacheManager
-        mock_cache_manager = MagicMock()
-        mock_cache_manager_class.return_value = mock_cache_manager
-        mock_cache_manager.get_init_messages.return_value = [
-            CacheWarning(message="Cache database schema outdated", context="init")
-        ]
-        mock_cache_manager.get_cache_stats.return_value = {
-            "database_path": "/path/to/cache.db",
-            "total_entries": 10,
-            "database_size_kb": 1024,
-            "age_distribution": {},
-            "risk_breakdown": {},
-            "extensions_with_vulnerabilities": 0,
-        }
-
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Warning", result.output)
-        self.assertIn("Cache database schema outdated", result.output)
-
-    @patch("vscode_scanner.cli.CacheManager")
-    @patch("vscode_scanner.cli._display_cache_stats_plain")
-    def test_cache_stats_displays_error_message(
-        self, mock_display_plain, mock_cache_manager_class
-    ):
-        """Test cache stats displays CacheError init messages."""
-        from vscode_scanner.types import CacheError
-
-        # Mock CacheManager
-        mock_cache_manager = MagicMock()
-        mock_cache_manager_class.return_value = mock_cache_manager
-        mock_cache_manager.get_init_messages.return_value = [
-            CacheError(
-                message="Failed to verify HMAC signature",
-                context="init",
-                recoverable=True,
-            )
-        ]
-        mock_cache_manager.get_cache_stats.return_value = {
-            "database_path": "/path/to/cache.db",
-            "total_entries": 5,
-            "database_size_kb": 512,
-            "age_distribution": {},
-            "risk_breakdown": {},
-            "extensions_with_vulnerabilities": 0,
-        }
-
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Error", result.output)
-        self.assertIn("Failed to verify HMAC signature", result.output)
-
-    @patch("vscode_scanner.cli.CacheManager")
-    @patch("vscode_scanner.cli._display_cache_stats_plain")
-    def test_cache_stats_displays_info_message(
-        self, mock_display_plain, mock_cache_manager_class
-    ):
-        """Test cache stats displays CacheInfo init messages."""
-        from vscode_scanner.types import CacheInfo
-
-        # Mock CacheManager
-        mock_cache_manager = MagicMock()
-        mock_cache_manager_class.return_value = mock_cache_manager
-        mock_cache_manager.get_init_messages.return_value = [
-            CacheInfo(message="Creating fresh cache database", context="init")
-        ]
-        mock_cache_manager.get_cache_stats.return_value = {
-            "database_path": "/path/to/cache.db",
-            "total_entries": 0,
-            "database_size_kb": 128,
-            "age_distribution": {},
-            "risk_breakdown": {},
-            "extensions_with_vulnerabilities": 0,
-        }
-
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--plain"])
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Creating fresh cache database", result.output)
-
-
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.unit
 class TestScanCommandPathValidation(unittest.TestCase):
