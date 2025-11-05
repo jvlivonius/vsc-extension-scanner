@@ -4,7 +4,7 @@ description: "Provide clear explanations of code, concepts, and system behavior 
 category: workflow
 complexity: standard
 mcp-servers: [sequential, context7]
-personas: [educator, architect, security]
+personas: [architect, security]
 ---
 
 # /sc:explain - Code and Concept Explanation

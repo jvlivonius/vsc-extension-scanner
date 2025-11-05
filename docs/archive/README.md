@@ -335,6 +335,50 @@ docs/archive/
 
 ---
 
+### v3.7.0: Testability & Maintainability Improvements (2025-11-05) ✅ COMPLETE
+
+**Plans:**
+- [v3.7-roadmap.md](plans/v3.7-roadmap.md) - Comprehensive testability & maintainability roadmap (99KB)
+
+**Summaries:**
+- [v3.7.0-release-notes.md](summaries/v3.7.0-release-notes.md) - Complete release documentation with coverage reports
+
+**Testability & Maintainability Initiative (7 Phases Complete ✅):**
+- ✅ **Phase 0:** CLI Simplification (removed `--plain` flag, unified quiet mode)
+- ✅ **Phase 1.1:** Cache schema migration (2.1 → 3.0)
+- ✅ **Phase 1.2:** Test consolidation (merged duplicate scanner tests)
+- ✅ **Phase 1.3:** Shared test fixtures (centralized conftest.py patterns)
+- ✅ **Phase 1.4:** Duplicate test utilities removal (eliminated redundancy)
+- ✅ **Phase 2:** Architecture extraction (6 modules extracted from scanner.py)
+- ✅ **Phase 3:** Test refinement & organization (100% pass rate, improved markers)
+
+**Key Achievements:**
+- Overall coverage: 78.94% → 86.25% (+7.31%, **exceeds 85% target**)
+- Total tests: 831 → 1,035 (+204 tests, +24.5% increase)
+- Code reduction: -1,021 LOC (scanner.py: 1,141 → 538 lines, -52.8%)
+- Modules: 17 → 20 (+3 net, 6 extracted for testability)
+- Test pass rate: 100% (1,035 passed)
+
+**Extracted Modules (Phase 2 - All 96-100% coverage):**
+- parallel_executor.py (153 lines, 96% coverage) - Base parallel execution pattern
+- scan_orchestrator.py (163 lines, 100% coverage) - Specialized scan orchestration
+- scan_helpers.py (154 lines, 97.33% coverage) - Pure worker functions and stats
+- output_writer.py (42 lines, 100% coverage) - Output orchestration
+- summary_formatter.py (74 lines, 100% coverage) - Summary formatting logic
+- filter_help_generator.py (68 lines, 100% coverage) - Filter help generation
+
+**Breaking Changes:**
+- Removed `--plain` flag (use `--quiet` for minimal output)
+- Cache schema upgrade: 2.1 → 3.0 (automatic migration)
+
+**Migration:**
+- Old: `vscan scan --plain` → New: `vscan scan --quiet`
+- Cache automatically migrates from schema 2.1 to 3.0
+
+**Status:** Complete (7/7 phases). v3.7.0 released 2025-11-05. Achieved major testability and maintainability improvements with comprehensive architectural refactoring.
+
+---
+
 ## Archived Code
 
 **Location:** [code/](code/)

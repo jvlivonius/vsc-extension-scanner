@@ -13,11 +13,9 @@ The SuperClaude framework components will be automatically imported below.
 @FLAGS.md
 @PRINCIPLES.md
 @RULES.md
-@RESEARCH_CONFIG.md
 
 # Behavioral Modes
 @MODE_Brainstorming.md
-@MODE_DeepResearch.md
 @MODE_Introspection.md
 @MODE_Orchestration.md
 @MODE_Task_Management.md
@@ -31,4 +29,4 @@ The SuperClaude framework components will be automatically imported below.
 # ===================================================
 # Archived Components
 # ===================================================
-# Some components are archived in .claude/archive/
+# Some components are archived in .claude/.archive/
