@@ -102,10 +102,10 @@ jobs:
           echo "=================================================="
           echo "Coverage Report"
           echo "=================================================="
-          coverage report --fail-under=52
+          coverage report --fail-under=80
           echo ""
-          echo "✅ Coverage threshold met (≥52% baseline)"
-          echo "📊 Current baseline: 52% | Aspirational goal: 85%"
+          echo "✅ Coverage threshold met (≥80% target)"
+          echo "📊 v3.8.1 targets: 80%+ per critical module | 88%+ overall"
 
       - name: Generate HTML coverage report
         if: always()

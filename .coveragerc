@@ -36,10 +36,10 @@ skip_covered = False
 skip_empty = False
 
 # Fail if coverage is below this threshold
-# Current baseline: 52% (v3.5.2)
-# Aspirational goal: 85%
-# Set to 52 to prevent regression while working toward 85% goal
-fail_under = 52.0
+# Current: 86.20% overall (v3.7.1)
+# Target: 88%+ overall, 80%+ per critical module (v3.8.1)
+# Critical modules: vscan_api.py, cache_manager.py, scanner.py
+fail_under = 80.0
 
 # Sort report by coverage percentage (lowest first)
 sort = Cover
