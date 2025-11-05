@@ -325,7 +325,7 @@ vscan report results.csv                   # Generate CSV report from cache
 1. Check if feature is in scope: See [PRD.md](docs/project/PRD.md)
 2. Read relevant architecture docs: [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md)
 3. Implement with error handling and security validation
-4. Add tests (maintain 85% coverage, 95% for security)
+4. Add tests (maintain 87%+ overall coverage, 80%+ critical modules, 95%+ security)
 5. Update relevant documentation
 6. Run all tests: `python3 tests/test_*.py`
 

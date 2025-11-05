@@ -386,13 +386,14 @@ Systematically identified natural unit test coverage limits at framework integra
 
 | Metric | Value |
 |--------|-------|
-| **Version** | 3.7.0 ✅ (Release Ready) |
-| **Status** | Phase 3 Complete - Testability & Maintainability |
+| **Version** | 3.7.1 🚀 (Coverage Excellence) |
+| **Status** | Coverage Improvements - Enhanced Test Coverage |
 | **Code** | 11,500+ lines (Python) |
-| **Tests** | 1,035 tests, 100% passing |
-| **Test Improvement** | +204 tests vs v3.6.0 (+24.5%) |
-| **Test Coverage** | **86.25%** (up from 78.94%, +7.31%) ✅ |
-| **Fast Test Subset** | 1,020 tests in 17s (85% faster) |
+| **Tests** | 1,067 tests, 100% passing |
+| **Test Improvement** | +32 tests vs v3.7.0 (+3.1%) |
+| **Test Coverage** | **87.55%** (up from 86.25%, +1.30%) ✅ |
+| **Module Coverage** | vscan_api: 86.13% ✅, cache_manager: 79.10%, scanner: 79.72% |
+| **Fast Test Subset** | 1,052 tests in ~18s (maintain speed) |
 | **Property Tests** | 20 tests, 1,250+ scenarios |
 | **Documentation** | TESTING.md restructured (11 focused docs) |
 | **Schema** | 3.0 (breaking change from 2.1) |
@@ -409,6 +410,7 @@ Systematically identified natural unit test coverage limits at framework integra
 
 | Version | Date | Focus |
 |---------|------|-------|
+| v3.7.1 | 2025-01-06 | Coverage Improvements (+1.30% overall, vscan_api 86.13%) |
 | v3.7.0 | 2025-01-05 | Testability & Maintainability (3 phases, +7.31% coverage) |
 | v3.6.0 | 2025-11-04 | Coverage Improvement (+1.11%) |
 | v3.5.3 | 2025-10-30 | Testing Excellence (52% → 73% coverage) |
