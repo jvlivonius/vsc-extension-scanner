@@ -103,6 +103,18 @@ git stash
 python3 scripts/bump_version.py X.Y.Z
 ```
 
+**🔒 RECOMMENDED: Use validation to prevent missing release notes:**
+
+```bash
+python3 scripts/bump_version.py X.Y.Z --validate-notes
+```
+
+This will:
+- Update the version in `_version.py`
+- **Block the version bump if release notes file is missing**
+- Provide clear instructions on creating the release notes file
+- Ensure compliance with automated release workflow requirements
+
 **Verify consistency across all files:**
 
 ```bash
@@ -113,6 +125,17 @@ The `--check` command validates:
 - Python files import from `_version.py` (no hardcoded versions)
 - Documentation version references match
 - Dynamic versioning in `pyproject.toml`
+
+**Verify release notes exist:**
+
+```bash
+python3 scripts/bump_version.py --check-notes X.Y.Z
+```
+
+This validates:
+- Release notes file exists at `docs/archive/summaries/vX.Y.Z-release-notes.md`
+- File has substantial content (>100 chars)
+- File is ready for GitHub Actions release workflow
 
 **Expected output:** All files report version consistency with ✓ marks.
 
@@ -166,7 +189,7 @@ Add new release section using [Keep a Changelog](https://keepachangelog.com/) fo
 - Include migration notes for breaking changes
 - Update comparison links at bottom
 
-**2.5 Release Notes (Required for Automated Releases)** ⚠️ Manual Required
+**2.5 Release Notes (Required for Automated Releases)** 🔴 CRITICAL - Manual Required
 
 Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - Summary and key features
@@ -175,13 +198,40 @@ Create `docs/archive/summaries/vX.Y.Z-release-notes.md` using template:
 - Installation/upgrade instructions
 - Known issues
 
+**Template:** `docs/templates/release-notes-template.md`
+
 **Pattern:** Follow [DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CONVENTIONS.md) for archive naming.
 
-**For Automated Releases:**
-- The GitHub Actions workflow will use this file for the GitHub release description
-- If this file doesn't exist, it will fall back to extracting from CHANGELOG.md
-- Release notes provide comprehensive user-facing information vs brief CHANGELOG bullets
-- File must be created and committed **before** pushing the version tag
+**🔴 CRITICAL: This file MUST exist BEFORE pushing the version tag!**
+
+**Why this matters:**
+- The GitHub Actions workflow uses this file for the GitHub release description
+- If missing, the release will have only a generic message instead of comprehensive notes
+- This file provides comprehensive user-facing information vs brief CHANGELOG bullets
+- **Validation prevents this mistake:** Use `--validate-notes` flag when bumping version
+
+**Validation workflow:**
+
+```bash
+# Option 1: Validate during version bump (RECOMMENDED)
+python3 scripts/bump_version.py X.Y.Z --validate-notes
+
+# Option 2: Validate separately before tagging
+python3 scripts/bump_version.py --check-notes X.Y.Z
+```
+
+**If validation fails:**
+1. Copy template: `docs/templates/release-notes-template.md`
+2. Create: `docs/archive/summaries/vX.Y.Z-release-notes.md`
+3. Fill in all sections with version-specific information
+4. Commit the file
+5. Re-run validation to confirm
+
+**Expected validation output:**
+```
+✓ Release notes file exists: docs/archive/summaries/vX.Y.Z-release-notes.md
+✓ Release notes file has content (XXXX chars)
+```
 
 **2.6 Consolidate Release Documentation (Multi-Phase Releases)** ⚠️ Manual or Automated
 

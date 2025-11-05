@@ -6,10 +6,13 @@ Automatically updates the version number in vscode_scanner/_version.py
 and optionally updates documentation files.
 
 Usage:
-    python scripts/bump_version.py 2.3.0                # Set version (manual doc update)
-    python scripts/bump_version.py 2.3.0 --auto-update  # Set version + auto-update docs
-    python scripts/bump_version.py --check              # Check version consistency
-    python scripts/bump_version.py --show               # Show current version
+    python scripts/bump_version.py 2.3.0                        # Set version (manual doc update)
+    python scripts/bump_version.py 2.3.0 --auto-update          # Set version + auto-update docs
+    python scripts/bump_version.py 2.3.0 --validate-notes       # Set version (blocks if notes missing)
+    python scripts/bump_version.py 2.3.0 --auto-update --validate-notes  # Combined flags
+    python scripts/bump_version.py --check                      # Check version consistency
+    python scripts/bump_version.py --check-notes 2.3.0          # Check if release notes exist
+    python scripts/bump_version.py --show                       # Show current version
 """
 
 import re
@@ -224,6 +227,41 @@ def check_consistency():
         return True
 
 
+def check_release_notes(version):
+    """Check if release notes file exists for the given version."""
+    root = Path(__file__).parent.parent
+    notes_file = (
+        root / "docs" / "archive" / "summaries" / f"v{version}-release-notes.md"
+    )
+
+    if not notes_file.exists():
+        print(f"❌ ERROR: Release notes file missing for version {version}")
+        print(f"   Expected: {notes_file.relative_to(root)}")
+        print()
+        print("📝 To create release notes:")
+        print(f"   1. Copy template: docs/templates/release-notes-template.md")
+        print(f"   2. Create: docs/archive/summaries/v{version}-release-notes.md")
+        print(f"   3. Fill in all sections with version-specific information")
+        print(f"   4. Commit the file BEFORE pushing the version tag")
+        print()
+        print("⚠️  The GitHub Actions release workflow requires this file to exist")
+        print("   before pushing the version tag, otherwise the release will have")
+        print("   only a generic message instead of comprehensive notes.")
+        return False
+
+    print(f"✓ Release notes file exists: {notes_file.relative_to(root)}")
+
+    # Check file is not empty
+    content = notes_file.read_text(encoding="utf-8")
+    if len(content.strip()) < 100:  # Arbitrary minimum length
+        print(f"⚠️  WARNING: Release notes file seems too short ({len(content)} chars)")
+        print(f"   Expected comprehensive release notes (typically 1000+ chars)")
+        return False
+
+    print(f"✓ Release notes file has content ({len(content)} chars)")
+    return True
+
+
 def show_version():
     """Display the current version."""
     current_version = read_current_version()
@@ -243,6 +281,14 @@ def main():
     if arg == "--check":
         success = check_consistency()
         sys.exit(0 if success else 1)
+    elif arg == "--check-notes":
+        if len(sys.argv) < 3:
+            print("Error: --check-notes requires a version number")
+            print("Usage: python scripts/bump_version.py --check-notes X.Y.Z")
+            sys.exit(1)
+        version = sys.argv[2]
+        success = check_release_notes(version)
+        sys.exit(0 if success else 1)
     elif arg == "--show":
         show_version()
     elif arg.startswith("--"):
@@ -252,8 +298,24 @@ def main():
     else:
         # Treat as version number
         try:
-            # Check for --auto-update flag
-            auto_update = len(sys.argv) > 2 and sys.argv[2] == "--auto-update"
+            # Check for flags
+            auto_update = False
+            validate_notes = False
+            for i in range(2, len(sys.argv)):
+                if sys.argv[i] == "--auto-update":
+                    auto_update = True
+                elif sys.argv[i] == "--validate-notes":
+                    validate_notes = True
+
+            # Check release notes exist if validation requested
+            if validate_notes:
+                print("Checking for release notes...")
+                if not check_release_notes(arg):
+                    print()
+                    print("❌ Version bump aborted: Release notes validation failed")
+                    print("   Create the release notes file and try again.")
+                    sys.exit(1)
+                print()
 
             # Update _version.py
             set_version(arg)
@@ -266,6 +328,15 @@ def main():
             # Validate consistency
             print()
             check_consistency()
+
+            # Reminder about release notes if not validated
+            if not validate_notes:
+                print()
+                print(
+                    "📝 REMINDER: Before tagging this release, ensure release notes exist:"
+                )
+                print(f"   python scripts/bump_version.py --check-notes {arg}")
+                print(f"   Or create: docs/archive/summaries/v{arg}-release-notes.md")
         except ValueError as e:
             print(f"Error: {e}")
             sys.exit(1)
