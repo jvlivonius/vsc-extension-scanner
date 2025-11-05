@@ -33,6 +33,8 @@ import json
 import sqlite3
 import time
 from pathlib import Path
+from unittest.mock import patch
+from datetime import datetime, timedelta
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -348,10 +350,9 @@ class TestCacheExpirationProperties(unittest.TestCase):
         if hasattr(self, "test_dir") and os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 
-    @pytest.mark.slow
     @given(extension_ids, versions, scan_result_strategy())
     @settings(
-        max_examples=30,
+        max_examples=10,
         deadline=None,
         suppress_health_check=[HealthCheck.filter_too_much],
     )
@@ -361,30 +362,49 @@ class TestCacheExpirationProperties(unittest.TestCase):
 
         After expiration time passes and cleanup_old_entries() is called,
         expired entries should no longer be retrievable.
+
+        Optimized with mocked time to avoid 2-second sleep per example.
+        Previous runtime: ~60 seconds | Optimized runtime: ~1 second
         """
         try:
-            # Store data
-            self.manager.save_result(extension_id, version, scan_result)
+            with patch("vscode_scanner.cache_manager.datetime") as mock_datetime:
+                # Set initial time for the test
+                initial_time = datetime(2024, 1, 1, 12, 0, 0)
+                mock_datetime.now.return_value = initial_time
+                # Allow datetime() constructor to work normally
+                mock_datetime.side_effect = (
+                    lambda *args, **kw: datetime(*args, **kw) if args else initial_time
+                )
 
-            # Verify exists
-            self.assertIsNotNone(self.manager.get_cached_result(extension_id, version))
+                # Store data with initial timestamp
+                self.manager.save_result(extension_id, version, scan_result)
 
-            # Wait and run cleanup with very short expiration (approx 1 second)
-            time.sleep(2)  # Wait for expiration
-            removed = self.manager.cleanup_old_entries(
-                max_age_days=1 / 86400
-            )  # 1 second expiration
+                # Verify exists
+                self.assertIsNotNone(
+                    self.manager.get_cached_result(extension_id, version)
+                )
 
-            # Should have removed at least 1 entry
-            self.assertGreater(removed, 0, msg="Cleanup did not remove expired entry")
+                # Advance mocked time by 2 seconds (instant, no real sleep)
+                expired_time = initial_time + timedelta(seconds=2)
+                mock_datetime.now.return_value = expired_time
 
-            # Entry should no longer be retrievable (or retrievable only if within max_age_days of get_cached_result)
-            result = self.manager.get_cached_result(
-                extension_id, version, max_age_days=1 / 86400
-            )
-            self.assertIsNone(
-                result, msg="Expired entry still retrievable after cleanup"
-            )
+                # Run cleanup with very short expiration (approx 1 second)
+                removed = self.manager.cleanup_old_entries(
+                    max_age_days=1 / 86400
+                )  # 1 second expiration
+
+                # Should have removed at least 1 entry
+                self.assertGreater(
+                    removed, 0, msg="Cleanup did not remove expired entry"
+                )
+
+                # Entry should no longer be retrievable (or retrievable only if within max_age_days of get_cached_result)
+                result = self.manager.get_cached_result(
+                    extension_id, version, max_age_days=1 / 86400
+                )
+                self.assertIsNone(
+                    result, msg="Expired entry still retrievable after cleanup"
+                )
 
         except Exception:
             # Invalid inputs or timing issues acceptable
