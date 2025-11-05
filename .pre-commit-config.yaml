@@ -86,10 +86,13 @@ repos:
     hooks:
       - id: semgrep
         name: Semgrep Custom Security Scan (11 rules, 0 ERROR FPs)
-        args: ['--config=.semgrep.yml', 'vscode_scanner/', '--metrics=off', '--quiet']
-        pass_filenames: false
-        always_run: true
+        args: ['--config=.semgrep.yml', '--metrics=off', '--error']
+        pass_filenames: true
+        always_run: false
+        fail_fast: true
         types: [python]  # OPTIMIZATION: Only run on Python files
+        # Note: If pre-commit passes but CI fails on Semgrep, there's a configuration bug.
+        # Test manually: semgrep --config=.semgrep.yml vscode_scanner/
 
   # ============================================================================
   # PHASE 5: Code Quality (~12 seconds)
@@ -141,9 +144,3 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        # Replaces 5 separate hooks:
-        # - security-regression-tests (24 tests)
-        # - path-validation-tests (19 tests)
-        # - string-sanitization-tests (22 tests)
-        # - cache-integrity-tests (21 tests)
-        # - sqlite-security-tests (8 tests)

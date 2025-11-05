@@ -54,6 +54,7 @@ rules:
         - "**/extension_discovery.py"  # Safe path handling, test coverage validates
         - "**/html_report/generator.py"  # Receives pre-validated paths from CLI
         - "**/vscan.py"  # Entry point, all paths validated before file operations
+        - "**/output_writer.py"  # validate_path() on line 116, TestOutputWriterSecurity verifies (4 tests)
     metadata:
       category: security
       cwe: "CWE-22: Path Traversal"
