@@ -4,7 +4,7 @@ description: "Provide development estimates for tasks, features, or projects wit
 category: special
 complexity: standard
 mcp-servers: [sequential, context7]
-personas: [architect, performance, project-manager]
+personas: [architect, performance]
 ---
 
 # /sc:estimate - Development Estimation

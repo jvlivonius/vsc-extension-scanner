@@ -5,7 +5,7 @@ category: special
 complexity: advanced
 # PYTHON CLI OPTIMIZATION: Removed magic, playwright, morphllm (frontend/browser/pattern tools)
 mcp-servers: [sequential, context7, serena]
-personas: [architect, analyzer, backend, security, devops, project-manager]
+personas: [architect, analyzer, backend, security, devops]
 ---
 
 # /sc:task - Enhanced Task Management
