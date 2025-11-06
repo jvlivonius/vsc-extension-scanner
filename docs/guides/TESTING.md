@@ -190,47 +190,64 @@ tests/
 
 ---
 
+## Dynamic Marker System
+
+**Single source of truth:** All pytest markers loaded from `pyproject.toml` at runtime. No hardcoded definitions, automatic validation via `test_marker_categories.py`.
+
+### Marker Categories
+
+| Category | Tag | Usage | Required | Examples |
+|----------|-----|-------|----------|----------|
+| **Test Group** | `[GROUP]` | `--include`/`--exclude` | Yes (one per test) | unit, security, architecture, parallel, integration, real_api, mock_validation |
+| **Behavioral** | `[BEHAVIORAL]` | `--filter` | Optional | slow, property_based |
+| **Meta** | Runtime-only | Auto-generated | N/A | unmarked, all |
+
+### Adding New Markers
+
+1. Update `pyproject.toml`: `"marker_name: [GROUP|BEHAVIORAL] Description"`
+2. Apply to tests: `@pytest.mark.marker_name`
+3. Use: `python3 scripts/run_tests.py --include marker_name`
+
+**Auto-benefits:** Dynamic TestGroup enum, generated help text, validation included in `--include architecture`
+
+---
+
 ## Running Tests
 
 ### Test Suite Runner (Recommended)
 
-The unified test runner (`scripts/run_tests.py`) provides standardized execution with clear output.
-
-**Quick Start:**
+**Groups** (dynamic from `pyproject.toml`):
 ```bash
-# Run all tests
-python3 scripts/run_tests.py --all
-
-# Run specific groups
-python3 scripts/run_tests.py --unit --security
-python3 scripts/run_tests.py --all --fast
+python3 scripts/run_tests.py                          # All groups (default)
+python3 scripts/run_tests.py --include unit,security  # Specific groups
+python3 scripts/run_tests.py --exclude real-api       # All except specified
 ```
 
-**Available Test Groups:**
+| Group | Time | Description |
+|-------|------|-------------|
+| unit, security, architecture, parallel, integration, mock-validation | <5s | Fast tests |
+| real-api | ~30s | Real API calls (network-dependent) |
+| unmarked | varies | Tests without markers (meta-group) |
 
-| Flag | Duration | Description |
-|------|----------|-------------|
-| `--unit` | ~2s | Core functionality (scanner, display, CLI, edge cases) |
-| `--security` | ~0.5s | Security validation, sanitization, integrity |
-| `--architecture` | ~0.2s | Layer compliance, zero violations |
-| `--parallel` | ~0.15s | Threading, parallel scanning |
-| `--integration` | ~1s | Integration tests + DB integrity |
-| `--real-api` | ~30s | Real vscan.dev API calls (slow) |
-| `--all` | ~40s | All test groups combined |
-
-**Output Formats:**
+**Filters & Presets:**
 ```bash
-# JSON output for automation
-python3 scripts/run_tests.py --all --output json --output-file results.json
-
-# JUnit XML for CI/CD
-python3 scripts/run_tests.py --all --output junit --output-file results.xml
-
-# Quiet mode (summary only)
-python3 scripts/run_tests.py --all --quiet
+python3 scripts/run_tests.py --filter 'not slow'    # Behavioral filtering
+python3 scripts/run_tests.py --fast                 # Exclude slow (preset)
+python3 scripts/run_tests.py --ci                   # Exclude real-api (preset)
+python3 scripts/run_tests.py --report               # HTML coverage (preset)
+python3 scripts/run_tests.py --security-only        # Security only (preset)
 ```
 
-### Alternative: pytest
+**Output & Coverage:**
+```bash
+python3 scripts/run_tests.py --coverage --coverage-format html|xml
+python3 scripts/run_tests.py --output json|junit --output-file FILE
+python3 scripts/run_tests.py --quiet --help --list-groups
+```
+
+### Alternative: Direct pytest
+
+For simple scenarios or when you need pytest-specific features:
 
 ```bash
 # Run all tests
@@ -242,8 +259,11 @@ pytest tests/test_scanner.py
 # Run tests by pattern
 pytest -k "cache" -v
 
-# Skip slow tests
+# Skip slow tests (behavioral marker)
 pytest -m "not slow"
+
+# Run specific test group (requires marker)
+pytest -m "unit" tests/
 ```
 
 ---
@@ -286,15 +306,35 @@ def test_cache_hit_returns_cached_result():
 
 ### Required Pytest Markers
 
-**CRITICAL:** All tests **must** have at least one pytest marker for test discovery by `run_tests.py`.
+**CRITICAL:** All tests **must** have at least one test group marker for proper test discovery by `run_tests.py`.
 
-**Required Markers:**
-- `@pytest.mark.unit` - Unit tests (most common)
-- `@pytest.mark.integration` - Integration tests
-- `@pytest.mark.security` - Security validation tests
+**Single Source of Truth:** All markers are defined in `pyproject.toml` under `[tool.pytest.ini_options].markers`. See the [Dynamic Marker System](#dynamic-marker-system) section for details on marker categories and adding new markers.
+
+**Required Test Group Markers** (choose exactly one per test):
+- `@pytest.mark.unit` - Unit tests for individual components (most common)
+- `@pytest.mark.integration` - Integration tests with mocked dependencies
+- `@pytest.mark.security` - Security vulnerability tests
 - `@pytest.mark.architecture` - Architecture compliance tests
-- `@pytest.mark.parallel` - Parallel execution tests
-- `@pytest.mark.real-api` - Real API integration tests (slow)
+- `@pytest.mark.parallel` - Parallel execution and threading tests
+- `@pytest.mark.real_api` - Tests that make real API calls (slow, network-dependent)
+- `@pytest.mark.mock_validation` - Mock validation against real API responses
+
+**Optional Behavioral Markers** (can combine with any group):
+- `@pytest.mark.slow` - Tests taking >5 seconds (excluded by `--fast` preset)
+- `@pytest.mark.property_based` - Property-based tests using Hypothesis framework
+
+**Example Combining Markers:**
+```python
+import pytest
+
+# Unit test that is slow and property-based
+@pytest.mark.unit
+@pytest.mark.slow
+@pytest.mark.property_based
+def test_scanner_with_many_extensions(extension_list):
+    """Property test with large extension lists."""
+    ...
+```
 
 **Module-Level Marking (Recommended):**
 ```python
@@ -325,30 +365,25 @@ python3 -m pytest tests/ --collect-only -q | grep "tests collected"
 python3 -m pytest tests/test_myfile.py -m unit --collect-only -q
 ```
 
-**What Happens to Unmarked Tests:**
+#### The UNMARKED Meta-Group
 
-Tests without required markers are automatically collected into an "unmarked" group:
-- **Included with `--all`**: Unmarked tests run automatically when using `--all` flag
-- **Excluded from specific groups**: `--unit`, `--security`, etc. only run marked tests
-- **Warning displayed**: A yellow warning shows which files lack markers
-- **Run last**: Unmarked tests execute after all other test groups
-- **Explicit flag**: Use `--unmarked` to run only unmarked tests
+**Purpose:** Safety net preventing tests from being silently excluded (v3.7.1+). Tests without markers → auto-collected into `UNMARKED` → run last with yellow warning.
 
-**Example Output:**
-```bash
-$ python3 scripts/run_tests.py --all
+**Behavior:**
+- Included by default with `--all` (warns which files need markers)
+- Excluded from specific groups: `--include unit` skips unmarked tests
+- Strict mode: `--exclude unmarked` for CI enforcement
 
-Running: unit, security, architecture, integration, unmarked
+**Fix unmarked tests (module-level recommended):**
+```python
+import pytest
+pytestmark = pytest.mark.unit  # or security, integration, etc.
 
-⚠️  WARNING: Found 2 test file(s) without required pytest markers
-    These tests should be marked with @pytest.mark.unit (or other markers)
-    Files: test_foo.py, test_bar.py
-    See docs/guides/TESTING.md for marker requirements
-
-[runs all test groups including unmarked]
+def test_my_function():
+    ...
 ```
 
-**Best Practice:** While unmarked tests will still run with `--all`, you should add proper markers to categorize tests correctly. Use the warning message to identify and mark tests appropriately.
+**Verify:** `python3 scripts/run_tests.py --include unmarked` should show no tests after fixing.
 
 ### Test Fixtures
 
