@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.2] - 2025-11-06
+
+### Added
+
+- **Release Automation**: Pre-release validation automation with comprehensive checks
+  - New `scripts/pre_release_check.py` - 5-step validation (version, git, tests, security, coverage)
+  - Reduces manual testing from 15-20 minutes to ~5 minutes automated validation
+  - Prevents releases with version inconsistencies, failing tests, or security issues
+- **Release Automation**: Smoke testing integrated into GitHub Actions release workflow
+  - New `scripts/smoke_test.py` - 7-step package validation in isolated environment
+  - Validates wheel installation, CLI accessibility, scan workflow, output formats
+  - Automatically runs on version tag push, blocks release if validation fails
+- **Testing**: UNMARKED test group to prevent silent test exclusion
+  - Ensures all tests have explicit group markers (@pytest.mark decorators)
+  - Prevents accidentally excluding tests from CI/CD pipelines
+
+### Changed
+
+- **Testing**: Migrated test infrastructure to reusable lib modules
+  - New `tests/lib/discovery_mocks.py` - Extension discovery test utilities
+  - New `tests/lib/scanner_helpers.py` - Scanner test helpers
+  - Reduced code duplication, improved test maintainability
+- **CI/CD**: Improved GitHub Actions release workflow optimization
+  - Exclude `real_api` tests from release workflow (speeds up execution)
+  - Add smoke tests to release workflow for package validation
+  - Optimize test execution time (~35s vs 115s in development mode)
+- **Documentation**: Enhanced RELEASE_PROCESS.md with v3.7.1+ automation features
+  - Documented pre-release check and smoke testing automation
+  - Optimized formatting with tables and structured sections
+  - Updated TESTING.md with new test infrastructure patterns
+
+### Fixed
+
+- **Release**: Security tool execution in pre-release check script
+  - Correctly handles cases where bandit, safety, or pip-audit are not available
+  - Provides clear feedback when tools are missing vs when scans fail
+  - Prevents false failures in environments without optional security tools
+
 ## [3.6.0] - 2025-11-03
 
 ### Added
