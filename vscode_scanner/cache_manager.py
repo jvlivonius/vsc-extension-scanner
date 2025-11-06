@@ -53,12 +53,16 @@ class CacheManager:
         # Initialization messages (warnings, errors, info from setup)
         self._init_messages = []
         if cache_dir:
-            # Validate cache directory using unified validation (v3.5.1)
-            # Blocks: URL encoding, dangerous chars, parent traversal, system directories
+            # Validate cache directory using unified validation (v3.5.1+)
+            # Blocks: URL encoding, dangerous chars, parent traversal, system directories, temp dirs
             # Expands: shell variables (~/, $HOME/, $USER/)
+            # v3.7.2: Block temp directories (cache data should persist across reboots)
             try:
                 validate_path(
-                    cache_dir, allow_absolute=True, path_type="cache directory"
+                    cache_dir,
+                    allow_absolute=True,
+                    path_type="cache directory",
+                    allow_temp=False,
                 )
             except ValueError as e:
                 raise ValueError(f"[E200] {str(e)}")

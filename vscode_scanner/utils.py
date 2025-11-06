@@ -166,7 +166,10 @@ def is_restricted_path(path_str: str) -> bool:
 
 
 def validate_path(
-    path: str, allow_absolute: bool = True, path_type: str = "path"
+    path: str,
+    allow_absolute: bool = True,
+    path_type: str = "path",
+    allow_temp: bool = True,
 ) -> bool:
     """
     Validate that a path doesn't contain dangerous patterns.
@@ -177,10 +180,15 @@ def validate_path(
     - Critical system path blocking
     - Helpful error messages via ValueError
 
+    Enhanced in v3.7.2 with:
+    - Temp directory control (allow_temp parameter)
+    - Cache directory security (prevent /tmp for persistent data)
+
     Args:
         path: Path to validate (supports shell expansion like ~/, $HOME/)
         allow_absolute: Whether to allow absolute paths (default: True)
         path_type: Type of path for error messages (e.g., "output", "cache")
+        allow_temp: Whether to allow temp directories like /tmp (default: True)
 
     Raises:
         ValueError: If path contains dangerous patterns or resolves to restricted location
@@ -195,6 +203,8 @@ def validate_path(
         ValueError: Access to system directories not allowed
         >>> validate_path("%2e%2e%2f")  # Raises: URL encoding
         ValueError: URL-encoded paths are not allowed
+        >>> validate_path("/tmp/cache", allow_temp=False)  # Raises: temp not allowed
+        ValueError: Temp directories not allowed for cache directory
     """
     import os
 
@@ -237,8 +247,17 @@ def validate_path(
 
         # Check if expanded path resolves to a critical system directory
         if is_restricted_path(str(p)):
-            # Allow temp directories (legitimate use case for output files)
-            if not is_temp_directory(str(p)):
+            # Check temp directory access based on allow_temp parameter
+            if is_temp_directory(str(p)):
+                if not allow_temp:
+                    raise ValueError(
+                        f"Temp directories not allowed for {path_type}. "
+                        f"Path resolves to temp location: {p}. "
+                        f"Please use a persistent location like ~/.vscan/"
+                    )
+                # Temp allowed - skip other restricted checks
+            else:
+                # Not a temp directory - apply normal restricted path blocking
                 raise ValueError(
                     f"Access to system directories not allowed. "
                     f"{path_type.capitalize()} path resolves to restricted location: {p}"
