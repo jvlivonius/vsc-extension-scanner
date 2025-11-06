@@ -102,17 +102,57 @@ def is_temp_directory(path_str: str) -> bool:
     """
     Check if path is within a legitimate temporary directory.
 
+    Enhanced in v3.7.2 to check common temp directory paths across platforms:
+    - System temp directory (tempfile.gettempdir())
+    - /tmp (Unix/Linux/macOS)
+    - /var/tmp (Unix/Linux)
+    - C:\\temp, C:\\tmp (Windows)
+
     Args:
         path_str: Path to check
 
     Returns:
         True if path is within system temp directory, False otherwise
     """
+    import platform
+
     try:
         path = PathLib(path_str).resolve()
+
+        # Check system temp directory (cross-platform)
         temp_dir = PathLib(tempfile.gettempdir()).resolve()
-        path.relative_to(temp_dir)
-        return True
+        try:
+            path.relative_to(temp_dir)
+            return True
+        except ValueError:
+            pass
+
+        # Check common temp directory paths across platforms
+        common_temp_paths = [
+            "/tmp",  # Unix/Linux/macOS
+            "/var/tmp",  # Unix/Linux
+        ]
+
+        # Add Windows-specific paths on Windows
+        if platform.system() == "Windows":
+            common_temp_paths.extend(
+                [
+                    "C:\\temp",
+                    "C:\\tmp",
+                    "C:\\Windows\\temp",
+                ]
+            )
+
+        # Check if path is under any common temp directory
+        for temp_path_str in common_temp_paths:
+            try:
+                temp_path = PathLib(temp_path_str).resolve()
+                path.relative_to(temp_path)
+                return True
+            except (ValueError, OSError):
+                continue
+
+        return False
     except (ValueError, OSError):
         return False
 
