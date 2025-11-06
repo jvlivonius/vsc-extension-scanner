@@ -285,23 +285,22 @@ def validate_path(
     try:
         p = PathLib(expanded_path)
 
+        # Check temp directory restriction (v3.7.2)
+        # This must be checked independently, not nested in restricted path check
+        if not allow_temp and is_temp_directory(str(p)):
+            raise ValueError(
+                f"Temp directories not allowed for {path_type}. "
+                f"Path resolves to temp location: {p}. "
+                f"Please use a persistent location like ~/.vscan/"
+            )
+
         # Check if expanded path resolves to a critical system directory
         if is_restricted_path(str(p)):
-            # Check temp directory access based on allow_temp parameter
-            if is_temp_directory(str(p)):
-                if not allow_temp:
-                    raise ValueError(
-                        f"Temp directories not allowed for {path_type}. "
-                        f"Path resolves to temp location: {p}. "
-                        f"Please use a persistent location like ~/.vscan/"
-                    )
-                # Temp allowed - skip other restricted checks
-            else:
-                # Not a temp directory - apply normal restricted path blocking
-                raise ValueError(
-                    f"Access to system directories not allowed. "
-                    f"{path_type.capitalize()} path resolves to restricted location: {p}"
-                )
+            # Apply normal restricted path blocking
+            raise ValueError(
+                f"Access to system directories not allowed. "
+                f"{path_type.capitalize()} path resolves to restricted location: {p}"
+            )
 
         # For absolute paths, warn user but allow (per approved plan)
         if allow_absolute and p.is_absolute():
