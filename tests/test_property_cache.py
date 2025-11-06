@@ -269,6 +269,7 @@ class TestCacheHMACProperties(unittest.TestCase):
 # ============================================================================
 
 
+@pytest.mark.slow
 @pytest.mark.security
 class TestCacheStatisticsProperties(unittest.TestCase):
     """Property-based tests for cache statistics accuracy."""

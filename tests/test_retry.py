@@ -74,6 +74,7 @@ class TestRetryMechanism(unittest.TestCase):
             stats = self.client.get_retry_stats()
             self.assertEqual(stats["total_retries"], 1)
 
+    @pytest.mark.slow
     def test_multiple_retries_success(self):
         """Test 3: Multiple retries should eventually succeed."""
         with patch.object(self.client, "_make_request") as mock_request:
@@ -97,6 +98,7 @@ class TestRetryMechanism(unittest.TestCase):
             stats = self.client.get_retry_stats()
             self.assertEqual(stats["total_retries"], 3)
 
+    @pytest.mark.slow
     def test_max_retries_exceeded(self):
         """Test 4: Should fail after max retries exceeded."""
         with patch.object(self.client, "_make_request") as mock_request:
@@ -300,6 +302,7 @@ class TestRetryMechanism(unittest.TestCase):
         retry_after_delay = self.client._calculate_backoff_delay(0, retry_after=10)
         self.assertEqual(retry_after_delay, 10.0)
 
+    @pytest.mark.slow
     def test_retry_stats_tracking(self):
         """Test retry statistics are tracked correctly."""
         client = VscanAPIClient(max_retries=2, retry_base_delay=0.05)

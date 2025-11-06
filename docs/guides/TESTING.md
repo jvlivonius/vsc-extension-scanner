@@ -284,6 +284,72 @@ def test_cache_hit_returns_cached_result():
 - setUp/tearDown for resource management
 - `run_tests()` function for standalone execution
 
+### Required Pytest Markers
+
+**CRITICAL:** All tests **must** have at least one pytest marker for test discovery by `run_tests.py`.
+
+**Required Markers:**
+- `@pytest.mark.unit` - Unit tests (most common)
+- `@pytest.mark.integration` - Integration tests
+- `@pytest.mark.security` - Security validation tests
+- `@pytest.mark.architecture` - Architecture compliance tests
+- `@pytest.mark.parallel` - Parallel execution tests
+- `@pytest.mark.real_api` - Real API integration tests (slow)
+
+**Module-Level Marking (Recommended):**
+```python
+import pytest
+
+# Mark all tests in this module as unit tests
+pytestmark = pytest.mark.unit
+
+class TestMyFeature:
+    def test_something(self):
+        ...
+```
+
+**Class-Level Marking:**
+```python
+@pytest.mark.unit
+class TestMyFeature:
+    def test_something(self):
+        ...
+```
+
+**Verification:**
+```bash
+# Verify all tests have markers
+python3 -m pytest tests/ --collect-only -q | grep "tests collected"
+
+# Check specific file has markers
+python3 -m pytest tests/test_myfile.py -m unit --collect-only -q
+```
+
+**What Happens to Unmarked Tests:**
+
+Tests without required markers are automatically collected into an "unmarked" group:
+- **Included with `--all`**: Unmarked tests run automatically when using `--all` flag
+- **Excluded from specific groups**: `--unit`, `--security`, etc. only run marked tests
+- **Warning displayed**: A yellow warning shows which files lack markers
+- **Run last**: Unmarked tests execute after all other test groups
+- **Explicit flag**: Use `--unmarked` to run only unmarked tests
+
+**Example Output:**
+```bash
+$ python3 scripts/run_tests.py --all
+
+Running: unit, security, architecture, integration, unmarked
+
+⚠️  WARNING: Found 2 test file(s) without required pytest markers
+    These tests should be marked with @pytest.mark.unit (or other markers)
+    Files: test_foo.py, test_bar.py
+    See docs/guides/TESTING.md for marker requirements
+
+[runs all test groups including unmarked]
+```
+
+**Best Practice:** While unmarked tests will still run with `--all`, you should add proper markers to categorize tests correctly. Use the warning message to identify and mark tests appropriately.
+
 ### Test Fixtures
 
 ```python
