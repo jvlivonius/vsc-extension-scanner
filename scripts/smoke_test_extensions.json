@@ -1,0 +1,35 @@
+{
+  "description": "Curated extension list for smoke testing the vscan CLI",
+  "extensions": [
+    {
+      "id": "ms-python.python",
+      "publisher": "ms-python",
+      "name": "python",
+      "description": "Popular Python language support extension (stable, well-tested)"
+    },
+    {
+      "id": "dbaeumer.vscode-eslint",
+      "publisher": "dbaeumer",
+      "name": "vscode-eslint",
+      "description": "Popular ESLint integration extension"
+    },
+    {
+      "id": "esbenp.prettier-vscode",
+      "publisher": "esbenp",
+      "name": "prettier-vscode",
+      "description": "Code formatter extension (high download count)"
+    },
+    {
+      "id": "ritwickdey.LiveServer",
+      "publisher": "ritwickdey",
+      "name": "LiveServer",
+      "description": "Live reload server extension (known security considerations)"
+    }
+  ],
+  "metadata": {
+    "purpose": "smoke_test",
+    "api_mode": "real_api",
+    "expected_count": 4,
+    "notes": "Extensions selected for stability, variety, and realistic API responses"
+  }
+}

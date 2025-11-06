@@ -21,6 +21,9 @@ from vscode_scanner.parallel_executor import ParallelExecutor
 from vscode_scanner.scan_orchestrator import ScanOrchestrator
 from vscode_scanner.scanner import ThreadSafeStats
 
+# Mark all tests in this module as unit tests
+pytestmark = pytest.mark.unit
+
 
 # ============================================================================
 # Test ParallelExecutor Base Class

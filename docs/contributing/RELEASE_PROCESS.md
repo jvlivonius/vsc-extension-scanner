@@ -93,48 +93,70 @@ git stash
 
 ---
 
+## Automated Pre-Release Validation
+
+**Time savings:** 50-60% reduction (55-80 min → 30-40 min) via 3 automation tools
+
+### Pre-Release Check (Before Phase 1)
+
+**Run:** `python3 scripts/pre_release_check.py --verbose` (options: `--quiet`, `--skip-git`)
+
+| Step | Validates | Exit 0 = Pass |
+|------|-----------|---------------|
+| 1. Version | `_version.py` ↔ README/CLAUDE/PRD consistency | ✓ |
+| 2. Git | Clean directory, main/master branch | ✓ |
+| 3. Tests | Full suite with coverage (CI mode, excludes real_api) | ✓ |
+| 4. Security | bandit + safety + pip-audit (skips if N/A) | ✓ |
+| 5. Coverage | ≥80% threshold gate | ✓ |
+
+### Smoke Testing (Phase 2, Step 6)
+
+**Run:** `python3 scripts/smoke_test.py dist/vscan-X.Y.Z.whl --verbose` (options: `--config FILE`)
+
+| Step | Validates | Note |
+|------|-----------|------|
+| 1. Wheel | File exists, .whl format | |
+| 2. Venv | Temp isolated virtualenv | Platform-specific |
+| 3. Install | Wheel installation in venv | |
+| 4. CLI | `vscan --version/--help` | Commands: scan, cache, config, report |
+| 5. Scan | Real API calls via config JSON | Exit 1 (vulns found) = expected |
+| 6. Outputs | JSON/HTML/CSV generation + validation | |
+| 7. Cache | `cache stats` + `cache clear --force` | |
+
+**Config:** `scripts/smoke_test_extensions.json` (see template in docs)
+
+**Exit codes:** 0=pass, 1=failed, 2=wheel not found, 3=error
+
+### Release Notes Validation (Phase 1, Step 1)
+
+**Integrated with version bump:** `python3 scripts/bump_version.py X.Y.Z --validate-notes`
+
+- Blocks bump if `docs/archive/summaries/vX.Y.Z-release-notes.md` missing/empty (<100 chars)
+- Prevents generic GitHub release message
+- Standalone check: `--check-notes X.Y.Z`
+
+**Fix if fails:** `cp docs/templates/release-notes-template.md docs/archive/summaries/vX.Y.Z-release-notes.md` → fill → commit → rerun
+
+---
+
 ## Phase 1: Pre-Release Preparation
 
 ### Step 1: Version Management
 
-**Update version in single source:**
+**⚠️ ALWAYS use `--validate-notes` flag** (prevents generic GitHub release message)
 
 ```bash
-python3 scripts/bump_version.py X.Y.Z
+python3 scripts/bump_version.py X.Y.Z --validate-notes  # RECOMMENDED
+python3 scripts/bump_version.py --check                 # Verify consistency
+python3 scripts/bump_version.py --check-notes X.Y.Z     # Standalone notes check
 ```
 
-**🔒 RECOMMENDED: Use validation to prevent missing release notes:**
+**What `--validate-notes` does:**
+- Updates `_version.py` + blocks if release notes missing
+- Requires: `docs/archive/summaries/vX.Y.Z-release-notes.md` (>100 chars)
+- Prevents: Generic GitHub Actions release message
 
-```bash
-python3 scripts/bump_version.py X.Y.Z --validate-notes
-```
-
-This will:
-- Update the version in `_version.py`
-- **Block the version bump if release notes file is missing**
-- Provide clear instructions on creating the release notes file
-- Ensure compliance with automated release workflow requirements
-
-**Verify consistency across all files:**
-
-```bash
-python3 scripts/bump_version.py --check
-```
-
-The `--check` command validates:
-- Python files import from `_version.py` (no hardcoded versions)
-- Documentation version references match
-- Dynamic versioning in `pyproject.toml`
-
-**Verify release notes exist:**
-
-```bash
-python3 scripts/bump_version.py --check-notes X.Y.Z
-```
-
-This validates:
-- Release notes file exists at `docs/archive/summaries/vX.Y.Z-release-notes.md`
-- File has substantial content (>100 chars)
+**If validation fails:** Copy template → fill → commit → rerun (see [Release Notes Validation](#release-notes-validation-phase-1-step-1))
 - File is ready for GitHub Actions release workflow
 
 **Expected output:** All files report version consistency with ✓ marks.
@@ -260,38 +282,116 @@ See [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOC
 
 ---
 
-### Step 3: Pre-Release Testing
+### Step 3: Pre-Release Validation
 
-**Automated Tests (Required):**
+**⚠️ RECOMMENDED: Use automated pre-release check**
+
+The automated pre-release check performs comprehensive validation in a single command, replacing most manual testing steps.
+
+**Automated Validation (Recommended):**
 
 ```bash
-# Run complete test suite
-pytest tests/
-
-# Alternative: Individual test files
-for test in tests/test_*.py; do python3 "$test"; done
+python3 scripts/pre_release_check.py --verbose
 ```
 
-**All tests must pass before proceeding to Phase 2.**
+This automated script performs **5 comprehensive validation steps**:
 
-**Manual Verification (Required):**
-- `vscan --version` shows correct version
+1. **Version Consistency** - Validates all files match `_version.py`
+2. **Git Status** - Ensures clean working directory on main/master
+3. **Test Suite** - Runs full test suite with coverage (CI mode)
+4. **Security Scans** - Runs bandit, safety, pip-audit
+5. **Coverage Threshold** - Validates ≥80% coverage
+
+**Expected Output:**
+
+```
+======================================================================
+PRE-RELEASE VALIDATION CHECKS
+======================================================================
+
+[1/5] Validating version consistency...
+      ✓ Version consistency validated
+
+[2/5] Validating git working directory...
+      ✓ Git status clean (branch: main)
+
+[3/5] Running test suite with coverage...
+      ✓ All tests passed (40 tests in 12.3s)
+
+[4/5] Running security scans...
+      ✓ bandit: No high severity issues
+      ✓ safety: No known vulnerabilities
+      ✓ pip-audit: No vulnerabilities
+
+[5/5] Validating test coverage...
+      ✓ Coverage: 89.4% (target: 80%+)
+
+======================================================================
+✅ PRE-RELEASE VALIDATION: ALL CHECKS PASSED
+======================================================================
+```
+
+**Options:**
+
+```bash
+# Quiet mode (summary only)
+python3 scripts/pre_release_check.py
+
+# Skip git checks (for testing)
+python3 scripts/pre_release_check.py --skip-git
+```
+
+**Exit Codes:**
+- `0` - All checks passed → Proceed to Phase 2
+- `1` - Some checks failed → Fix issues before continuing
+- `3` - Execution error → Check environment
+
+→ **See:** [Pre-Release Check](#pre-release-check-recommended-before-phase-1) section above for complete documentation.
+
+**Manual Verification (Optional - Only if Automated Check Fails):**
+
+If you need to debug specific failures from the automated check, you can run components individually:
+
+**Version Consistency:**
+```bash
+# Verify version consistency
+python3 scripts/bump_version.py --check
+
+# Verify version displays correctly
+python3 -c "from vscode_scanner import __version__; print(__version__)"
+./vscan --version  # Should show X.Y.Z
+```
+
+**Test Suite:**
+```bash
+# Run complete test suite (CI mode)
+python3 scripts/run_tests.py --ci --coverage
+
+# Alternative: Direct pytest
+pytest tests/
+```
+
+**Security Scans:**
+```bash
+bandit -r vscode_scanner/ -lll
+safety check
+pip-audit
+```
+
+**Coverage Check:**
+```bash
+coverage report
+# Should show ≥80% overall coverage
+```
+
+**Manual Functional Testing (Only if needed for debugging):**
+- `vscan --version` shows correct version X.Y.Z
 - `vscan --help` displays correctly
-- `vscan scan` works with real extensions
+- `vscan scan <extension-id>` works with real extensions
 - Output formats work: HTML, JSON, CSV
 - Cache and config commands work
-- Cross-platform testing (macOS, Windows, Linux if available)
 
-**Version Consistency Check:**
-
-```bash
-# All should show X.Y.Z
-python3 scripts/bump_version.py --show
-python3 -c "from vscode_scanner import __version__; print(__version__)"
-vscan --version
-```
-
-**Phase 1 Gate:** Only proceed if all tests pass and version is consistent.
+**Phase 1 Gate:** The automated pre-release check must pass (exit code 0) before proceeding to Phase 2. If it fails, fix the reported issues and re-run until all checks pass.
 
 ---
 
@@ -330,23 +430,102 @@ ls -lh dist/
 
 ### Step 6: Verify Package Installation
 
-**Automated Smoke Test (Recommended):**
+**⚠️ RECOMMENDED: Use automated smoke testing**
+
+The automated smoke test validates package installation and core functionality in an isolated environment.
+
+**Automated Smoke Testing (Recommended):**
 
 ```bash
-# Run comprehensive smoke tests (creates temp virtualenv automatically)
-python3 scripts/run_tests.py --smoke dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
+python3 scripts/smoke_test.py dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl --verbose
+
+# With custom extension config
+python3 scripts/smoke_test.py dist/vscan-X.Y.Z.whl --config scripts/smoke_test_extensions.json
+
+# Quiet mode
+python3 scripts/smoke_test.py dist/vscan-X.Y.Z.whl
 ```
 
-**Expected output:** All 5 validation steps pass with ✓ marks:
-1. Wheel file validation
-2. Virtualenv creation
-3. Package installation
-4. CLI accessibility test (`vscan --version`)
-5. Help command test (`vscan --help`)
+This automated script performs **7 comprehensive validation steps** in an isolated virtualenv:
 
-**Manual Verification (Alternative):**
+1. **Wheel Validation** - Verifies wheel file exists and format
+2. **Virtualenv Creation** - Creates temporary isolated environment
+3. **Package Installation** - Installs wheel and validates success
+4. **CLI Accessibility** - Tests `vscan --version` and `vscan --help`
+5. **Core Scan Workflow** - Real API calls with configured extensions
+6. **Output Formats** - Validates JSON, HTML, CSV generation
+7. **Cache Operations** - Tests cache stats and clear commands
 
-If you need to manually verify the package:
+**Expected Output:**
+
+```
+======================================================================
+SMOKE TESTS: vscode_extension_scanner-3.7.1-py3-none-any.whl
+======================================================================
+
+[1/7] Wheel file: vscode_extension_scanner-3.7.1-py3-none-any.whl ✓
+       Loaded 3 extensions from smoke_test_extensions.json
+
+[2/7] Creating test virtualenv at /tmp/vscan_smoke_xxx/venv...
+      ✓ Virtualenv created successfully
+
+[3/7] Installing wheel in virtualenv...
+      ✓ Package installed successfully
+
+[4/7] Testing CLI command accessibility...
+      ✓ CLI accessible: vscan 3.7.1
+      ✓ Help command works
+
+[5/7] Testing core scan workflow (real API calls)...
+      Scanning 3 extensions: ms-python.python, GitHub.copilot, esbenp.prettier-vscode
+      ⚠ Scan completed with vulnerabilities found (exit code 1 - expected)
+
+[6/7] Testing output format generation...
+      ✓ JSON output generated and validated
+      ✓ HTML output generated and validated
+      ✓ CSV output generated and validated
+
+[7/7] Testing cache operations...
+      ✓ Cache stats command works
+      ✓ Cache clear command works
+
+======================================================================
+✅ SMOKE TESTS: ALL CHECKS PASSED
+======================================================================
+```
+
+**Configuration:**
+
+Ensure `scripts/smoke_test_extensions.json` exists with test extensions:
+
+```json
+{
+  "extensions": [
+    {
+      "id": "ms-python.python",
+      "publisher": "Microsoft",
+      "name": "Python"
+    },
+    {
+      "id": "GitHub.copilot",
+      "publisher": "GitHub",
+      "name": "GitHub Copilot"
+    }
+  ]
+}
+```
+
+**Exit Codes:**
+- `0` - All smoke tests passed → Package ready for release
+- `1` - Some smoke tests failed → Fix package issues
+- `2` - Wheel file not found/invalid → Check build step
+- `3` - Execution error → Check environment
+
+→ **See:** [Smoke Testing](#smoke-testing-phase-2-step-6) section above for complete documentation.
+
+**Manual Verification (Fallback - Only if Automated Smoke Test Fails):**
+
+If you need to debug specific smoke test failures, you can verify the package manually:
 
 ```bash
 # Create test environment
@@ -361,6 +540,14 @@ vscan --version           # Must show X.Y.Z
 vscan --help              # Must display correctly
 vscan cache stats         # Must work without errors
 
+# Test scan with real extension
+vscan scan ms-python.python
+
+# Test output formats
+vscan scan ms-python.python --output scan-test.json
+vscan scan ms-python.python --output scan-test.html
+vscan scan ms-python.python --output scan-test.csv
+
 # Verify Python import
 python3 -c "import vscode_scanner; print(vscode_scanner.__version__)"
 
@@ -369,7 +556,7 @@ deactivate
 rm -rf test-release-env
 ```
 
-**Phase 2 Gate:** Installation verification must succeed before proceeding.
+**Phase 2 Gate:** Automated smoke tests must pass (exit code 0) before proceeding to Phase 3. If they fail, fix the reported issues and re-run until all checks pass.
 
 ---
 
@@ -888,27 +1075,51 @@ gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
 
 ## Time Estimates
 
-**With Automated Workflow + Version Management:**
-- Phase 1 (Preparation): 20-30 minutes (60% automated)
-  - Version bump with auto-update: ~1 minute
-  - Manual doc updates (2 files): ~8-12 minutes
-  - Testing: ~12-18 minutes
-- Phase 2 (Build & Package): ~5 minutes (fully automated)
-- Phase 3 (Version Control): ~5 minutes (mostly automated)
-- **Total:** 30-40 minutes (50-60% time reduction from original 55-80 min)
+**With Full Automation (Current - v3.7.1+):**
 
-**Breakdown of improvements:**
-- Version automation: 50% reduction in doc update time (8 files → 2 files manual)
-- Build automation: 38% reduction in build/package time
-- **Combined:** ~50% overall time reduction
+- **Pre-Release Check** (before Phase 1): ~5 minutes (`pre_release_check.py`)
+- **Phase 1** (Preparation): 15-20 minutes (80% automated)
+  - Version bump with validation: ~1 minute (`bump_version.py --validate-notes`)
+  - Manual doc updates (2 files): ~8-12 minutes (CHANGELOG, release notes)
+  - Pre-release validation: ~5 minutes (automated via pre_release_check.py - optional if run before Phase 1)
+- **Phase 2** (Build & Package): ~5 minutes (fully automated)
+  - Clean build: ~1 minute
+  - Build wheel: ~1 minute
+  - Smoke testing: ~3 minutes (`smoke_test.py` with real API calls)
+- **Phase 3** (Version Control): ~5 minutes (mostly automated)
+- **Total:** 30-40 minutes (50-60% time reduction from legacy manual process)
 
-**Legacy Manual Process:**
-- Phase 1 (Preparation): 30-45 minutes (all manual doc updates)
-- Phase 2 (Build & Package): 15-20 minutes (manual build)
+**Key Automation Tools (v3.7.1+):**
+- `pre_release_check.py` - 5-step validation (version, git, tests, security, coverage)
+- `smoke_test.py` - 7-step package validation (virtualenv, install, CLI, scan, outputs, cache)
+- `bump_version.py --validate-notes` - Release notes validation
+- `run_tests.py --ci --coverage` - Dynamic marker system with comprehensive testing
+
+**Breakdown of Time Savings:**
+
+| Component | Legacy (Manual) | Automated (v3.7.1+) | Time Saved | % Reduction |
+|-----------|----------------|---------------------|------------|-------------|
+| Version management | 15-20 min (8 files) | 1 min (auto-update) | 14-19 min | 93% |
+| Pre-release testing | 15-20 min (manual) | 5 min (pre_release_check.py) | 10-15 min | 67% |
+| Package verification | 10-15 min (manual venv) | 3 min (smoke_test.py) | 7-12 min | 70% |
+| Documentation | 10-15 min (8 files) | 8-12 min (2 files) | 2-3 min | 20% |
+| Build & package | 8-10 min (manual) | 5 min (automated) | 3-5 min | 38% |
+| **Total** | **55-80 min** | **30-40 min** | **25-40 min** | **50-60%** |
+
+**Legacy Manual Process (pre-v3.7.1):**
+- Phase 1 (Preparation): 30-45 minutes (all manual doc updates + manual testing)
+  - Version bump: ~2 minutes (single file)
+  - Documentation updates: 15-20 minutes (8 files manually)
+  - Manual testing: 15-20 minutes (pytest + manual verification)
+- Phase 2 (Build & Package): 15-20 minutes (manual build + manual verification)
+  - Clean build: ~1 minute
+  - Build wheel: ~2 minutes
+  - Manual virtualenv setup: ~5 minutes
+  - Manual package verification: ~10 minutes
 - Phase 3 (Version Control): 10-15 minutes (manual steps)
 - **Total:** 55-80 minutes for complete release
 
-**First-time release:** Add 15-30 minutes for familiarization.
+**First-time release:** Add 15-30 minutes for familiarization with automation tools and workflow.
 
 ---
 

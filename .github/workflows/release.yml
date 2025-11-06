@@ -96,6 +96,26 @@ jobs:
           # Verify Python import
           python3 -c "import vscode_scanner; print(f'✅ Import successful: {vscode_scanner.__version__}')"
 
+          # Run smoke tests
+          echo ""
+          echo "🧪 Running critical smoke tests on installed package..."
+
+          # Install test dependencies
+          pip install "pytest>=7.0.0" "hypothesis>=6.0.0"
+          if [ $(python3 -c "import sys; print(1 if sys.version_info < (3, 11) else 0)") -eq 1 ]; then
+            pip install "tomli>=2.0.0"
+          fi
+
+          # Run security tests (critical validation)
+          echo "Running security tests..."
+          python3 tests/test_security.py || { echo "❌ Security smoke test failed"; exit 1; }
+
+          # Run architecture tests (zero violations check)
+          echo "Running architecture tests..."
+          python3 tests/test_architecture.py || { echo "❌ Architecture smoke test failed"; exit 1; }
+
+          echo "✅ All smoke tests passed"
+
           # Cleanup
           deactivate
           rm -rf test-release-env

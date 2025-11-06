@@ -85,6 +85,7 @@ class TestRetryMechanismAnalysis(unittest.TestCase):
                     # Verify the error was caught at scan_extension level
                     mock_submit.assert_called_once()
 
+    @pytest.mark.slow
     def test_make_request_with_retry_behavior(self):
         """Test _make_request_with_retry behavior."""
         client = VscanAPIClient(max_retries=2, retry_base_delay=0.1)
