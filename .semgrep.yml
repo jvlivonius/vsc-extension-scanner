@@ -73,6 +73,7 @@ rules:
     paths:
       exclude:
         - tests/
+        - scripts/  # Development/release automation tools with controlled paths
         # Legitimate exclusions (dataflow tracking beyond Semgrep OSS scope):
         - "**/cache_manager.py"  # validate_path() in __init__, dataflow tracking beyond Semgrep scope
         - "**/cli.py"  # All paths validated (lines 360, 1222), 127 security tests verify safety
