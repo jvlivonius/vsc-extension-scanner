@@ -101,7 +101,7 @@ jobs:
           echo "🧪 Running critical smoke tests on installed package..."
 
           # Install test dependencies
-          pip install "pytest>=7.0.0" "hypothesis>=6.0.0"
+          pip install "pytest>=7.0.0" "hypothesis>=6.0.0" "pyyaml>=6.0.0"
           if [ $(python3 -c "import sys; print(1 if sys.version_info < (3, 11) else 0)") -eq 1 ]; then
             pip install "tomli>=2.0.0"
           fi
