@@ -294,7 +294,7 @@ def test_cache_hit_returns_cached_result():
 - `@pytest.mark.security` - Security validation tests
 - `@pytest.mark.architecture` - Architecture compliance tests
 - `@pytest.mark.parallel` - Parallel execution tests
-- `@pytest.mark.real_api` - Real API integration tests (slow)
+- `@pytest.mark.real-api` - Real API integration tests (slow)
 
 **Module-Level Marking (Recommended):**
 ```python

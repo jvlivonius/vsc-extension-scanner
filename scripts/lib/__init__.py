@@ -3,7 +3,7 @@
 Testing infrastructure package for VS Code Extension Scanner.
 
 This package contains reusable components for test execution, coverage,
-and output formatting.
+test discovery, and output formatting.
 """
 
 # Core utilities
@@ -25,6 +25,19 @@ from .pytest_output_parser import (
 from .coverage_manager import CoverageManager
 from .output_formatter import OutputFormatter
 
+# Test discovery components
+from .test_discovery import (
+    TestFile,
+    discover_test_files,
+    get_test_registry,
+)
+
+# Test group and filter components
+from .marker_config import (
+    create_test_group_enum,
+    parse_filter_expression,
+)
+
 __all__ = [
     # Utilities
     "Colors",
@@ -39,6 +52,13 @@ __all__ = [
     "TestResult",
     "CoverageManager",
     "OutputFormatter",
+    # Test Discovery
+    "TestFile",
+    "discover_test_files",
+    "get_test_registry",
+    # Test Groups and Filters
+    "create_test_group_enum",
+    "parse_filter_expression",
 ]
 
 __version__ = "1.0.0"

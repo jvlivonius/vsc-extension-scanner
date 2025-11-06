@@ -49,6 +49,7 @@ test = [
     "pytest>=7.0.0",  # Test framework
     "hypothesis>=6.0.0,<7.0.0",  # Property-based testing (Phase 2)
     "coverage>=7.0.0,<8.0.0",  # Branch coverage tracking (Phase 2)
+    "tomli>=2.0.0,<3.0.0; python_version < '3.11'",  # TOML parsing for Python 3.8-3.10
 ]
 dev = [
     "bandit==1.7.6",  # AST-based security scanner (pinned for consistency)
@@ -79,12 +80,20 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
 markers = [
-    "unit: Unit tests for individual components",
-    "security: Security vulnerability tests",
-    "architecture: Architecture compliance tests",
-    "parallel: Parallel execution and threading tests",
-    "integration: Integration tests with mocked dependencies",
-    "real_api: Tests that make real API calls (slow)",
-    "mock_validation: Mock validation against real API responses",
-    "slow: Tests that take >5 seconds (excluded by --fast flag)",
+    # === Test Group Markers ===
+    # Every test MUST have exactly one group marker for categorization
+    # Used for test organization and --include/--exclude filtering
+    "unit: [GROUP] Unit tests for individual components",
+    "security: [GROUP] Security vulnerability tests",
+    "architecture: [GROUP] Architecture compliance tests",
+    "parallel: [GROUP] Parallel execution and threading tests",
+    "integration: [GROUP] Integration tests with mocked dependencies",
+    "real_api: [GROUP] Tests that make real API calls (slow, network-dependent)",
+    "mock_validation: [GROUP] Mock validation against real API responses",
+
+    # === Behavioral Markers ===
+    # Optional markers that modify test execution behavior
+    # Can be combined with any group marker
+    "slow: [BEHAVIORAL] Tests that take >5 seconds (excluded by --fast flag)",
+    "property_based: [BEHAVIORAL] Property-based tests using Hypothesis framework",
 ]

@@ -114,8 +114,6 @@ class TestRealAPIIntegration(unittest.TestCase):
         """Clean up temporary directories."""
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    @integration
-    @slow
     def test_real_api_parallel_scan(self):
         """Test parallel scan with 3 real extensions using real API."""
         print("\nRunning real API parallel scan (3 workers)...")
@@ -170,8 +168,6 @@ class TestRealAPIIntegration(unittest.TestCase):
         print(f"  Cached: {stats['cached_results']}")
         print(f"  Fresh: {stats['fresh_scans']}")
 
-    @integration
-    @slow
     def test_real_api_cache_behavior(self):
         """Test that second scan uses cache (no duplicate API calls)."""
         print("\nTesting real API cache behavior...")
@@ -230,8 +226,6 @@ class TestRealAPIIntegration(unittest.TestCase):
         print(f"✓ First scan: {stats1['fresh_scans']} API call(s)")
         print(f"✓ Second scan: {stats2['cached_results']} cached")
 
-    @integration
-    @slow
     def test_real_api_sequential_vs_parallel(self):
         """Test that sequential and parallel produce consistent results."""
         print("\nTesting sequential vs parallel consistency...")
@@ -313,7 +307,6 @@ class TestRealAPIIntegration(unittest.TestCase):
         print(f"✓ Parallel: {len(par_results)} results")
         print("✓ Results consistent")
 
-    @integration
     def test_config_file_integration(self):
         """Test that config file parallel settings work end-to-end."""
         print("\nTesting config file integration...")
@@ -348,8 +341,6 @@ delay = 2.0
         print(f"  workers: {workers}")
         print(f"  delay: {delay}")
 
-    @integration
-    @slow
     def test_error_handling_with_real_api(self):
         """Test error handling with invalid extension (should fail gracefully)."""
         print("\nTesting error handling with invalid extension...")
@@ -424,8 +415,6 @@ class TestRealAPIEndToEnd(unittest.TestCase):
         """Clean up temporary directories."""
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    @integration
-    @slow
     def test_end_to_end_scan_with_output(self):
         """Test complete scan workflow with JSON output."""
         print("\nTesting end-to-end scan with output...")

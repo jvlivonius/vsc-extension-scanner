@@ -1,36 +1,12 @@
 #!/usr/bin/env python3
 """
-Test Suite Runner for VS Code Extension Scanner
+VS Code Extension Scanner - Test Suite Runner
 
-Simplified test execution with auto-discovery and preset aliases.
+Simplified test execution with auto-discovery, dynamic marker loading,
+and flexible group selection.
 
-Quick Start - Preset Aliases:
-    python3 scripts/run_tests.py --fast      # Fast: all tests except slow (>1s)
-    python3 scripts/run_tests.py --ci        # CI: all tests except real_api
-    python3 scripts/run_tests.py --report    # Report: all tests with HTML coverage
-
-Quality Modes:
-    python3 scripts/run_tests.py --security-only                  # Security tests only
-
-Advanced Usage:
-    python3 scripts/run_tests.py --all
-    python3 scripts/run_tests.py --unit --security
-    python3 scripts/run_tests.py --all --fast
-    python3 scripts/run_tests.py --all --output json --output-file results.json
-    python3 scripts/run_tests.py --all --coverage --coverage-format html
-
-Exit Codes:
-    0 - All tests passed
-    1 - Some tests failed
-    2 - No tests found
-    3 - Execution error
-
-Note: Pre-release validation and smoke tests have been moved to dedicated scripts:
-    - scripts/pre_release_check.py    # Pre-release validation
-    - scripts/smoke_test.py           # Smoke test wheel packages
-
-Version: 2.2
-Updated: 2025-11-06
+For complete usage information including available test groups and markers:
+    python3 scripts/run_tests.py --help
 """
 
 import sys
@@ -78,272 +54,21 @@ from lib import (
     TestResult,
     CoverageManager,
     OutputFormatter,
+    TestFile,
+    discover_test_files,
+    get_test_registry,
+    create_test_group_enum,
+    parse_filter_expression,
 )
 
 # ==============================================================================
 # Test Group Definitions
 # ==============================================================================
 
-
-class TestGroup(Enum):
-    """Test group categories."""
-
-    UNIT = "unit"
-    SECURITY = "security"
-    ARCHITECTURE = "architecture"
-    PARALLEL = "parallel"
-    INTEGRATION = "integration"
-    REAL_API = "real-api"
-    MOCK_VALIDATION = "mock-validation"
-    UNMARKED = "unmarked"  # Tests without required pytest markers
-    ALL = "all"
-
-
-@dataclass
-class TestFile:
-    """Test file metadata."""
-
-    path: Path
-    group: TestGroup
-    description: str
-    slow: bool = False  # Slow test marker (>1s duration, excluded by --fast)
-    real_api: bool = False  # Real API tests (network-dependent)
-    integration: bool = False  # Integration tests (mocked but complex)
-    property_based: bool = False  # Property-based tests (hypothesis)
-
-
-# Note: TestResult is now imported from lib.pytest_output_parser
-
-# ==============================================================================
-# Test File Registry
-# ==============================================================================
-
-
-def discover_test_files() -> Dict[TestGroup, List[TestFile]]:
-    """Auto-discover test files using pytest markers.
-
-    Returns:
-        Dictionary mapping TestGroup to list of discovered TestFile objects.
-        Returns empty dict if pytest is not available.
-    """
-    if not PYTEST_AVAILABLE:
-        print(
-            f"{Colors.YELLOW}Warning: pytest not available for auto-discovery.{Colors.RESET}"
-        )
-        return {}
-
-    from _pytest.config import Config
-    from _pytest.main import Session
-
-    # Collect all tests
-    class TestCollector:
-        def __init__(self):
-            self.test_files = {}
-            self.file_markers = {}  # Track markers per file
-            self.all_test_files = set()  # Track ALL test files
-
-        def pytest_collection_finish(self, session):
-            """Called after collection is complete."""
-            # Required markers for test discovery
-            required_markers = {
-                "unit",
-                "security",
-                "architecture",
-                "parallel",
-                "real_api",
-                "real-api",
-                "mock_validation",
-                "mock-validation",
-                "integration",
-            }
-
-            for item in session.items:
-                file_path = Path(item.fspath)
-                if not file_path.exists():
-                    continue
-
-                # Track all test files
-                self.all_test_files.add(file_path)
-
-                # Get markers
-                markers = {marker.name for marker in item.iter_markers()}
-
-                # Aggregate markers per file
-                if file_path not in self.file_markers:
-                    self.file_markers[file_path] = set()
-                self.file_markers[file_path].update(markers)
-
-                # Map markers to test groups (prioritize specific markers over general ones)
-                test_group = None
-                if "unit" in markers:
-                    test_group = TestGroup.UNIT
-                elif "security" in markers:
-                    test_group = TestGroup.SECURITY
-                elif "architecture" in markers:
-                    test_group = TestGroup.ARCHITECTURE
-                elif "parallel" in markers:
-                    test_group = TestGroup.PARALLEL
-                elif "real_api" in markers or "real-api" in markers:
-                    test_group = TestGroup.REAL_API
-                elif "mock_validation" in markers or "mock-validation" in markers:
-                    test_group = TestGroup.MOCK_VALIDATION
-                elif "integration" in markers:
-                    test_group = TestGroup.INTEGRATION
-
-                if test_group:
-                    if test_group not in self.test_files:
-                        self.test_files[test_group] = set()
-                    self.test_files[test_group].add(file_path)
-
-    collector = TestCollector()
-    # Suppress pytest output during collection (capture stdout/stderr)
-    import io
-
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
-    try:
-        sys.stdout = io.StringIO()
-        sys.stderr = io.StringIO()
-        pytest.main(["--collect-only", "-qq", "tests/"], plugins=[collector])
-    finally:
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
-
-    # Convert to TestFile objects with relative paths (matching TEST_REGISTRY format)
-    project_root = Path.cwd()
-    result = {}
-    for group, file_paths in collector.test_files.items():
-        test_files = []
-        for file_path in sorted(file_paths):
-            relative_path = (
-                file_path.relative_to(project_root)
-                if file_path.is_absolute()
-                else file_path
-            )
-            filename = file_path.name.lower()
-
-            # Get markers for this file
-            file_markers = collector.file_markers.get(file_path, set())
-
-            # Detect test characteristics based on markers, filename, and group
-            is_real_api = (
-                "real_api" in filename
-                or group == TestGroup.REAL_API
-                or "real_api" in file_markers
-            )
-            is_integration = (
-                "integration" in filename
-                or group == TestGroup.INTEGRATION
-                or "integration" in file_markers
-            )
-            is_property = (
-                "property" in filename or "property_based" in file_markers
-            )  # Property-based tests
-            is_slow = "slow" in file_markers  # Slow tests (>5s duration)
-
-            test_files.append(
-                TestFile(
-                    path=relative_path,
-                    group=group,
-                    description=f"Auto-discovered from markers",
-                    slow=is_slow,
-                    real_api=is_real_api,
-                    integration=is_integration,
-                    property_based=is_property,
-                )
-            )
-        result[group] = test_files
-
-    # Find unmarked tests (files not in any group)
-    marked_files = set()
-    for files in result.values():
-        marked_files.update(
-            f.path if isinstance(f, TestFile) else Path(f) for f in files
-        )
-
-    unmarked_files = []
-    for file_path in sorted(collector.all_test_files):
-        relative_path = (
-            file_path.relative_to(project_root)
-            if file_path.is_absolute()
-            else file_path
-        )
-
-        # Check if this file is not in any marked group
-        if not any(
-            relative_path == (f.path if isinstance(f, TestFile) else Path(f))
-            for f in marked_files
-        ):
-            # Get markers for this file
-            file_markers = collector.file_markers.get(file_path, set())
-            filename = file_path.name.lower()
-
-            # Check if file truly has no required markers
-            required_markers_check = {
-                "unit",
-                "security",
-                "architecture",
-                "parallel",
-                "real_api",
-                "real-api",
-                "mock_validation",
-                "mock-validation",
-                "integration",
-            }
-            if not file_markers & required_markers_check:
-                unmarked_files.append(
-                    TestFile(
-                        path=relative_path,
-                        group=TestGroup.UNMARKED,
-                        description="Tests without required pytest markers",
-                        slow="slow" in file_markers,
-                        real_api=False,
-                        integration=False,
-                        property_based="property_based" in file_markers,
-                    )
-                )
-
-    if unmarked_files:
-        result[TestGroup.UNMARKED] = unmarked_files
-
-    return result
-
-
-# Auto-discover test files from pytest markers (replaces manual TEST_REGISTRY)
-_test_registry_cache: Optional[Dict[TestGroup, List[TestFile]]] = None
-
-
-def _load_or_discover_registry() -> Dict[TestGroup, List[TestFile]]:
-    """
-    Load test registry using auto-discovery.
-
-    Results are cached to avoid repeated pytest collection overhead.
-    Auto-validates on first load and warns about discrepancies.
-    """
-    global _test_registry_cache  # pylint: disable=global-statement
-
-    if _test_registry_cache is not None:
-        return _test_registry_cache
-
-    # Discover tests using pytest markers
-    discovered = discover_test_files()
-
-    if not discovered:
-        print(
-            f"{Colors.YELLOW}Warning: No tests discovered via pytest markers.{Colors.RESET}"
-        )
-        return {}
-
-    _test_registry_cache = discovered
-    return discovered
-
-
-# Load registry on module import (cached for performance)
-# Skip discovery if just showing help to avoid unnecessary pytest collection
-if "--help" not in sys.argv and "-h" not in sys.argv:
-    TEST_REGISTRY = _load_or_discover_registry()
-else:
-    TEST_REGISTRY = {}  # Empty registry for help display
+# Create TestGroup enum with dynamic markers from pyproject.toml
+# Note: create_test_group_enum, parse_filter_expression now imported from lib.marker_config
+# Note: TestFile, discover_test_files, get_test_registry now imported from lib.test_discovery
+TestGroup = create_test_group_enum()
 
 
 # ==============================================================================
@@ -385,6 +110,7 @@ class TestOrchestrator:
         self.args = args
         self.results = []
         self.start_time = time.time()
+        self._coverage_append = False  # Track coverage append state
 
     def discover_tests(
         self, groups: List[TestGroup]
@@ -402,7 +128,7 @@ class TestOrchestrator:
 
         for group in groups:
             # Get test files from registry
-            all_test_files = TEST_REGISTRY.get(group, [])
+            all_test_files = get_test_registry(TestGroup).get(group, [])
 
             # Filter based on fast flag (skip slow tests)
             if self.fast:
@@ -415,15 +141,15 @@ class TestOrchestrator:
 
         return discovered
 
-    def run_groups(self, groups: List[TestGroup]) -> int:
+    def _prepare_groups(self, groups: List[TestGroup]) -> tuple[List[TestGroup], bool]:
         """
-        Run test groups and return exit code.
+        Expand ALL group and separate UNMARKED.
 
         Args:
             groups: List of test groups to run
 
         Returns:
-            Exit code (0=success, 1=failures, 2=no tests, 3=error)
+            Tuple of (filtered_groups, has_unmarked)
         """
         # Expand ALL to all groups (including UNMARKED)
         if TestGroup.ALL in groups:
@@ -434,189 +160,316 @@ class TestOrchestrator:
         if has_unmarked:
             groups = [g for g in groups if g != TestGroup.UNMARKED]
 
-        # Print header
+        return groups, has_unmarked
+
+    def _discover_and_validate(
+        self, groups: List[TestGroup], has_unmarked: bool
+    ) -> Dict[TestGroup, List[TestFile]]:
+        """
+        Discover tests and print header.
+
+        Args:
+            groups: List of test groups to discover
+            has_unmarked: Whether UNMARKED group should be included
+
+        Returns:
+            Dictionary mapping TestGroup to discovered test files
+        """
+        # Build group list for header
         group_names = [g.value for g in groups]
         if has_unmarked:
             group_names.append(TestGroup.UNMARKED.value)
+
+        # Print header
         self.formatter.print_header(group_names, self.fast)
 
         # Discover tests
         all_groups_to_discover = groups + ([TestGroup.UNMARKED] if has_unmarked else [])
-        discovered = self.discover_tests(all_groups_to_discover)
+        return self.discover_tests(all_groups_to_discover)
+
+    def _execute_test_groups(
+        self, groups: List[TestGroup], discovered: Dict[TestGroup, List[TestFile]]
+    ) -> None:
+        """
+        Execute regular test groups.
+
+        Args:
+            groups: List of test groups to execute
+            discovered: Dictionary of discovered test files per group
+        """
+        for group in groups:
+            test_files = discovered.get(group, [])
+            if test_files:
+                self._execute_single_group(group, test_files, is_unmarked=False)
+
+    def _execute_unmarked_tests(
+        self, discovered: Dict[TestGroup, List[TestFile]]
+    ) -> None:
+        """
+        Execute UNMARKED tests with warning message.
+
+        Args:
+            discovered: Dictionary of discovered test files per group
+        """
+        if TestGroup.UNMARKED not in discovered:
+            return
+
+        unmarked_files = discovered[TestGroup.UNMARKED]
+        self._print_unmarked_warning(unmarked_files)
+        self._execute_single_group(TestGroup.UNMARKED, unmarked_files, is_unmarked=True)
+
+    def _execute_single_group(
+        self, group: TestGroup, test_files: List[TestFile], is_unmarked: bool = False
+    ) -> None:
+        """
+        Execute tests for a single group - ELIMINATES DUPLICATION.
+
+        Args:
+            group: Test group to execute
+            test_files: List of test files in the group
+            is_unmarked: Whether this is the UNMARKED group
+        """
+        # Calculate skipped count
+        skipped_count = self._calculate_skipped_count(group, test_files)
+
+        # Print header
+        self.formatter.print_group_header(group.value, len(test_files), skipped_count)
+
+        # Build and execute pytest command
+        command = self._build_pytest_command(group, test_files, is_unmarked)
+        command = self._wrap_with_coverage(command)
+
+        # Execute and parse results
+        result = self._execute_and_parse(command, group, test_files)
+
+        # Store and print
+        self.results.append(result)
+        self.formatter.print_result(result)
+        self.formatter.print_group_summary([result])
+
+    def _build_pytest_command(
+        self, group: TestGroup, test_files: List[TestFile], is_unmarked: bool
+    ) -> List[str]:
+        """
+        Build pytest command for group.
+
+        Args:
+            group: Test group to build command for
+            test_files: List of test files in the group
+            is_unmarked: Whether this is the UNMARKED group
+
+        Returns:
+            Pytest command as list of strings
+        """
+        test_paths = [tf.path for tf in test_files]
+        verbosity = "verbose" if self.args.verbose else "normal"
+
+        if is_unmarked:
+            # No marker filtering for unmarked tests
+            markers = []
+            extra_args = self._build_extra_args()
+            if self.fast:
+                extra_args.extend(["-m", "not slow"])
+        else:
+            # Normal marker-based filtering
+            markers = self._build_markers_list(group)
+            extra_args = self._build_extra_args()
+
+        return self.executor.build_command(
+            test_paths=test_paths,
+            markers=markers,
+            verbosity=verbosity,
+            extra_args=extra_args,
+        )
+
+    def _build_markers_list(self, group: TestGroup) -> List[str]:
+        """
+        Build marker expressions for pytest.
+
+        Args:
+            group: Test group to build markers for
+
+        Returns:
+            List of pytest marker expressions
+        """
+        markers = [group.value.replace("-", "_")]  # Group marker
+
+        # Apply --filter if specified (OR logic for multiple filters)
+        if hasattr(self.args, "filter") and self.args.filter:
+            try:
+                filter_expressions = parse_filter_expression(self.args.filter)
+                if filter_expressions:
+                    # Combine with OR: (group) and (filter1 or filter2 or ...)
+                    filter_clause = " or ".join(filter_expressions)
+                    markers.append(f"({filter_clause})")
+            except ValueError as e:
+                print(f"{Colors.RED}{e}{Colors.RESET}")
+                sys.exit(EXIT_ERROR)
+
+        # Legacy: --fast flag (should be mapped to --filter earlier, but handle here too)
+        if self.fast:
+            markers.append("not slow")
+
+        return markers
+
+    def _build_extra_args(self) -> List[str]:
+        """
+        Build extra arguments for pytest.
+
+        Returns:
+            List of extra pytest arguments
+        """
+        extra_args = []
+        if self.args.verbose:
+            extra_args.append("-vv")
+        return extra_args
+
+    def _wrap_with_coverage(self, command: List[str]) -> List[str]:
+        """
+        Wrap command with coverage if enabled.
+
+        Args:
+            command: Pytest command to wrap
+
+        Returns:
+            Wrapped command with coverage or original command
+        """
+        if not self.coverage.enabled:
+            return command
+
+        wrapped = self.coverage.wrap_command(command, append=self._coverage_append)
+        self._coverage_append = True
+        return wrapped
+
+    def _execute_and_parse(
+        self, command: List[str], group: TestGroup, test_files: List[TestFile]
+    ) -> TestResult:
+        """
+        Execute command and parse results.
+
+        Args:
+            command: Pytest command to execute
+            group: Test group being executed
+            test_files: List of test files in the group
+
+        Returns:
+            Parsed test result
+        """
+        start_time = time.time()
+        process = self.executor.run(command, capture_output=True)
+        end_time = time.time()
+
+        return self.parser.parse_results(
+            output=process.stdout,
+            stderr=process.stderr,
+            returncode=process.returncode,
+            file_name=f"{group.value} ({len(test_files)} files)",
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+    def _calculate_skipped_count(
+        self, group: TestGroup, test_files: List[TestFile]
+    ) -> int:
+        """
+        Calculate number of skipped tests in fast mode.
+
+        Args:
+            group: Test group
+            test_files: List of test files to execute
+
+        Returns:
+            Number of skipped test files
+        """
+        if not self.fast:
+            return 0
+
+        all_test_files = get_test_registry(TestGroup).get(group, [])
+        return len(all_test_files) - len(test_files)
+
+    def _print_unmarked_warning(self, unmarked_files: List[TestFile]) -> None:
+        """
+        Print warning about unmarked test files.
+
+        Args:
+            unmarked_files: List of unmarked test files
+        """
+        print()
+        print(
+            f"{Colors.YELLOW}⚠️  WARNING: Found {len(unmarked_files)} test file(s) without required pytest markers{Colors.RESET}"
+        )
+        print(
+            f"{Colors.YELLOW}    These tests should be marked with @pytest.mark.unit (or other markers){Colors.RESET}"
+        )
+        print(
+            f"{Colors.YELLOW}    Files: {', '.join(str(tf.path.name) for tf in unmarked_files[:3])}{' ...' if len(unmarked_files) > 3 else ''}{Colors.RESET}"
+        )
+        print(
+            f"{Colors.YELLOW}    See docs/guides/TESTING.md for marker requirements{Colors.RESET}"
+        )
+        print()
+
+    def _generate_reports(self) -> None:
+        """Generate coverage and summary reports."""
+        end_time = time.time()
+        self.formatter.print_overall_summary(self.results, self.start_time, end_time)
+
+        if self.coverage.enabled:
+            self.coverage.generate_reports(show_output=True)
+
+    def _export_outputs(self) -> None:
+        """Export JSON/JUnit outputs if requested."""
+        if not (hasattr(self.args, "output") and hasattr(self.args, "output_file")):
+            return
+
+        end_time = time.time()
+
+        if self.args.output == "json" and self.args.output_file:
+            self.formatter.export_json(
+                self.results,
+                Path(self.args.output_file),
+                self.start_time,
+                end_time,
+            )
+        elif self.args.output == "junit" and self.args.output_file:
+            self.formatter.export_junit(
+                self.results,
+                Path(self.args.output_file),
+                self.start_time,
+                end_time,
+            )
+
+    def run_groups(self, groups: List[TestGroup]) -> int:
+        """
+        Run test groups and return exit code.
+
+        Args:
+            groups: List of test groups to run
+
+        Returns:
+            Exit code (0=success, 1=failures, 2=no tests, 3=error)
+        """
+        # Prepare groups and separate UNMARKED
+        groups, has_unmarked = self._prepare_groups(groups)
+
+        # Discover tests and validate
+        discovered = self._discover_and_validate(groups, has_unmarked)
 
         if not discovered:
             print(f"{Colors.RED}Error: No test files discovered{Colors.RESET}")
             return EXIT_NOT_FOUND
 
-        # Run each group (UNMARKED will be added at the end)
-        append_coverage = False
-        for group in groups:
-            test_files = discovered.get(group, [])
-            if not test_files:
-                continue
+        # Execute test groups
+        self._execute_test_groups(groups, discovered)
 
-            # Calculate skipped count for fast mode
-            if self.fast:
-                all_test_files = TEST_REGISTRY.get(group, [])
-                skipped_count = len(all_test_files) - len(test_files)
-            else:
-                skipped_count = 0
+        # Execute UNMARKED separately with warning
+        if has_unmarked:
+            self._execute_unmarked_tests(discovered)
 
-            # Print group header
-            self.formatter.print_group_header(
-                group.value, len(test_files), skipped_count
-            )
+        # Reporting and export
+        self._generate_reports()
+        self._export_outputs()
 
-            # Build pytest command - use test file paths
-            test_paths = [tf.path for tf in test_files]
-
-            # Build markers list
-            markers = [group.value.replace("-", "_")]  # Convert group name to marker
-            if self.fast:
-                markers.append("not slow")
-
-            verbosity = "verbose" if self.args.verbose else "normal"
-            extra_args = []
-            if self.args.verbose:
-                extra_args.append("-vv")
-
-            command = self.executor.build_command(
-                test_paths=test_paths,
-                markers=markers,
-                verbosity=verbosity,
-                extra_args=extra_args,
-            )
-
-            # Wrap with coverage if enabled
-            if self.coverage.enabled:
-                command = self.coverage.wrap_command(command, append=append_coverage)
-                append_coverage = True
-
-            # Execute tests
-            start_time = time.time()
-            process = self.executor.run(command, capture_output=True)
-            end_time = time.time()
-
-            # Parse results
-            result = self.parser.parse_results(
-                output=process.stdout,
-                stderr=process.stderr,
-                returncode=process.returncode,
-                file_name=f"{group.value} ({len(test_files)} files)",
-                start_time=start_time,
-                end_time=end_time,
-            )
-
-            # Store and print result
-            self.results.append(result)
-            self.formatter.print_result(result)
-
-            # Print group summary
-            self.formatter.print_group_summary([result])
-
-        # Run UNMARKED tests last (if present)
-        if has_unmarked and TestGroup.UNMARKED in discovered:
-            unmarked_files = discovered[TestGroup.UNMARKED]
-
-            # Print warning about unmarked tests
-            print()
-            print(
-                f"{Colors.YELLOW}⚠️  WARNING: Found {len(unmarked_files)} test file(s) without required pytest markers{Colors.RESET}"
-            )
-            print(
-                f"{Colors.YELLOW}    These tests should be marked with @pytest.mark.unit (or other markers){Colors.RESET}"
-            )
-            print(
-                f"{Colors.YELLOW}    Files: {', '.join(str(tf.path.name) for tf in unmarked_files[:3])}{' ...' if len(unmarked_files) > 3 else ''}{Colors.RESET}"
-            )
-            print(
-                f"{Colors.YELLOW}    See docs/guides/TESTING.md for marker requirements{Colors.RESET}"
-            )
-            print()
-
-            # Calculate skipped count for fast mode
-            if self.fast:
-                all_test_files = TEST_REGISTRY.get(TestGroup.UNMARKED, [])
-                skipped_count = len(all_test_files) - len(unmarked_files)
-            else:
-                skipped_count = 0
-
-            # Print group header
-            self.formatter.print_group_header(
-                TestGroup.UNMARKED.value, len(unmarked_files), skipped_count
-            )
-
-            # Build pytest command - use test file paths
-            test_paths = [tf.path for tf in unmarked_files]
-
-            # For unmarked tests, don't filter by marker - just run the files directly
-            verbosity = "verbose" if self.args.verbose else "normal"
-            extra_args = []
-            if self.args.verbose:
-                extra_args.append("-vv")
-            if self.fast:
-                extra_args.extend(["-m", "not slow"])
-
-            command = self.executor.build_command(
-                test_paths=test_paths,
-                markers=[],  # No marker filtering for unmarked tests
-                verbosity=verbosity,
-                extra_args=extra_args,
-            )
-
-            # Wrap with coverage if enabled
-            if self.coverage.enabled:
-                command = self.coverage.wrap_command(command, append=append_coverage)
-                append_coverage = True
-
-            # Execute tests
-            start_time = time.time()
-            process = self.executor.run(command, capture_output=True)
-            end_time = time.time()
-
-            # Parse results
-            result = self.parser.parse_results(
-                output=process.stdout,
-                stderr=process.stderr,
-                returncode=process.returncode,
-                file_name=f"{TestGroup.UNMARKED.value} ({len(unmarked_files)} files)",
-                start_time=start_time,
-                end_time=end_time,
-            )
-
-            # Store and print result
-            self.results.append(result)
-            self.formatter.print_result(result)
-
-            # Print group summary
-            self.formatter.print_group_summary([result])
-
-        # Print overall summary
-        end_time = time.time()
-        self.formatter.print_overall_summary(self.results, self.start_time, end_time)
-
-        # Generate coverage reports if enabled
-        if self.coverage.enabled:
-            self.coverage.generate_reports(show_output=True)
-
-        # Export outputs if requested
-        if hasattr(self.args, "output") and hasattr(self.args, "output_file"):
-            if self.args.output == "json" and self.args.output_file:
-                self.formatter.export_json(
-                    self.results,
-                    Path(self.args.output_file),
-                    self.start_time,
-                    end_time,
-                )
-            elif self.args.output == "junit" and self.args.output_file:
-                self.formatter.export_junit(
-                    self.results,
-                    Path(self.args.output_file),
-                    self.start_time,
-                    end_time,
-                )
-
-        # Calculate exit code
         return self._calculate_exit_code()
 
     def _calculate_exit_code(self) -> int:
@@ -639,52 +492,146 @@ class TestOrchestrator:
 
 
 # ==============================================================================
-# Main
+# Main Entry Point
 # ==============================================================================
 
 
-def main():  # pylint: disable=too-many-return-statements
-    """Main entry point."""
+def generate_dynamic_help_text() -> str:
+    """
+    Generate dynamic help text with current markers from pyproject.toml.
+
+    Returns:
+        Formatted help text string with marker lists and usage examples
+    """
+    from lib.marker_config import (
+        get_test_group_markers,
+        get_behavioral_markers_set,
+        get_marker_description,
+        META_MARKERS,
+    )
+
+    # Load markers dynamically from pyproject.toml
+    try:
+        test_groups = sorted(get_test_group_markers())
+        behavioral = sorted(get_behavioral_markers_set())
+    except Exception as e:
+        # Fallback if marker loading fails
+        return f"""
+Error loading markers from pyproject.toml: {e}
+
+Please run: python3 scripts/run_tests.py --help
+"""
+
+    # Build help text sections
+    help_text = """
+Test Suite Runner for VS Code Extension Scanner
+
+Simplified test execution with auto-discovery, dynamic marker loading, and flexible group selection.
+
+Quick Start - Preset Aliases:
+    python3 scripts/run_tests.py --fast          # Fast: all tests except slow (>1s)
+    python3 scripts/run_tests.py --ci            # CI: all tests except real-api
+    python3 scripts/run_tests.py --report        # Report: all tests with HTML coverage
+    python3 scripts/run_tests.py --security-only # Security tests only
+
+Group Selection (Dynamic):
+    python3 scripts/run_tests.py                             # All test groups (default)
+    python3 scripts/run_tests.py --include unit,security     # Specific groups only
+    python3 scripts/run_tests.py --exclude slow,real-api     # All except specified
+    python3 scripts/run_tests.py --include unit --exclude slow  # Combine filters
+
+Available Groups (loaded from pyproject.toml):
+"""
+
+    # Add test group markers dynamically
+    for marker in test_groups:
+        desc = get_marker_description(marker) or "No description"
+        # Remove [GROUP] tag from description if present
+        if desc.startswith("[GROUP]"):
+            desc = desc[7:].strip()
+        help_text += f"    - {marker}: {desc}\n"
+
+    # Add behavioral markers section
+    help_text += "\nBehavioral Markers (execution modifiers):\n"
+    for marker in behavioral:
+        desc = get_marker_description(marker) or "No description"
+        # Remove [BEHAVIORAL] tag from description if present
+        if desc.startswith("[BEHAVIORAL]"):
+            desc = desc[12:].strip()
+        help_text += f"    - {marker}: {desc}\n"
+
+    # Add meta markers section
+    help_text += "\nMeta Markers (runtime-only, not in pyproject.toml):\n"
+    help_text += "    - unmarked: Tests without required pytest markers\n"
+    help_text += "    - all: Run all test groups\n"
+
+    # Add advanced usage section
+    help_text += """
+Advanced Usage:
+    python3 scripts/run_tests.py --include unit,security --fast
+    python3 scripts/run_tests.py --output json --output-file results.json
+    python3 scripts/run_tests.py --coverage --coverage-format html
+    python3 scripts/run_tests.py --exclude unmarked,slow
+
+Exit Codes:
+    0 - All tests passed
+    1 - Some tests failed
+    2 - No tests found
+    3 - Execution error
+
+Version: 3.0
+Updated: 2025-11-06
+"""
+
+    return help_text
+
+
+def create_argument_parser() -> argparse.ArgumentParser:
+    """
+    Create and configure argument parser.
+
+    Returns:
+        Configured ArgumentParser instance
+    """
     parser = argparse.ArgumentParser(
         description="VS Code Extension Scanner Test Suite Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
+        epilog=generate_dynamic_help_text(),
     )
 
-    # Test groups
-    parser.add_argument("--unit", action="store_true", help="Run unit tests")
-    parser.add_argument("--security", action="store_true", help="Run security tests")
+    # Test group selection (comma-separated)
     parser.add_argument(
-        "--architecture", action="store_true", help="Run architecture tests"
+        "--include",
+        type=str,
+        metavar="GROUPS",
+        help="Comma-separated list of test groups to include (e.g., unit,security). "
+        "Available groups loaded from pyproject.toml. Default: all groups if not specified. "
+        "Use --filter for behavioral markers.",
     )
     parser.add_argument(
-        "--parallel", action="store_true", help="Run parallel/threading tests"
+        "--exclude",
+        type=str,
+        metavar="GROUPS",
+        help="Comma-separated list of test groups to exclude (e.g., real_api). "
+        "Takes precedence over --include. Use --filter for behavioral markers.",
     )
+
+    # Behavioral marker filtering
     parser.add_argument(
-        "--integration", action="store_true", help="Run integration tests"
-    )
-    parser.add_argument(
-        "--real-api", action="store_true", help="Run real API tests (slow)"
-    )
-    parser.add_argument(
-        "--mock-validation",
-        action="store_true",
-        help="Run mock validation tests (slow)",
-    )
-    parser.add_argument(
-        "--unmarked",
-        action="store_true",
-        help="Run tests without required pytest markers (included with --all)",
-    )
-    parser.add_argument(
-        "--all", action="store_true", help="Run all test groups (including unmarked)"
+        "--filter",
+        type=str,
+        metavar="FILTERS",
+        help="Comma-separated behavioral marker filters with optional 'not' prefix. "
+        "Multiple filters use OR logic (any match). "
+        "Examples: 'slow', 'not slow', 'slow,not property_based'. "
+        "Only behavioral markers allowed (use --include/--exclude for groups).",
     )
 
     # Preset aliases for common workflows
     parser.add_argument(
         "--fast",
         action="store_true",
-        help="Skip slow tests (>1s duration)",
+        help="Skip slow tests (alias for --filter 'not slow'). Equivalent to --filter 'not slow'.",
     )
     parser.add_argument(
         "--ci",
@@ -733,32 +680,36 @@ def main():  # pylint: disable=too-many-return-statements
         help="Minimum required coverage percentage (e.g., 85.0)",
     )
 
-    args = parser.parse_args()
+    return parser
 
-    # Handle special modes (security-only)
+
+def apply_preset_aliases(args: argparse.Namespace) -> None:
+    """
+    Apply preset flags to args (--ci, --report, --security-only, --fast).
+
+    Modifies args in-place to expand preset aliases into their equivalent
+    --include/--exclude/--filter/--coverage combinations.
+
+    Args:
+        args: Parsed command-line arguments to modify
+    """
+    # Handle preset aliases (map to --include/--exclude)
     if args.security_only:
         # Security-only mode
-        args.security = True
+        args.include = "security"
         print(
             f"{Colors.CYAN}Running security tests only (fast validation){Colors.RESET}\n"
         )
 
-    # Handle preset aliases
     if args.ci:
-        args.unit = True
-        args.security = True
-        args.architecture = True
-        args.parallel = True
-        args.integration = True
-        args.mock_validation = True
-        # Note: real_api group is intentionally excluded (unreliable in CI)
-        # Can be combined with --fast to also skip slow tests (>1s)
+        # CI preset: all tests except real-api (unreliable in CI)
+        args.exclude = "real-api" + ("," + args.exclude if args.exclude else "")
         print(
-            f"{Colors.CYAN}Using --ci preset: all tests except real_api{Colors.RESET}\n"
+            f"{Colors.CYAN}Using --ci preset: all tests except real-api{Colors.RESET}\n"
         )
 
     if args.report:
-        args.all = True
+        # Report preset: all tests with coverage HTML
         args.coverage = True
         if not args.coverage_format:
             args.coverage_format = "html"
@@ -766,43 +717,109 @@ def main():  # pylint: disable=too-many-return-statements
             f"{Colors.CYAN}Using --report preset: all tests with coverage HTML report{Colors.RESET}\n"
         )
 
-    # Determine which groups to run
+    # Handle --fast flag (map to --filter)
+    if args.fast:
+        if args.filter:
+            # Combine: --fast + --filter
+            args.filter = f"not slow,{args.filter}"
+        else:
+            args.filter = "not slow"
+
+
+def parse_test_groups(args: argparse.Namespace) -> List[TestGroup]:
+    """
+    Parse --include/--exclude to determine test groups.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        List of TestGroup enums to execute
+
+    Raises:
+        SystemExit: If unknown group names are specified (via sys.exit)
+    """
     groups = []
-    if args.unit:
-        groups.append(TestGroup.UNIT)
-    if args.security:
-        groups.append(TestGroup.SECURITY)
-    if args.architecture:
-        groups.append(TestGroup.ARCHITECTURE)
-    if args.parallel:
-        groups.append(TestGroup.PARALLEL)
-    if args.integration:
-        groups.append(TestGroup.INTEGRATION)
-    if args.real_api:
-        groups.append(TestGroup.REAL_API)
-    if args.mock_validation:
-        groups.append(TestGroup.MOCK_VALIDATION)
-    if args.unmarked:
-        groups.append(TestGroup.UNMARKED)
-    if args.all:
+
+    # Parse included groups
+    if args.include:
+        include_names = [name.strip() for name in args.include.split(",")]
+        for name in include_names:
+            group = TestGroup.from_string(name)
+            if group:
+                groups.append(group)
+            else:
+                print(f"{Colors.RED}Error: Unknown test group '{name}'{Colors.RESET}")
+                print(
+                    f"Available groups: {', '.join(sorted(g.value for g in TestGroup))}"
+                )
+                sys.exit(EXIT_ERROR)
+    else:
+        # No --include specified: include ALL groups by default
         groups.append(TestGroup.ALL)
 
-    # Default to all groups if no groups specified
-    if not groups:
-        groups.append(TestGroup.ALL)
+    # Parse and apply excluded groups
+    if args.exclude:
+        exclude_names = [name.strip() for name in args.exclude.split(",")]
+        exclude_groups = []
+        for name in exclude_names:
+            group = TestGroup.from_string(name)
+            if group:
+                exclude_groups.append(group)
+            else:
+                print(f"{Colors.RED}Error: Unknown test group '{name}'{Colors.RESET}")
+                print(
+                    f"Available groups: {', '.join(sorted(g.value for g in TestGroup))}"
+                )
+                sys.exit(EXIT_ERROR)
 
-    # Validate output arguments
+        # Apply exclusions
+        if TestGroup.ALL in groups:
+            # Expand ALL and then exclude
+            groups = [
+                g
+                for g in TestGroup
+                if g not in (TestGroup.ALL,) and g not in exclude_groups
+            ]
+        else:
+            # Remove excluded groups from explicit includes
+            groups = [g for g in groups if g not in exclude_groups]
+
+    return groups
+
+
+def validate_output_arguments(args: argparse.Namespace) -> Optional[int]:
+    """
+    Validate output format arguments.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        Error code if validation fails, None if valid
+    """
     if args.output in ["json", "junit"] and not args.output_file:
         print(
             f"Error: --output-file required for {args.output} format", file=sys.stderr
         )
         return EXIT_ERROR
+    return None
 
-    # Create orchestrator and execute
+
+def main():
+    """Main entry point - orchestration only."""
+    parser = create_argument_parser()
+    args = parser.parse_args()
+
+    apply_preset_aliases(args)
+    groups = parse_test_groups(args)
+
+    error_code = validate_output_arguments(args)
+    if error_code:
+        return error_code
+
     orchestrator = TestOrchestrator(args)
-    exit_code = orchestrator.run_groups(groups)
-
-    return exit_code
+    return orchestrator.run_groups(groups)
 
 
 if __name__ == "__main__":
