@@ -102,57 +102,17 @@ def is_temp_directory(path_str: str) -> bool:
     """
     Check if path is within a legitimate temporary directory.
 
-    Enhanced in v3.7.2 to check common temp directory paths across platforms:
-    - System temp directory (tempfile.gettempdir())
-    - /tmp (Unix/Linux/macOS)
-    - /var/tmp (Unix/Linux)
-    - C:\\temp, C:\\tmp (Windows)
-
     Args:
         path_str: Path to check
 
     Returns:
         True if path is within system temp directory, False otherwise
     """
-    import platform
-
     try:
         path = PathLib(path_str).resolve()
-
-        # Check system temp directory (cross-platform)
         temp_dir = PathLib(tempfile.gettempdir()).resolve()
-        try:
-            path.relative_to(temp_dir)
-            return True
-        except ValueError:
-            pass
-
-        # Check common temp directory paths across platforms
-        common_temp_paths = [
-            "/tmp",  # Unix/Linux/macOS
-            "/var/tmp",  # Unix/Linux
-        ]
-
-        # Add Windows-specific paths on Windows
-        if platform.system() == "Windows":
-            common_temp_paths.extend(
-                [
-                    "C:\\temp",
-                    "C:\\tmp",
-                    "C:\\Windows\\temp",
-                ]
-            )
-
-        # Check if path is under any common temp directory
-        for temp_path_str in common_temp_paths:
-            try:
-                temp_path = PathLib(temp_path_str).resolve()
-                path.relative_to(temp_path)
-                return True
-            except (ValueError, OSError):
-                continue
-
-        return False
+        path.relative_to(temp_dir)
+        return True
     except (ValueError, OSError):
         return False
 
@@ -209,7 +169,6 @@ def validate_path(
     path: str,
     allow_absolute: bool = True,
     path_type: str = "path",
-    allow_temp: bool = True,
 ) -> bool:
     """
     Validate that a path doesn't contain dangerous patterns.
@@ -220,15 +179,10 @@ def validate_path(
     - Critical system path blocking
     - Helpful error messages via ValueError
 
-    Enhanced in v3.7.2 with:
-    - Temp directory control (allow_temp parameter)
-    - Cache directory security (prevent /tmp for persistent data)
-
     Args:
         path: Path to validate (supports shell expansion like ~/, $HOME/)
         allow_absolute: Whether to allow absolute paths (default: True)
         path_type: Type of path for error messages (e.g., "output", "cache")
-        allow_temp: Whether to allow temp directories like /tmp (default: True)
 
     Raises:
         ValueError: If path contains dangerous patterns or resolves to restricted location
@@ -243,8 +197,6 @@ def validate_path(
         ValueError: Access to system directories not allowed
         >>> validate_path("%2e%2e%2f")  # Raises: URL encoding
         ValueError: URL-encoded paths are not allowed
-        >>> validate_path("/tmp/cache", allow_temp=False)  # Raises: temp not allowed
-        ValueError: Temp directories not allowed for cache directory
     """
     import os
 
@@ -284,15 +236,6 @@ def validate_path(
     # Validate it's a valid path format
     try:
         p = PathLib(expanded_path)
-
-        # Check temp directory restriction (v3.7.2)
-        # This must be checked independently, not nested in restricted path check
-        if not allow_temp and is_temp_directory(str(p)):
-            raise ValueError(
-                f"Temp directories not allowed for {path_type}. "
-                f"Path resolves to temp location: {p}. "
-                f"Please use a persistent location like ~/.vscan/"
-            )
 
         # Check if expanded path resolves to a critical system directory
         if is_restricted_path(str(p)):
