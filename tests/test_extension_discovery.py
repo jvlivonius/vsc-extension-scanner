@@ -160,7 +160,8 @@ class TestPlatformDetection(unittest.TestCase):
         # Cleanup
         import shutil
 
-        shutil.rmtree(test_dir)
+        if test_dir.exists():
+            shutil.rmtree(test_dir)
 
 
 # ============================================================

@@ -179,10 +179,17 @@ def validate_path(
     - Critical system path blocking
     - Helpful error messages via ValueError
 
+    Enhanced in v3.7.2 with:
+    - Context-aware temp directory handling
+    - Temp allowed for temporary files (output, config)
+    - Temp blocked for persistent data (cache)
+
     Args:
         path: Path to validate (supports shell expansion like ~/, $HOME/)
         allow_absolute: Whether to allow absolute paths (default: True)
-        path_type: Type of path for error messages (e.g., "output", "cache")
+        path_type: Type of path for error messages and validation context
+                   - "cache directory": Blocks temp locations (persistent data)
+                   - "output", "config", etc.: Allows temp locations (temporary files)
 
     Raises:
         ValueError: If path contains dangerous patterns or resolves to restricted location
@@ -197,6 +204,10 @@ def validate_path(
         ValueError: Access to system directories not allowed
         >>> validate_path("%2e%2e%2f")  # Raises: URL encoding
         ValueError: URL-encoded paths are not allowed
+        >>> validate_path("/tmp/output.json", path_type="output")  # OK: temp for output
+        True
+        >>> validate_path("/tmp/cache", path_type="cache directory")  # Raises: temp for cache
+        ValueError: Cache directories should not use temporary locations
     """
     import os
 
@@ -237,7 +248,21 @@ def validate_path(
     try:
         p = PathLib(expanded_path)
 
+        # Check if path is in temp directory (v3.7.2)
+        # Temp directories are OK for temporary files (output, config)
+        # but NOT for persistent data (cache)
+        if is_temp_directory(str(p)):
+            if path_type == "cache directory":
+                raise ValueError(
+                    f"Cache directories should not use temporary locations. "
+                    f"Path resolves to temp: {p}. "
+                    f"Use a persistent location like ~/.vscan/"
+                )
+            # Temp is OK for other path types (output files, config, etc.)
+            return True
+
         # Check if expanded path resolves to a critical system directory
+        # (Only reaches here if NOT a temp directory)
         if is_restricted_path(str(p)):
             # Apply normal restricted path blocking
             raise ValueError(

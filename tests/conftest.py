@@ -22,12 +22,105 @@ Note: Core test data fixtures (extensions, scan results, etc.) are now
 import pytest
 import tempfile
 import shutil
+import uuid
 from pathlib import Path
 from typing import Generator
 from unittest import mock
+import functools
+
+# Store original tempfile functions before patching
+_original_mkdtemp = tempfile.mkdtemp
+_original_TemporaryDirectory = tempfile.TemporaryDirectory
+
+
+# Pytest Configuration for temp directory handling (v3.7.2+)
+@pytest.fixture(autouse=True, scope="function")
+def _patch_tempfile_for_cache_tests(monkeypatch):
+    """
+    Automatically patch tempfile functions to use home directory for all tests.
+
+    This ensures cache directories are never created in system temp (/tmp, /var/folders)
+    which would be blocked by validate_path() security checks in v3.7.2+.
+
+    Applied automatically to all test functions.
+    """
+
+    def home_mkdtemp(suffix="", prefix="vscan_test_", dir=None):
+        """Replacement for tempfile.mkdtemp() that uses home directory."""
+        try:
+            home = Path.home()
+            # Check if home directory actually exists (may be mocked in tests)
+            if home.exists():
+                unique_name = f"{prefix}{uuid.uuid4().hex[:8]}{suffix}"
+                tmpdir = home / unique_name
+                tmpdir.mkdir(parents=True, exist_ok=True)
+                return str(tmpdir)
+        except (OSError, PermissionError, FileNotFoundError):
+            pass
+        # Fallback to original tempfile.mkdtemp if home directory is mocked/unavailable
+        return _original_mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
+
+    # Patch tempfile.mkdtemp to use home directory
+    monkeypatch.setattr(tempfile, "mkdtemp", home_mkdtemp)
+
+    # Patch tempfile.TemporaryDirectory to use HomeTempDirectory
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", HomeTempDirectory)
+
 
 # Import canonical fixtures for reuse (Phase 1.4)
 # These can be used directly in tests via pytest's fixture discovery
+# Helper functions for creating home-directory-based temp cache (v3.7.2+)
+def create_temp_cache_dir() -> Path:
+    """
+    Create a temporary cache directory in home directory.
+
+    This is a helper for tests that don't use fixtures or need multiple temp caches.
+    Returns a Path that should be cleaned up by the caller using shutil.rmtree().
+
+    Returns:
+        Path: Temporary directory in home directory
+
+    Example:
+        tmpdir = create_temp_cache_dir()
+        try:
+            cache = CacheManager(cache_dir=str(tmpdir))
+            # Use cache...
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    """
+    home = Path.home()
+    tmpdir = home / f".vscan_test_cache_{uuid.uuid4().hex[:8]}"
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    return tmpdir
+
+
+class HomeTempDirectory:
+    """
+    Context manager for temporary cache directories in home directory.
+
+    Drop-in replacement for tempfile.TemporaryDirectory() that uses home directory
+    instead of system temp. This avoids validate_path() blocking cache in temp.
+
+    Example:
+        with HomeTempDirectory() as tmpdir:
+            cache = CacheManager(cache_dir=tmpdir)
+            # Use cache...
+        # tmpdir is automatically cleaned up
+    """
+
+    def __init__(self):
+        self.name = None
+
+    def __enter__(self) -> str:
+        self.name = str(create_temp_cache_dir())
+        return self.name
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.name and Path(self.name).exists():
+            shutil.rmtree(self.name, ignore_errors=True)
+        return False
+
+
 from tests.fixtures.canonical_fixtures import (
     sample_extension,
     sample_extension_list,
@@ -60,15 +153,19 @@ def temp_cache_dir() -> Generator[Path, None, None]:
     """
     Provide a temporary cache directory for tests.
 
-    Note: This overrides the temp_cache_dir from canonical_fixtures.py
-    because tests historically used this implementation (tempfile.mkdtemp).
-    Both implementations are functionally equivalent.
+    Uses home directory instead of system temp (/tmp, /var) to ensure:
+    - Cross-platform compatibility (macOS, Linux, Windows)
+    - Avoids validate_path() blocking cache in temp locations (v3.7.2+)
+    - Matches production cache default location (~/.vscan)
+
+    Note: System temp (/tmp on Linux, /var/folders on macOS) is blocked
+    for cache directories to prevent persistent data in ephemeral locations.
 
     Automatically creates a temporary directory before the test
     and cleans it up after the test completes.
 
     Yields:
-        Path: Temporary directory path
+        Path: Temporary directory path in home directory
 
     Example:
         def test_cache_operations(temp_cache_dir):
@@ -76,12 +173,15 @@ def temp_cache_dir() -> Generator[Path, None, None]:
             # Use cache...
             # temp_cache_dir is automatically cleaned up
     """
-    tmpdir = tempfile.mkdtemp(prefix="vscan_test_cache_")
+    # Use home directory for test cache (not system temp)
+    home = Path.home()
+    tmpdir = home / f".vscan_test_cache_{uuid.uuid4().hex[:8]}"
+    tmpdir.mkdir(parents=True, exist_ok=True)
     try:
-        yield Path(tmpdir)
+        yield tmpdir
     finally:
         # Cleanup after test
-        if Path(tmpdir).exists():
+        if tmpdir.exists():
             shutil.rmtree(tmpdir, ignore_errors=True)
 
 
