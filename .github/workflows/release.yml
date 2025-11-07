@@ -112,7 +112,7 @@ jobs:
 
           # Run architecture tests (zero violations check)
           echo "Running architecture tests..."
-          python3 tests/test_architecture.py || { echo "❌ Architecture smoke test failed"; exit 1; }
+          pytest tests/test_architecture.py -xvs || { echo "❌ Architecture smoke test failed"; exit 1; }
 
           echo "✅ All smoke tests passed"
 
