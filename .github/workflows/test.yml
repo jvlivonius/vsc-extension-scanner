@@ -34,7 +34,7 @@ jobs:
           pip install -e .[test]
 
       - name: Run architecture tests
-        run: python3 tests/test_architecture.py
+        run: pytest tests/test_architecture.py -xvs
 
       - name: Report architecture test results
         if: always()
@@ -64,7 +64,7 @@ jobs:
         run: |
           if [ -f "tests/test_integration.py" ]; then
             echo "Running integration tests..."
-            python3 tests/test_integration.py
+            pytest tests/test_integration.py -xvs
           else
             echo "No integration tests found - skipping"
           fi
