@@ -110,7 +110,9 @@ class TestOrchestrator:
         self.args = args
         self.results = []
         self.start_time = time.time()
-        self._coverage_append = False  # Track coverage append state
+        self._first_group_executed = (
+            False  # Track if first group executed (for coverage append)
+        )
 
     def discover_tests(
         self, groups: List[TestGroup]
@@ -235,12 +237,14 @@ class TestOrchestrator:
         # Print header
         self.formatter.print_group_header(group.value, len(test_files), skipped_count)
 
-        # Build and execute pytest command
+        # Build and execute pytest command (coverage args added via _build_extra_args)
         command = self._build_pytest_command(group, test_files, is_unmarked)
-        command = self._wrap_with_coverage(command)
 
         # Execute and parse results
         result = self._execute_and_parse(command, group, test_files)
+
+        # Mark that first group has been executed (subsequent groups use --cov-append)
+        self._first_group_executed = True
 
         # Store and print
         self.results.append(result)
@@ -314,7 +318,7 @@ class TestOrchestrator:
 
     def _build_extra_args(self) -> List[str]:
         """
-        Build extra arguments for pytest.
+        Build extra arguments for pytest, including coverage args.
 
         Returns:
             List of extra pytest arguments
@@ -322,24 +326,14 @@ class TestOrchestrator:
         extra_args = []
         if self.args.verbose:
             extra_args.append("-vv")
+
+        # Add coverage arguments from CoverageManager
+        coverage_args = self.coverage.get_coverage_args(
+            append=self._first_group_executed
+        )
+        extra_args.extend(coverage_args)
+
         return extra_args
-
-    def _wrap_with_coverage(self, command: List[str]) -> List[str]:
-        """
-        Wrap command with coverage if enabled.
-
-        Args:
-            command: Pytest command to wrap
-
-        Returns:
-            Wrapped command with coverage or original command
-        """
-        if not self.coverage.enabled:
-            return command
-
-        wrapped = self.coverage.wrap_command(command, append=self._coverage_append)
-        self._coverage_append = True
-        return wrapped
 
     def _execute_and_parse(
         self, command: List[str], group: TestGroup, test_files: List[TestFile]

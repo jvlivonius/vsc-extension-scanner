@@ -48,7 +48,8 @@ def test_scan_calls_cache_save():
 **2. Fast Feedback Loop**
 - Unit tests run in < 1 second
 - Integration tests run in < 10 seconds
-- Full suite runs in < 30 seconds
+- Full suite runs in < 30 seconds (parallel execution enabled by default)
+- **Performance:** 2.9x speedup via pytest-xdist parallel execution
 
 **3. Isolated Tests**
 - Tests don't depend on each other
@@ -105,17 +106,66 @@ pip-audit
 ### Run Coverage Analysis
 
 ```bash
-# Generate coverage report (HTML format - recommended)
-coverage run -m pytest tests/
-coverage html
+# Using run_tests.py with pytest-cov (recommended - includes parallel execution)
+python3 scripts/run_tests.py --coverage --coverage-format html
 open htmlcov/index.html  # macOS (use 'xdg-open' on Linux, 'start' on Windows)
 
-# Terminal coverage report with missing lines
+# Terminal coverage report
+python3 scripts/run_tests.py --coverage --coverage-format term
+
+# Multiple formats (comma-separated)
+python3 scripts/run_tests.py --coverage --coverage-format "html,xml,term"
+
+# Using pytest directly with pytest-cov
+pytest tests/ --cov=vscode_scanner --cov-branch --cov-report=html -n auto
+pytest tests/ --cov=vscode_scanner --cov-branch --cov-report=term -n auto
+
+# Legacy: coverage.py (for compatibility)
 coverage run -m pytest tests/
 coverage report --show-missing
+coverage html
+```
 
-# Generate all report formats
-coverage run -m pytest tests/ && coverage report && coverage html && coverage xml
+### Parallel Test Execution
+
+**Default Behavior:** Parallel execution is enabled by default via pytest-xdist.
+
+```bash
+# Automatic parallel execution (default)
+python3 scripts/run_tests.py --include unit  # Uses all available CPU cores
+
+# Direct pytest with parallel execution
+pytest tests/ -n auto  # Auto-detect CPU cores
+pytest tests/ -n 4     # Use 4 workers explicitly
+
+# Performance comparison
+pytest tests/test_utils.py           # Serial: ~0.10s
+pytest tests/test_utils.py -n auto   # Parallel: ~0.95s (overhead for small suites)
+
+# Full suite benefits
+pytest tests/ -m unit         # Serial: ~31s (estimated)
+pytest tests/ -m unit -n auto # Parallel: ~10.69s (2.9x speedup)
+```
+
+**Worker Isolation:**
+- Each worker gets isolated cache directories (e.g., `~/.vscan_test_integrity_gw0`)
+- Worker ID available via `request.config.workerinput["workerid"]`
+- Prevents SQLite and HMAC conflicts in parallel execution
+
+**Example Worker-Isolated Fixture:**
+```python
+@pytest.fixture(autouse=True)
+def setup_teardown(self, request):
+    """Worker-specific isolation for pytest-xdist."""
+    worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+    self.test_dir = os.path.join(
+        os.path.expanduser("~"),
+        f".vscan_test_cache_{worker_id}"
+    )
+    os.makedirs(self.test_dir, exist_ok=True)
+    yield
+    if os.path.exists(self.test_dir):
+        shutil.rmtree(self.test_dir)
 ```
 
 ---
