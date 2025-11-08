@@ -3,7 +3,7 @@
 Output Formatter Module
 
 Formats scan results into comprehensive JSON output.
-Schema version 2.0 with reorganized structure.
+Schema version 4.0 with rich security data and comprehensive findings.
 """
 
 from typing import List, Dict, Any
@@ -188,6 +188,7 @@ class OutputFormatter:
             extension["keywords"] = metadata.get("keywords", [])
             extension["categories"] = metadata.get("categories", [])
             extension["author_name"] = metadata.get("author_name")
+            extension["vscode_engine"] = metadata.get("vscode_engine")
 
             # Add comprehensive security section
             extension["security"] = {
@@ -224,6 +225,16 @@ class OutputFormatter:
                     "vulnerabilities": dependencies.get("vulnerabilities", {}),
                     "list": dependencies.get("list", []),
                 },
+                # Comprehensive security findings
+                "virustotal": result.get("virustotal_details", {}),
+                "permissions_detailed": result.get("permissions_details", {}),
+                "ossf_scorecard": result.get("ossf_checks", {}),
+                "ast_findings": result.get("ast_findings", {}),
+                "socket_findings": result.get("socket_findings", {}),
+                "network_endpoints": result.get("network_endpoints", {}),
+                "obfuscation": result.get("obfuscation_findings", {}),
+                "sensitive_info": result.get("sensitive_findings", {}),
+                "opengrep": result.get("opengrep_findings", {}),
             }
 
             extension["vscan_url"] = result.get("vscan_url")

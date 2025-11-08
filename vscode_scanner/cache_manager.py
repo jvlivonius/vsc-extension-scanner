@@ -359,7 +359,7 @@ class CacheManager:
         return messages
 
     def _init_database(self):
-        """Initialize SQLite database with schema v2.1."""
+        """Initialize SQLite database with comprehensive security schema."""
         # Create cache directory with restricted permissions (user-only)
         # Uses cross-platform safe_mkdir that handles Windows/Unix differences
         safe_mkdir(self.cache_dir, mode=0o700)
@@ -375,7 +375,7 @@ class CacheManager:
         with self._db_connection() as conn:
             cursor = conn.cursor()
 
-            # Create scan_cache table (v2.2 schema with integrity_signature field)
+            # Create scan_cache table (comprehensive security findings)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scan_cache (
@@ -392,6 +392,33 @@ class CacheManager:
                     has_risk_factors BOOLEAN DEFAULT 0,
                     installed_at TIMESTAMP,
                     integrity_signature TEXT,
+
+                    -- Rich security data (JSON columns)
+                    module_risk_levels TEXT,
+                    score_contributions TEXT,
+                    security_notes TEXT,
+
+                    -- Enhanced metadata
+                    installs INTEGER,
+                    rating REAL,
+                    rating_count INTEGER,
+                    repository_url TEXT,
+                    license TEXT,
+                    keywords TEXT,
+                    categories TEXT,
+
+                    -- Comprehensive security findings (JSON columns)
+                    virustotal_details TEXT,
+                    permissions_details TEXT,
+                    ossf_checks TEXT,
+                    ast_findings TEXT,
+                    socket_findings TEXT,
+                    network_endpoints TEXT,
+                    obfuscation_findings TEXT,
+                    sensitive_findings TEXT,
+                    opengrep_findings TEXT,
+                    vscode_engine TEXT,
+
                     UNIQUE(extension_id, version)
                 )
             """
@@ -565,7 +592,7 @@ class CacheManager:
 
     def save_result(self, extension_id: str, version: str, result: Dict[str, Any]):
         """
-        Save scan result to cache (v2 schema).
+        Save scan result to cache (comprehensive security findings).
 
         Args:
             extension_id: Extension ID (e.g., "ms-python.python")
@@ -616,18 +643,88 @@ class CacheManager:
                 # Installation timestamp
                 installed_at = result_to_store.get("installed_at")
 
+                # Extract rich security data
+                security = result_to_store.get("security", {})
+                module_risk_levels = security.get("module_risk_levels")
+                score_contributions = security.get("score_contributions")
+                security_notes = security.get("security_notes")
+
+                # Serialize JSON fields
+                module_risk_levels_json = (
+                    json.dumps(module_risk_levels) if module_risk_levels else None
+                )
+                score_contributions_json = (
+                    json.dumps(score_contributions) if score_contributions else None
+                )
+                security_notes_json = (
+                    json.dumps(security_notes) if security_notes else None
+                )
+
+                # Extract enhanced metadata
+                statistics = metadata.get("statistics", {})
+                installs = statistics.get("installs")
+                rating = statistics.get("rating")
+                rating_count = statistics.get("rating_count")
+                repository_url = metadata.get("repository_url")
+                license_info = metadata.get("license")
+                keywords = metadata.get("keywords")
+                categories = metadata.get("categories")
+
+                # Serialize list fields
+                keywords_json = json.dumps(keywords) if keywords else None
+                categories_json = json.dumps(categories) if categories else None
+
+                # Extract comprehensive security findings
+                virustotal_details = result_to_store.get("virustotal_details")
+                permissions_details = result_to_store.get("permissions_details")
+                ossf_checks = result_to_store.get("ossf_checks")
+                ast_findings = result_to_store.get("ast_findings")
+                socket_findings = result_to_store.get("socket_findings")
+                network_endpoints = result_to_store.get("network_endpoints")
+                obfuscation_findings = result_to_store.get("obfuscation_findings")
+                sensitive_findings = result_to_store.get("sensitive_findings")
+                opengrep_findings = result_to_store.get("opengrep_findings")
+                vscode_engine = metadata.get("vscode_engine")
+
+                # Serialize JSON fields for comprehensive findings
+                virustotal_json = (
+                    json.dumps(virustotal_details) if virustotal_details else None
+                )
+                permissions_json = (
+                    json.dumps(permissions_details) if permissions_details else None
+                )
+                ossf_json = json.dumps(ossf_checks) if ossf_checks else None
+                ast_json = json.dumps(ast_findings) if ast_findings else None
+                socket_json = json.dumps(socket_findings) if socket_findings else None
+                network_json = (
+                    json.dumps(network_endpoints) if network_endpoints else None
+                )
+                obfuscation_json = (
+                    json.dumps(obfuscation_findings) if obfuscation_findings else None
+                )
+                sensitive_json = (
+                    json.dumps(sensitive_findings) if sensitive_findings else None
+                )
+                opengrep_json = (
+                    json.dumps(opengrep_findings) if opengrep_findings else None
+                )
+
                 # Compute HMAC signature for integrity checking (v3.5.1)
                 integrity_signature = self._compute_integrity_signature(
                     scan_result_json
                 )
 
-                # Insert or replace
+                # Insert or replace with all fields
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO scan_cache
                     (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature,
+                     module_risk_levels, score_contributions, security_notes,
+                     installs, rating, rating_count, repository_url, license, keywords, categories,
+                     virustotal_details, permissions_details, ossf_checks, ast_findings, socket_findings,
+                     network_endpoints, obfuscation_findings, sensitive_findings, opengrep_findings, vscode_engine)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         extension_id,
@@ -642,6 +739,28 @@ class CacheManager:
                         has_risk_factors,
                         installed_at,
                         integrity_signature,
+                        # Rich security data fields
+                        module_risk_levels_json,
+                        score_contributions_json,
+                        security_notes_json,
+                        installs,
+                        rating,
+                        rating_count,
+                        repository_url,
+                        license_info,
+                        keywords_json,
+                        categories_json,
+                        # Comprehensive security findings fields
+                        virustotal_json,
+                        permissions_json,
+                        ossf_json,
+                        ast_json,
+                        socket_json,
+                        network_json,
+                        obfuscation_json,
+                        sensitive_json,
+                        opengrep_json,
+                        vscode_engine,
                     ),
                 )
 
@@ -723,16 +842,80 @@ class CacheManager:
             # Installation timestamp
             installed_at = result_to_store.get("installed_at")
 
+            # Extract rich security data
+            security = result_to_store.get("security", {})
+            module_risk_levels = security.get("module_risk_levels")
+            score_contributions = security.get("score_contributions")
+            security_notes = security.get("security_notes")
+
+            # Serialize JSON fields
+            module_risk_levels_json = (
+                json.dumps(module_risk_levels) if module_risk_levels else None
+            )
+            score_contributions_json = (
+                json.dumps(score_contributions) if score_contributions else None
+            )
+            security_notes_json = json.dumps(security_notes) if security_notes else None
+
+            # Extract enhanced metadata
+            statistics = metadata.get("statistics", {})
+            installs = statistics.get("installs")
+            rating = statistics.get("rating")
+            rating_count = statistics.get("rating_count")
+            repository_url = metadata.get("repository_url")
+            license_info = metadata.get("license")
+            keywords = metadata.get("keywords")
+            categories = metadata.get("categories")
+
+            # Serialize list fields
+            keywords_json = json.dumps(keywords) if keywords else None
+            categories_json = json.dumps(categories) if categories else None
+
+            # Extract comprehensive security findings
+            virustotal_details = result_to_store.get("virustotal_details")
+            permissions_details = result_to_store.get("permissions_details")
+            ossf_checks = result_to_store.get("ossf_checks")
+            ast_findings = result_to_store.get("ast_findings")
+            socket_findings = result_to_store.get("socket_findings")
+            network_endpoints = result_to_store.get("network_endpoints")
+            obfuscation_findings = result_to_store.get("obfuscation_findings")
+            sensitive_findings = result_to_store.get("sensitive_findings")
+            opengrep_findings = result_to_store.get("opengrep_findings")
+            vscode_engine = metadata.get("vscode_engine")
+
+            # Serialize JSON fields for comprehensive findings
+            virustotal_json = (
+                json.dumps(virustotal_details) if virustotal_details else None
+            )
+            permissions_json = (
+                json.dumps(permissions_details) if permissions_details else None
+            )
+            ossf_json = json.dumps(ossf_checks) if ossf_checks else None
+            ast_json = json.dumps(ast_findings) if ast_findings else None
+            socket_json = json.dumps(socket_findings) if socket_findings else None
+            network_json = json.dumps(network_endpoints) if network_endpoints else None
+            obfuscation_json = (
+                json.dumps(obfuscation_findings) if obfuscation_findings else None
+            )
+            sensitive_json = (
+                json.dumps(sensitive_findings) if sensitive_findings else None
+            )
+            opengrep_json = json.dumps(opengrep_findings) if opengrep_findings else None
+
             # Compute HMAC signature for integrity checking (v3.5.1)
             integrity_signature = self._compute_integrity_signature(scan_result_json)
 
-            # Insert or replace
+            # Insert or replace with all fields
             self._batch_cursor.execute(
                 """
                 INSERT OR REPLACE INTO scan_cache
                 (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature,
+                 module_risk_levels, score_contributions, security_notes,
+                 installs, rating, rating_count, repository_url, license, keywords, categories,
+                 virustotal_details, permissions_details, ossf_checks, ast_findings, socket_findings,
+                 network_endpoints, obfuscation_findings, sensitive_findings, opengrep_findings, vscode_engine)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     extension_id,
@@ -747,6 +930,28 @@ class CacheManager:
                     has_risk_factors,
                     installed_at,
                     integrity_signature,
+                    # Rich security data fields
+                    module_risk_levels_json,
+                    score_contributions_json,
+                    security_notes_json,
+                    installs,
+                    rating,
+                    rating_count,
+                    repository_url,
+                    license_info,
+                    keywords_json,
+                    categories_json,
+                    # Comprehensive security findings fields
+                    virustotal_json,
+                    permissions_json,
+                    ossf_json,
+                    ast_json,
+                    socket_json,
+                    network_json,
+                    obfuscation_json,
+                    sensitive_json,
+                    opengrep_json,
+                    vscode_engine,
                 ),
             )
 

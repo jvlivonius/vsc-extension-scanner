@@ -1,9 +1,89 @@
 # Project Status
 
-**Last Updated:** 2025-11-05
-**Status:** v3.7.0 Released ✅
+**Last Updated:** 2025-11-08
+**Status:** v4.0.0 Released ✅ (Rich Security Data & Comprehensive Findings)
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
+
+---
+
+## Release: v4.0.0 ✅ (Rich Security Data & Comprehensive Findings)
+
+**Released:** 2025-11-08
+**Type:** Major Release - Breaking Schema Change
+**Schema Version:** 3.0 → 4.0
+**Total Tests:** 1,140 (all passing, +15 new)
+
+### Key Achievements
+
+**Rich Security Data Unlocked:**
+- **Module Risk Levels**: Individual risk assessments for all 11 security analysis modules
+- **Score Contributions**: Detailed breakdown showing impact of each module on security score
+- **Security Notes**: Expert commentary from vscan.dev analysts
+- **Enhanced Metadata**: Install counts, ratings, repository URLs, licenses, keywords, categories
+
+**Comprehensive Security Findings:**
+- **VirusTotal Details**: Complete malware scan results with filtering
+  - **CRITICAL**: Excludes `category="undetected"` engines (reduces 76 → 12 engines in typical scans)
+  - Preserves malicious, suspicious, failure, type-unsupported, timeout categories
+  - Includes per-file hash, stats, engine-specific results, VirusTotal links
+- **Permissions Details**: Individual permission objects with risk levels
+- **OSSF Scorecard**: 15 security health checks from OpenSSF (Code-Review, Maintained, etc.)
+- **AST Findings**: Static code analysis security issues
+- **Socket.dev Findings**: Supply chain security analysis
+- **Network Endpoints**: Network activity and endpoint analysis
+- **Obfuscation Detection**: Code obfuscation and minification analysis
+- **Sensitive Information**: Secrets, credentials, and PII detection
+- **OpenGrep Findings**: SAST results
+- **VSCode Engine**: Minimum required VSCode version
+
+**Database Schema v4.0:**
+- 20 new columns total
+- JSON columns for rich data: `module_risk_levels`, `score_contributions`, `security_notes`, `keywords`, `categories`
+- Metadata columns: `installs`, `rating`, `rating_count`, `repository_url`, `license`
+- JSON columns for comprehensive findings: `virustotal_details`, `permissions_details`, `ossf_checks`, `ast_findings`, `socket_findings`, `network_endpoints`, `obfuscation_findings`, `sensitive_findings`, `opengrep_findings`
+- String column: `vscode_engine`
+- Automatic migration: Cache regeneration on schema version mismatch
+
+**JSON Export Enhancement:**
+- All rich security data included in JSON exports
+- All 9 comprehensive security modules exposed in `security` section
+- VSCode engine requirement in metadata section
+- Data structures preserved from API (no flattening)
+- Backward compatible: Optional fields with NULL defaults
+
+### Breaking Changes
+
+- Cache database will be regenerated on first run (automatic, no user action required)
+- Users will need to re-scan extensions to populate new fields
+- API caching makes re-scanning fast and efficient
+
+### Implementation Summary
+
+- **Phase 1**: Parser extensions (9 new parsers + metadata extraction) ✅
+- **Phase 2**: Database schema v4.0 (20 new columns) ✅
+- **Phase 3**: Cache storage/retrieval updates ✅
+- **Phase 4**: JSON export enhancements ✅
+- **Phase 5**: Comprehensive test suite (15 new tests) ✅
+- **Phase 6**: Documentation updates ✅
+- **Testing**: All 1,140 tests passing (1,125 existing + 15 new) ✅
+
+### Technical Highlights
+
+- **VirusTotal Filtering**: Dictionary comprehension excludes `category="undetected"` engines
+- **Parser Methods**: 9 new parsers with safe error handling (return partial data on exceptions)
+- **Data Source**: Real API response from ms-azuretools.vscode-docker analyzed for gap analysis
+- **Architecture**: Maintains 3-layer architecture, 0 violations
+- **Security**: 0 vulnerabilities, HMAC integrity preserved
+- **Code Quality**: All pre-commit hooks passing (Semgrep, Pylint, Bandit, Black)
+
+### Roadmap Reference
+
+- Implemented following [v4.0-roadmap.md](v4.0-roadmap.md)
+- Future enhancements: [v4.x-enhancement-opportunities.md](v4.x-enhancement-opportunities.md)
+  - v4.1: CLI display enhancements
+  - v4.2: HTML report enhancements
+  - v4.3: CSV export updates
 
 ---
 
@@ -386,23 +466,20 @@ Systematically identified natural unit test coverage limits at framework integra
 
 | Metric | Value |
 |--------|-------|
-| **Version** | 3.7.1 🚀 (Coverage Excellence) |
-| **Status** | Coverage Improvements - Enhanced Test Coverage |
-| **Code** | 11,500+ lines (Python) |
-| **Tests** | **1,113 tests** (1,112 passing, 1 skipped) |
-| **Test Improvement** | +78 tests vs v3.7.0 (+7.5%) |
-| **Test Coverage** | **89.39%** (up from 86.25%, +3.14%) ✅ |
-| **Module Coverage** | cache_manager: **87.63%** ✅, scanner: **86.95%** ✅, vscan_api: **86.13%** ✅ |
-| **Fast Test Subset** | 1,113 tests in ~61s (full suite) |
-| **Property Tests** | 20 tests, 1,250+ scenarios |
-| **Documentation** | TESTING.md restructured (11 focused docs) |
-| **Schema** | 3.0 (breaking change from 2.1) |
-| **Modules** | 20 (6 new extracted modules) |
-| **Output Formats** | JSON, HTML, CSV |
+| **Version** | 4.0.0 🚀 (Rich Security Data) |
+| **Status** | Major Release - Breaking Schema Change |
+| **Code** | 11,600+ lines (Python) |
+| **Tests** | **1,125 tests** (all passing, 1 skipped) |
+| **Test Coverage** | **89%+** ✅ |
+| **Schema** | 4.0 (breaking change from 3.0) |
+| **Database** | SQLite with HMAC integrity + rich security data |
+| **Modules** | 20 (6 extracted modules in v3.7) |
+| **Output Formats** | JSON (enhanced), HTML, CSV |
 | **Architecture** | 3-layer, 0 violations |
 | **Security Score** | 9.5/10 ✅ |
 | **Security Coverage** | 95%+ ✅ |
 | **Overall Grade** | A- (93/100) ✅ |
+| **New Features** | Module risk levels, Score contributions, Security notes, Enhanced metadata |
 
 ---
 
@@ -410,6 +487,7 @@ Systematically identified natural unit test coverage limits at framework integra
 
 | Version | Date | Focus |
 |---------|------|-------|
+| v4.0.0 | 2025-11-07 | Rich Security Data Integration (Schema 4.0, Breaking) |
 | v3.7.1 | 2025-01-06 | Coverage Excellence (89.39%, cache: 87.63% ✅, scanner: 86.95% ✅, +78 tests) |
 | v3.7.0 | 2025-01-05 | Testability & Maintainability (3 phases, +7.31% coverage) |
 | v3.6.0 | 2025-11-04 | Coverage Improvement (+1.11%) |

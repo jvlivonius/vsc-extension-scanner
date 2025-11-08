@@ -50,7 +50,7 @@ class CanonicalVscanAPIMock:
             "publisher": publisher,
             "scan_status": "success",
             "error": None,
-            # Comprehensive data categories (v3.0+)
+            # Comprehensive data categories
             "metadata": {
                 "id": f"{publisher}.{name}",
                 "version": version,

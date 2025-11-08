@@ -589,6 +589,10 @@ class VscanAPIClient:
             metadata["keywords"] = meta_data.get("keywords", [])
             metadata["categories"] = meta_data.get("categories", [])
 
+            # VSCode engine requirement
+            engines = meta_data.get("engines", {})
+            metadata["vscode_engine"] = engines.get("vscode")
+
             # Statistics
             stats = meta_data.get("statistics", {})
             metadata["statistics"] = {
@@ -784,6 +788,338 @@ class VscanAPIClient:
 
         return risk_factors
 
+    def _parse_virustotal_details(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract VirusTotal results, excluding engines with category='undetected'.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed VirusTotal details dictionary with filtered engines
+        """
+        vt_data = {
+            "scanned_files": 0,
+            "malicious_files": 0,
+            "suspicious_files": 0,
+            "detection_rate": 0,
+            "overall_risk": "unknown",
+            "file_results": [],
+        }
+
+        try:
+            vt_module = api_response.get("analysisModules", {}).get("virusTotal", {})
+
+            vt_data["scanned_files"] = vt_module.get("scannedFiles", 0)
+            vt_data["malicious_files"] = vt_module.get("maliciousFiles", 0)
+            vt_data["suspicious_files"] = vt_module.get("suspiciousFiles", 0)
+            vt_data["detection_rate"] = vt_module.get("detectionRate", 0)
+            vt_data["overall_risk"] = vt_module.get("overallRisk", "unknown")
+
+            file_results = vt_module.get("fileResults", [])
+            for file_result in file_results:
+                results = file_result.get("results", {})
+                engines = results.get("engines", {})
+
+                # EXCLUDE entire engine result if category="undetected"
+                filtered_engines = {
+                    name: engine
+                    for name, engine in engines.items()
+                    if engine.get("category") != "undetected"
+                }
+
+                vt_data["file_results"].append(
+                    {
+                        "file_name": file_result.get("fileName"),
+                        "hash": file_result.get("hash"),
+                        "status": file_result.get("status"),
+                        "is_malicious": results.get("isMalicious", False),
+                        "is_suspicious": results.get("isSuspicious", False),
+                        "stats": results.get("stats", {}),
+                        "engines": filtered_engines,  # Only non-undetected engines
+                        "vt_link": results.get("link"),
+                        "analysis_date": results.get("lastAnalysisDate"),
+                    }
+                )
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return vt_data
+
+    def _parse_permissions_details(
+        self, api_response: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Extract individual permission objects with detailed risk analysis.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed permissions details dictionary
+        """
+        perms_data = {
+            "permissions": [],
+            "overall_risk": "unknown",
+            "status": "unknown",
+            "error": None,
+        }
+
+        try:
+            perms_module = api_response.get("analysisModules", {}).get(
+                "permissions", {}
+            )
+
+            perms_data["permissions"] = perms_module.get("permissions", [])
+            perms_data["overall_risk"] = perms_module.get("overallRisk", "unknown")
+            perms_data["status"] = perms_module.get("status", "unknown")
+            perms_data["error"] = perms_module.get("error")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return perms_data
+
+    def _parse_ossf_scorecard_details(
+        self, api_response: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Extract OSSF Scorecard check details with individual scores.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed OSSF Scorecard details dictionary
+        """
+        ossf_data = {
+            "score": None,
+            "risk": "unknown",
+            "date": None,
+            "check_details": [],
+            "scorecard_url": None,
+            "repo_url": None,
+        }
+
+        try:
+            ossf_module = api_response.get("analysisModules", {}).get(
+                "ossfScorecard", {}
+            )
+            main_result = ossf_module.get("mainRepoResult", {})
+            score_result = main_result.get("scoreResult", {})
+
+            ossf_data["score"] = score_result.get("score")
+            ossf_data["risk"] = score_result.get("risk", "unknown")
+            ossf_data["date"] = score_result.get("date")
+            ossf_data["check_details"] = score_result.get("checkDetails", [])
+            ossf_data["scorecard_url"] = score_result.get("scorecardUrl")
+            ossf_data["repo_url"] = main_result.get("repoUrl")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return ossf_data
+
+    def _parse_ast_findings(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract Consolidated AST security findings.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed AST findings dictionary
+        """
+        ast_data = {
+            "findings": [],
+            "files_analyzed": 0,
+            "files_errored": 0,
+            "overall_risk": "unknown",
+            "status": "unknown",
+        }
+
+        try:
+            ast_module = api_response.get("analysisModules", {}).get(
+                "consolidatedAst", {}
+            )
+
+            ast_data["findings"] = ast_module.get("findings", [])
+            ast_data["files_analyzed"] = ast_module.get("filesAnalyzed", 0)
+            ast_data["files_errored"] = ast_module.get("filesErrored", 0)
+            ast_data["overall_risk"] = ast_module.get("overallRisk", "unknown")
+            ast_data["status"] = ast_module.get("status", "unknown")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return ast_data
+
+    def _parse_socket_findings(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract Socket.dev supply chain security findings.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed Socket.dev findings dictionary
+        """
+        socket_data = {"findings": [], "overall_risk": "unknown", "status": "unknown"}
+
+        try:
+            socket_module = api_response.get("analysisModules", {}).get("socket", {})
+
+            socket_data["findings"] = socket_module.get("findings", [])
+            socket_data["overall_risk"] = socket_module.get("overallRisk", "unknown")
+            socket_data["status"] = socket_module.get("status", "unknown")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return socket_data
+
+    def _parse_network_endpoints(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract network endpoints analysis results.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed network endpoints dictionary
+        """
+        network_data = {
+            "findings": [],
+            "unique_endpoints": [],
+            "checked_endpoints": [],
+            "total_findings": 0,
+            "overall_risk": "unknown",
+            "status": "unknown",
+        }
+
+        try:
+            network_module = api_response.get("analysisModules", {}).get(
+                "networkEndpoints", {}
+            )
+
+            network_data["findings"] = network_module.get("findings", [])
+            network_data["unique_endpoints"] = network_module.get("uniqueEndpoints", [])
+            network_data["checked_endpoints"] = network_module.get(
+                "checkedEndpoints", []
+            )
+            network_data["total_findings"] = network_module.get("totalFindings", 0)
+            network_data["overall_risk"] = network_module.get("overallRisk", "unknown")
+            network_data["status"] = network_module.get("status", "unknown")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return network_data
+
+    def _parse_obfuscation_findings(
+        self, api_response: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Extract obfuscation detection results.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed obfuscation findings dictionary
+        """
+        obf_data = {
+            "findings": [],
+            "high_entropy_files": [],
+            "total_findings": 0,
+            "overall_risk": "unknown",
+            "status": "unknown",
+        }
+
+        try:
+            obf_module = api_response.get("analysisModules", {}).get("obfuscation", {})
+
+            obf_data["findings"] = obf_module.get("findings", [])
+            obf_data["high_entropy_files"] = obf_module.get("highEntropyFiles", [])
+            obf_data["total_findings"] = obf_module.get("totalFindings", 0)
+            obf_data["overall_risk"] = obf_module.get("overallRisk", "unknown")
+            obf_data["status"] = obf_module.get("status", "unknown")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return obf_data
+
+    def _parse_sensitive_info_findings(
+        self, api_response: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Extract sensitive information detection results.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed sensitive info findings dictionary
+        """
+        sens_data = {
+            "findings": [],
+            "total_findings": 0,
+            "overall_risk": "unknown",
+            "status": "unknown",
+            "error": None,
+        }
+
+        try:
+            sens_module = api_response.get("analysisModules", {}).get(
+                "sensitiveInfo", {}
+            )
+
+            sens_data["findings"] = sens_module.get("findings", [])
+            sens_data["total_findings"] = sens_module.get("totalFindings", 0)
+            sens_data["overall_risk"] = sens_module.get("overallRisk", "unknown")
+            sens_data["status"] = sens_module.get("status", "unknown")
+            sens_data["error"] = sens_module.get("error")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return sens_data
+
+    def _parse_opengrep_findings(self, api_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract OpenGrep SAST security findings.
+
+        Args:
+            api_response: Full API response from vscan.dev
+
+        Returns:
+            Parsed OpenGrep findings dictionary
+        """
+        grep_data = {"findings": [], "overall_risk": "unknown", "status": "unknown"}
+
+        try:
+            grep_module = api_response.get("analysisModules", {}).get("openGrep", {})
+
+            grep_data["findings"] = grep_module.get("findings", [])
+            grep_data["overall_risk"] = grep_module.get("overallRisk", "unknown")
+            grep_data["status"] = grep_module.get("status", "unknown")
+
+        except Exception as e:
+            # Return partial data on error
+            pass
+
+        return grep_data
+
     def scan_extension(
         self,
         publisher: str,
@@ -821,6 +1157,7 @@ class VscanAPIClient:
             # Legacy fields for backward compatibility
             "security_score": None,
             "risk_level": None,
+            # pylint: disable=duplicate-code  # Default vulnerability dict, acceptable duplication
             "vulnerabilities": {
                 "count": 0,
                 "critical": 0,
@@ -829,6 +1166,7 @@ class VscanAPIClient:
                 "low": 0,
                 "info": 0,
             },
+            # pylint: enable=duplicate-code
             "vscan_url": f"https://vscan.dev/extension/{publisher}.{name}",
             "analysis_timestamp": None,
         }
@@ -867,6 +1205,21 @@ class VscanAPIClient:
             result["security"] = self._parse_security_details(api_results)
             result["dependencies"] = self._parse_dependencies(api_results)
             result["risk_factors"] = self._parse_risk_factors(api_results)
+
+            # Parse comprehensive security findings
+            result["virustotal_details"] = self._parse_virustotal_details(api_results)
+            result["permissions_details"] = self._parse_permissions_details(api_results)
+            result["ossf_checks"] = self._parse_ossf_scorecard_details(api_results)
+            result["ast_findings"] = self._parse_ast_findings(api_results)
+            result["socket_findings"] = self._parse_socket_findings(api_results)
+            result["network_endpoints"] = self._parse_network_endpoints(api_results)
+            result["obfuscation_findings"] = self._parse_obfuscation_findings(
+                api_results
+            )
+            result["sensitive_findings"] = self._parse_sensitive_info_findings(
+                api_results
+            )
+            result["opengrep_findings"] = self._parse_opengrep_findings(api_results)
 
             # Extract legacy fields for backward compatibility
             if "securityScore" in api_results:
