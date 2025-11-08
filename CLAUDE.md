@@ -157,7 +157,7 @@ python3 -m build                       # Build package
   - `config_manager.py` (Infrastructure) - Config support
   - `types.py` (Application) - Result dataclasses
   - `utils.py` (Infrastructure) - `validate_path()`, `sanitize_string()`
-  - `_version.py`, `constants.py`, `vscan.py`
+  - `_version.py`, `constants.py`
 
 - **Support:**
   - `scripts/` - bump_version.py, check_doc_freshness.sh, run_tests.py

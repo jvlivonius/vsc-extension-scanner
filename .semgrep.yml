@@ -80,7 +80,6 @@ rules:
         - "**/config_manager.py"  # Path validation in __init__, audited in security tests
         - "**/scanner.py"  # Validated paths, comprehensive test coverage
         - "**/extension_discovery.py"  # Safe path handling, test coverage validates
-        - "**/vscan.py"  # Entry point, all paths validated before file operations
         # Pattern improvements added but Semgrep OSS dataflow still requires exclusions:
         - "**/output_writer.py"  # validate_path() line 116, open() line 125 (same function, Semgrep OSS can't track)
         - "**/html_report/generator.py"  # Path(__file__) package assets (trusted paths, pattern-not-inside attempted)

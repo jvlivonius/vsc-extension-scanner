@@ -10,6 +10,6 @@ This is equivalent to:
     python -m vscode_scanner.vscan --help
 """
 if __name__ == "__main__":
-    from vscode_scanner.vscan import cli_main
+    from vscode_scanner.cli import cli_main
 
     cli_main()

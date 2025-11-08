@@ -24,7 +24,6 @@ layers:
     purpose: "Coordinate workflows, manage configuration, orchestrate scans"
     modules:
       - scanner
-      - vscan
       - config_manager
       - parallel_executor
       - scan_orchestrator
@@ -69,7 +68,7 @@ rules:
     - output_formatter
 
 # Expected module count (for documentation sync validation)
-expected_module_count: 20  # Updated in Phase 2.2 (added output_writer, summary_formatter, filter_help_generator)
+expected_module_count: 19  # Updated v4.0.1: Removed vscan.py (legacy v2.x CLI wrapper, replaced by cli.py entry point)
 
 # Documentation references
 documentation:

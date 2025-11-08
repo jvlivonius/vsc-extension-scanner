@@ -606,8 +606,7 @@ vscode_extension_scanner-{VERSION}-py3-none-any.whl contains:
 vscode_scanner/
 ├── __init__.py              # Package initialization
 ├── _version.py              # Version management
-├── vscan.py                 # Main CLI entry point
-├── cli.py                   # Typer CLI framework
+├── cli.py                   # Main CLI entry point (Typer framework)
 ├── scanner.py               # Core scan logic
 ├── display.py               # Rich formatting
 ├── vscan_api.py             # vscan.dev API client
