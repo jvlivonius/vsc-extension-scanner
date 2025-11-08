@@ -99,3 +99,30 @@ markers = [
     "slow: [BEHAVIORAL] Tests that take >5 seconds (excluded by --fast flag)",
     "property_based: [BEHAVIORAL] Property-based tests using Hypothesis framework",
 ]
+
+# Coverage configuration for pytest-cov with pytest-xdist parallel execution
+[tool.coverage.run]
+parallel = true
+concurrency = ["multiprocessing"]
+source = ["vscode_scanner"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    "vscode_scanner/vscan.py",  # Legacy CLI wrapper (v2.x) - excluded from coverage
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
