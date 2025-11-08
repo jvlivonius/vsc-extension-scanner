@@ -1176,5 +1176,15 @@ def main(
         raise typer.Exit(code=0)
 
 
+def cli_main():
+    """
+    CLI entry point for the vscan command.
+
+    This function is called when running 'vscan' from the command line
+    after installation via pip/pyproject.toml.
+    """
+    app()
+
+
 if __name__ == "__main__":
     app()

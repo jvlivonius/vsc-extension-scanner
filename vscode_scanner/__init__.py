@@ -11,6 +11,6 @@ __author__ = "Joerg von Livonius"
 __description__ = "Security scanner for VS Code extensions using vscan.dev"
 
 # Make key components available at package level
-from .vscan import main
+from .cli import cli_main
 
-__all__ = ["main", "__version__", "SCHEMA_VERSION"]
+__all__ = ["cli_main", "__version__", "SCHEMA_VERSION"]

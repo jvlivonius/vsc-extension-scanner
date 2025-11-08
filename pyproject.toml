@@ -41,7 +41,7 @@ Repository = "https://github.com/jvlivonius/vsc-extension-scanner"
 Issues = "https://github.com/jvlivonius/vsc-extension-scanner/issues"
 
 [project.scripts]
-vscan = "vscode_scanner.vscan:cli_main"
+vscan = "vscode_scanner.cli:cli_main"
 
 [project.optional-dependencies]
 test = [
@@ -110,7 +110,6 @@ omit = [
     "*/test_*.py",
     "*/__pycache__/*",
     "*/site-packages/*",
-    "vscode_scanner/vscan.py",  # Legacy CLI wrapper (v2.x) - excluded from coverage
 ]
 
 [tool.coverage.report]
