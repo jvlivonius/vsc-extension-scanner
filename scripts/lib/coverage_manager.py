@@ -116,7 +116,7 @@ class CoverageManager:
 
     def generate_reports(self, show_output: bool = True):
         """
-        Display coverage report locations (pytest-cov generates reports during execution).
+        Generate and display coverage reports.
 
         Args:
             show_output: Whether to print report information messages
@@ -129,11 +129,28 @@ class CoverageManager:
             print(f"{Colors.BOLD}COVERAGE REPORTS{Colors.RESET}")
             print(f"{Colors.BOLD}{'='*70}{Colors.RESET}\n")
 
-            # Show report locations
+            # Generate requested report formats
             for fmt in self.formats:
                 fmt = fmt.strip()
 
-                if fmt == "html":
+                if fmt == "term":
+                    # Generate terminal coverage report
+                    if COVERAGE_AVAILABLE:
+                        try:
+                            cov = coverage.Coverage()
+                            cov.load()
+                            cov.report(show_missing=False, skip_covered=False)
+                        except Exception as e:
+                            print(
+                                f"{Colors.YELLOW}Warning: Failed to generate terminal coverage report: {e}{Colors.RESET}",
+                                file=sys.stderr,
+                            )
+                    else:
+                        print(
+                            f"{Colors.YELLOW}Warning: coverage module not available for terminal report{Colors.RESET}",
+                            file=sys.stderr,
+                        )
+                elif fmt == "html":
                     html_dir = Path("htmlcov")
                     print(
                         f"{Colors.GREEN}✓{Colors.RESET} HTML coverage report: {html_dir}/index.html"
