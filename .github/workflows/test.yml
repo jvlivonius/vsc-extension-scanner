@@ -71,3 +71,44 @@ jobs:
             coverage.xml
             .coverage*
           retention-days: 30
+
+  # Status check aggregation job - single required check for all Python versions
+  tests-status:
+    name: Tests & Coverage Analysis
+    runs-on: ubuntu-latest
+    needs: tests-and-coverage
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          # This job succeeds only if all matrix jobs succeeded
+          if [ "${{ needs.tests-and-coverage.result }}" != "success" ]; then
+            echo "❌ Tests failed for one or more Python versions"
+            echo "Check individual job logs for details"
+            exit 1
+          fi
+          echo "✅ All tests passed across Python 3.8-3.12"
+
+  # Architecture validation aggregation - consolidated into main test suite
+  architecture-status:
+    name: Architecture Validation
+    runs-on: ubuntu-latest
+    needs: tests-and-coverage
+    if: always()
+
+    steps:
+      - name: Check architecture tests
+        run: |
+          # Architecture tests are now part of the main test suite
+          # This job validates they ran successfully across all Python versions
+          if [ "${{ needs.tests-and-coverage.result }}" != "success" ]; then
+            echo "❌ Architecture tests failed (included in main test suite)"
+            echo "Architecture tests validate:"
+            echo "  - 3-layer architecture compliance"
+            echo "  - Import dependency rules"
+            echo "  - Layer isolation boundaries"
+            exit 1
+          fi
+          echo "✅ Architecture validation passed"
+          echo "   All architecture compliance tests passed across Python 3.8-3.12"
