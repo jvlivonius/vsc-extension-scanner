@@ -63,6 +63,7 @@ class PytestExecutor:
         markers: Optional[List[str]] = None,
         verbosity: str = "normal",
         extra_args: Optional[List[str]] = None,
+        parallel: bool = True,
     ) -> List[str]:
         """
         Build pytest command with common options.
@@ -72,6 +73,7 @@ class PytestExecutor:
             markers: pytest markers to filter tests (e.g., ['not real_api', 'security'])
             verbosity: Output verbosity ('quiet', 'normal', 'verbose')
             extra_args: Additional pytest arguments
+            parallel: Enable parallel execution with pytest-xdist (default: True)
 
         Returns:
             Complete command as list of strings
@@ -93,6 +95,10 @@ class PytestExecutor:
         elif verbosity == "verbose":
             command.append("-vv")
         # 'normal' uses pytest default (no flag)
+
+        # Add parallel execution (pytest-xdist)
+        if parallel:
+            command.extend(["-n", "auto"])
 
         # Add standard options
         command.extend(["--disable-warnings", "--tb=short"])

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Coverage integration for test execution.
+Coverage integration for test execution using pytest-cov.
 
-This module manages coverage measurement, report generation,
-and threshold validation.
+This module manages coverage measurement via pytest-cov plugin,
+report generation, and threshold validation.
+
+pytest-cov integrates seamlessly with pytest-xdist for parallel execution.
 """
 
 import subprocess
@@ -13,7 +15,7 @@ from typing import List, Optional
 
 from .test_utils import Colors
 
-# Optional coverage.py support
+# Optional coverage.py support (for report generation)
 try:
     import coverage
 
@@ -44,159 +46,136 @@ class CoverageManager:
         self.threshold = threshold
         self.coverage_used = False
 
-        # Validate coverage command is available if enabled
-        if self.enabled and not self._validate_coverage_command():
+        # Validate pytest-cov is available if enabled
+        if self.enabled and not self._validate_pytest_cov():
             print(
-                f"{Colors.YELLOW}Warning: coverage command not found. "
-                f"Install with: pip install coverage{Colors.RESET}",
+                f"{Colors.YELLOW}Warning: pytest-cov not found. "
+                f"Install with: pip install pytest-cov{Colors.RESET}",
                 file=sys.stderr,
             )
             self.enabled = False
 
-    def _validate_coverage_command(self) -> bool:
+    def _validate_pytest_cov(self) -> bool:
         """
-        Validate that coverage command is available.
+        Validate that pytest-cov plugin is available.
 
         Returns:
-            True if coverage command works, False otherwise
+            True if pytest-cov is available, False otherwise
         """
         try:
             result = subprocess.run(
-                ["coverage", "--version"],
+                [sys.executable, "-m", "pytest", "--co", "--cov"],
                 capture_output=True,
                 text=True,
                 timeout=5,
                 check=False,
             )
-            return result.returncode == 0
+            # pytest-cov is available if command doesn't error about unknown option
+            return "unrecognized arguments: --cov" not in result.stderr
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def wrap_command(self, pytest_args: List[str], append: bool = False) -> List[str]:
+    def get_coverage_args(self, append: bool = False) -> List[str]:
         """
-        Wrap pytest command with coverage if enabled.
+        Get pytest-cov arguments for coverage measurement.
 
         Args:
-            pytest_args: pytest command arguments (e.g., ['pytest', 'tests/', '-v'])
             append: Whether to append coverage data (True) or overwrite (False)
 
         Returns:
-            Command with coverage wrapper if enabled, otherwise original command
+            List of pytest-cov arguments to add to pytest command
         """
         if not self.enabled:
-            return pytest_args
+            return []
 
         self.coverage_used = True
 
-        # Build coverage command
-        command = ["coverage", "run"]
+        # Build pytest-cov arguments
+        args = [
+            "--cov=vscode_scanner",  # Package to measure coverage for
+            "--cov-branch",  # Include branch coverage
+        ]
 
-        # Add --append for subsequent test groups
+        # Add --cov-append for subsequent test groups (combines coverage data)
         if append:
-            command.append("--append")
+            args.append("--cov-append")
 
-        # Add -m pytest
-        command.extend(["-m"])
+        # Add report format arguments
+        for fmt in self.formats:
+            fmt = fmt.strip()
+            if fmt == "term":
+                args.append("--cov-report=term")
+            elif fmt == "html":
+                args.append("--cov-report=html")
+            elif fmt == "xml":
+                args.append("--cov-report=xml")
+            elif fmt == "json":
+                args.append("--cov-report=json")
 
-        # Add pytest arguments (skip 'python -m pytest' prefix if present)
-        if pytest_args[0] == sys.executable and "-m" in pytest_args:
-            # Skip 'python -m' prefix
-            pytest_idx = pytest_args.index("pytest") if "pytest" in pytest_args else 2
-            command.extend(pytest_args[pytest_idx:])
-        else:
-            command.extend(pytest_args)
-
-        return command
+        return args
 
     def generate_reports(self, show_output: bool = True):
         """
-        Generate coverage reports in requested formats.
+        Display coverage report locations (pytest-cov generates reports during execution).
 
         Args:
-            show_output: Whether to print report generation messages
+            show_output: Whether to print report information messages
         """
         if not self.enabled or not self.coverage_used:
             return
 
-        if not COVERAGE_AVAILABLE:
-            if show_output:
-                print(
-                    f"{Colors.YELLOW}Warning: coverage module not available{Colors.RESET}",
-                    file=sys.stderr,
-                )
-            return
+        if show_output:
+            print(f"\n{Colors.BOLD}{'='*70}{Colors.RESET}")
+            print(f"{Colors.BOLD}COVERAGE REPORTS{Colors.RESET}")
+            print(f"{Colors.BOLD}{'='*70}{Colors.RESET}\n")
 
-        try:
-            # Load coverage data
-            cov = coverage.Coverage()
-            cov.load()
-
-            if show_output:
-                print(f"\n{Colors.BOLD}{'='*70}{Colors.RESET}")
-                print(f"{Colors.BOLD}COVERAGE REPORT{Colors.RESET}")
-                print(f"{Colors.BOLD}{'='*70}{Colors.RESET}\n")
-
-            # Generate requested report formats
+            # Show report locations
             for fmt in self.formats:
                 fmt = fmt.strip()
 
-                if fmt == "term":
-                    # Terminal report
-                    cov.report(show_missing=False, skip_covered=False)
-
-                elif fmt == "html":
-                    # HTML report
+                if fmt == "html":
                     html_dir = Path("htmlcov")
-                    cov.html_report(directory=str(html_dir))
-                    if show_output:
-                        print(
-                            f"\n{Colors.GREEN}✓{Colors.RESET} HTML coverage report: {html_dir}/index.html"
-                        )
-
+                    print(
+                        f"{Colors.GREEN}✓{Colors.RESET} HTML coverage report: {html_dir}/index.html"
+                    )
                 elif fmt == "xml":
-                    # XML report (for CI/CD)
                     xml_file = Path("coverage.xml")
-                    cov.xml_report(outfile=str(xml_file))
-                    if show_output:
-                        print(
-                            f"\n{Colors.GREEN}✓{Colors.RESET} XML coverage report: {xml_file}"
-                        )
-
+                    print(
+                        f"{Colors.GREEN}✓{Colors.RESET} XML coverage report: {xml_file}"
+                    )
                 elif fmt == "json":
-                    # JSON report
                     json_file = Path("coverage.json")
-                    cov.json_report(outfile=str(json_file))
-                    if show_output:
-                        print(
-                            f"\n{Colors.GREEN}✓{Colors.RESET} JSON coverage report: {json_file}"
-                        )
+                    print(
+                        f"{Colors.GREEN}✓{Colors.RESET} JSON coverage report: {json_file}"
+                    )
 
-            # Validate threshold if specified
-            if self.threshold is not None:
-                self._validate_threshold(cov, show_output)
+        # Validate threshold if specified
+        if self.threshold is not None:
+            self._validate_threshold_from_file(show_output)
 
-        except Exception as e:
-            if show_output:
-                print(
-                    f"{Colors.YELLOW}Warning: Failed to generate coverage reports: {e}{Colors.RESET}",
-                    file=sys.stderr,
-                )
-
-    def _validate_threshold(self, cov, show_output: bool) -> bool:
+    def _validate_threshold_from_file(self, show_output: bool) -> bool:
         """
-        Validate coverage meets threshold requirement.
+        Validate coverage meets threshold requirement by loading from .coverage file.
 
         Args:
-            cov: Coverage instance
             show_output: Whether to print validation results
 
         Returns:
             True if coverage meets threshold, False otherwise
         """
-        if not COVERAGE_AVAILABLE or not cov:
+        if not COVERAGE_AVAILABLE:
+            if show_output:
+                print(
+                    f"{Colors.YELLOW}Warning: coverage module not available for threshold validation{Colors.RESET}",
+                    file=sys.stderr,
+                )
             return True
 
         try:
+            # Load coverage data from file (created by pytest-cov)
+            cov = coverage.Coverage()
+            cov.load()
+
             # Get total coverage percentage
             total_coverage = cov.report(file=None, show_missing=False)
 
