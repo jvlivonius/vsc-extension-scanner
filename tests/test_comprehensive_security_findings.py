@@ -236,8 +236,8 @@ class TestOutputFormatterComprehensiveSecurity(unittest.TestCase):
         self.formatter = OutputFormatter()
         self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
-    def test_schema_version_is_4_0(self):
-        """Test that schema version is 4.0."""
+    def test_schema_version_is_5_0(self):
+        """Test that schema version is 5.0."""
         # Arrange
         scan_results = []
 
@@ -245,7 +245,7 @@ class TestOutputFormatterComprehensiveSecurity(unittest.TestCase):
         output = self.formatter.format_output(scan_results, self.timestamp, 1.0)
 
         # Assert
-        self.assertEqual(output["schema_version"], "4.0")
+        self.assertEqual(output["schema_version"], "5.0")
 
     def test_extension_includes_vscode_engine(self):
         """Test that vscode_engine field is included."""
