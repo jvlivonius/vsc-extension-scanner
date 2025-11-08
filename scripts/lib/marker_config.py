@@ -14,8 +14,9 @@ Features:
 - Caching for performance
 """
 
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Set, Optional, Tuple, Type
 
 # TOML parsing with fallback for older Python versions
 try:
@@ -360,10 +361,8 @@ def list_markers(verbose: bool = False) -> None:
 # TestGroup Enum Factory
 # ==============================================================================
 
-from enum import Enum
 
-
-def create_test_group_enum() -> type[Enum]:
+def create_test_group_enum() -> Type[Enum]:
     """
     Factory function to create TestGroup enum with dynamic markers from pyproject.toml.
 
@@ -398,9 +397,8 @@ def create_test_group_enum() -> type[Enum]:
         @classmethod
         def get_marker_groups(cls):
             """Get all test groups that correspond to pytest markers (exclude meta-groups)."""
-            return [
-                g for g in cls if g not in (cls.UNMARKED, cls.ALL)
-            ]  # pylint: disable=not-an-iterable,no-member
+            # pylint: disable=not-an-iterable,no-member
+            return [g for g in cls if g not in (cls.UNMARKED, cls.ALL)]
 
         @classmethod
         def from_string(cls, value: str):
