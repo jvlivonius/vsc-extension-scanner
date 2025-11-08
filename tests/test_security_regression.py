@@ -303,9 +303,18 @@ class TestTask3CacheIntegrityRegression:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Create and clean up temporary cache directory for each test."""
-        self.test_dir = os.path.join(os.path.expanduser("~"), ".vscan_test_regression")
+    def setup_teardown(self, request):
+        """Create and clean up cache directory for each test.
+
+        Uses worker-specific directory for pytest-xdist parallel execution.
+        Must use persistent (non-temp) location to pass cache validation.
+        """
+        # Get worker ID for parallel execution isolation
+        worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+        # Use persistent location with worker ID for isolation
+        self.test_dir = os.path.join(
+            os.path.expanduser("~"), f".vscan_test_regression_{worker_id}"
+        )
         os.makedirs(self.test_dir, exist_ok=True)
         yield
         if os.path.exists(self.test_dir):
@@ -464,9 +473,18 @@ class TestSecurityIntegration:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Create and clean up temporary directories for integration tests."""
-        self.test_dir = os.path.join(os.path.expanduser("~"), ".vscan_test_integration")
+    def setup_teardown(self, request):
+        """Create and clean up directories for integration tests.
+
+        Uses worker-specific directory for pytest-xdist parallel execution.
+        Must use persistent (non-temp) location to pass cache validation.
+        """
+        # Get worker ID for parallel execution isolation
+        worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+        # Use persistent location with worker ID for isolation
+        self.test_dir = os.path.join(
+            os.path.expanduser("~"), f".vscan_test_integration_{worker_id}"
+        )
         os.makedirs(self.test_dir, exist_ok=True)
         yield
         if os.path.exists(self.test_dir):

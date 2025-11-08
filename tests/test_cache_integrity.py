@@ -37,14 +37,22 @@ from vscode_scanner.cache_manager import CacheManager
 class TestCacheIntegrity(unittest.TestCase):
     """Test HMAC-based cache integrity checking."""
 
-    def setUp(self):
-        """Create temporary cache directory for each test."""
-        # Create temp directory in home directory (security requirement)
-        self.test_dir = os.path.join(os.path.expanduser("~"), ".vscan_test_integrity")
-        os.makedirs(self.test_dir, exist_ok=True)
+    @pytest.fixture(autouse=True)
+    def setup_teardown(self, request):
+        """Create and clean up cache directory for each test.
 
-    def tearDown(self):
-        """Clean up temporary cache directory."""
+        Uses worker-specific directory for pytest-xdist parallel execution.
+        Must use persistent (non-temp) location to pass cache validation.
+        """
+        # Get worker ID for parallel execution isolation
+        worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+        # Use persistent location with worker ID for isolation
+        self.test_dir = os.path.join(
+            os.path.expanduser("~"), f".vscan_test_integrity_{worker_id}"
+        )
+        os.makedirs(self.test_dir, exist_ok=True)
+        yield
+        # Cleanup
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 
@@ -311,13 +319,22 @@ class TestCacheIntegrity(unittest.TestCase):
 class TestCacheIntegrationWithSecurity(unittest.TestCase):
     """Integration tests for cache integrity in security scenarios."""
 
-    def setUp(self):
-        """Create temporary cache directory for each test."""
-        self.test_dir = os.path.join(os.path.expanduser("~"), ".vscan_test_security")
-        os.makedirs(self.test_dir, exist_ok=True)
+    @pytest.fixture(autouse=True)
+    def setup_teardown(self, request):
+        """Create and clean up cache directory for each test.
 
-    def tearDown(self):
-        """Clean up temporary cache directory."""
+        Uses worker-specific directory for pytest-xdist parallel execution.
+        Must use persistent (non-temp) location to pass cache validation.
+        """
+        # Get worker ID for parallel execution isolation
+        worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+        # Use persistent location with worker ID for isolation
+        self.test_dir = os.path.join(
+            os.path.expanduser("~"), f".vscan_test_security_{worker_id}"
+        )
+        os.makedirs(self.test_dir, exist_ok=True)
+        yield
+        # Cleanup
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 
@@ -405,13 +422,22 @@ class TestCacheErrorRecovery(unittest.TestCase):
     - Concurrent access scenarios
     """
 
-    def setUp(self):
-        """Create temporary cache directory for each test."""
-        self.test_dir = os.path.join(os.path.expanduser("~"), ".vscan_test_recovery")
-        os.makedirs(self.test_dir, exist_ok=True)
+    @pytest.fixture(autouse=True)
+    def setup_teardown(self, request):
+        """Create and clean up cache directory for each test.
 
-    def tearDown(self):
-        """Clean up temporary cache directory."""
+        Uses worker-specific directory for pytest-xdist parallel execution.
+        Must use persistent (non-temp) location to pass cache validation.
+        """
+        # Get worker ID for parallel execution isolation
+        worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+        # Use persistent location with worker ID for isolation
+        self.test_dir = os.path.join(
+            os.path.expanduser("~"), f".vscan_test_recovery_{worker_id}"
+        )
+        os.makedirs(self.test_dir, exist_ok=True)
+        yield
+        # Cleanup
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 

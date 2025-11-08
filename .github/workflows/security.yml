@@ -28,8 +28,9 @@ on:
       - master
       - develop
   schedule:
-    # Weekly security scan every Monday at 00:00 UTC
-    - cron: '0 0 * * 1'
+    # Weekly security scans (combined schedule)
+    - cron: '0 0 * * 0'  # Sunday 00:00 UTC (Semgrep)
+    - cron: '0 0 * * 1'  # Monday 00:00 UTC (Full scan)
   workflow_dispatch:  # Allow manual triggering
 
 # Cancel in-progress runs when new push occurs
@@ -169,10 +170,108 @@ jobs:
             requirements-scan.txt
           retention-days: 30
 
+  semgrep:
+    name: Semgrep Custom Rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    container:
+      image: returntocorp/semgrep
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep with custom rules
+        run: |
+          echo "Running Semgrep with custom security rules..."
+          semgrep scan --config=.semgrep.yml \
+            --verbose \
+            --sarif \
+            --sarif-output=semgrep-results.sarif \
+            vscode_scanner/ || true
+
+          # Also generate JSON for artifact upload and summary
+          semgrep scan --config=.semgrep.yml \
+            --json \
+            --output=semgrep-results.json \
+            vscode_scanner/ || true
+
+      - name: Display Semgrep results
+        if: always()
+        run: |
+          echo ""
+          echo "=================================================="
+          echo "Semgrep Security Scan Results"
+          echo "=================================================="
+          echo ""
+          if [ -f semgrep-results.json ]; then
+            echo "Results saved to semgrep-results.json and semgrep-results.sarif"
+            jq -r '.results | length' semgrep-results.json | xargs -I {} echo "Total findings: {}"
+          else
+            echo "No results file generated"
+          fi
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+          retention-days: 30
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep-custom-rules
+
+      - name: Generate Semgrep summary
+        if: always()
+        run: |
+          echo "# Semgrep Security Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Custom Security Rules" >> $GITHUB_STEP_SUMMARY
+          echo "1. **validate_path() enforcement** - File operations must use path validation" >> $GITHUB_STEP_SUMMARY
+          echo "2. **sanitize_string() for display** - User input must be sanitized before printing" >> $GITHUB_STEP_SUMMARY
+          echo "3. **sanitize_string() for logging** - User input in logs must be sanitized" >> $GITHUB_STEP_SUMMARY
+          echo "4. **SQL injection prevention** - Parameterized queries required" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count findings by severity
+          ERROR_COUNT=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' semgrep-results.json 2>/dev/null || echo "0")
+          WARNING_COUNT=$(jq '[.results[] | select(.extra.severity == "WARNING")] | length' semgrep-results.json 2>/dev/null || echo "0")
+
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors:** $ERROR_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Warnings:** $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$ERROR_COUNT" -eq "0" ] && [ "$WARNING_COUNT" -eq "0" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **No security issues found**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Semgrep status aggregation - required by branch protection
+  semgrep-status:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    needs: semgrep
+    if: always()
+
+    steps:
+      - name: Check Semgrep results
+        run: |
+          if [ "${{ needs.semgrep.result }}" != "success" ]; then
+            echo "❌ Semgrep scan failed"
+            exit 1
+          fi
+          echo "✅ Semgrep custom security rules passed"
+
   security-summary:
     name: Security Summary
     runs-on: ubuntu-latest
-    needs: security-scan
+    needs: [security-scan, semgrep]
     if: always()
 
     steps:
@@ -183,19 +282,27 @@ jobs:
           echo "## Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ needs.security-scan.result }}" == "success" ]; then
-            echo "✅ **Security scanner analysis complete**" >> $GITHUB_STEP_SUMMARY
+          SCAN_STATUS="${{ needs.security-scan.result }}"
+          SEMGREP_STATUS="${{ needs.semgrep.result }}"
+
+          if [ "$SCAN_STATUS" == "success" ] && [ "$SEMGREP_STATUS" == "success" ]; then
+            echo "✅ **All security scanners passed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "All security scanners executed successfully:" >> $GITHUB_STEP_SUMMARY
             echo "- Bandit AST security analysis" >> $GITHUB_STEP_SUMMARY
             echo "- Safety dependency scanning" >> $GITHUB_STEP_SUMMARY
             echo "- pip-audit package auditing" >> $GITHUB_STEP_SUMMARY
+            echo "- Semgrep custom security rules" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Note:** Security test validation runs in Tests workflow" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Security scanner failed**" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Security scanner issues detected**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Review the security scan job for details." >> $GITHUB_STEP_SUMMARY
+            echo "**Results:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Bandit/Safety/pip-audit: $SCAN_STATUS" >> $GITHUB_STEP_SUMMARY
+            echo "- Semgrep: $SEMGREP_STATUS" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Review the failed job(s) for details." >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -203,3 +310,4 @@ jobs:
           echo "- **Bandit**: AST-based Python security scanner" >> $GITHUB_STEP_SUMMARY
           echo "- **Safety**: Dependency vulnerability database (50K+ CVEs)" >> $GITHUB_STEP_SUMMARY
           echo "- **pip-audit**: Official PyPA package auditing tool" >> $GITHUB_STEP_SUMMARY
+          echo "- **Semgrep**: Custom security rules for project-specific patterns" >> $GITHUB_STEP_SUMMARY
