@@ -359,7 +359,7 @@ class CacheManager:
         return messages
 
     def _init_database(self):
-        """Initialize SQLite database with schema v4.1."""
+        """Initialize SQLite database with comprehensive security schema."""
         # Create cache directory with restricted permissions (user-only)
         # Uses cross-platform safe_mkdir that handles Windows/Unix differences
         safe_mkdir(self.cache_dir, mode=0o700)
@@ -375,7 +375,7 @@ class CacheManager:
         with self._db_connection() as conn:
             cursor = conn.cursor()
 
-            # Create scan_cache table (v4.1 schema with comprehensive security findings)
+            # Create scan_cache table (comprehensive security findings)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scan_cache (
@@ -393,12 +393,12 @@ class CacheManager:
                     installed_at TIMESTAMP,
                     integrity_signature TEXT,
 
-                    -- v4.0: Rich security data (JSON columns)
+                    -- Rich security data (JSON columns)
                     module_risk_levels TEXT,
                     score_contributions TEXT,
                     security_notes TEXT,
 
-                    -- v4.0: Enhanced metadata
+                    -- Enhanced metadata
                     installs INTEGER,
                     rating REAL,
                     rating_count INTEGER,
@@ -407,7 +407,7 @@ class CacheManager:
                     keywords TEXT,
                     categories TEXT,
 
-                    -- v4.1: Comprehensive security findings (JSON columns)
+                    -- Comprehensive security findings (JSON columns)
                     virustotal_details TEXT,
                     permissions_details TEXT,
                     ossf_checks TEXT,
@@ -592,7 +592,7 @@ class CacheManager:
 
     def save_result(self, extension_id: str, version: str, result: Dict[str, Any]):
         """
-        Save scan result to cache (v4.1 schema with comprehensive security findings).
+        Save scan result to cache (comprehensive security findings).
 
         Args:
             extension_id: Extension ID (e.g., "ms-python.python")
@@ -643,13 +643,13 @@ class CacheManager:
                 # Installation timestamp
                 installed_at = result_to_store.get("installed_at")
 
-                # v4.0: Extract rich security data
+                # Extract rich security data
                 security = result_to_store.get("security", {})
                 module_risk_levels = security.get("module_risk_levels")
                 score_contributions = security.get("score_contributions")
                 security_notes = security.get("security_notes")
 
-                # Serialize JSON fields for v4.0
+                # Serialize JSON fields
                 module_risk_levels_json = (
                     json.dumps(module_risk_levels) if module_risk_levels else None
                 )
@@ -660,7 +660,7 @@ class CacheManager:
                     json.dumps(security_notes) if security_notes else None
                 )
 
-                # v4.0: Extract enhanced metadata
+                # Extract enhanced metadata
                 statistics = metadata.get("statistics", {})
                 installs = statistics.get("installs")
                 rating = statistics.get("rating")
@@ -674,7 +674,7 @@ class CacheManager:
                 keywords_json = json.dumps(keywords) if keywords else None
                 categories_json = json.dumps(categories) if categories else None
 
-                # v4.1: Extract comprehensive security findings
+                # Extract comprehensive security findings
                 virustotal_details = result_to_store.get("virustotal_details")
                 permissions_details = result_to_store.get("permissions_details")
                 ossf_checks = result_to_store.get("ossf_checks")
@@ -686,7 +686,7 @@ class CacheManager:
                 opengrep_findings = result_to_store.get("opengrep_findings")
                 vscode_engine = metadata.get("vscode_engine")
 
-                # Serialize v4.1 JSON fields
+                # Serialize JSON fields for comprehensive findings
                 virustotal_json = (
                     json.dumps(virustotal_details) if virustotal_details else None
                 )
@@ -714,7 +714,7 @@ class CacheManager:
                     scan_result_json
                 )
 
-                # Insert or replace with v4.1 fields
+                # Insert or replace with all fields
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO scan_cache
@@ -739,7 +739,7 @@ class CacheManager:
                         has_risk_factors,
                         installed_at,
                         integrity_signature,
-                        # v4.0 fields
+                        # Rich security data fields
                         module_risk_levels_json,
                         score_contributions_json,
                         security_notes_json,
@@ -750,7 +750,7 @@ class CacheManager:
                         license_info,
                         keywords_json,
                         categories_json,
-                        # v4.1 fields
+                        # Comprehensive security findings fields
                         virustotal_json,
                         permissions_json,
                         ossf_json,
@@ -842,13 +842,13 @@ class CacheManager:
             # Installation timestamp
             installed_at = result_to_store.get("installed_at")
 
-            # v4.0: Extract rich security data
+            # Extract rich security data
             security = result_to_store.get("security", {})
             module_risk_levels = security.get("module_risk_levels")
             score_contributions = security.get("score_contributions")
             security_notes = security.get("security_notes")
 
-            # Serialize JSON fields for v4.0
+            # Serialize JSON fields
             module_risk_levels_json = (
                 json.dumps(module_risk_levels) if module_risk_levels else None
             )
@@ -857,7 +857,7 @@ class CacheManager:
             )
             security_notes_json = json.dumps(security_notes) if security_notes else None
 
-            # v4.0: Extract enhanced metadata
+            # Extract enhanced metadata
             statistics = metadata.get("statistics", {})
             installs = statistics.get("installs")
             rating = statistics.get("rating")
@@ -871,7 +871,7 @@ class CacheManager:
             keywords_json = json.dumps(keywords) if keywords else None
             categories_json = json.dumps(categories) if categories else None
 
-            # v4.1: Extract comprehensive security findings
+            # Extract comprehensive security findings
             virustotal_details = result_to_store.get("virustotal_details")
             permissions_details = result_to_store.get("permissions_details")
             ossf_checks = result_to_store.get("ossf_checks")
@@ -883,7 +883,7 @@ class CacheManager:
             opengrep_findings = result_to_store.get("opengrep_findings")
             vscode_engine = metadata.get("vscode_engine")
 
-            # Serialize v4.1 JSON fields
+            # Serialize JSON fields for comprehensive findings
             virustotal_json = (
                 json.dumps(virustotal_details) if virustotal_details else None
             )
@@ -905,7 +905,7 @@ class CacheManager:
             # Compute HMAC signature for integrity checking (v3.5.1)
             integrity_signature = self._compute_integrity_signature(scan_result_json)
 
-            # Insert or replace with v4.1 fields
+            # Insert or replace with all fields
             self._batch_cursor.execute(
                 """
                 INSERT OR REPLACE INTO scan_cache
@@ -930,7 +930,7 @@ class CacheManager:
                     has_risk_factors,
                     installed_at,
                     integrity_signature,
-                    # v4.0 fields
+                    # Rich security data fields
                     module_risk_levels_json,
                     score_contributions_json,
                     security_notes_json,
@@ -941,7 +941,7 @@ class CacheManager:
                     license_info,
                     keywords_json,
                     categories_json,
-                    # v4.1 fields
+                    # Comprehensive security findings fields
                     virustotal_json,
                     permissions_json,
                     ossf_json,

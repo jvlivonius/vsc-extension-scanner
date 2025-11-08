@@ -308,7 +308,7 @@ def test_output_modes():
     cache_stats = {"from_cache": 1, "fresh_scans": 0, "cache_hit_rate": 100.0}
     scan_timestamp = datetime.now().isoformat()
 
-    # All scans are now comprehensive/detailed (v3.0+)
+    # All scans use detailed output mode with comprehensive fields
     formatter = OutputFormatter()
     output = formatter.format_output(
         results,
@@ -322,7 +322,7 @@ def test_output_modes():
     # All scans include comprehensive fields
     assert "keywords" in output["extensions"][0]
     assert "homepage_url" in output["extensions"][0]
-    print("✓ All scans now include comprehensive/detailed fields (v3.0+)")
+    print("✓ All scans include comprehensive/detailed fields")
 
     # Verify output is valid JSON
     json.dumps(output)

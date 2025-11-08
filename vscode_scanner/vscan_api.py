@@ -589,7 +589,7 @@ class VscanAPIClient:
             metadata["keywords"] = meta_data.get("keywords", [])
             metadata["categories"] = meta_data.get("categories", [])
 
-            # VSCode engine requirement (v4.1)
+            # VSCode engine requirement
             engines = meta_data.get("engines", {})
             metadata["vscode_engine"] = engines.get("vscode")
 
@@ -1206,7 +1206,7 @@ class VscanAPIClient:
             result["dependencies"] = self._parse_dependencies(api_results)
             result["risk_factors"] = self._parse_risk_factors(api_results)
 
-            # Parse v4.1 comprehensive security findings
+            # Parse comprehensive security findings
             result["virustotal_details"] = self._parse_virustotal_details(api_results)
             result["permissions_details"] = self._parse_permissions_details(api_results)
             result["ossf_checks"] = self._parse_ossf_scorecard_details(api_results)

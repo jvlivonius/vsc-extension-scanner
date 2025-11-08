@@ -188,7 +188,7 @@ class OutputFormatter:
             extension["keywords"] = metadata.get("keywords", [])
             extension["categories"] = metadata.get("categories", [])
             extension["author_name"] = metadata.get("author_name")
-            extension["vscode_engine"] = metadata.get("vscode_engine")  # v4.1
+            extension["vscode_engine"] = metadata.get("vscode_engine")
 
             # Add comprehensive security section
             extension["security"] = {
@@ -225,7 +225,7 @@ class OutputFormatter:
                     "vulnerabilities": dependencies.get("vulnerabilities", {}),
                     "list": dependencies.get("list", []),
                 },
-                # v4.1: Comprehensive security findings
+                # Comprehensive security findings
                 "virustotal": result.get("virustotal_details", {}),
                 "permissions_detailed": result.get("permissions_details", {}),
                 "ossf_scorecard": result.get("ossf_checks", {}),

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Test Suite: v4.0 Comprehensive Security Findings Tests
-Purpose: Test comprehensive security findings (schema v4.0)
+Test Suite: Comprehensive Security Findings Tests
+Purpose: Test comprehensive security findings from vscan.dev API
 Coverage: vscode_scanner.vscan_api (comprehensive parsers), output_formatter
 
-This test suite validates v4.0 comprehensive security findings including:
+This test suite validates comprehensive security findings including:
 - VirusTotal details with filtering (exclude category="undetected") - CRITICAL
 - Output formatter includes all comprehensive security fields - CRITICAL
 - All 9 parser methods return valid data structures
@@ -34,7 +34,6 @@ class TestVirusTotalFiltering(unittest.TestCase):
     """Test suite for VirusTotal filtering logic.
 
     **Purpose:** Ensure engines with category="undetected" are excluded.
-    This is the CRITICAL v4.1 requirement.
 
     **Scope:**
     - Filtering logic (exclude undetected engines)
@@ -151,7 +150,7 @@ class TestVirusTotalFiltering(unittest.TestCase):
 
 @pytest.mark.unit
 class TestParserRobustness(unittest.TestCase):
-    """Test that all v4.1 parsers handle missing data gracefully.
+    """Test that all comprehensive security parsers handle missing data gracefully.
 
     **Purpose:** Ensure parsers don't crash on empty/missing data.
 
@@ -216,19 +215,18 @@ class TestParserRobustness(unittest.TestCase):
 
 
 # ============================================================
-# Output Formatter v4.1 Tests (CRITICAL)
+# Output Formatter Tests (CRITICAL)
 # ============================================================
 
 
 @pytest.mark.unit
-class TestOutputFormatterV41(unittest.TestCase):
-    """Test suite for v4.1 output formatter enhancements.
+class TestOutputFormatterComprehensiveSecurity(unittest.TestCase):
+    """Test suite for output formatter comprehensive security enhancements.
 
-    **Purpose:** Ensure all v4.1 comprehensive security findings
+    **Purpose:** Ensure all comprehensive security findings
     are included in JSON output.
 
     **Scope:**
-    - Schema version 4.1
     - vscode_engine field
     - All 9 comprehensive security findings in output
     """
@@ -267,8 +265,8 @@ class TestOutputFormatterV41(unittest.TestCase):
         # Assert
         self.assertEqual(extension["vscode_engine"], "^1.75.0")
 
-    def test_security_section_includes_all_v4_1_findings(self):
-        """Test that security section includes all v4.1 comprehensive findings."""
+    def test_security_section_includes_all_comprehensive_findings(self):
+        """Test that security section includes all comprehensive findings."""
         # Arrange
         scan_results = [
             {
@@ -291,7 +289,7 @@ class TestOutputFormatterV41(unittest.TestCase):
         output = self.formatter.format_output(scan_results, self.timestamp, 1.0)
         security = output["extensions"][0]["security"]
 
-        # Assert - All 9 v4.1 fields should be present
+        # Assert - All 9 comprehensive security fields should be present
         self.assertIn("virustotal", security)
         self.assertIn("permissions_detailed", security)
         self.assertIn("ossf_scorecard", security)
@@ -302,8 +300,8 @@ class TestOutputFormatterV41(unittest.TestCase):
         self.assertIn("sensitive_info", security)
         self.assertIn("opengrep", security)
 
-    def test_v4_1_findings_preserve_structure(self):
-        """Test that v4.1 findings preserve their data structure."""
+    def test_comprehensive_findings_preserve_structure(self):
+        """Test that comprehensive findings preserve their data structure."""
         # Arrange
         vt_data = {
             "scanned_files": 5,
@@ -343,7 +341,9 @@ def run_tests():
     # Add all test classes
     suite.addTests(loader.loadTestsFromTestCase(TestVirusTotalFiltering))
     suite.addTests(loader.loadTestsFromTestCase(TestParserRobustness))
-    suite.addTests(loader.loadTestsFromTestCase(TestOutputFormatterV41))
+    suite.addTests(
+        loader.loadTestsFromTestCase(TestOutputFormatterComprehensiveSecurity)
+    )
 
     # Run tests with detailed output
     runner = unittest.TextTestRunner(verbosity=2)
@@ -351,7 +351,7 @@ def run_tests():
 
     # Print summary
     print("\n" + "=" * 70)
-    print("v4.0 Comprehensive Security Findings Test Summary")
+    print("Comprehensive Security Findings Test Summary")
     print("=" * 70)
     print(f"Tests run: {result.testsRun}")
     print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")
