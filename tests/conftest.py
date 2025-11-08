@@ -121,7 +121,7 @@ class HomeTempDirectory:
         return False
 
 
-from tests.fixtures.canonical_fixtures import (
+from fixtures.canonical_fixtures import (
     sample_extension,
     sample_extension_list,
     minimal_extension,
