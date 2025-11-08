@@ -216,6 +216,71 @@ class CacheManager:
         except Exception:
             return False
 
+    def _extract_indexed_fields(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract only fields used in database indexes/filters from scan result.
+
+        This helper consolidates field extraction logic shared between save_result()
+        and save_result_batch(), eliminating 150+ lines of code duplication.
+
+        Args:
+            result: Full scan result dictionary
+
+        Returns:
+            Dict with indexed field values:
+                - risk_level: str - Security risk level
+                - vulnerabilities_count: int - Number of vulnerabilities found
+                - security_score: int - Overall security score (legacy, v4.1)
+                - dependencies_count: int - Number of dependencies (legacy, v4.1)
+                - publisher_verified: int - Publisher verification status (legacy, v4.1)
+                - has_risk_factors: int - Whether risk factors exist (legacy, v4.1)
+                - installed_at: str - Installation timestamp (legacy, v4.1)
+
+        Note:
+            - Legacy fields (security_score, dependencies_count, publisher_verified,
+              has_risk_factors, installed_at) are kept for v4.1 schema compatibility
+            - These will be evaluated for removal in v6.0 if never used in production
+            - Fields marked as indexed but never queried (security_score, publisher_verified)
+              are included for backward compatibility but could be removed in v5.0 schema
+        """
+        # Extract core indexed fields
+        risk_level = result.get("risk_level")
+
+        # Vulnerabilities
+        vulnerabilities = result.get("vulnerabilities", {})
+        vuln_count = (
+            vulnerabilities.get("count", 0) if isinstance(vulnerabilities, dict) else 0
+        )
+
+        # Legacy fields (kept for v4.1 schema compatibility)
+        security_score = result.get("security_score")
+
+        # Dependencies
+        dependencies = result.get("dependencies", {})
+        dependencies_count = dependencies.get("total_count", 0)
+
+        # Publisher verification
+        metadata = result.get("metadata", {})
+        publisher = metadata.get("publisher", {})
+        publisher_verified = 1 if publisher.get("verified") else 0
+
+        # Risk factors
+        risk_factors = result.get("risk_factors", [])
+        has_risk_factors = 1 if len(risk_factors) > 0 else 0
+
+        # Installation timestamp
+        installed_at = result.get("installed_at")
+
+        return {
+            "risk_level": risk_level,
+            "vulnerabilities_count": vuln_count,
+            "security_score": security_score,
+            "dependencies_count": dependencies_count,
+            "publisher_verified": publisher_verified,
+            "has_risk_factors": has_risk_factors,
+            "installed_at": installed_at,
+        }
+
     def get_init_messages(self) -> List[Union[CacheWarning, CacheError, CacheInfo]]:
         """
         Get initialization messages (warnings, errors, info) from cache setup.
@@ -375,49 +440,27 @@ class CacheManager:
         with self._db_connection() as conn:
             cursor = conn.cursor()
 
-            # Create scan_cache table (comprehensive security findings)
+            # Create scan_cache table (v5.0 schema - optimized storage)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scan_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     extension_id TEXT NOT NULL,
                     version TEXT NOT NULL,
-                    scan_result TEXT NOT NULL,
+                    scan_result TEXT NOT NULL,           -- Full JSON (source of truth)
                     scanned_at TIMESTAMP NOT NULL,
-                    risk_level TEXT,
-                    security_score INTEGER,
-                    vulnerabilities_count INTEGER DEFAULT 0,
-                    dependencies_count INTEGER DEFAULT 0,
-                    publisher_verified BOOLEAN DEFAULT 0,
-                    has_risk_factors BOOLEAN DEFAULT 0,
-                    installed_at TIMESTAMP,
                     integrity_signature TEXT,
 
-                    -- Rich security data (JSON columns)
-                    module_risk_levels TEXT,
-                    score_contributions TEXT,
-                    security_notes TEXT,
+                    -- ONLY actively queried fields (4 core fields)
+                    risk_level TEXT CHECK(risk_level IN ('low', 'medium', 'high', 'critical', 'unknown', NULL)),
+                    vulnerabilities_count INTEGER DEFAULT 0 CHECK(vulnerabilities_count >= 0),
 
-                    -- Enhanced metadata
-                    installs INTEGER,
-                    rating REAL,
-                    rating_count INTEGER,
-                    repository_url TEXT,
-                    license TEXT,
-                    keywords TEXT,
-                    categories TEXT,
-
-                    -- Comprehensive security findings (JSON columns)
-                    virustotal_details TEXT,
-                    permissions_details TEXT,
-                    ossf_checks TEXT,
-                    ast_findings TEXT,
-                    socket_findings TEXT,
-                    network_endpoints TEXT,
-                    obfuscation_findings TEXT,
-                    sensitive_findings TEXT,
-                    opengrep_findings TEXT,
-                    vscode_engine TEXT,
+                    -- Legacy fields (kept for backward compatibility, consider deprecation in v6.0)
+                    security_score INTEGER CHECK(security_score BETWEEN 0 AND 100 OR security_score IS NULL),
+                    dependencies_count INTEGER DEFAULT 0 CHECK(dependencies_count >= 0),
+                    publisher_verified BOOLEAN DEFAULT 0 CHECK(publisher_verified IN (0, 1)),
+                    has_risk_factors BOOLEAN DEFAULT 0 CHECK(has_risk_factors IN (0, 1)),
+                    installed_at TIMESTAMP,
 
                     UNIQUE(extension_id, version)
                 )
@@ -435,40 +478,30 @@ class CacheManager:
             )
 
             # Create indexes for performance
+            # Optimized indexes for v5.0 schema (3 composite indexes replace 6 single-column)
+            # Composite index for primary lookup + age filtering
             cursor.execute(
                 """
-                CREATE INDEX IF NOT EXISTS idx_extension
-                ON scan_cache(extension_id, version)
+                CREATE INDEX IF NOT EXISTS idx_lookup_with_age
+                ON scan_cache(extension_id, version, scanned_at DESC)
             """
             )
+
+            # Composite index for statistics queries
             cursor.execute(
                 """
-                CREATE INDEX IF NOT EXISTS idx_scanned_at
-                ON scan_cache(scanned_at)
+                CREATE INDEX IF NOT EXISTS idx_risk_stats
+                ON scan_cache(risk_level, vulnerabilities_count)
+                WHERE risk_level IS NOT NULL
             """
             )
+
+            # Partial index for score filtering (future-proofing)
             cursor.execute(
                 """
-                CREATE INDEX IF NOT EXISTS idx_risk_level
-                ON scan_cache(risk_level)
-            """
-            )
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_security_score
+                CREATE INDEX IF NOT EXISTS idx_score
                 ON scan_cache(security_score)
-            """
-            )
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_vulnerabilities
-                ON scan_cache(vulnerabilities_count)
-            """
-            )
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_publisher_verified
-                ON scan_cache(publisher_verified)
+                WHERE security_score IS NOT NULL
             """
             )
 
@@ -592,7 +625,7 @@ class CacheManager:
 
     def save_result(self, extension_id: str, version: str, result: Dict[str, Any]):
         """
-        Save scan result to cache (comprehensive security findings).
+        Save scan result to cache (v5.0 schema with minimal indexed fields).
 
         Args:
             extension_id: Extension ID (e.g., "ms-python.python")
@@ -612,155 +645,40 @@ class CacheManager:
                 result_to_store.pop("_cache_hit", None)
                 result_to_store.pop("_cached_at", None)
 
+                # Serialize full result
                 scan_result_json = json.dumps(result_to_store)
                 scanned_at = datetime.now().isoformat()
 
-                # Extract indexed fields for v2 schema
-                risk_level = result_to_store.get("risk_level")
-                security_score = result_to_store.get("security_score")
+                # Extract only indexed fields (uses helper from Phase 1.1)
+                indexed = self._extract_indexed_fields(result_to_store)
 
-                # Vulnerabilities
-                vulnerabilities = result_to_store.get("vulnerabilities", {})
-                vuln_count = (
-                    vulnerabilities.get("count", 0)
-                    if isinstance(vulnerabilities, dict)
-                    else 0
-                )
-
-                # Dependencies
-                dependencies = result_to_store.get("dependencies", {})
-                dependencies_count = dependencies.get("total_count", 0)
-
-                # Publisher verification
-                metadata = result_to_store.get("metadata", {})
-                publisher = metadata.get("publisher", {})
-                publisher_verified = 1 if publisher.get("verified") else 0
-
-                # Risk factors
-                risk_factors = result_to_store.get("risk_factors", [])
-                has_risk_factors = 1 if len(risk_factors) > 0 else 0
-
-                # Installation timestamp
-                installed_at = result_to_store.get("installed_at")
-
-                # Extract rich security data
-                security = result_to_store.get("security", {})
-                module_risk_levels = security.get("module_risk_levels")
-                score_contributions = security.get("score_contributions")
-                security_notes = security.get("security_notes")
-
-                # Serialize JSON fields
-                module_risk_levels_json = (
-                    json.dumps(module_risk_levels) if module_risk_levels else None
-                )
-                score_contributions_json = (
-                    json.dumps(score_contributions) if score_contributions else None
-                )
-                security_notes_json = (
-                    json.dumps(security_notes) if security_notes else None
-                )
-
-                # Extract enhanced metadata
-                statistics = metadata.get("statistics", {})
-                installs = statistics.get("installs")
-                rating = statistics.get("rating")
-                rating_count = statistics.get("rating_count")
-                repository_url = metadata.get("repository_url")
-                license_info = metadata.get("license")
-                keywords = metadata.get("keywords")
-                categories = metadata.get("categories")
-
-                # Serialize list fields
-                keywords_json = json.dumps(keywords) if keywords else None
-                categories_json = json.dumps(categories) if categories else None
-
-                # Extract comprehensive security findings
-                virustotal_details = result_to_store.get("virustotal_details")
-                permissions_details = result_to_store.get("permissions_details")
-                ossf_checks = result_to_store.get("ossf_checks")
-                ast_findings = result_to_store.get("ast_findings")
-                socket_findings = result_to_store.get("socket_findings")
-                network_endpoints = result_to_store.get("network_endpoints")
-                obfuscation_findings = result_to_store.get("obfuscation_findings")
-                sensitive_findings = result_to_store.get("sensitive_findings")
-                opengrep_findings = result_to_store.get("opengrep_findings")
-                vscode_engine = metadata.get("vscode_engine")
-
-                # Serialize JSON fields for comprehensive findings
-                virustotal_json = (
-                    json.dumps(virustotal_details) if virustotal_details else None
-                )
-                permissions_json = (
-                    json.dumps(permissions_details) if permissions_details else None
-                )
-                ossf_json = json.dumps(ossf_checks) if ossf_checks else None
-                ast_json = json.dumps(ast_findings) if ast_findings else None
-                socket_json = json.dumps(socket_findings) if socket_findings else None
-                network_json = (
-                    json.dumps(network_endpoints) if network_endpoints else None
-                )
-                obfuscation_json = (
-                    json.dumps(obfuscation_findings) if obfuscation_findings else None
-                )
-                sensitive_json = (
-                    json.dumps(sensitive_findings) if sensitive_findings else None
-                )
-                opengrep_json = (
-                    json.dumps(opengrep_findings) if opengrep_findings else None
-                )
-
-                # Compute HMAC signature for integrity checking (v3.5.1)
+                # Compute HMAC signature for integrity checking
                 integrity_signature = self._compute_integrity_signature(
                     scan_result_json
                 )
 
-                # Insert or replace with all fields
+                # Insert with v5.0 schema (12 values instead of 32)
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO scan_cache
-                    (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                     vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature,
-                     module_risk_levels, score_contributions, security_notes,
-                     installs, rating, rating_count, repository_url, license, keywords, categories,
-                     virustotal_details, permissions_details, ossf_checks, ast_findings, socket_findings,
-                     network_endpoints, obfuscation_findings, sensitive_findings, opengrep_findings, vscode_engine)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (extension_id, version, scan_result, scanned_at, integrity_signature,
+                     risk_level, vulnerabilities_count, security_score, dependencies_count,
+                     publisher_verified, has_risk_factors, installed_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         extension_id,
                         version,
                         scan_result_json,
                         scanned_at,
-                        risk_level,
-                        security_score,
-                        vuln_count,
-                        dependencies_count,
-                        publisher_verified,
-                        has_risk_factors,
-                        installed_at,
                         integrity_signature,
-                        # Rich security data fields
-                        module_risk_levels_json,
-                        score_contributions_json,
-                        security_notes_json,
-                        installs,
-                        rating,
-                        rating_count,
-                        repository_url,
-                        license_info,
-                        keywords_json,
-                        categories_json,
-                        # Comprehensive security findings fields
-                        virustotal_json,
-                        permissions_json,
-                        ossf_json,
-                        ast_json,
-                        socket_json,
-                        network_json,
-                        obfuscation_json,
-                        sensitive_json,
-                        opengrep_json,
-                        vscode_engine,
+                        indexed["risk_level"],
+                        indexed["vulnerabilities_count"],
+                        indexed["security_score"],
+                        indexed["dependencies_count"],
+                        indexed["publisher_verified"],
+                        indexed["has_risk_factors"],
+                        indexed["installed_at"],
                     ),
                 )
 
@@ -788,7 +706,7 @@ class CacheManager:
         self, extension_id: str, version: str, result: Dict[str, Any]
     ):
         """
-        Save scan result to cache without committing (batch mode).
+        Save scan result to cache without committing (batch mode - v5.0 schema).
         Must call begin_batch() first.
 
         Args:
@@ -811,147 +729,38 @@ class CacheManager:
             result_to_store.pop("_cache_hit", None)
             result_to_store.pop("_cached_at", None)
 
+            # Serialize full result
             scan_result_json = json.dumps(result_to_store)
             scanned_at = datetime.now().isoformat()
 
-            # Extract indexed fields for v2 schema
-            risk_level = result_to_store.get("risk_level")
-            security_score = result_to_store.get("security_score")
+            # Extract only indexed fields (uses helper from Phase 1.1)
+            indexed = self._extract_indexed_fields(result_to_store)
 
-            # Vulnerabilities
-            vulnerabilities = result_to_store.get("vulnerabilities", {})
-            vuln_count = (
-                vulnerabilities.get("count", 0)
-                if isinstance(vulnerabilities, dict)
-                else 0
-            )
-
-            # Dependencies
-            dependencies = result_to_store.get("dependencies", {})
-            dependencies_count = dependencies.get("total_count", 0)
-
-            # Publisher verification
-            metadata = result_to_store.get("metadata", {})
-            publisher = metadata.get("publisher", {})
-            publisher_verified = 1 if publisher.get("verified") else 0
-
-            # Risk factors
-            risk_factors = result_to_store.get("risk_factors", [])
-            has_risk_factors = 1 if len(risk_factors) > 0 else 0
-
-            # Installation timestamp
-            installed_at = result_to_store.get("installed_at")
-
-            # Extract rich security data
-            security = result_to_store.get("security", {})
-            module_risk_levels = security.get("module_risk_levels")
-            score_contributions = security.get("score_contributions")
-            security_notes = security.get("security_notes")
-
-            # Serialize JSON fields
-            module_risk_levels_json = (
-                json.dumps(module_risk_levels) if module_risk_levels else None
-            )
-            score_contributions_json = (
-                json.dumps(score_contributions) if score_contributions else None
-            )
-            security_notes_json = json.dumps(security_notes) if security_notes else None
-
-            # Extract enhanced metadata
-            statistics = metadata.get("statistics", {})
-            installs = statistics.get("installs")
-            rating = statistics.get("rating")
-            rating_count = statistics.get("rating_count")
-            repository_url = metadata.get("repository_url")
-            license_info = metadata.get("license")
-            keywords = metadata.get("keywords")
-            categories = metadata.get("categories")
-
-            # Serialize list fields
-            keywords_json = json.dumps(keywords) if keywords else None
-            categories_json = json.dumps(categories) if categories else None
-
-            # Extract comprehensive security findings
-            virustotal_details = result_to_store.get("virustotal_details")
-            permissions_details = result_to_store.get("permissions_details")
-            ossf_checks = result_to_store.get("ossf_checks")
-            ast_findings = result_to_store.get("ast_findings")
-            socket_findings = result_to_store.get("socket_findings")
-            network_endpoints = result_to_store.get("network_endpoints")
-            obfuscation_findings = result_to_store.get("obfuscation_findings")
-            sensitive_findings = result_to_store.get("sensitive_findings")
-            opengrep_findings = result_to_store.get("opengrep_findings")
-            vscode_engine = metadata.get("vscode_engine")
-
-            # Serialize JSON fields for comprehensive findings
-            virustotal_json = (
-                json.dumps(virustotal_details) if virustotal_details else None
-            )
-            permissions_json = (
-                json.dumps(permissions_details) if permissions_details else None
-            )
-            ossf_json = json.dumps(ossf_checks) if ossf_checks else None
-            ast_json = json.dumps(ast_findings) if ast_findings else None
-            socket_json = json.dumps(socket_findings) if socket_findings else None
-            network_json = json.dumps(network_endpoints) if network_endpoints else None
-            obfuscation_json = (
-                json.dumps(obfuscation_findings) if obfuscation_findings else None
-            )
-            sensitive_json = (
-                json.dumps(sensitive_findings) if sensitive_findings else None
-            )
-            opengrep_json = json.dumps(opengrep_findings) if opengrep_findings else None
-
-            # Compute HMAC signature for integrity checking (v3.5.1)
+            # Compute HMAC signature for integrity checking
             integrity_signature = self._compute_integrity_signature(scan_result_json)
 
-            # Insert or replace with all fields
+            # Insert with v5.0 schema (12 values instead of 32)
             self._batch_cursor.execute(
                 """
                 INSERT OR REPLACE INTO scan_cache
-                (extension_id, version, scan_result, scanned_at, risk_level, security_score,
-                 vulnerabilities_count, dependencies_count, publisher_verified, has_risk_factors, installed_at, integrity_signature,
-                 module_risk_levels, score_contributions, security_notes,
-                 installs, rating, rating_count, repository_url, license, keywords, categories,
-                 virustotal_details, permissions_details, ossf_checks, ast_findings, socket_findings,
-                 network_endpoints, obfuscation_findings, sensitive_findings, opengrep_findings, vscode_engine)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (extension_id, version, scan_result, scanned_at, integrity_signature,
+                 risk_level, vulnerabilities_count, security_score, dependencies_count,
+                 publisher_verified, has_risk_factors, installed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     extension_id,
                     version,
                     scan_result_json,
                     scanned_at,
-                    risk_level,
-                    security_score,
-                    vuln_count,
-                    dependencies_count,
-                    publisher_verified,
-                    has_risk_factors,
-                    installed_at,
                     integrity_signature,
-                    # Rich security data fields
-                    module_risk_levels_json,
-                    score_contributions_json,
-                    security_notes_json,
-                    installs,
-                    rating,
-                    rating_count,
-                    repository_url,
-                    license_info,
-                    keywords_json,
-                    categories_json,
-                    # Comprehensive security findings fields
-                    virustotal_json,
-                    permissions_json,
-                    ossf_json,
-                    ast_json,
-                    socket_json,
-                    network_json,
-                    obfuscation_json,
-                    sensitive_json,
-                    opengrep_json,
-                    vscode_engine,
+                    indexed["risk_level"],
+                    indexed["vulnerabilities_count"],
+                    indexed["security_score"],
+                    indexed["dependencies_count"],
+                    indexed["publisher_verified"],
+                    indexed["has_risk_factors"],
+                    indexed["installed_at"],
                 ),
             )
 
@@ -1185,23 +994,18 @@ class CacheManager:
                     else None
                 )
 
-                # Calculate average age of cache entries
+                # Calculate average age of cache entries using SQL aggregation (O(1) memory)
                 now = datetime.now()
-                cursor.execute("SELECT scanned_at FROM scan_cache")
-                timestamp_strs = [row[0] for row in cursor.fetchall() if row[0]]
-
-                avg_age_days = None
-                if timestamp_strs:
-                    ages = []
-                    for ts_str in timestamp_strs:
-                        try:
-                            ts = datetime.fromisoformat(ts_str)
-                            age_days = (now - ts).total_seconds() / 86400
-                            ages.append(age_days)
-                        except (ValueError, TypeError):
-                            continue
-                    if ages:
-                        avg_age_days = round(sum(ages) / len(ages), 1)
+                cursor.execute(
+                    """
+                    SELECT AVG(julianday(?) - julianday(scanned_at))
+                    FROM scan_cache
+                    WHERE scanned_at IS NOT NULL
+                """,
+                    (now.isoformat(),),
+                )
+                row = cursor.fetchone()
+                avg_age_days = round(row[0], 1) if row and row[0] is not None else None
 
                 # Count stale entries (older than max_age_days)
                 cutoff = now - timedelta(days=max_age_days)
