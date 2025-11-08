@@ -40,54 +40,34 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e .[test]
-          pip install coverage
 
       - name: Run tests with coverage (parallel execution)
         run: |
           echo "Running test suite with parallel execution and branch coverage tracking..."
           echo "Using pytest-xdist for 2.9x speedup (10s vs 31s serial)"
-          coverage run -m pytest tests/ -v --strict-markers -m "not real_api" -n auto
+          pytest tests/ \
+            --cov=vscode_scanner \
+            --cov-report=html \
+            --cov-report=xml \
+            --cov-report=term \
+            --cov-branch \
+            --cov-fail-under=80 \
+            -v \
+            --strict-markers \
+            -m "not real_api" \
+            -n auto
+          echo ""
           echo "✅ Tests complete"
-
-      - name: Generate coverage report
-        run: |
-          echo ""
-          echo "=================================================="
-          echo "Coverage Report"
-          echo "=================================================="
-          coverage report --fail-under=80
-          echo ""
           echo "✅ Coverage threshold met (≥80% target)"
           echo "📊 v3.8.1 targets: 80%+ per critical module | 88%+ overall"
-
-      - name: Generate HTML coverage report
-        if: always()
-        run: |
-          coverage html
-          echo "HTML coverage report generated in htmlcov/"
-
-      - name: Generate XML coverage report (for CI tools)
-        if: always()
-        run: |
-          coverage xml
-          echo "XML coverage report generated: coverage.xml"
 
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-py${{ matrix.python-version }}
           path: |
             htmlcov/
             coverage.xml
-            .coverage
+            .coverage*
           retention-days: 30
-
-      - name: Upload coverage summary
-        if: always()
-        run: |
-          echo "# Coverage Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          coverage report >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
