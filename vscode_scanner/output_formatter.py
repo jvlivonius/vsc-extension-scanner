@@ -3,7 +3,7 @@
 Output Formatter Module
 
 Formats scan results into comprehensive JSON output.
-Schema version 4.1 with comprehensive security findings.
+Schema version 4.0 with rich security data and comprehensive findings.
 """
 
 from typing import List, Dict, Any

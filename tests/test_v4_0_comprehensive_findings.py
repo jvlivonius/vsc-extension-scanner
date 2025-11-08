@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Test Suite: v4.1 Features Tests
-Purpose: Test comprehensive security findings (schema v4.1)
-Coverage: vscode_scanner.vscan_api (v4.1 parsers), output_formatter
+Test Suite: v4.0 Comprehensive Security Findings Tests
+Purpose: Test comprehensive security findings (schema v4.0)
+Coverage: vscode_scanner.vscan_api (comprehensive parsers), output_formatter
 
-This test suite validates v4.1 schema additions including:
+This test suite validates v4.0 comprehensive security findings including:
 - VirusTotal details with filtering (exclude category="undetected") - CRITICAL
-- Output formatter includes all v4.1 fields - CRITICAL
+- Output formatter includes all comprehensive security fields - CRITICAL
 - All 9 parser methods return valid data structures
 
 Testing Strategy:
@@ -238,8 +238,8 @@ class TestOutputFormatterV41(unittest.TestCase):
         self.formatter = OutputFormatter()
         self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
-    def test_schema_version_is_4_1(self):
-        """Test that schema version is 4.1."""
+    def test_schema_version_is_4_0(self):
+        """Test that schema version is 4.0."""
         # Arrange
         scan_results = []
 
@@ -247,7 +247,7 @@ class TestOutputFormatterV41(unittest.TestCase):
         output = self.formatter.format_output(scan_results, self.timestamp, 1.0)
 
         # Assert
-        self.assertEqual(output["schema_version"], "4.1")
+        self.assertEqual(output["schema_version"], "4.0")
 
     def test_extension_includes_vscode_engine(self):
         """Test that vscode_engine field is included."""
@@ -351,7 +351,7 @@ def run_tests():
 
     # Print summary
     print("\n" + "=" * 70)
-    print("v4.1 Features Test Summary")
+    print("v4.0 Comprehensive Security Findings Test Summary")
     print("=" * 70)
     print(f"Tests run: {result.testsRun}")
     print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")

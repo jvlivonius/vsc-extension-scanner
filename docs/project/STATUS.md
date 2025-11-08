@@ -1,22 +1,28 @@
 # Project Status
 
 **Last Updated:** 2025-11-08
-**Status:** v4.1.0 Released ✅ (Comprehensive Security Findings)
+**Status:** v4.0.0 Released ✅ (Rich Security Data & Comprehensive Findings)
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
 
 ---
 
-## Release: v4.1.0 ✅ (Comprehensive Security Findings)
+## Release: v4.0.0 ✅ (Rich Security Data & Comprehensive Findings)
 
 **Released:** 2025-11-08
-**Type:** Minor Release - Additive Changes
-**Schema Version:** 4.0 → 4.1
+**Type:** Major Release - Breaking Schema Change
+**Schema Version:** 3.0 → 4.0
 **Total Tests:** 1,140 (all passing, +15 new)
 
 ### Key Achievements
 
-**Comprehensive Security Findings Unlocked:**
+**Rich Security Data Unlocked:**
+- **Module Risk Levels**: Individual risk assessments for all 11 security analysis modules
+- **Score Contributions**: Detailed breakdown showing impact of each module on security score
+- **Security Notes**: Expert commentary from vscan.dev analysts
+- **Enhanced Metadata**: Install counts, ratings, repository URLs, licenses, keywords, categories
+
+**Comprehensive Security Findings:**
 - **VirusTotal Details**: Complete malware scan results with filtering
   - **CRITICAL**: Excludes `category="undetected"` engines (reduces 76 → 12 engines in typical scans)
   - Preserves malicious, suspicious, failure, type-unsupported, timeout categories
@@ -31,66 +37,20 @@
 - **OpenGrep Findings**: SAST results
 - **VSCode Engine**: Minimum required VSCode version
 
-**Database Schema v4.1:**
-- 10 new JSON columns for comprehensive security findings
-- New columns: `virustotal_details`, `permissions_details`, `ossf_checks`, `ast_findings`, `socket_findings`, `network_endpoints`, `obfuscation_findings`, `sensitive_findings`, `opengrep_findings`, `vscode_engine`
+**Database Schema v4.0:**
+- 20 new columns total
+- JSON columns for rich data: `module_risk_levels`, `score_contributions`, `security_notes`, `keywords`, `categories`
+- Metadata columns: `installs`, `rating`, `rating_count`, `repository_url`, `license`
+- JSON columns for comprehensive findings: `virustotal_details`, `permissions_details`, `ossf_checks`, `ast_findings`, `socket_findings`, `network_endpoints`, `obfuscation_findings`, `sensitive_findings`, `opengrep_findings`
+- String column: `vscode_engine`
 - Automatic migration: Cache regeneration on schema version mismatch
-- Full backward compatibility: Optional fields with NULL defaults
 
 **JSON Export Enhancement:**
-- All 9 new security analysis modules exposed in `security` section
+- All rich security data included in JSON exports
+- All 9 comprehensive security modules exposed in `security` section
 - VSCode engine requirement in metadata section
 - Data structures preserved from API (no flattening)
-
-### Implementation Summary
-
-- **Phase 1**: Parser extensions (9 new parsers + metadata) ✅
-- **Phase 2**: Database schema v4.1 (10 new columns) ✅
-- **Phase 3**: JSON export enhancements ✅
-- **Phase 4**: Comprehensive test suite (15 new tests) ✅
-- **Phase 5**: Documentation updates ✅
-- **Testing**: All 1,140 tests passing (1,125 existing + 15 new v4.1 tests) ✅
-
-### Technical Highlights
-
-- **VirusTotal Filtering**: Dictionary comprehension excludes `category="undetected"` engines
-- **Parser Methods**: 9 new parsers with safe error handling (return partial data on exceptions)
-- **Data Source**: Real API response from ms-azuretools.vscode-docker analyzed for gap analysis
-- **Architecture**: Maintains 3-layer architecture, 0 violations
-- **Security**: 0 vulnerabilities, HMAC integrity preserved
-
-### Next Steps
-
-- v4.2: HTML report enhancements with comprehensive security findings
-- v4.3: CLI display enhancements (--detailed flag for comprehensive data)
-- v4.4: CSV export updates with flattened comprehensive findings
-
----
-
-## Release: v4.0.0 ✅ (Rich Security Data Integration)
-
-**Released:** 2025-11-07
-**Type:** Major Release - Breaking Schema Change
-**Schema Version:** 3.0 → 4.0
-**Total Tests:** 1,125 (all passing)
-
-### Key Achievements
-
-**Rich Security Data Unlocked:**
-- **Module Risk Levels**: Individual risk assessments for all 11 security analysis modules
-- **Score Contributions**: Detailed breakdown showing impact of each module on security score
-- **Security Notes**: Expert commentary from vscan.dev analysts
-- **Enhanced Metadata**: Install counts, ratings, repository URLs, licenses, keywords, categories
-
-**Database Schema v4.0:**
-- New JSON columns: `module_risk_levels`, `score_contributions`, `security_notes`, `keywords`, `categories`
-- New metadata columns: `installs`, `rating`, `rating_count`, `repository_url`, `license`
-- Automatic migration: Cache regeneration on schema version mismatch
-
-**JSON Export Enhancement:**
-- All rich security data now included in JSON exports
 - Backward compatible: Optional fields with NULL defaults
-- Foundation for future CLI and HTML report enhancements
 
 ### Breaking Changes
 
@@ -100,12 +60,22 @@
 
 ### Implementation Summary
 
-- **Phase 1**: Parser updates (vscan_api.py already returning rich data) ✅
-- **Phase 2**: Database schema extension to v4.0 ✅
+- **Phase 1**: Parser extensions (9 new parsers + metadata extraction) ✅
+- **Phase 2**: Database schema v4.0 (20 new columns) ✅
 - **Phase 3**: Cache storage/retrieval updates ✅
 - **Phase 4**: JSON export enhancements ✅
-- **Testing**: All 1,125 tests passing ✅
-- **Documentation**: CHANGELOG and STATUS.md updated ✅
+- **Phase 5**: Comprehensive test suite (15 new tests) ✅
+- **Phase 6**: Documentation updates ✅
+- **Testing**: All 1,140 tests passing (1,125 existing + 15 new) ✅
+
+### Technical Highlights
+
+- **VirusTotal Filtering**: Dictionary comprehension excludes `category="undetected"` engines
+- **Parser Methods**: 9 new parsers with safe error handling (return partial data on exceptions)
+- **Data Source**: Real API response from ms-azuretools.vscode-docker analyzed for gap analysis
+- **Architecture**: Maintains 3-layer architecture, 0 violations
+- **Security**: 0 vulnerabilities, HMAC integrity preserved
+- **Code Quality**: All pre-commit hooks passing (Semgrep, Pylint, Bandit, Black)
 
 ### Roadmap Reference
 

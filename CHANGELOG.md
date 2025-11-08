@@ -7,11 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [4.1.0] - 2025-11-08
+## [4.0.0] - 2025-11-08
+
+### 🚨 BREAKING CHANGES
+
+- **Cache Schema v4.0**: Database schema upgraded from v3.0 to v4.0
+  - Adds new columns for rich security data (module risk levels, score contributions, security notes)
+  - Adds comprehensive security findings (9 analysis modules with detailed results)
+  - Adds enhanced metadata columns (installs, ratings, repository URLs, licenses, keywords, categories)
+  - **Migration**: Automatic regeneration on first run - cache will be cleared and rebuilt
+  - **Impact**: Users will need to re-scan extensions (minimal impact, API caching helps)
 
 ### Added
 
-- **Comprehensive Security Findings (v4.1 Schema)**: Extended data persistence with 9 new security analysis modules
+- **Rich Security Data Integration**: Unlocked comprehensive security insights from vscan.dev API
+  - **Module Risk Levels**: Individual risk assessments for all 11 security analysis modules
+    - metadata, dependencies, socket, virus_total, permissions, ossf_scorecard, network_endpoints, sensitive_info, obfuscation, consolidated_ast, open_grep
+  - **Score Contributions**: Detailed breakdown showing how each module affected the security score
+    - Example: `{"base": 100, "socket": -15, "permissions": -8, "obfuscation": -10}`
+  - **Security Notes**: Expert commentary from vscan.dev analysts explaining security findings
+  - **Enhanced Metadata**: Install counts, ratings, repository links, licenses, keywords, categories
+
+- **Comprehensive Security Findings**: Extended data persistence with 9 new security analysis modules
   - **VirusTotal Details**: Complete malware scan results with filtering logic
     - **CRITICAL**: Excludes engines where `category="undetected"` to reduce noise (64 of 76 engines filtered in typical scans)
     - Preserves all other categories: malicious, suspicious, failure, type-unsupported, timeout
@@ -30,17 +47,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **OpenGrep Findings**: SAST (Static Application Security Testing) results
   - **VSCode Engine**: Minimum required VSCode version (e.g., `^1.75.0`)
 
-- **Database Schema v4.1**: Extended scan_cache table with 10 new JSON columns
-  - New columns: `virustotal_details`, `permissions_details`, `ossf_checks`, `ast_findings`, `socket_findings`, `network_endpoints`, `obfuscation_findings`, `sensitive_findings`, `opengrep_findings`, `vscode_engine`
+- **Database Schema v4.0**: Extended scan_cache table with 20 new columns
+  - JSON columns for rich security data: `module_risk_levels`, `score_contributions`, `security_notes`, `keywords`, `categories`
+  - Metadata columns: `installs`, `rating`, `rating_count`, `repository_url`, `license`
+  - JSON columns for comprehensive findings: `virustotal_details`, `permissions_details`, `ossf_checks`, `ast_findings`, `socket_findings`, `network_endpoints`, `obfuscation_findings`, `sensitive_findings`, `opengrep_findings`
+  - String column: `vscode_engine`
   - Full backward compatibility: All new fields are optional with NULL defaults
-  - **Migration**: Automatic regeneration on first run (cache cleared and rebuilt)
 
-- **JSON Export Enhancement**: Comprehensive security findings now included in exports
-  - All 9 new security analysis modules exposed in `security` section
+- **JSON Export Enhancement**: Comprehensive security data now included in JSON exports
+  - All 11 module risk levels exposed in export
+  - Score contribution breakdown for transparency
+  - Security notes for actionable insights
+  - Enhanced metadata for extension context
+  - All 9 comprehensive security findings exposed in `security` section
   - Data structures preserved from API (no flattening)
   - VSCode engine requirement in metadata section
+  - **Note**: CSV and HTML report updates deferred to v4.1-4.2
 
-- **Testing**: 15 new v4.1 feature tests
+- **Testing**: 15 new comprehensive security findings tests
   - Critical: VirusTotal filtering logic (3 tests)
   - Parser robustness: All 8 parsers handle empty/missing data (8 tests)
   - Output formatter integration (4 tests)
@@ -48,10 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Version Bump**: 4.0.0 → 4.1.0 (minor version, additive changes only)
-- **Schema Version**: 4.0 → 4.1
-- **vscan_api.py**: Added 9 new parser methods for comprehensive security findings
-  - `_parse_virustotal_details()` - with undetected engine filtering
+- **Version Bump**: 3.7.2 → 4.0.0 (major version due to breaking schema change)
+- **Schema Version**: 3.0 → 4.0
+- **vscan_api.py**: Added 9 new parser methods for comprehensive security findings (~315 new lines)
+  - `_parse_virustotal_details()` - with undetected engine filtering (CRITICAL feature)
   - `_parse_permissions_details()`
   - `_parse_ossf_scorecard_details()`
   - `_parse_ast_findings()`
@@ -60,84 +84,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `_parse_obfuscation_findings()`
   - `_parse_sensitive_info_findings()`
   - `_parse_opengrep_findings()`
-- **cache_manager.py**: Updated `save_result()` and `save_result_batch()` to store all v4.1 fields
-- **output_formatter.py**: Updated schema documentation to v4.1, added all comprehensive findings to export
+  - Updated `_parse_extension_metadata()` to extract vscode_engine requirement
+- **cache_manager.py**: Updated `save_result()` and `save_result_batch()` methods
+  - Store rich security data (module risk levels, score contributions, security notes)
+  - Store all comprehensive security findings (9 modules)
+  - Extended schema from 12 to 32 total columns
+- **output_formatter.py**: Schema documentation and export enhancements
+  - Updated to reflect v4.0 structure with comprehensive findings
+  - Added all 9 comprehensive security modules to JSON exports
+  - Added vscode_engine to metadata section
+- **Integration Tests**: Updated to expect schema version 4.0
+- **Semgrep Rules**: Updated to avoid false positives for sanitized print statements
+- **Code Quality**: Added pylint disable for acceptable duplicate code patterns
 
 ### Technical Details
 
-- **Implementation**: 5-phase rollout following user requirements
+- **Implementation**: Comprehensive rollout following [v4.0-roadmap.md](docs/project/v4.0-roadmap.md)
   - Phase 1: Parser extensions (9 new parsers + metadata extraction)
-  - Phase 2: Database schema v4.1 (10 new columns)
-  - Phase 3: Output formatter updates (JSON export)
-  - Phase 4: Comprehensive test suite (15 tests)
-  - Phase 5: Documentation updates
-- **Testing**: All 1,140 tests pass (1,125 existing + 15 new v4.1 tests)
+  - Phase 2: Database schema v4.0 (20 new columns)
+  - Phase 3: Cache storage/retrieval updates
+  - Phase 4: JSON export enhancements
+  - Phase 5: Comprehensive test suite (15 new tests)
+  - Phase 6: Documentation updates
+- **Testing**: All 1,140 tests pass (1,125 existing + 15 new comprehensive findings tests)
 - **Data Source**: Real API response from ms-azuretools.vscode-docker analyzed for gap analysis
 - **Architecture**: Maintains 3-layer architecture, 0 violations
 - **Security**: 0 vulnerabilities, HMAC integrity preserved
-
-### Post-v4.1 Roadmap
-
-- **v4.2**: HTML report enhancements with comprehensive security findings
-- **v4.3**: CLI display enhancements (--detailed flag for comprehensive data)
-- **v4.4**: CSV export updates with flattened comprehensive findings
-
-## [4.0.0] - 2025-11-07
-
-### 🚨 BREAKING CHANGES
-
-- **Cache Schema v4.0**: Database schema upgraded from v3.0 to v4.0
-  - Adds new columns for rich security data (module risk levels, score contributions, security notes)
-  - Adds enhanced metadata columns (installs, ratings, repository URLs, licenses, keywords, categories)
-  - **Migration**: Automatic regeneration on first run - cache will be cleared and rebuilt
-  - **Impact**: Users will need to re-scan extensions (minimal impact, API caching helps)
-
-### Added
-
-- **Rich Security Data Integration**: Unlocked comprehensive security insights from vscan.dev API
-  - **Module Risk Levels**: Individual risk assessments for all 11 security analysis modules
-    - metadata, dependencies, socket, virus_total, permissions, ossf_scorecard, network_endpoints, sensitive_info, obfuscation, consolidated_ast, open_grep
-  - **Score Contributions**: Detailed breakdown showing how each module affected the security score
-    - Example: `{"base": 100, "socket": -15, "permissions": -8, "obfuscation": -10}`
-  - **Security Notes**: Expert commentary from vscan.dev analysts explaining security findings
-  - **Enhanced Metadata**: Install counts, ratings, repository links, licenses, keywords, categories
-
-- **Database Schema v4.0**: Extended scan_cache table with rich security data columns
-  - JSON columns: `module_risk_levels`, `score_contributions`, `security_notes`, `keywords`, `categories`
-  - Metadata columns: `installs`, `rating`, `rating_count`, `repository_url`, `license`
-  - Full backward compatibility: All new fields are optional with NULL defaults
-
-- **JSON Export Enhancement**: Comprehensive security data now included in JSON exports
-  - All 11 module risk levels exposed in export
-  - Score contribution breakdown for transparency
-  - Security notes for actionable insights
-  - Enhanced metadata for extension context
-  - **Note**: CSV and HTML report updates deferred to v4.1-4.2
-
-### Changed
-
-- **Version Bump**: 3.7.2 → 4.0.0 (major version due to breaking schema change)
-- **Schema Version**: 3.0 → 4.0
-- **Cache Manager**: Updated `save_result()` and `save_result_batch()` methods to store rich security data
-- **Output Formatter**: Schema documentation updated to reflect v4.0 structure
-- **Integration Tests**: Updated to expect schema version 4.0
-
-### Technical Details
-
-- **Implementation**: 4-phase rollout following [v4.0-roadmap.md](docs/project/v4.0-roadmap.md)
-  - Phase 1: Parser updates (vscan_api.py already had the data)
-  - Phase 2: Database schema extension (cache_manager.py)
-  - Phase 3: Cache storage/retrieval updates
-  - Phase 4: JSON export enhancements (output_formatter.py already included fields)
-- **Testing**: All 1,125 existing tests pass with v4.0 changes
-- **Architecture**: Maintains 3-layer architecture, 0 violations
-- **Security**: 0 vulnerabilities, HMAC integrity preserved
+- **Code Quality**: All pre-commit hooks passing (Semgrep, Pylint, Bandit, Black)
 
 ### Post-v4.0 Roadmap
 
-- **v4.1**: CLI display enhancements (--detailed flag, security notes, score breakdown)
-- **v4.2**: HTML report enhancements (security notes, score charts, module risk table)
-- **v4.3**: CSV export updates with flattened rich security data
+- **v4.1**: CLI display enhancements (--detailed flag for comprehensive data)
+- **v4.2**: HTML report enhancements (comprehensive security findings, visual charts)
+- **v4.3**: CSV export updates with flattened comprehensive findings
 
 ## [3.7.2] - 2025-11-06
 
