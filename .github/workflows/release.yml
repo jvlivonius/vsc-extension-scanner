@@ -40,6 +40,26 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install --upgrade build
 
+      - name: Run smoke tests on source
+        run: |
+          echo "🧪 Running critical smoke tests on source code..."
+
+          # Install test dependencies
+          pip install "pytest>=7.0.0" "hypothesis>=6.0.0" "pyyaml>=6.0.0"
+          if [ $(python3 -c "import sys; print(1 if sys.version_info < (3, 11) else 0)") -eq 1 ]; then
+            pip install "tomli>=2.0.0"
+          fi
+
+          # Run security tests (critical validation)
+          echo "Running security tests..."
+          python3 tests/test_security.py || { echo "❌ Security smoke test failed"; exit 1; }
+
+          # Run architecture tests (zero violations check)
+          echo "Running architecture tests..."
+          pytest tests/test_architecture.py -xvs || { echo "❌ Architecture smoke test failed"; exit 1; }
+
+          echo "✅ All smoke tests passed"
+
       - name: Clean build environment
         run: |
           echo "🧹 Cleaning previous build artifacts..."
@@ -90,31 +110,14 @@ jobs:
           fi
 
           # Verify basic commands work
-          vscan --help > /dev/null
-          vscan cache stats > /dev/null || true  # May fail if no cache exists
+          echo "Testing basic commands..."
+          vscan --help > /dev/null || { echo "❌ vscan --help failed"; exit 1; }
+          vscan cache stats > /dev/null || true  # May fail if no cache exists, that's ok
 
           # Verify Python import
-          python3 -c "import vscode_scanner; print(f'✅ Import successful: {vscode_scanner.__version__}')"
+          python3 -c "import vscode_scanner; print(f'✅ Import successful: {vscode_scanner.__version__}')" || { echo "❌ Import failed"; exit 1; }
 
-          # Run smoke tests
-          echo ""
-          echo "🧪 Running critical smoke tests on installed package..."
-
-          # Install test dependencies
-          pip install "pytest>=7.0.0" "hypothesis>=6.0.0" "pyyaml>=6.0.0"
-          if [ $(python3 -c "import sys; print(1 if sys.version_info < (3, 11) else 0)") -eq 1 ]; then
-            pip install "tomli>=2.0.0"
-          fi
-
-          # Run security tests (critical validation)
-          echo "Running security tests..."
-          python3 tests/test_security.py || { echo "❌ Security smoke test failed"; exit 1; }
-
-          # Run architecture tests (zero violations check)
-          echo "Running architecture tests..."
-          pytest tests/test_architecture.py -xvs || { echo "❌ Architecture smoke test failed"; exit 1; }
-
-          echo "✅ All smoke tests passed"
+          echo "✅ Package installation verified"
 
           # Cleanup
           deactivate
