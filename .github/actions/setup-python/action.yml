@@ -1,0 +1,31 @@
+name: 'Setup Python and Dependencies'
+description: 'Set up Python environment and install package dependencies'
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.9'
+  install-extras:
+    description: 'Extras to install (e.g., "test", "dev")'
+    required: false
+    default: 'test'
+  use-cache:
+    description: 'Whether to use pip caching'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: ${{ inputs.use-cache == 'true' && 'pip' || '' }}
+
+    - name: Install package and dependencies
+      shell: bash
+      run: |
+        pip install --upgrade pip
+        pip install -e .[${{ inputs.install-extras }}]
