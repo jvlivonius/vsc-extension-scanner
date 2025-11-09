@@ -1,10 +1,53 @@
 # Security Guide
 
+**Purpose:** Security standards, requirements, and implementation patterns
+**Document Type:** Timeless Reference
+**Applies To:** All versions
+**Target Audience:** Developers, Security Engineers
+
+**Security Philosophy:** Defense in depth with fail-fast validation and minimal attack surface.
+
+---
+
 ## Overview
 
 This document establishes security standards, requirements, and best practices for the VS Code Extension Security Scanner. As a security tool, this project must maintain the highest security standards to protect users and maintain trust.
 
-**Security Philosophy:** Defense in depth with fail-fast validation and minimal attack surface.
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Current Security Status](#current-security-status)
+- [Security Architecture](#security-architecture)
+  - [Defense Layers](#defense-layers)
+  - [Security Principles](#security-principles)
+- [Security Requirements](#security-requirements)
+  - [1. Path Validation (CRITICAL)](#1-path-validation-critical)
+  - [2. Input Validation (HIGH)](#2-input-validation-high)
+  - [3. Access Control (CRITICAL)](#3-access-control-critical)
+  - [4. Error Handling (HIGH)](#4-error-handling-high)
+  - [5. Network Security (MEDIUM)](#5-network-security-medium)
+  - [6. Data Protection](#6-data-protection)
+  - [7. Concurrency Security](#7-concurrency-security-v350)
+  - [8. Retry Security](#8-retry-security)
+  - [9. Bandit Suppression Security](#9-bandit-suppression-security)
+- [Threat Model](#threat-model)
+  - [Attack Vectors](#attack-vectors)
+  - [Trust Boundaries](#trust-boundaries)
+  - [Out of Scope Threats](#out-of-scope-threats)
+- [Security Testing](#security-testing)
+  - [Test Categories](#test-categories)
+  - [Running Security Tests](#running-security-tests)
+  - [Continuous Testing](#continuous-testing)
+- [Security Compliance](#security-compliance)
+  - [CWE Coverage](#cwe-coverage)
+  - [OWASP Top 10 (2021)](#owasp-top-10-2021)
+- [Known Security Limitations](#known-security-limitations)
+- [Security Development Workflow](#security-development-workflow)
+- [Security Resources](#security-resources)
+- [Reporting Security Issues](#reporting-security-issues)
+- [Security Changelog](#security-changelog)
 
 ---
 
@@ -22,7 +65,7 @@ The codebase has undergone comprehensive security review and remediation (v3.5.1
 
 **Security Test Coverage:** Comprehensive suite with 161+ tests passing, including dedicated security regression tests
 
-See [archive/reviews/security-analysis.md](../archive/reviews/security-analysis.md) for historical vulnerability details.
+See [archive/reviews/v2.1-security-analysis.md](../archive/reviews/v2.1-security-analysis.md) for historical vulnerability details.
 
 ---
 
@@ -727,7 +770,7 @@ Security tests SHOULD be run:
 
 **Implementation:** See Section 6: Data Protection - Cache Integrity Checking
 
-**Reference:** [archive/reviews/security-analysis.md](../archive/reviews/security-analysis.md) #6
+**Reference:** [archive/reviews/v2.1-security-analysis.md](../archive/reviews/v2.1-security-analysis.md) #6
 
 ---
 
@@ -780,8 +823,8 @@ Security reviewers MUST verify:
 - **[guides/ARCHITECTURE.md](ARCHITECTURE.md)** - Security design principles
 - **[guides/ERROR_HANDLING.md](ERROR_HANDLING.md)** - Error sanitization patterns
 - **[guides/TESTING.md](TESTING.md)** - Security testing strategies
-- **[archive/reviews/security-analysis.md](../archive/reviews/security-analysis.md)** - Historical security audit
-- **[archive/reviews/security-fixes.md](../archive/reviews/security-fixes.md)** - Applied security fixes
+- **[archive/reviews/v2.1-security-analysis.md](../archive/reviews/v2.1-security-analysis.md)** - Historical security audit (v2.1)
+- **[archive/reviews/v2.1-security-fixes.md](../archive/reviews/v2.1-security-fixes.md)** - Applied security fixes (v2.1)
 
 ### External Standards
 
@@ -820,21 +863,7 @@ Instead:
 
 ---
 
-## Security Changelog
-
-| Date | Change | Impact |
-|------|--------|--------|
-| 2025-10-22 | Initial security audit completed | 15 vulnerabilities identified |
-| 2025-10-22 | Path traversal fixes applied | 3 CRITICAL issues fixed |
-| 2025-10-22 | Resource exhaustion fixes applied | 2 HIGH issues fixed |
-| 2025-10-23 | Error sanitization refactoring | 1 HIGH issue fixed |
-| 2025-10-24 | Cross-platform path security | Windows compatibility added |
-| 2025-10-28 | HMAC cache integrity implemented (v3.5.1) | CWE-345 fixed, OWASP A08 resolved |
-| 2025-10-28 | Path validation enhanced (v3.5.1) | URL encoding + shell expansion detection |
-| 2025-10-28 | String sanitization hardening (v3.5.1) | ANSI escape removal, control char filtering |
-| 2025-10-28 | Comprehensive security test suite (v3.5.1) | 161+ tests including regression tests |
-
-**Current Status:** 93% vulnerability reduction (15 → 1 remaining), v3.5.1 security hardening complete
+**Current Status:** See [STATUS.md](../project/STATUS.md) for current security metrics and vulnerability status
 
 ---
 

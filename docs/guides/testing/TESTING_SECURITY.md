@@ -87,6 +87,8 @@ Prevent **CWE-22: Path Traversal** attacks by validating all file paths before u
 
 **Test File:** `tests/test_path_validation.py` (24 tests)
 
+**Requirements:** See [SECURITY.md - Path Validation](../SECURITY.md#1-path-validation-critical) for complete validation rules, protected paths, and restricted directories
+
 ### Test Examples
 
 #### Test 1: Basic Path Traversal Detection
@@ -150,19 +152,11 @@ def test_system_directories_blocked():
             validate_path(sysdir, path_type="output")
 ```
 
-### Path Validation Coverage
+### Test Coverage
 
-**Attack Vectors Tested:**
-- Classic traversal: `../../etc/passwd`
-- Windows traversal: `..\\..\\Windows`
-- URL-encoded: `%2e%2e%2f`
-- Double-encoded: `%252e%252e%252f`
-- Mixed case encoding: `%2E%2e%2F`
-- Shell expansion: `~/../.ssh`
-- System directories: `/etc`, `/sys`, `/proc`, `C:\Windows\System32`
-- Null bytes: `file\x00.txt`
+**Attack Vectors:** Tests cover all validation rules from [SECURITY.md](../SECURITY.md#1-path-validation-critical) including path traversal (classic, URL-encoded, double-encoded), shell expansion, system directory access, and null byte injection.
 
-**Coverage Result:** 95%+ of `validate_path()` function
+**Coverage Result:** 95%+ of `validate_path()` function (24 tests)
 
 ---
 
@@ -175,6 +169,8 @@ Prevent **injection attacks** (CWE-79, CWE-93, CWE-209) by sanitizing all user-f
 **Function Under Test:** `vscode_scanner.utils.sanitize_string(s, context, max_length)`
 
 **Test File:** `tests/test_string_sanitization.py` (22 tests)
+
+**Requirements:** See [SECURITY.md - Error Handling](../SECURITY.md#4-error-handling-high) for sanitization requirements and implementation patterns
 
 ### Test Examples
 
@@ -233,23 +229,11 @@ def test_control_characters_removed():
     assert "Normaltext" in result or "Normal text" in result
 ```
 
-### String Sanitization Coverage
+### Test Coverage
 
-**Attack Vectors Tested:**
-- ANSI escape sequences: `\x1b[31m`
-- Terminal control: Clear screen, cursor movement
-- Control characters: `\x00`, `\x01`, `\x1f`
-- Log injection: Fake log entries with `\n`
-- Path disclosure: Sensitive file paths in errors
-- Carriage return attacks: `\r` overwrites
-- Null byte attacks: `\x00` filename truncation
+**Attack Vectors:** Tests cover ANSI escape sequences, terminal control characters, log injection, path disclosure in error messages, and null byte attacks across all contexts (output, log, error).
 
-**Contexts Tested:**
-- `output` - User-facing terminal output
-- `log` - Log file entries
-- `error` - Error messages (most restrictive)
-
-**Coverage Result:** 90%+ of `sanitize_string()` function
+**Coverage Result:** 90%+ of `sanitize_string()` function (22 tests)
 
 ---
 

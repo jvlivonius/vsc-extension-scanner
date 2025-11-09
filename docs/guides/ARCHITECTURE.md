@@ -1,9 +1,9 @@
-# Architecture Documentation
+# Architecture Guide
 
+**Purpose:** System architecture, design principles, and module responsibilities
 **Document Type:** Timeless Reference
-**Applies To:** All 3.x versions
-**Major Revision Trigger:** Layer count changes, module organization refactors, or architectural pattern shifts
-**See:** [CHANGELOG.md](../../CHANGELOG.md) for version-specific changes
+**Applies To:** All versions
+**Target Audience:** Developers, Architects
 
 ---
 
@@ -29,13 +29,12 @@ VS Code Extension Security Scanner uses a **Simple Layered Architecture** design
 
 ### Size & Complexity
 
-**Current Metrics:** Run `cloc vscode_scanner/ --by-file` for current line counts and `ls vscode_scanner/*.py | wc -l` for module count
-
-**Baseline (v3.7.x):**
-- ~10,000 lines of Python code
-- 20 modules organized in flat structure (Phase 2.1-2.2: Added parallel_executor, scan_orchestrator, scan_helpers, output_writer, summary_formatter, filter_help_generator)
-- 3 architectural layers (Presentation, Application, Infrastructure)
-- No sub-packages (flat structure sufficient for this size)
+**Current Metrics:**
+- **Line Count:** Run `cloc vscode_scanner/ --by-file` for current LOC
+- **Module Count:** Run `ls vscode_scanner/*.py | wc -l` for module count
+- **Architecture:** 3 layers (Presentation, Application, Infrastructure)
+- **Organization:** Flat structure (no sub-packages, sufficient for current size)
+- **Version:** See `vscode_scanner/_version.py` for current version
 
 ### Architectural Style
 
@@ -350,85 +349,7 @@ vscan = "vscode_scanner.vscan:cli_main"
 **Lines of Code:** Run `wc -l vscode_scanner/html_report_generator.py` for current count (baseline: ~2,300)
 **Dependencies:** utils
 
-**Self-Contained HTML Design (v2.2+):**
-
-**Zero External Dependencies:**
-- All CSS embedded in `<style>` tags
-- All JavaScript embedded in `<script>` tags
-- No CDN dependencies (Chart.js, Bootstrap, etc.)
-- Works offline and in any environment
-- Single HTML file contains complete report
-
-**Embedded CSS Strategy:**
-```python
-def _generate_styles(self) -> str:
-    """Generate embedded CSS (no external stylesheets)."""
-    # ~300 lines of CSS embedded directly
-    # Includes: Layout, tables, charts, print media queries
-    # Works in all modern browsers
-```
-
-**Embedded JavaScript Strategy:**
-```python
-def _generate_scripts(self) -> str:
-    """Generate embedded JavaScript (no external libraries)."""
-    # ~200 lines of vanilla JavaScript
-    # Functions: Table sorting, filtering, row expansion, search
-    # No jQuery, React, or other frameworks
-```
-
-**Data Visualizations (Pure CSS/SVG):**
-- **Pie Charts**: SVG `<path>` elements (no Chart.js)
-- **Bar Charts**: Colored `<div>` elements with CSS widths
-- **Security Gauges**: Horizontal progress bars with color gradients
-- Lightweight and fast (no library overhead)
-
-**Performance Optimizations:**
-
-**1. Collapsible Dependency Lists:**
-```python
-# Show first 10 dependencies by default
-# "Show X more..." button to expand
-# Reduces initial DOM size for large reports
-```
-
-**2. Lazy Rendering:**
-```python
-# Detail sections use display: none when collapsed
-# Only visible when user expands row
-# Minimizes initial rendering time
-```
-
-**3. Efficient DOM:**
-```python
-# Minimize DOM nodes
-# Simple CSS selectors (no complex queries)
-# Reuse elements where possible
-```
-
-**Print Optimization:**
-```css
-@media print {
-  /* Auto-expand all rows for complete report */
-  .extension-details { display: block !important; }
-
-  /* Remove interactive controls */
-  .controls, .expand-button { display: none; }
-
-  /* Prevent page breaks in extension details */
-  .extension-row { page-break-inside: avoid; }
-
-  /* Black & white friendly colors */
-  .risk-high { border: 2px solid #000; }
-}
-```
-
-**Key Design Decisions:**
-- Self-contained design enables easy sharing and archival
-- No external dependencies reduces security risks (no CDN compromise)
-- Works offline (air-gapped environments, security audits)
-- Print-friendly format for documentation and compliance
-- Performance optimized for reports with 100+ extensions
+**Design:** Self-contained HTML with embedded CSS/JavaScript (no external dependencies). See **[HTML_REPORTS.md](HTML_REPORTS.md)** for complete architecture, design decisions, and performance optimizations
 
 ### parallel_executor.py (Application)
 
@@ -1158,20 +1079,13 @@ The architecture intentionally **avoids** these patterns to maintain simplicity:
 
 ## Architecture Evolution
 
-### Version History
+**Note:** See [CHANGELOG.md](../../CHANGELOG.md) and release notes in [docs/archive/summaries/](../archive/summaries/) for complete version history.
 
-**v3.1.0 (Current)**
-- Formalized Simple Layered Architecture
-- Made Rich/Typer required dependencies
-- Added configuration file support
-- Improved error handling consistency
-
-**v3.0.0**
-- Introduced Rich terminal formatting
-- Added Typer CLI framework
-- Organized subcommands
-
-**v2.2.0**
+**Key Milestones:**
+- **v3.7+**: Modular extraction (parallel_executor, scan_orchestrator, scan_helpers, output_writer, summary_formatter, filter_help_generator)
+- **v3.1**: Formalized 3-layer architecture, configuration support
+- **v3.0**: Rich/Typer framework adoption
+- **v2.2**
 - Added HTML report generation
 - Implemented retry mechanism
 

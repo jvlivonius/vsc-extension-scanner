@@ -1,10 +1,9 @@
 # Testing Guide
 
+**Purpose:** Testing philosophy, patterns, and how to write/run tests
 **Document Type:** Timeless Reference
-**Applies To:** All 3.x versions
-**Major Revision Trigger:** Test framework changes, testing philosophy shifts, or major tool updates
-**Target Audience:** Contributors, Developers, QA Engineers
-**See:** [CHANGELOG.md](../../CHANGELOG.md) for version-specific test additions
+**Applies To:** All versions
+**Target Audience:** Developers, QA Engineers, Contributors
 
 ---
 
@@ -96,7 +95,7 @@ python3 tests/test_security.py
 python3 tests/test_security_regression.py
 python3 tests/test_sqlite_security.py
 
-# With automated tools (Phase 1)
+# With automated tools
 pre-commit run --all-files  # Runs bandit, security tests
 bandit -r vscode_scanner/ -ll
 safety check
@@ -190,11 +189,11 @@ tests/
     └── canonical_mock.py              # Canonical mock implementation
 ```
 
-**Current Test Metrics (v3.5.3):**
-- **Total Tests:** 604 tests across 35 test files
-- **Overall Coverage:** 52.37% (target: 70%)
-- **Security Coverage:** 95%+ (utils.py, cache_manager.py)
-- **Property Tests:** 20 tests generating 1,250+ scenarios
+**Current Test Metrics:**
+- **Total Tests:** Run `pytest --collect-only -q tests/` for current count
+- **Overall Coverage:** See [STATUS.md](../project/STATUS.md) for current metrics
+- **Security Coverage:** 95%+ maintained (utils.py, cache_manager.py)
+- **Property Tests:** Hypothesis generates 1,000+ test scenarios per property test
 
 ### Test File Naming
 
@@ -215,7 +214,7 @@ tests/
 **Purpose:** Test multiple components working together
 **Speed:** Moderate (1-5s each)
 **Mocking:** Real module interactions, mock external services
-**See:** [TESTING_INTEGRATION.md](TESTING_INTEGRATION.md)
+**See:** [TESTING_INTEGRATION.md](testing/TESTING_INTEGRATION.md)
 
 ### 3. Architecture Tests
 **Purpose:** Verify 3-layer architecture boundaries
@@ -225,13 +224,13 @@ tests/
 ### 4. Security Tests
 **Purpose:** Verify security controls and prevent vulnerabilities
 **Coverage:** 95%+ of security modules
-**See:** [TESTING_SECURITY.md](TESTING_SECURITY.md) for comprehensive security testing guide
+**See:** [TESTING_SECURITY.md](testing/TESTING_SECURITY.md) for comprehensive security testing guide
 
 ### 5. Property-Based Tests
 **Purpose:** Generate 100-1000+ test scenarios automatically
 **Framework:** Hypothesis
 **Coverage:** 20 tests generating 1,250+ scenarios
-**See:** [TESTING_PROPERTY_BASED.md](TESTING_PROPERTY_BASED.md) for complete guide
+**See:** [TESTING_PROPERTY_BASED.md](testing/TESTING_PROPERTY_BASED.md) for complete guide
 
 ### 6. Performance Tests
 **Purpose:** Verify performance characteristics
@@ -491,10 +490,6 @@ The following specialized guides provide comprehensive coverage of specific test
 ### Specialized Testing Areas
 
 - **[TESTING_MOCKING.md](testing/TESTING_MOCKING.md)** - Mocking guidelines (when to mock, mock validation, canonical mocks)
-- **[TESTING_CLI.md](testing/TESTING_CLI.md)** - CLI testing (Typer framework, terminal compatibility, help text)
-- **[TESTING_HTML_REPORTS.md](testing/TESTING_HTML_REPORTS.md)** - HTML report testing (structure, charts, interactivity, browser compatibility)
-- **[TESTING_RETRY.md](testing/TESTING_RETRY.md)** - Retry mechanism testing (exponential backoff, error detection, Retry-After headers)
-- **[TESTING_PARALLEL.md](testing/TESTING_PARALLEL.md)** - Parallel scanning tests (thread safety, performance, worker isolation)
 - **[PERFORMANCE.md](PERFORMANCE.md)** § 2 - Performance tests (cache speedup, memory usage, scalability)
 
 ### Supporting Documentation
@@ -596,7 +591,7 @@ if [ $? -ne 0 ]; then
 fi
 ```
 
-**Phase 1 Security Tools (Automated):**
+**Automated Security Tools:**
 ```bash
 # Install pre-commit hooks (includes security tools)
 pip install -e .[dev]
@@ -621,7 +616,7 @@ pip-audit
 - **Integration Tests:** Cover major workflows
 - **Property Tests:** Security-critical functions
 
-**See:** [TESTING_COVERAGE.md](TESTING_COVERAGE.md) for detailed coverage strategy
+**See:** [TESTING_COVERAGE.md](testing/TESTING_COVERAGE.md) for detailed coverage strategy
 
 ---
 
@@ -630,12 +625,11 @@ pip-audit
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture (3-layer model)
 - **[SECURITY.md](SECURITY.md)** - Security requirements and threat model
 - **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Error handling patterns
-- **[../project/v3.5.3-roadmap.md](../project/v3.5.3-roadmap.md)** - Testing Excellence roadmap (52% → 70% coverage)
+- **[../project/STATUS.md](../project/STATUS.md)** - Current test metrics and coverage goals
 - **[../contributing/TESTING_CHECKLIST.md](../contributing/TESTING_CHECKLIST.md)** - Manual testing checklist
 
 ---
 
 **Document Version:** 2.0
-**Status:** Current
-**Last Updated:** 2025-10-30 (v3.5.3 Testing Excellence - Phase 4)
-**Maintained By:** Development Team
+**Last Updated:** 2025-11-09
+**Status:** Complete ✅

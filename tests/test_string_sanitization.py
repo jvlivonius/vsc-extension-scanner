@@ -179,16 +179,16 @@ class TestStringSanitization:
         long_text = "A" * 1000
         result = sanitize_string(long_text, max_length=100)
 
-        assert len(result) == 103  # 100 + "..."
+        assert len(result) == 100  # Exactly max_length
         assert result.endswith("...")
-        assert result[:100] == "A" * 100
+        assert result[:97] == "A" * 97  # 97 chars + "..." = 100
 
     def test_custom_max_length(self):
         """Test custom max_length parameter."""
         text = "0123456789" * 10  # 100 characters
         result = sanitize_string(text, max_length=50)
 
-        assert len(result) == 53  # 50 + "..."
+        assert len(result) == 50  # Exactly max_length
         assert result.endswith("...")
 
     def test_terminal_injection_attack(self):

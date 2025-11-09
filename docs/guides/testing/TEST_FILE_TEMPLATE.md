@@ -1,10 +1,10 @@
 # Test File Template
 
+**Purpose:** Standard template for creating new test files with consistent patterns
 **Document Type:** Timeless Reference
-**Applies To:** All 3.x versions
+**Applies To:** All versions
 **Major Revision Trigger:** Test framework changes or pattern updates
 **Target Audience:** Contributors, Developers
-**Purpose:** Standard template for creating new test files with consistent patterns
 
 ---
 
@@ -708,7 +708,7 @@ if __name__ == "__main__":
 
 ## References
 
-- [TESTING.md](../TESTING.md) - Complete testing guide
-- [COVERAGE_STRATEGY.md](COVERAGE_STRATEGY.md) - Coverage strategy and targets
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and module responsibilities
-- [SECURITY.md](SECURITY.md) - Security requirements and validation patterns
+- **[TESTING.md](../TESTING.md)** - Complete testing guide
+- **[TESTING_COVERAGE.md](TESTING_COVERAGE.md)** - Coverage goals and measurement
+- **[../ARCHITECTURE.md](../ARCHITECTURE.md)** - System architecture and module responsibilities
+- **[../SECURITY.md](../SECURITY.md)** - Security requirements and validation patterns

@@ -1,7 +1,7 @@
 # Version Management
 
 **Purpose:** Simplified version management with automated documentation updates
-
+**Document Type:** Reference Guide
 **Last Updated:** 2025-11-01
 
 ---
@@ -268,14 +268,11 @@ See [CHANGELOG.md](../../CHANGELOG.md) for complete release history.
 
 ---
 
-## Related Documentation
+## Related Documents
 
-- [RELEASE_PROCESS.md](RELEASE_PROCESS.md) - Complete 11-step release workflow
-- [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - Printable release checklist
+- [RELEASE_PROCESS.md](RELEASE_PROCESS.md) - Complete release workflow using version management
+- [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - Printable release checklist with version bump steps
+- [DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CONVENTIONS.md) - Documentation update patterns
 - [CHANGELOG.md](../../CHANGELOG.md) - Complete release history
-- [scripts/bump_version.py](../../scripts/bump_version.py) - Version management script
+- [scripts/bump_version.py](../../scripts/bump_version.py) - Version management automation script
 - [vscode_scanner/_version.py](../../vscode_scanner/_version.py) - Single source of truth
-
----
-
-**Maintained By:** Project contributors

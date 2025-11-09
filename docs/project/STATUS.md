@@ -497,18 +497,15 @@ Systematically identified natural unit test coverage limits at framework integra
 
 **Phase 4.5: Documentation Restructuring** ✅
 - **TESTING.md:** Reduced from 2800 → 486 lines (83% reduction)
-- **Created docs/guides/testing/ sub-folder with 11 files:**
+- **Created docs/guides/testing/ sub-folder with 7 core files:**
   - testing/README.md - Navigation index for testing documentation
   - testing/TESTING_SECURITY.md (21K) - Security testing comprehensive guide
   - testing/TESTING_COVERAGE.md (7.5K) - Coverage strategy and goals
   - testing/TESTING_INTEGRATION.md (8.8K) - Integration testing patterns
   - testing/TESTING_MOCKING.md (10K) - Mocking guidelines with canonical mocks
   - testing/TESTING_PROPERTY_BASED.md (4.5K) - Hypothesis property testing
-  - testing/TESTING_CLI.md (2K) - CLI testing guide
   - PERFORMANCE.md § 2 (2K) - Performance testing (consolidated)
-  - testing/TESTING_PARALLEL.md (1.3K) - Parallel scanning tests
-  - testing/TESTING_RETRY.md (1.8K) - Retry mechanism tests
-  - testing/TESTING_HTML_REPORTS.md (1.1K) - HTML report testing
+- **Note:** Stub files (CLI, Parallel, Retry, HTML Reports testing) removed in v5.0.2+ for maintainability
 
 **Phase 4.6: Test Infrastructure Fix** ✅
 - Fixed CliRunner stderr capture issues (7 tests)

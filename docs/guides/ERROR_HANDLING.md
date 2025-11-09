@@ -1,41 +1,12 @@
-# Error Handling Strategy
+# Error Handling Guide
 
+**Purpose:** How to handle errors, display messages, and implement error patterns
 **Document Type:** Timeless Reference
-**Applies To:** All 3.x versions
-**Major Revision Trigger:** Exit code system changes, error handling philosophy shifts, or ERROR_HELP system redesign
-**Formalization:** Phase 2.6 (v3.2) - See [CHANGELOG.md](../../CHANGELOG.md) for history
+**Applies To:** All versions
+**Target Audience:** Developers
 
 ---
 
-## Summary of Formalization (Phase 2.6)
-
-This document was comprehensively updated in Phase 2.6 to formalize the error handling patterns already in use throughout the codebase. Key additions include:
-
-**1. Display Function Selection Guide (NEW)**
-   - Clear rules for when to use `display_error()`, `display_warning()`, and `log()`
-   - Real-world examples from the codebase
-   - Decision tree for error handling choices
-   - Best practices and anti-patterns
-
-**2. Enhanced Exit Code Documentation**
-   - Detailed rules for exit codes 0, 1, and 2
-   - CI/CD integration examples (GitHub Actions, shell scripts)
-   - Best practices for exit code usage
-   - Clear examples of when to use each code
-
-**3. Corrected ERROR_HELP Structure**
-   - Updated documentation to match actual implementation
-   - Structure uses dict with "message" and "suggestions" keys
-   - Consistent examples throughout
-
-**4. Centralized Error Display Pattern**
-   - All user-facing errors route through `display.py`
-   - No scattered `print(..., file=sys.stderr)` calls
-   - Consistent formatting across the application
-
-This formalization ensures all contributors understand the established patterns and maintains consistency across the codebase.
-
----
 
 ## Table of Contents
 
@@ -82,7 +53,7 @@ This formalization ensures all contributors understand the established patterns 
 
 ## Error Handling Architecture
 
-### Current Architecture (v3.1.0)
+### Architecture Overview
 
 ```
 Exception Occurs
@@ -1054,217 +1025,39 @@ def set_value(self, key: str, value: str):
 
 ### Future: ErrorHandler Class
 
-**Proposed Implementation:**
+**Concept:** Centralize error handling with `ErrorHandler` class and `ErrorContext` dataclass for better testability and consistency.
 
-```python
-# New file: vscode_scanner/errors.py
-
-from typing import Dict, List, Optional
-from dataclasses import dataclass
-
-@dataclass
-class ErrorContext:
-    """Complete error context for display."""
-    error_type: str
-    message: str
-    suggestions: List[str]
-    severity: str  # 'error', 'warning', 'info'
-    exit_code: int  # 0, 1, or 2
-
-class ErrorHandler:
-    """
-    Centralized error handling with contextual help.
-
-    Benefits:
-    - Single source of truth for error logic
-    - Testable error classification
-    - Consistent error UX
-    - Easy to extend with new error types
-    """
-
-    def __init__(self, error_help: Dict[str, List[str]]):
-        self.error_help = error_help
-
-    def handle_error(
-        self,
-        error: Exception,
-        context: str = ""
-    ) -> ErrorContext:
-        """Convert exception to error context with suggestions."""
-        error_type = self._classify_error(error)
-        sanitized_message = self._sanitize_message(str(error))
-        suggestions = self.error_help.get(error_type, self.error_help['generic'])
-        severity = self._get_severity(error_type)
-        exit_code = self._get_exit_code(error_type)
-
-        return ErrorContext(
-            error_type=error_type,
-            message=sanitized_message,
-            suggestions=suggestions,
-            severity=severity,
-            exit_code=exit_code
-        )
-
-    def _classify_error(self, error: Exception) -> str:
-        """Classify error type for help lookup."""
-        # Classification logic from utils.classify_error()
-        # ...
-
-    def _sanitize_message(self, message: str) -> str:
-        """Remove sensitive information."""
-        # Sanitization logic from utils.sanitize_error_message()
-        # ...
-
-    def _get_severity(self, error_type: str) -> str:
-        """Map error type to severity."""
-        severity_map = {
-            'rate_limit': 'warning',
-            'timeout': 'warning',
-            'not_found': 'info',
-            'server_error': 'error',
-            'connection_error': 'error',
-            'invalid_json': 'error',
-            'generic': 'error',
-        }
-        return severity_map.get(error_type, 'error')
-
-    def _get_exit_code(self, error_type: str) -> int:
-        """Determine appropriate exit code."""
-        # 'not_found' might be 1 (found issue)
-        # Others are 2 (scan failed)
-        return 1 if error_type == 'not_found' else 2
-```
-
-**Usage:**
-```python
-# In any module
-from vscode_scanner.errors import ErrorHandler, ErrorContext
-from vscode_scanner.display import display_error
-from vscode_scanner.utils import ERROR_HELP
-
-error_handler = ErrorHandler(ERROR_HELP)
-
-try:
-    # Risky operation
-    scan_extension()
-except Exception as e:
-    ctx = error_handler.handle_error(e, context="scan")
-    display_error(ctx.message, suggestions=ctx.suggestions)
-    raise typer.Exit(ctx.exit_code)
-```
-
-**Benefits:**
-- Centralized error logic (testable!)
-- Automatic severity classification
-- Consistent exit codes
+**Key Benefits:**
+- Single source of truth for error logic
+- Automatic error classification and severity mapping
+- Consistent exit codes and error UX
 - Easy to mock for testing
+
+**Status:** See project roadmap for implementation timeline
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests
+**Test Files:**
+- `tests/test_error_handling.py` - Error classification, sanitization, EXIT codes
+- `tests/test_display.py` - Error display consistency
+- `tests/test_security.py` - Error message sanitization (CWE-209)
 
-**Test ERROR_HELP Coverage:**
-```python
-def test_error_help_completeness():
-    """Verify all error types have helpful suggestions."""
-    required_types = [
-        'rate_limit',
-        'timeout',
-        'not_found',
-        'server_error',
-        'connection_error',
-        'invalid_json',
-        'generic',
-    ]
+**Key Test Areas:**
+1. **ERROR_HELP Coverage** - All error types have 2+ helpful suggestions
+2. **Error Classification** - Correct mapping of exceptions to error types (rate_limit, timeout, server_error, etc.)
+3. **Error Sanitization** - File paths and API keys removed from messages (see SECURITY.md)
+4. **Exit Codes** - Correct codes for success (0), vulnerabilities found (1), failure (2)
+5. **Display Consistency** - All errors route through `display_error()`, no direct print() calls
 
-    for error_type in required_types:
-        assert error_type in ERROR_HELP
-        assert len(ERROR_HELP[error_type]) >= 2  # At least 2 suggestions
-```
+**Manual Testing Checklist:**
+- Trigger transient errors (rate limit, network disconnect, server 500)
+- Test permanent errors (invalid extension ID, auth failure)
+- Verify error messages helpful and suggestions actionable
+- Confirm no sensitive info in error output
 
-**Test Error Classification:**
-```python
-def test_classify_error():
-    """Verify errors are classified correctly."""
-    from vscode_scanner.utils import classify_error
-
-    # Rate limit
-    error = Exception("HTTP Error 429: Rate limit exceeded")
-    assert classify_error(error) == 'rate_limit'
-
-    # Timeout
-    error = TimeoutError("Request timed out after 30s")
-    assert classify_error(error) == 'timeout'
-
-    # Generic
-    error = Exception("Something weird happened")
-    assert classify_error(error) == 'generic'
-```
-
-**Test Error Sanitization:**
-```python
-def test_sanitize_error_message():
-    """Verify sensitive info is removed from errors."""
-    from vscode_scanner.utils import sanitize_error_message
-
-    # File paths removed
-    error = "File not found: /Users/john/secret/api_keys.txt"
-    sanitized = sanitize_error_message(error)
-    assert "/Users/john" not in sanitized
-    assert "api_keys.txt" not in sanitized
-
-    # API keys redacted
-    error = "Auth failed: key=sk_live_abc123def456"
-    sanitized = sanitize_error_message(error)
-    assert "sk_live_abc123def456" not in sanitized
-    assert "<redacted>" in sanitized
-```
-
-### Integration Tests
-
-**Test Error Display:**
-```python
-def test_error_display_consistency():
-    """All modules use display_error() for user-facing errors."""
-    # Static analysis test - check for:
-    # - No print(..., file=sys.stderr) for user messages
-    # - All errors route through display.display_error()
-    # - No direct console.print() for errors in non-display modules
-```
-
-**Test Exit Codes:**
-```python
-def test_error_exit_codes():
-    """Verify correct exit codes for error scenarios."""
-    # Success, no vulns → 0
-    result = runner.invoke(app, ["scan"])
-    assert result.exit_code == 0
-
-    # Success, vulns found → 1
-    # (mock scan with vulnerabilities)
-    result = runner.invoke(app, ["scan"])
-    assert result.exit_code == 1
-
-    # Failure (e.g., network error) → 2
-    # (mock network failure)
-    result = runner.invoke(app, ["scan"])
-    assert result.exit_code == 2
-```
-
-### Manual Testing
-
-**Error Scenario Checklist:**
-- [ ] Trigger rate limit (run many scans quickly)
-- [ ] Disconnect network (test connection errors)
-- [ ] Use invalid extension ID (test not found)
-- [ ] Mock vscan.dev 500 error (test server errors)
-- [ ] Test with empty cache (test cache errors)
-- [ ] Test with invalid config file (test config errors)
-- [ ] Verify error messages are helpful
-- [ ] Verify suggestions are actionable
-- [ ] Verify no sensitive info in errors
+See [TESTING.md](TESTING.md) and [TESTING_SECURITY.md](testing/TESTING_SECURITY.md) for complete testing patterns
 
 ---
 
@@ -1301,7 +1094,6 @@ def test_error_exit_codes():
 
 ---
 
-**Document Version:** 1.1
-**Status:** Current (v3.1.0) + Planned Enhancements
-**Last Updated:** 2025-10-30 (Agentic coding optimization - explicit constant references)
-**Next Review:** When ErrorHandler class is implemented (Phase 2)
+**Document Type:** Timeless Reference
+**Last Updated:** 2025-11-09
+**See Also:** [ERROR_CODES.md](ERROR_CODES.md) - Complete error code reference

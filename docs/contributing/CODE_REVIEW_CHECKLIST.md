@@ -1,8 +1,9 @@
-# CODE_REVIEW_CHECKLIST.md
+# Code Review Checklist
 
 **Purpose:** Security-focused code review checklist for pull requests
-**Document Type:** Process Guide
-**Audience:** Code Reviewers, Contributors
+**Document Type:** Checklist
+**Last Updated:** 2025-11-03
+**Version:** 1.0
 
 ---
 
@@ -185,9 +186,3 @@ If suppression is for any of these, **security team review required:**
 - **[testing/TESTING_SECURITY.md](../guides/testing/TESTING_SECURITY.md)** - Security testing and suppression validation
 - **[ARCHITECTURE.md](../guides/ARCHITECTURE.md)** - Architecture principles and layer rules
 - **[GIT_WORKFLOW.md](GIT_WORKFLOW.md)** - PR process and commit standards
-
----
-
-**Version:** 1.0
-**Last Updated:** 2025-11-03
-**Maintained By:** Security Team
