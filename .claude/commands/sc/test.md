@@ -29,16 +29,16 @@ personas: [qa-specialist]
 5. **Report**: Provide actionable recommendations and quality metrics
 
 Key behaviors:
-- Auto-detect test framework and configuration
+- Auto-detect test framework and configuration (pytest, hypothesis)
 - Generate comprehensive coverage reports with metrics
-- Activate Playwright MCP for e2e browser testing
+- Execute unit, integration, and property-based tests
 - Provide intelligent test failure analysis
 - Support continuous watch mode for development
 
 ## MCP Integration
-- **Playwright MCP**: Auto-activated for `--type e2e` browser testing
-- **QA Specialist Persona**: Activated for test analysis and quality assessment
-- **Enhanced Capabilities**: Cross-browser testing, visual validation, performance metrics
+- **Context7**: Auto-activated for test framework documentation (pytest, hypothesis patterns)
+- **quality-engineer agent**: Activated for test analysis and quality assessment
+- **Enhanced Capabilities**: Property-based testing, hypothesis strategies, coverage analysis
 
 ## Tool Coordination
 - **Bash**: Test runner execution and environment management
@@ -47,9 +47,9 @@ Key behaviors:
 - **Write**: Coverage reports and test summaries
 
 ## Key Patterns
-- **Test Discovery**: Pattern-based categorization → appropriate runner selection
+- **Test Discovery**: Pattern-based categorization → appropriate runner selection (pytest)
 - **Coverage Analysis**: Execution metrics → comprehensive coverage reporting
-- **E2E Testing**: Browser automation → cross-platform validation
+- **Property Testing**: Hypothesis strategies → systematic edge case discovery
 - **Watch Mode**: File monitoring → continuous test execution
 
 ## Examples
@@ -67,11 +67,11 @@ Key behaviors:
 # Unit tests for specific directory with detailed coverage metrics
 ```
 
-### Browser Testing
+### Property-Based Testing
 ```
-/sc:test --type e2e
-# Activates Playwright MCP for comprehensive browser testing
-# Cross-browser compatibility and visual validation
+/sc:test --type property
+# Executes hypothesis property-based tests for edge case discovery
+# Systematic testing with 1,000+ generated scenarios
 ```
 
 ### Development Watch Mode

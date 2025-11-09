@@ -1,8 +1,7 @@
 # Version Management
 
 **Purpose:** Simplified version management with automated documentation updates
-**Document Type:** Reference Guide
-**Last Updated:** 2025-11-01
+**Document Type:** Process Guide
 
 ---
 

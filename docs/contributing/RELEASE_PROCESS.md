@@ -2,8 +2,6 @@
 
 **Purpose:** Reproducible 3-phase release workflow with automation tools
 **Document Type:** Process Guide
-**Last Updated:** 2025-11-01
-**Version:** 2.1
 
 ---
 
@@ -1019,7 +1017,3 @@ Potential enhancements: Interactive release wizard, pre-release checklist valida
 - [DISTRIBUTION.md](../../DISTRIBUTION.md) - Distribution process
 
 ---
-
-**Process Version:** 2.1
-**Last Updated:** 2025-11-01
-**Changes:** Added automated GitHub Actions workflow for build and release (v2.0 → v2.1)

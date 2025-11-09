@@ -62,6 +62,4 @@ Domain-specific testing guides:
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-11-09
 **Total Test Suite:** Run `pytest --collect-only -q tests/` for count. See [STATUS.md](../../project/STATUS.md) for coverage.

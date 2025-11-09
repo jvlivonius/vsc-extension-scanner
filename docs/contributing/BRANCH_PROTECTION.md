@@ -1,9 +1,7 @@
 # Branch Protection Configuration
 
 **Purpose:** GitHub branch protection rules configuration and management
-**Document Type:** Reference Guide
-**Last Updated:** 2025-10-31
-**Version:** 1.1.0
+**Document Type:** Process Guide
 
 ---
 
@@ -568,6 +566,3 @@ gh api repos/:owner/:repo/branches/main/protection --method DELETE
 - [GitHub Status Checks](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks)
 
 ---
-
-**Last Updated:** 2025-10-31
-**Version:** 1.1.0

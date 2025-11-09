@@ -2,8 +2,6 @@
 
 **Purpose:** Branching strategy and git workflow for development
 **Document Type:** Process Guide
-**Last Updated:** 2025-11-01
-**Version:** 1.0.0
 
 ---
 
@@ -1171,6 +1169,3 @@ git revert HEAD
 - [../guides/TESTING.md](../guides/TESTING.md) - Testing requirements and patterns
 
 ---
-
-**Last Updated:** 2025-11-01
-**Version:** 1.0.0

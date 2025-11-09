@@ -19,8 +19,8 @@
 | Task Type | Best Tool | Alternative |
 |-----------|-----------|-------------|
 | Symbol operations | Serena MCP | Manual search + Edit |
-| Deep analysis | Sequential MCP | Native reasoning |
-| Multi-file edits | MultiEdit | Sequential Edits |
+| Deep analysis | sequential-thinking | Native reasoning |
+| Multi-file edits | Multiple parallel Edits | Sequential Edits |
 | Library docs | Context7 MCP | WebSearch |
 | Testing | pytest + hypothesis | Manual test writing |
 | Config files | Read + Edit | Bash commands |

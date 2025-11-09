@@ -2,8 +2,6 @@
 
 **Purpose:** Consistent naming, organization, and maintenance of project documentation
 **Document Type:** Reference Guide
-**Last Updated:** 2025-10-31
-**Version:** 2.0
 
 ---
 

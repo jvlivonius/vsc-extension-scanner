@@ -2,7 +2,6 @@
 
 **Purpose:** Comprehensive release checklist
 **Document Type:** Checklist
-**Last Updated:** 2025-11-09
 
 ---
 

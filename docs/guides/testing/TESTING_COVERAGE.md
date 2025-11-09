@@ -20,22 +20,22 @@
 
 ### Module-Specific Goals
 
-| Module | Priority | Target | Rationale |
-|--------|----------|--------|-----------|
-| utils.py | Critical | 95% | Path validation, string sanitization (security) |
-| cache_manager.py | Critical | 95% | HMAC validation, cache integrity (security) |
-| scanner.py | High | 85% | Core scanning workflow |
-| vscan_api.py | High | 85% | API client, network operations |
-| extension_discovery.py | High | 85% | Extension detection logic |
-| config_manager.py | Medium | 70% | Configuration management |
-| output_formatter.py | Medium | 70% | JSON/CSV export |
-| display.py | Medium | 70% | Terminal formatting |
-| types.py | Medium | 70% | Data structures |
-| constants.py | Low | 70% | Configuration constants |
-| cli.py | UI | 50% | CLI interface (complex UI) |
-| html_report_generator.py | UI | 50% | HTML report generation (complex UI) |
+**Coverage Targets by Priority:**
 
-**Current Metrics:** See [STATUS.md](../../project/STATUS.md) for current coverage by module
+| Priority | Target | Modules |
+|----------|--------|---------|
+| Critical (Security) | 95% | utils.py, cache_manager.py |
+| High (Core Logic) | 85% | scanner.py, vscan_api.py, extension_discovery.py |
+| Medium (Supporting) | 70% | config_manager.py, output_formatter.py, display.py, types.py, constants.py |
+| UI (Complex) | 50% | cli.py, html_report_generator.py |
+
+**Rationale:**
+- **95% (Security):** Path validation, string sanitization, HMAC validation are security-critical
+- **85% (Core):** Core scanning workflow, API client, extension detection are high-value logic
+- **70% (Supporting):** Configuration, formatting, data structures support core functionality
+- **50% (UI):** CLI and HTML generation have complex UI logic difficult to test comprehensively
+
+**Current Metrics:** See → [STATUS.md](../../project/STATUS.md) for current coverage by module
 
 ---
 
@@ -250,7 +250,3 @@ pytest tests/test_cache_manager.py --cov=vscode_scanner.cache_manager --cov-repo
 - **[../../project/STATUS.md](../../project/STATUS.md)** - Current coverage metrics
 
 ---
-
-**Document Version:** 2.0.0 (Streamlined as practical guide)
-**Last Updated:** 2025-11-09
-**Status:** Complete ✅

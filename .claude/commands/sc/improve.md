@@ -28,21 +28,21 @@ personas: [architect, performance, quality, security]
 5. **Document**: Generate improvement summary and recommendations for future work
 
 Key behaviors:
-- Multi-persona coordination (architect, performance, quality, security) based on improvement type
+- Multi-agent coordination (performance-engineer, quality-engineer, security-engineer) based on improvement type
 - Framework-specific optimization via Context7 integration for best practices
-- Systematic analysis via Sequential MCP for complex multi-component improvements
+- Systematic analysis via sequential-thinking for complex multi-component improvements
 - Safe refactoring with comprehensive validation and rollback capabilities
 
 ## MCP Integration
-- **Sequential MCP**: Auto-activated for complex multi-step improvement analysis and planning
-- **Context7 MCP**: Framework-specific best practices and optimization patterns
-- **Persona Coordination**: Architect (structure), Performance (speed), Quality (maintainability), Security (safety)
+- **sequential-thinking**: Auto-activated for complex multi-step improvement analysis and planning
+- **Context7**: Framework-specific best practices and optimization patterns
+- **Agent Coordination**: performance-engineer (speed), quality-engineer (maintainability), security-engineer (safety)
 
 ## Tool Coordination
 - **Read/Grep/Glob**: Code analysis and improvement opportunity identification
-- **Edit/MultiEdit**: Safe code modification and systematic refactoring
-- **TodoWrite**: Progress tracking for complex multi-file improvement operations
-- **Task**: Delegation for large-scale improvement workflows requiring systematic coordination
+- **Edit**: Safe code modification and systematic refactoring (use multiple parallel Edits for multi-file)
+- **Task Tracking**: Progress tracking for complex multi-file improvement operations
+- **Delegation**: For large-scale improvement workflows requiring systematic coordination
 
 ## Key Patterns
 - **Quality Improvement**: Code analysis → technical debt identification → refactoring application

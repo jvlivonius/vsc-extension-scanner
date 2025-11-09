@@ -270,7 +270,10 @@ tests/
 python3 scripts/run_tests.py                          # All groups (default)
 python3 scripts/run_tests.py --include unit,security  # Specific groups
 python3 scripts/run_tests.py --exclude real-api       # All except specified
+python3 scripts/run_tests.py --list-groups            # Show all available groups
 ```
+
+**Note:** Test groups are loaded dynamically from `pyproject.toml` § [tool.pytest.ini_options].markers. Use `--list-groups` to see current groups.
 
 | Group | Time | Description |
 |-------|------|-------------|
@@ -629,7 +632,3 @@ pip-audit
 - **[../contributing/TESTING_CHECKLIST.md](../contributing/TESTING_CHECKLIST.md)** - Manual testing checklist
 
 ---
-
-**Document Version:** 2.0
-**Last Updated:** 2025-11-09
-**Status:** Complete ✅

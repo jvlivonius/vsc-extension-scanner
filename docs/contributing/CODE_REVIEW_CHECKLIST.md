@@ -2,8 +2,6 @@
 
 **Purpose:** Security-focused code review checklist for pull requests
 **Document Type:** Checklist
-**Last Updated:** 2025-11-03
-**Version:** 1.0
 
 ---
 

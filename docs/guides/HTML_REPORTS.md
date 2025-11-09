@@ -239,7 +239,3 @@ def _generate_scripts(self) -> str:
 - **[API_REFERENCE.md](API_REFERENCE.md)** - vscan.dev API data structure
 
 ---
-
-**Document Version:** 1.0.0
-**Last Updated:** 2025-11-09
-**Status:** Complete ✅
