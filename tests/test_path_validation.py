@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Path Validation Tests (v3.7.0 Phase 3 - Parameterized)
+Comprehensive Path Validation Tests (v5.0.2 - Further Optimized)
 
 Tests the enhanced validate_path() function to ensure it:
 1. Allows absolute paths
@@ -11,8 +11,8 @@ Tests the enhanced validate_path() function to ensure it:
 6. Blocks parent directory traversal
 7. Allows temp directories (legitimate use case)
 
-Phase 3.1 Refactoring: Consolidated repetitive tests using @pytest.mark.parametrize
-for better maintainability and clearer test output. Converted from unittest to pure pytest style.
+v3.7.0 Phase 3: Initial parametrization
+v5.0.2: Further consolidation and optimization
 """
 
 import sys
@@ -31,29 +31,23 @@ from vscode_scanner.utils import validate_path
 class TestPathValidation:
     """Test the enhanced validate_path() function."""
 
-    def test_valid_relative_path(self):
-        """Test that valid relative paths are accepted."""
-        # Should not raise
-        result = validate_path("results.json", path_type="output")
-        assert result is True
-
-        result = validate_path("data/results.json", path_type="output")
-        assert result is True
-
-    def test_valid_absolute_path(self):
-        """Test that absolute paths are allowed (per approved plan)."""
-        # Should not raise, but may log warning
-        result = validate_path("/tmp/test.json", path_type="output")
-        assert result is True
-
-        result = validate_path("/Users/test/data.json", path_type="output")
-        assert result is True
-
-    def test_shell_expansion_home_tilde(self):
-        """Test that ~/path expands correctly and is validated."""
-        # Should not raise - expands ~ and validates the expanded path
-        result = validate_path("~/Documents/results.json", path_type="output")
-        assert result is True
+    @pytest.mark.parametrize(
+        "valid_path,description",
+        [
+            # Relative paths
+            ("results.json", "simple relative path"),
+            ("data/results.json", "relative path with subdirectory"),
+            # Absolute paths
+            ("/tmp/test.json", "absolute path to /tmp"),
+            ("/Users/test/data.json", "absolute path to user directory"),
+            # Shell expansion
+            ("~/Documents/results.json", "tilde expansion"),
+        ],
+    )
+    def test_valid_paths(self, valid_path, description):
+        """Test that valid paths are accepted (relative, absolute, shell expansion)."""
+        result = validate_path(valid_path, path_type="output")
+        assert result is True, f"Failed: {description}"
 
     def test_shell_expansion_env_vars(self):
         """Test that $HOME and other env vars expand and are validated."""
@@ -72,10 +66,13 @@ class TestPathValidation:
         [
             # URL-encoded traversal
             ("%2e%2e%2f", "url_encoded_parent_traversal"),
+            ("%2e%2e%2f%2e%2e%2f", "double_url_encoded_traversal"),
             # URL-encoded null byte
             ("test%00.txt", "url_encoded_null_byte"),
             # URL-encoded slash
             ("test%2fpath.txt", "url_encoded_slash"),
+            # URL-encoded system paths
+            ("%2fetc%2fpasswd", "url_encoded_etc_passwd"),
         ],
         ids=lambda x: x[1] if isinstance(x, tuple) else str(x),
     )
@@ -83,8 +80,7 @@ class TestPathValidation:
         """
         Test that URL-encoded paths are blocked.
 
-        This parameterized test replaces 3 individual test methods,
-        providing better test output with descriptive test IDs.
+        This parameterized test provides better test output with descriptive test IDs.
         """
         with pytest.raises(ValueError) as exc_info:
             validate_path(malicious_path, path_type="output")
@@ -228,6 +224,8 @@ class TestPathValidation:
             ("test`whoami`.txt", "backtick"),
             # Newline
             ("test\n.txt", "newline"),
+            # Carriage return
+            ("test\r.txt", "carriage_return"),
         ],
         ids=lambda x: x[1] if isinstance(x, tuple) else str(x),
     )
@@ -253,6 +251,10 @@ class TestPathValidation:
             ("/tmp/../etc/passwd", "mixed_traversal"),
             # Traversal in middle
             ("/home/../etc/passwd", "middle_traversal"),
+            # Multiple parent references
+            ("../../..", "multiple_parent_refs"),
+            # Dot-dot at start
+            ("../data.json", "dotdot_at_start"),
         ],
         ids=lambda x: x[1] if isinstance(x, tuple) else str(x),
     )
@@ -273,21 +275,31 @@ class TestPathValidation:
             validate_path("", path_type="output")
         assert "empty" in str(exc_info.value).lower()
 
-    def test_error_messages_helpful(self):
+    @pytest.mark.parametrize(
+        "malicious_path,path_type,expected_error_content",
+        [
+            # URL encoding error
+            ("%2e%2e%2f", "cache directory", ["%", "cache directory"]),
+            # System directory error
+            ("/etc/passwd", "extensions directory", ["system", "extensions directory"]),
+            # Dangerous character error
+            ("test\x00.txt", "output", ["dangerous", "output"]),
+            # Parent traversal error
+            ("../etc/passwd", "config file", ["..", "config file"]),
+        ],
+        ids=["url_encoding", "system_dir", "dangerous_char", "parent_traversal"],
+    )
+    def test_error_messages_helpful(
+        self, malicious_path, path_type, expected_error_content
+    ):
         """Test that error messages are helpful and include context."""
-        # URL encoding error should mention % character
         with pytest.raises(ValueError) as exc_info:
-            validate_path("%2e%2e%2f", path_type="cache directory")
-        error_msg = str(exc_info.value)
-        assert "%" in error_msg
-        assert "cache directory" in error_msg
-
-        # System directory error should mention restricted access
-        with pytest.raises(ValueError) as exc_info:
-            validate_path("/etc/passwd", path_type="extensions directory")
-        error_msg = str(exc_info.value)
-        assert "system" in error_msg.lower()
-        assert "extensions directory" in error_msg.lower()
+            validate_path(malicious_path, path_type=path_type)
+        error_msg = str(exc_info.value).lower()
+        for expected_content in expected_error_content:
+            assert (
+                expected_content.lower() in error_msg
+            ), f"Expected '{expected_content}' in error message"
 
     def test_shell_expansion_with_system_dir(self):
         """Test that shell expansion doesn't bypass system directory blocking."""
@@ -364,7 +376,7 @@ class TestPathValidationIntegration:
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("PATH VALIDATION TESTS (v3.7.0 Phase 3 - Parameterized)")
+    print("PATH VALIDATION TESTS (v5.0.2 - Further Optimized)")
     print("=" * 70)
     print()
     print("Testing enhanced validate_path() function:")
