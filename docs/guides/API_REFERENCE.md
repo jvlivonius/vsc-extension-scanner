@@ -1,7 +1,7 @@
 # vscan.dev API Reference
 
-**Last Updated:** 2025-10-28
-**Status:** Production - Stable API
+**External API:** This document describes the vscan.dev API (not part of this codebase)
+**API Status:** See [vscan.dev](https://vscan.dev) for current API status and updates
 
 ## Executive Summary
 

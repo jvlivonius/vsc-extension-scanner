@@ -1421,8 +1421,3 @@ finally:
 - **[archive/plans/v3.5.1-roadmap.md](../archive/plans/v3.5.1-roadmap.md)** - Completed v3.5.1 roadmap
 
 ---
-
-**Document Version:** 1.1
-**Status:** Current
-**Last Updated:** 2025-10-30 (Agentic coding optimization - dynamic metrics)
-**Next Review:** When module count exceeds 15 or major refactoring planned

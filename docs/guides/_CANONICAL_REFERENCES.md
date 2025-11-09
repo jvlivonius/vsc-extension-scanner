@@ -298,6 +298,3 @@ Run `pytest --collect-only -q tests/test_scanner.py` to see current test count
 - [PERFORMANCE.md](PERFORMANCE.md) - Performance benchmarks and optimization strategies
 
 ---
-
-**Last Updated:** 2025-10-28
-**Maintainer:** Keep this index current as documentation evolves

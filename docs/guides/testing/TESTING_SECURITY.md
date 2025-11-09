@@ -64,16 +64,18 @@ pip-audit
 
 ### Coverage by File
 
-| Test File | Tests | Primary Focus | CVE Coverage |
-|-----------|-------|---------------|--------------|
-| test_security.py | 11 | Core vulnerabilities | CWE-22, CWE-89, CWE-400 |
-| test_path_validation.py | 24 | Path traversal protection | CWE-22 variants |
-| test_string_sanitization.py | 22 | Injection prevention | CWE-79, CWE-93, CWE-209 |
-| test_cache_integrity.py | 21 | HMAC validation | CWE-345 |
-| test_sqlite_security.py | Custom | SQLite audit | CWE-89, permissions |
-| test_security_regression.py | 24 | Regression prevention | All fixed CVEs |
+**Current Counts:** Run `pytest --collect-only -q tests/test_security*.py` for exact test counts.
 
-**Total Security Tests:** 100+ tests covering all major vulnerability classes
+| Test File | Primary Focus | CVE Coverage |
+|-----------|---------------|--------------|
+| test_security.py | Core vulnerabilities | CWE-22, CWE-89, CWE-400 |
+| test_path_validation.py | Path traversal protection | CWE-22 variants |
+| test_string_sanitization.py | Injection prevention | CWE-79, CWE-93, CWE-209 |
+| test_cache_integrity.py | HMAC validation | CWE-345 |
+| test_sqlite_security.py | SQLite audit | CWE-89, permissions |
+| test_security_regression.py | Regression prevention | All fixed CVEs |
+
+**Total Security Tests:** See → [STATUS.md](../../project/STATUS.md) for current security test coverage
 
 ---
 
@@ -810,8 +812,3 @@ def test_security_function_blocks_attack():
 - **[../contributing/TESTING_CHECKLIST.md](../contributing/TESTING_CHECKLIST.md)** - Pre-release security checklist
 
 ---
-
-**Document Version:** 1.0
-**Status:** Current
-**Last Updated:** 2025-10-30 (v3.5.3 Testing Excellence - Phase 4)
-**Maintained By:** Security Team

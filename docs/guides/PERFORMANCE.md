@@ -46,7 +46,10 @@ This guide explains how to measure, optimize, and troubleshoot performance in th
 - **Test Changes:** Validate improvements with performance tests
 - **Monitor Resources:** Track memory, disk, network usage patterns
 
-**Current Performance Metrics:** See [STATUS.md](../project/STATUS.md) for latest benchmark results
+**Benchmark Dating:**
+- **Test Assertions (50x, 2x, etc.):** These are performance *requirements*, not historical measurements. They define minimum acceptable performance thresholds that must be maintained across all versions.
+- **Historical Benchmarks:** For actual performance measurements from specific releases (e.g., "4.88x speedup measured on 2025-10-26 with 66 extensions"), see [STATUS.md](../project/STATUS.md) version history.
+- **Current Metrics:** See [STATUS.md](../project/STATUS.md) § Current Metrics for latest measured performance
 
 ---
 

@@ -674,6 +674,13 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Minimum required coverage percentage (e.g., 85.0)",
     )
 
+    # List groups option
+    parser.add_argument(
+        "--list-groups",
+        action="store_true",
+        help="List all available test groups and markers, then exit",
+    )
+
     return parser
 
 
@@ -782,6 +789,73 @@ def parse_test_groups(args: argparse.Namespace) -> List[TestGroup]:
     return groups
 
 
+def list_test_groups() -> int:
+    """
+    List all available test groups and markers with descriptions.
+
+    Returns:
+        EXIT_SUCCESS (0)
+    """
+    from lib.marker_config import (
+        get_test_group_markers,
+        get_behavioral_markers_set,
+        get_marker_description,
+    )
+
+    # Load markers dynamically from pyproject.toml
+    try:
+        test_groups = sorted(get_test_group_markers())
+        behavioral = sorted(get_behavioral_markers_set())
+    except Exception as e:
+        print(
+            f"{Colors.RED}Error loading markers from pyproject.toml: {e}{Colors.RESET}"
+        )
+        return EXIT_ERROR
+
+    # Print header
+    print(f"\n{Colors.BOLD}Available Test Markers{Colors.RESET}\n")
+
+    # Print test group markers
+    print(
+        f"{Colors.CYAN}Test Group Markers{Colors.RESET} (use with --include/--exclude):"
+    )
+    for marker in test_groups:
+        desc = get_marker_description(marker) or "No description"
+        # Remove [GROUP] tag from description if present
+        if desc.startswith("[GROUP]"):
+            desc = desc[7:].strip()
+        print(f"  {Colors.GREEN}•{Colors.RESET} {marker} - {desc}")
+
+    # Print behavioral markers
+    print(f"\n{Colors.CYAN}Behavioral Markers{Colors.RESET} (use with --filter):")
+    for marker in behavioral:
+        desc = get_marker_description(marker) or "No description"
+        # Remove [BEHAVIORAL] tag from description if present
+        if desc.startswith("[BEHAVIORAL]"):
+            desc = desc[12:].strip()
+        print(f"  {Colors.GREEN}•{Colors.RESET} {marker} - {desc}")
+
+    # Print meta markers
+    print(f"\n{Colors.CYAN}Meta Markers{Colors.RESET} (runtime-only):")
+    print(
+        f"  {Colors.GREEN}•{Colors.RESET} unmarked - Tests without required pytest markers"
+    )
+    print(f"  {Colors.GREEN}•{Colors.RESET} all - Run all test groups")
+
+    # Print usage examples
+    print(f"\n{Colors.BOLD}Usage Examples:{Colors.RESET}")
+    print(f"  {Colors.GRAY}# Run specific groups{Colors.RESET}")
+    print(f"  python3 scripts/run_tests.py --include unit,security")
+    print(f"  {Colors.GRAY}# Exclude groups{Colors.RESET}")
+    print(f"  python3 scripts/run_tests.py --exclude real_api")
+    print(f"  {Colors.GRAY}# Filter by behavioral markers{Colors.RESET}")
+    print(f"  python3 scripts/run_tests.py --filter 'not slow'")
+    print(f"  {Colors.GRAY}# Combine filters{Colors.RESET}")
+    print(f"  python3 scripts/run_tests.py --include unit --filter 'not slow'\n")
+
+    return EXIT_SUCCESS
+
+
 def validate_output_arguments(args: argparse.Namespace) -> Optional[int]:
     """
     Validate output format arguments.
@@ -804,6 +878,10 @@ def main():
     """Main entry point - orchestration only."""
     parser = create_argument_parser()
     args = parser.parse_args()
+
+    # Handle --list-groups early exit
+    if args.list_groups:
+        return list_test_groups()
 
     apply_preset_aliases(args)
     groups = parse_test_groups(args)

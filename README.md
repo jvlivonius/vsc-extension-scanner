@@ -6,7 +6,7 @@
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 [![Tests: 1,224 passed](https://img.shields.io/badge/tests-1%2C224%20passed-success.svg)](tests/)
-[![Coverage: 87.29%](https://img.shields.io/badge/coverage-87.29%25-green.svg)](htmlcov/)
+[![Coverage: 88.84%](https://img.shields.io/badge/coverage-88.84%25-green.svg)](htmlcov/)
 
 **Know what's running in your editor. Stay secure.**
 
@@ -14,7 +14,7 @@ A command-line tool that scans your installed VS Code extensions for security vu
 
 **Version:** See [releases](https://github.com/jvlivonius/vsc-extension-scanner/releases) | **Status:** Production Ready ✅
 
-**Latest:** v5.0.2 - Test Quality Improvements (1,224 tests, 87.29% coverage, 0 vulnerabilities, parametrization + property-based testing)
+**Latest:** v5.0.2 - Test Quality Improvements (1,224 tests, 88.84% coverage, 0 vulnerabilities, parametrization + property-based testing)
 
 ---
 

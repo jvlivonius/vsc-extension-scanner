@@ -4,128 +4,55 @@ Behavioral flags for Claude Code to enable specific execution modes and tool sel
 
 ## Mode Activation Flags
 
-**--brainstorm**
-- Trigger: Vague project requests, exploration keywords ("maybe", "thinking about", "not sure")
-- Behavior: Activate collaborative discovery mindset, ask probing questions, guide requirement elicitation
+**--brainstorm**: Vague requests, exploration keywords → Collaborative discovery
+**--introspect**: Error recovery, self-analysis → Transparent reasoning
+**--task-manage**: >3 steps, >2 directories → Systematic organization
+**--orchestrate**: Multi-tool ops, parallel opportunities → Tool optimization
+**--token-efficient / --uc**: Context >75% → Symbol communication
 
-**--introspect**
-- Trigger: Self-analysis requests, error recovery, complex problem solving requiring meta-cognition
-- Behavior: Expose thinking process with transparency markers (🤔, 🎯, ⚡, 📊, 💡)
+*Full MODE docs: `.claude/modes/` directory*
 
-**--task-manage**
-- Trigger: Multi-step operations (>3 steps), complex scope (>2 directories OR >3 files)
-- Behavior: Orchestrate through delegation, progressive enhancement, systematic organization
+## MCP Server Usage Hints
 
-**--orchestrate**
-- Trigger: Multi-tool operations, performance constraints, parallel execution opportunities
-- Behavior: Optimize tool selection matrix, enable parallel thinking, adapt to resource constraints
+**IMPORTANT**: MCP servers configured via `claude mcp add` are **always loaded**. These flags are **semantic hints** for Claude's tool selection, not loading controls.
 
-**--token-efficient**
-- Trigger: Context usage >75%, large-scale operations, --uc flag
-- Behavior: Symbol-enhanced communication, 30-50% token reduction while preserving clarity
+**Usage Preference Hints**:
+- **--c7 / --context7**: Prefer Context7 for library docs (pytest, typer, rich, hypothesis)
+- **--seq / --sequential**: Prefer sequential-thinking for complex analysis, architecture, debugging
+- **--serena**: Prefer Serena tools for symbol operations, project memory, session persistence
 
-## MCP Server Flags
+**Note**: These flags may influence Claude's tool selection if you've implemented custom logic in slash commands. They do NOT enable/disable MCP servers.
 
-**Python CLI Optimization Status:**
-
-✅ **Available MCPs** (Python CLI development):
-- `--c7 / --context7`: Python library documentation (pytest, typer, rich, hypothesis)
-- `--seq / --sequential`: Complex debugging, architecture analysis, systematic reasoning
-- `--serena`: Symbol operations, project memory, session persistence
-
----
-
-### Available MCP Server Flags
-
-**--c7 / --context7**
-- Trigger: Library imports, framework questions, official documentation needs
-- Behavior: Enable Context7 for curated documentation lookup and pattern guidance
-- **Python CLI Context**: pytest patterns, typer CLI design, rich formatting, hypothesis property testing
-
-**--seq / --sequential**
-- Trigger: Complex debugging, system design, multi-component analysis
-- Behavior: Enable Sequential for structured multi-step reasoning and hypothesis testing
-- **Python CLI Context**: Root cause analysis (scanner + API + cache), 3-layer architecture validation, performance investigation
-
-**--serena**
-- Trigger: Symbol operations, project memory needs, large codebase navigation
-- Behavior: Enable Serena for semantic understanding and session persistence
-- **Python CLI Context**: Symbol refactoring (rename/extract/move), multi-session work (/sc:load, /sc:save), testability improvements
-
----
-
-### MCP Control Flags
-
-**--all-mcp**
-- Trigger: Maximum complexity scenarios, multi-domain problems
-- Behavior: Enable all **available** MCP servers (serena, sequential, context7)
-- **Note**: Only enables Python CLI relevant MCPs, not archived frontend/web tools
-
-**--no-mcp**
-- Trigger: Native-only execution needs, performance priority
-- Behavior: Disable all MCP servers, use native tools with WebSearch fallback
+*See MCP_LOADER.md for how MCP loading actually works*
 
 ## Analysis Depth Flags
 
-**--think**
-- Trigger: Multi-component analysis needs, moderate complexity
-- Behavior: Standard structured analysis (~4K tokens), enables Sequential
-- **Python CLI Context**: Module-level refactoring, test strategy planning
+**--think**: Standard analysis (~4K tokens), prefer sequential-thinking
+**--think-hard**: Deep analysis (~10K tokens), prefer sequential-thinking + Context7
+**--ultrathink**: Maximum depth (~32K tokens), prefer all MCP tools + deep-research-agent
 
-**--think-hard**
-- Trigger: Architectural analysis, system-wide dependencies
-- Behavior: Deep analysis (~10K tokens), enables Sequential + Context7
-- **Python CLI Context**: 3-layer architecture compliance, threading model analysis, security validation
-
-**--ultrathink**
-- Trigger: Critical system redesign, legacy modernization, complex debugging
-- Behavior: Maximum depth analysis (~32K tokens), enables all **available** MCP servers (serena, sequential, context7)
-- **Python CLI Context**: comprehensive security audit, parallel processing optimization
+**Note**: These flags indicate analysis depth preference. MCP servers remain loaded regardless of flags.
 
 ## Execution Control Flags
 
-**--delegate [auto|files|folders]**
-- Trigger: >7 directories OR >50 files OR complexity >0.8
-- Behavior: Enable sub-agent parallel processing with intelligent routing
-
-**--concurrency [n]**
-- Trigger: Resource optimization needs, parallel operation control
-- Behavior: Control max concurrent operations (range: 1-15)
-
-**--loop**
-- Trigger: Improvement keywords (polish, refine, enhance, improve)
-- Behavior: Enable iterative improvement cycles with validation gates
-
-**--iterations [n]**
-- Trigger: Specific improvement cycle requirements
-- Behavior: Set improvement cycle count (range: 1-10)
-
-**--validate**
-- Trigger: Risk score >0.7, resource usage >75%, production environment
-- Behavior: Pre-execution risk assessment and validation gates
-
-**--safe-mode**
-- Trigger: Resource usage >85%, production environment, critical operations
-- Behavior: Maximum validation, conservative execution, auto-enable --uc
+**--delegate [auto|files|folders]**: >7 dirs OR >50 files → Sub-agent processing
+**--concurrency [n]**: Control max concurrent ops (1-15)
+**--loop**: Iterative improvement cycles
+**--iterations [n]**: Set cycle count (1-10)
+**--validate**: Pre-execution risk assessment
+**--safe-mode**: Maximum validation, conservative execution
 
 ## Output Optimization Flags
 
-**--uc / --ultracompressed**
-- Trigger: Context pressure, efficiency requirements, large operations
-- Behavior: Symbol communication system, 30-50% token reduction
-
-**--scope [file|module|project|system]**
-- Trigger: Analysis boundary needs
-- Behavior: Define operational scope and analysis depth
-
-**--focus [performance|security|quality|architecture|accessibility|testing]**
-- Trigger: Domain-specific optimization needs
-- Behavior: Target specific analysis domain and expertise application
+**--uc / --ultracompressed**: Symbol communication, 30-50% token reduction
+**--scope [file|module|project|system]**: Define operational scope
+**--focus [performance|security|quality|architecture|testing]**: Target specific domain
 
 ## Flag Priority Rules
 
 **Safety First**: --safe-mode > --validate > optimization flags
 **Explicit Override**: User flags > auto-detection
 **Depth Hierarchy**: --ultrathink > --think-hard > --think
-**MCP Control**: --no-mcp overrides all individual MCP flags
 **Scope Precedence**: system > project > module > file
+
+**Note**: Flag priority applies to semantic hints and preferences. Actual MCP loading is controlled via `claude mcp add/remove` CLI commands.
