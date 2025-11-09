@@ -149,12 +149,12 @@ Cache provides 28.6x speedup (measured 2025-10-26)...
 ✅ GOOD Dynamic References:
 - Coverage: "See [STATUS.md](../../project/STATUS.md) for current coverage"
 - Test count: "Run: `pytest --collect-only -q tests/`"
-- Exit codes: "See [ERROR_CODES.md](ERROR_CODES.md) for complete reference"
+- Exit codes: "See [ERROR_HANDLING.md](../guides/ERROR_HANDLING.md) § Exit Codes for complete reference"
 
 ❌ BAD Hardcoded Values:
 - "Current coverage: 89.23%"
 - "Test suite contains 1,142 tests"
-- "Exit codes: 0=success, 1=vulnerabilities, 2=error" (duplicated from ERROR_CODES.md)
+- "Exit codes: 0=success, 1=vulnerabilities, 2=error" (should reference ERROR_HANDLING.md)
 ```
 
 ---
