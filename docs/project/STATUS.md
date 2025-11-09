@@ -67,6 +67,10 @@
 - Property-based tests catch security regressions automatically
 - Comprehensive test suite with 98.3% pass rate
 
+### Roadmap Reference
+
+- Implemented following [v5.0.2-roadmap.md](../archive/plans/v5.0.2-roadmap.md) (archived after completion)
+
 ---
 
 ## Release: v5.0.1 ✅ (CLI Cleanup & Version Bump)
