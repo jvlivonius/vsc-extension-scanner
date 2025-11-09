@@ -371,6 +371,92 @@ def test_read_config(mock_file):
 
 ---
 
+## Cache Directory Testing Patterns
+
+### The Home Directory Requirement (v3.7.2+)
+
+**Critical Security Context:**
+
+Starting in v3.7.2, `validate_path()` security checks **block system temp directories** (`/tmp`, `/var/folders`) for cache directories to prevent persistent data in ephemeral locations. This is **intentional security hardening**.
+
+**Common Test Failure:**
+```python
+# ❌ WILL FAIL - /tmp is blocked by validate_path()
+cache = CacheManager(cache_dir="/tmp/test_cache")
+# ValueError: [E200] Cache directories should not use temporary locations
+
+# ✅ CORRECT - Use home directory pattern
+tmpdir = os.path.join(os.path.expanduser("~"), ".vscan_test_cache")
+cache = CacheManager(cache_dir=tmpdir)
+```
+
+### Using the temp_cache_dir Fixture
+
+**Recommended approach for ALL cache tests:**
+
+```python
+def test_cache_operations(temp_cache_dir):
+    """Test cache operations using the fixture."""
+    cache = CacheManager(cache_dir=temp_cache_dir)
+    # Test cache operations...
+    # Cleanup is automatic!
+```
+
+**Fixture behavior:**
+- Creates `~/.vscan_test_cache_{uuid}` in home directory
+- Automatically cleans up after test
+- Thread-safe for parallel execution (pytest-xdist)
+- Avoids `validate_path()` blocking
+
+### Automatic Patching (No Action Required)
+
+**The `_patch_tempfile_for_cache_tests()` fixture** (autouse=True) automatically patches:
+- `tempfile.mkdtemp()` → Creates in home directory
+- `tempfile.TemporaryDirectory()` → Creates in home directory
+
+**Result:** Tests using `tempfile.TemporaryDirectory()` for extension parsing work correctly without modification.
+
+### Manual Cache Directory Creation
+
+**For tests that can't use fixtures:**
+
+```python
+def test_cache_manual_setup(self):
+    # Use home directory pattern
+    tmpdir = os.path.join(os.path.expanduser("~"), ".vscan_test_manual")
+    os.makedirs(tmpdir, exist_ok=True)
+
+    try:
+        cache = CacheManager(cache_dir=tmpdir)
+        # Test operations...
+    finally:
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
+```
+
+**Helper utilities available:**
+- `create_temp_cache_dir()` - Returns Path to new temp cache
+- `HomeTempDirectory()` - Context manager, drop-in for `tempfile.TemporaryDirectory()`
+
+### Pattern References
+
+**Established patterns in codebase:**
+- `conftest.py:151-185` - `temp_cache_dir` fixture definition
+- `test_security_manual_validation.py:191` - Manual setup example
+- `test_security_regression.py` - Worker-isolated pattern for parallel tests
+- `test_property_cache.py` - Unittest.TestCase setUp/tearDown pattern
+
+### Regression Prevention
+
+**Why this documentation exists:** CI failures have occurred multiple times when tests used `/tmp` for cache directories. This pattern is now **required for all cache-related tests**.
+
+**Red flags to watch for:**
+- `CacheManager(cache_dir="/tmp/...")`
+- `tempfile.mkdtemp()` used directly for cache tests (should be auto-patched, but verify)
+- Error: `[E200] Cache directories should not use temporary locations`
+
+---
+
 ## References
 
 - **[TESTING.md](../TESTING.md)** - Main testing guide
@@ -380,7 +466,7 @@ def test_read_config(mock_file):
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Status:** Current
-**Last Updated:** 2025-10-30 (v3.5.3 Testing Excellence - Phase 4)
+**Last Updated:** 2025-11-09 (v5.0.2 Test Quality Improvements - Cache Directory Patterns)
 **Maintained By:** Development Team
