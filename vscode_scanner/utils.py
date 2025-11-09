@@ -215,6 +215,12 @@ def validate_path(
     if not path:
         raise ValueError(f"{path_type.capitalize()} path cannot be empty")
 
+    # Block whitespace-only paths (security: empty-equivalent paths)
+    if not path.strip():
+        raise ValueError(
+            f"{path_type.capitalize()} path cannot be empty or whitespace-only"
+        )
+
     # Block URL-encoded paths (security: prevent encoded traversal like %2e%2e%2f)
     if "%" in path:
         raise ValueError(
@@ -222,13 +228,23 @@ def validate_path(
             f"Found '%' character in {path_type} path: {path}"
         )
 
-    # Block dangerous characters that enable command injection
-    dangerous_chars = ["\0", "|", ";", "`", "\n", "\r"]
+    # Block control characters (security: prevent injection attacks)
+    # Control characters are ASCII 0-31, which includes null bytes, newlines, tabs, etc.
+    for char in path:
+        char_code = ord(char)
+        if 0 <= char_code <= 31:  # All control characters (ASCII 0-31)
+            raise ValueError(
+                f"{path_type.capitalize()} path contains dangerous character: {repr(char)} (control character, ASCII {char_code}). "
+                f"Control characters are not allowed in paths."
+            )
+
+    # Block additional dangerous shell characters that enable command injection
+    dangerous_chars = ["|", ";", "`"]
     for char in dangerous_chars:
         if char in path:
             raise ValueError(
                 f"{path_type.capitalize()} path contains dangerous character: {repr(char)}. "
-                f"Characters like null bytes, pipes, and backticks are not allowed."
+                f"Characters like pipes, semicolons, and backticks are not allowed."
             )
 
     # Block parent directory traversal attempts

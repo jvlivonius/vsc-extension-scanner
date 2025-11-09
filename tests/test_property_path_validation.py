@@ -189,9 +189,6 @@ class TestPathValidationProperties:
         except Exception as e:
             pytest.fail(f"Unexpected exception: {type(e).__name__}: {e}")
 
-    @pytest.mark.xfail(
-        reason="Edge case: validate_path may accept some whitespace-only paths"
-    )
     @given(st.text())
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_empty_path_rejected(self, path):
@@ -201,9 +198,6 @@ class TestPathValidationProperties:
                 validate_path(path, path_type="test")
             assert "empty" in str(exc_info.value).lower()
 
-    @pytest.mark.xfail(
-        reason="Edge case: validate_path control character detection varies by position"
-    )
     @given(
         st.sampled_from(
             ["\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07"]
