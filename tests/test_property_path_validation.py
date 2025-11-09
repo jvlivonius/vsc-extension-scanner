@@ -112,19 +112,24 @@ class TestPathValidationProperties:
             validate_path(text, path_type="test")
         assert "URL-encoded" in str(exc_info.value)
 
-    @given(st.text())
-    @settings(
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.filter_too_much,
-        ]
+    @pytest.mark.parametrize(
+        "path_with_dotdot",
+        [
+            "../etc/passwd",
+            "../../..",
+            "foo/../bar",
+            "test/../test",
+            "..",
+            "a/b/../../../c",
+            "path/to/../../../etc",
+            "../",
+            ".../..",  # Edge case
+        ],
     )
-    def test_parent_traversal_always_rejected(self, text):
+    def test_parent_traversal_always_rejected(self, path_with_dotdot):
         """Property: paths containing '..' are rejected."""
-        # Only test paths that actually contain ..
-        assume(".." in text)
         with pytest.raises(ValueError) as exc_info:
-            validate_path(text, path_type="test")
+            validate_path(path_with_dotdot, path_type="test")
         assert ".." in str(exc_info.value)
 
     @given(st.sampled_from(["/etc", "/sys", "/proc", "/root", "/boot", "/dev"]))

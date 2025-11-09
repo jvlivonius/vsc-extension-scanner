@@ -113,17 +113,24 @@ class TestPathTraversalProtection:
                 pytest.fail("VULNERABILITY: Can read /etc directory!")
 
     def test_cache_dir_blocks_arbitrary_locations(self):
-        """Test that --cache-dir allows absolute paths with warning."""
-        # Cache manager allows absolute paths but warns about them
-        # This is acceptable behavior for testing/development
-        cache = cache_manager.CacheManager(cache_dir="/tmp/test_cache")
+        """Test that cache directories work in home directory (temp blocked by security)."""
+        # Use home directory pattern (aligned with test_cache_tampering_is_detected:191)
+        tmpdir = os.path.join(os.path.expanduser("~"), ".vscan_test_manual_validation")
+        os.makedirs(tmpdir, exist_ok=True)
 
-        # Verify cache was created (resolve to handle symlinks like /tmp -> /private/tmp)
-        assert str(cache.cache_dir.resolve()).endswith("test_cache")
+        try:
+            cache = cache_manager.CacheManager(cache_dir=tmpdir)
 
-        # Cleanup
-        if cache.cache_dir.exists():
-            shutil.rmtree(cache.cache_dir)
+            # Verify cache was created
+            assert cache.cache_dir.exists()
+            assert str(cache.cache_dir.resolve()).endswith(
+                ".vscan_test_manual_validation"
+            )
+
+        finally:
+            # Cleanup
+            if os.path.exists(tmpdir):
+                shutil.rmtree(tmpdir)
 
 
 # ============================================================================
