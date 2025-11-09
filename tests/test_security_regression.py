@@ -289,8 +289,8 @@ class TestTask2StringSanitizationRegression:
         long_text = "A" * 10000
         result = sanitize_string(long_text, max_length=500)
 
-        # Should be truncated to max_length + "..."
-        assert len(result) == 503
+        # Should be truncated to exactly max_length
+        assert len(result) == 500
         assert result.endswith("...")
 
 

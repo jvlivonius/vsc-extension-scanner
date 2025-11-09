@@ -109,9 +109,8 @@ When adding new error codes:
    - Cause explanation
    - Solution steps
 
-## Version History
+## Error Code Source of Truth
 
-- **v3.1.0** - Initial error code system (5 codes implemented)
-  - E100, E101: API errors
-  - E200: Cache errors
-  - E300, E301: Discovery errors
+**Implementation:** All error codes are defined in `vscode_scanner/constants.py` as the single source of truth.
+
+**See Also:** → [STATUS.md](../project/STATUS.md) for current error code statistics and coverage.

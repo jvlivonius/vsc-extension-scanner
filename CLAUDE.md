@@ -55,10 +55,12 @@ VS Code Extension Security Scanner - Python CLI tool for manual security audits 
 | **Features** | [PRD.md](docs/project/PRD.md), [STATUS.md](docs/project/STATUS.md) | [v3.7 roadmap](docs/project/v3.7-testability-maintainability-roadmap.md) |
 | **Security** | [SECURITY.md](docs/guides/SECURITY.md) | [ERROR_HANDLING.md](docs/guides/ERROR_HANDLING.md) |
 | **API** | [API_REFERENCE.md](docs/guides/API_REFERENCE.md) | vscan.dev endpoints |
-| **Performance** | [PERFORMANCE.md](docs/guides/PERFORMANCE.md) | Threading, benchmarks |
+| **Performance** | [PERFORMANCE.md](docs/guides/PERFORMANCE.md) | HOW TO: measure, test, optimize |
 | **Testing** | [TESTING.md](docs/guides/TESTING.md) | [testing/](docs/guides/testing/) guides |
+| **HTML Reports** | [HTML_REPORTS.md](docs/guides/HTML_REPORTS.md) | Self-contained design, visualizations |
 | **Releasing** | [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) | [VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md) |
 | **Git** | [GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md) | [BRANCH_PROTECTION.md](docs/contributing/BRANCH_PROTECTION.md) |
+| **Documentation** | [DOCUMENTATION_STANDARDS.md](docs/contributing/DOCUMENTATION_STANDARDS.md) | HOW TO focus, standards, checklist |
 
 ### 🟢 Reference
 

@@ -1,8 +1,9 @@
 # Testing Coverage Strategy
 
+**Purpose:** How to measure, analyze, and improve test coverage
 **Document Type:** Timeless Reference
 **Parent Document:** [TESTING.md](../TESTING.md)
-**Applies To:** All 3.x versions
+**Applies To:** All versions
 **Target Audience:** Developers, QA Engineers
 
 ---
@@ -19,20 +20,22 @@
 
 ### Module-Specific Goals
 
-| Module | Target | Current (v3.5.3) | Status |
-|--------|--------|------------------|--------|
-| constants.py | 100% | 100.00% | ✅ Met |
-| types.py | 100% | 100.00% | ✅ Met |
-| display.py | 80% | 80.58% | ✅ Met |
-| vscan_api.py | 75% | 77.99% | ✅ Met |
-| utils.py | 95% | 64.50% | 🟡 Needs work |
-| extension_discovery.py | 70% | 63.98% | 🟡 Needs work |
-| output_formatter.py | 70% | 62.30% | 🟡 Needs work |
-| cache_manager.py | 95% | 60.54% | 🟡 Needs work |
-| scanner.py | 70% | 60.29% | 🟡 Needs work |
-| config_manager.py | 70% | 57.48% | 🟡 Needs work |
-| cli.py | 50% | 17.55% | 🔴 Acceptable (complex CLI) |
-| html_report_generator.py | N/A | 0.00% | ⚪ Acceptable (complex HTML) |
+**Coverage Targets by Priority:**
+
+| Priority | Target | Modules |
+|----------|--------|---------|
+| Critical (Security) | 95% | utils.py, cache_manager.py |
+| High (Core Logic) | 85% | scanner.py, vscan_api.py, extension_discovery.py |
+| Medium (Supporting) | 70% | config_manager.py, output_formatter.py, display.py, types.py, constants.py |
+| UI (Complex) | 50% | cli.py, html_report_generator.py |
+
+**Rationale:**
+- **95% (Security):** Path validation, string sanitization, HMAC validation are security-critical
+- **85% (Core):** Core scanning workflow, API client, extension detection are high-value logic
+- **70% (Supporting):** Configuration, formatting, data structures support core functionality
+- **50% (UI):** CLI and HTML generation have complex UI logic difficult to test comprehensively
+
+**Current Metrics:** See → [STATUS.md](../../project/STATUS.md) for current coverage by module
 
 ---
 
@@ -89,11 +92,7 @@ TOTAL                          2100    250    88%
 - 100% coverage of security functions
 - Regression tests for all fixed vulnerabilities
 
-**Current Gap Analysis:**
-- `utils.py`: 64.50% → Need 30.50% more
-- `cache_manager.py`: 60.54% → Need 34.46% more
-
-**Priority:** Add tests for error paths, edge cases, threading
+**Priority:** Error paths, edge cases, threading, HMAC validation
 
 ### Core Business Logic (85%+ Required)
 
@@ -243,40 +242,11 @@ pytest tests/test_cache_manager.py --cov=vscode_scanner.cache_manager --cov-repo
 
 ---
 
-## v3.5.3 Coverage Roadmap
-
-### Current State (Phase 4 Complete)
-
-- **Overall:** 52.37%
-- **Target:** 70%
-- **Gap:** 17.63%
-- **Tests Added:** 70 (Phase 4.1 + 4.2)
-
-### Remaining Work
-
-**Priority 1: Security Modules (Need 30-35% more)**
-- `utils.py`: 64.50% → 95% (Add error path tests, edge cases)
-- `cache_manager.py`: 60.54% → 95% (Add threading tests, cleanup tests)
-
-**Priority 2: Core Modules (Need 10-15% more)**
-- `scanner.py`: 60.29% → 70% (Add error path tests)
-- `config_manager.py`: 57.48% → 70% (Add validation tests)
-
-**Priority 3: Supporting Modules (Minimal work)**
-- `extension_discovery.py`: 63.98% → 70% (Add edge cases)
-- `output_formatter.py`: 62.30% → 70% (Add format tests)
-
----
-
 ## References
 
 - **[TESTING.md](../TESTING.md)** - Main testing guide
 - **[TESTING_SECURITY.md](TESTING_SECURITY.md)** - Security testing guide
-- **[../project/v3.5.3-roadmap.md](../project/v3.5.3-roadmap.md)** - Testing Excellence roadmap
+- **[TESTING_PROPERTY_BASED.md](TESTING_PROPERTY_BASED.md)** - Property-based testing guide
+- **[../../project/STATUS.md](../../project/STATUS.md)** - Current coverage metrics
 
 ---
-
-**Document Version:** 1.0
-**Status:** Current
-**Last Updated:** 2025-10-30 (v3.5.3 Testing Excellence - Phase 4)
-**Maintained By:** Development Team

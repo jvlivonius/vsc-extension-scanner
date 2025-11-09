@@ -1,132 +1,60 @@
-# Performance Documentation
+# Performance Guide
 
-**Document Type:** Living Benchmark Reference
-**Applies To:** All 3.x versions
-**Benchmark Date:** Latest measurements from 2025-10-26 (v3.5.0 parallel processing), 2025-10-22 (v3.1.0 caching)
-**Platform:** macOS (Darwin 25.0.0), Python 3.11
-**Note:** Specific timing numbers are platform/hardware-specific. Focus on relative improvements rather than absolute values.
+**Purpose:** How to benchmark, optimize, profile, and troubleshoot performance
+**Document Type:** Timeless Reference
+**Applies To:** All versions
+**Target Audience:** Developers, Performance Engineers
 
-## Benchmark Validity
+---
 
-**Important:** Benchmarks in this document are platform-specific and age over time.
+## Table of Contents
 
-**Current Measurements Valid For:**
-- Platform: macOS (Darwin 25.0.0), Python 3.11
-- Measurement Date: 2025-10-26 (parallel), 2025-10-22 (caching)
-- Version: v3.5.0
+- [Overview](#overview)
+- [Performance Testing](#performance-testing)
+  - [Running Performance Tests](#running-performance-tests)
+  - [Writing Performance Tests](#writing-performance-tests)
+  - [Test Assertions](#test-assertions)
+- [Benchmarking](#benchmarking)
+  - [Benchmarking Methodology](#benchmarking-methodology)
+  - [Comparing Performance](#comparing-performance)
+  - [Platform Considerations](#platform-considerations)
+- [Profiling](#profiling)
+  - [CPU Profiling](#cpu-profiling)
+  - [Memory Profiling](#memory-profiling)
+  - [Interpreting Results](#interpreting-results)
+- [Optimization Strategies](#optimization-strategies)
+  - [Caching Strategy](#caching-strategy)
+  - [Parallel Processing](#parallel-processing)
+  - [Database Optimization](#database-optimization)
+  - [API Optimization](#api-optimization)
+- [Troubleshooting](#troubleshooting)
+  - [Slow Scans](#slow-scans)
+  - [High Memory Usage](#high-memory-usage)
+  - [Cache Issues](#cache-issues)
+- [Resource Monitoring](#resource-monitoring)
+- [References](#references)
 
-**Refresh Required When:**
-- Platform or OS changes significantly
-- 6+ months have elapsed since measurement
-- Major performance optimizations are implemented
-- Python version is upgraded
-
-**How to Re-Run Benchmarks:**
-```bash
-# Performance benchmarks
-python3 tests/test_performance.py
-
-# Real-world scan timing
-time vscan scan --quiet
-
-# Parallel vs sequential comparison
-time vscan scan --workers 1 --quiet  # Sequential
-time vscan scan --workers 3 --quiet  # Parallel (default)
-```
+---
 
 ## Overview
 
-This document provides detailed performance benchmarks, optimization strategies, and resource usage metrics for the VS Code Extension Security Scanner.
+This guide explains how to measure, optimize, and troubleshoot performance in the VS Code Extension Security Scanner. Focus is on techniques and methodologies, not historical benchmarks.
+
+**Performance Principles:**
+- **Measure First:** Base optimization on measurements, not assumptions
+- **Optimize Bottlenecks:** Focus on highest-impact areas identified through profiling
+- **Test Changes:** Validate improvements with performance tests
+- **Monitor Resources:** Track memory, disk, network usage patterns
+
+**Current Performance Metrics:** See [STATUS.md](../project/STATUS.md) for latest benchmark results
 
 ---
 
-## 1. Performance Benchmarks
+## Performance Testing
 
-### 1.1 Caching Performance (v3.1.0)
+### Running Performance Tests
 
-**Test Environment:**
-- Platform: macOS
-- Python: 3.11
-- Extensions: 66 installed extensions
-- Network: Stable broadband connection
-
-**Results:**
-
-| Metric | Without Cache | With Cache | Improvement |
-|--------|---------------|------------|-------------|
-| **66 extensions** | 6m 45s (405s) | 14.2s | **28.6x faster** |
-| **3 extensions** | 26.3s | 0.2s | **131x faster** |
-| **Average per ext** | 6.1s | 0.21s | **29x faster** |
-| **Cache hit rate** | 0% | 97% | - |
-
-**Key Insights:**
-- First scan requires full API calls for all extensions (~6 seconds per extension)
-- Cached scans leverage SQLite database for near-instant results
-- Cache hit rate typically 97%+ on repeated scans within 7-day expiry window
-- Cold cache misses occur only for: new extensions, version updates, or expired entries
-
-### 1.2 Parallel Processing Performance (v3.5.0)
-
-**Test Environment:**
-- Platform: macOS, Windows, Linux
-- Python: 3.11
-- Extensions: 66 installed extensions
-- Workers: 3 (default)
-
-**Sequential vs Parallel Comparison:**
-
-| Configuration | Scan Time | Extensions/sec | Speedup |
-|---------------|-----------|----------------|---------|
-| **Sequential (1 worker)** | 6m 6s (366s) | 0.18 | Baseline |
-| **Parallel (2 workers)** | 3m 32s (212s) | 0.31 | **1.73x** |
-| **Parallel (3 workers)** | 1m 15s (75s) | 0.88 | **4.88x** |
-| **Parallel (5 workers)** | 1m 10s (70s) | 0.94 | **5.23x** |
-
-**Optimal Configuration:**
-- **Default:** 3 workers (best balance of speed and API respect)
-- **Maximum:** 5 workers (diminishing returns beyond this)
-- **Minimum:** 1 worker (sequential mode for debugging)
-
-**Scaling Efficiency:**
-| Workers | Ideal Speedup | Actual Speedup | Efficiency |
-|---------|---------------|----------------|------------|
-| 1 | 1.0x | 1.0x | 100% |
-| 2 | 2.0x | 1.73x | 87% |
-| 3 | 3.0x | 4.88x | 163%* |
-| 5 | 5.0x | 5.23x | 105% |
-
-*Note: 3 workers exceed linear scaling due to reduced wait times and better network utilization
-
-### 1.3 Database Performance (v3.1.0)
-
-**Optimization: Batch Commit**
-
-| Operation | Before Optimization | After Optimization | Improvement |
-|-----------|---------------------|-------------------|-------------|
-| **Insert 66 records** | 45.2s | 5.6s | **87.6% faster** |
-| **Commits per scan** | 66 individual | 1 batch | 98.5% reduction |
-
-**Optimization: VACUUM After Bulk Delete**
-
-| Metric | Before VACUUM | After VACUUM | Space Reclaimed |
-|--------|---------------|--------------|-----------------|
-| **Database Size** | 15.3 MB | 4.0 MB | **73.9%** |
-| **Fragmentation** | High | Low | Optimized |
-
-**Key Techniques:**
-- Single transaction for batch inserts
-- VACUUM operation after cache clear
-- WAL mode for concurrent reads
-- Prepared statements for security and performance
-
----
-
-## 2. Performance Testing
-
-**Test File:** `tests/test_performance.py`
-
-### 2.1 Running Performance Tests
-
+**Execute performance test suite:**
 ```bash
 # Run all performance tests
 python3 tests/test_performance.py
@@ -136,13 +64,30 @@ pytest tests/test_performance.py -v
 pytest tests/test_performance.py::test_cache_provides_50x_speedup -v
 ```
 
-### 2.2 Key Performance Tests
+**Real-world performance measurement:**
+```bash
+# Time a full scan
+time vscan scan --quiet
 
-#### Cache Performance Test
+# Compare parallel vs sequential
+time vscan scan --workers 1 --quiet  # Sequential baseline
+time vscan scan --workers 3 --quiet  # Parallel (default)
+time vscan scan --workers 5 --quiet  # Maximum workers
+
+# Test with cold cache
+rm ~/.vscan/cache.db
+time vscan scan --quiet
+```
+
+### Writing Performance Tests
+
+**Cache performance test pattern:**
 ```python
 def test_cache_provides_50x_speedup():
     """Cached results at least 50x faster than fresh scans."""
-    # First scan (fresh)
+    import time
+
+    # First scan (fresh, no cache)
     start = time.time()
     scan_extension("ms-python.python")
     fresh_duration = time.time() - start
@@ -153,28 +98,17 @@ def test_cache_provides_50x_speedup():
     cached_duration = time.time() - start
 
     speedup = fresh_duration / cached_duration
-    assert speedup >= 50
+    assert speedup >= 50, f"Cache speedup {speedup}x below 50x threshold"
 ```
 
-#### Memory Usage Test
-```python
-def test_cache_migration_memory():
-    """Cache migration doesn't load all data into memory."""
-    import tracemalloc
-
-    tracemalloc.start()
-    cache._migrate_cache_to_v2()
-    current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-
-    # Peak memory < 10MB
-    assert peak < 10 * 1024 * 1024
-```
-
-#### Parallel Performance Test (v3.5.0+)
+**Parallel processing test pattern:**
 ```python
 def test_parallel_speedup():
-    """3 workers provide 2x+ speedup."""
+    """3 workers provide 2x+ speedup over sequential."""
+    import time
+
+    extensions = ["ext1", "ext2", "ext3", "ext4", "ext5"]
+
     # Sequential (1 worker)
     start = time.time()
     scan_extensions(extensions, workers=1)
@@ -186,162 +120,58 @@ def test_parallel_speedup():
     par_duration = time.time() - start
 
     speedup = seq_duration / par_duration
-    assert speedup >= 2.0  # At least 2x faster
+    assert speedup >= 2.0, f"Parallel speedup {speedup}x below 2x threshold"
 ```
 
-**See:** Complete test suite in `tests/test_performance.py` for all performance validation tests.
-
----
-
-## 3. Resource Usage
-
-### 3.1 Memory Footprint
-
-| Operation | Memory Usage | Peak Memory | Notes |
-|-----------|--------------|-------------|-------|
-| **Idle (CLI loaded)** | 15 MB | 18 MB | Typer + Rich loaded |
-| **Scanning (sequential)** | 35 MB | 42 MB | Single API client |
-| **Scanning (3 workers)** | 48 MB | 55 MB | 3 API clients + thread overhead |
-| **Scanning (5 workers)** | 52 MB | 62 MB | 5 API clients + thread overhead |
-| **Cache operations** | +2-5 MB | - | SQLite connection |
-| **HTML generation** | +8-12 MB | - | Template rendering |
-
-**Memory Management:**
-- No memory leaks detected in 24-hour stress tests
-- Automatic garbage collection of large responses
-- 10 MB API response size limit prevents memory exhaustion
-- Thread-local storage prevents shared state issues
-
-### 3.2 Disk Usage
-
-| Component | Size | Growth Rate | Notes |
-|-----------|------|-------------|-------|
-| **Package Installation** | 8-10 MB | Static | Python package + dependencies |
-| **Cache Database** | 2-5 MB | ~50 KB per extension | SQLite with compression |
-| **Configuration File** | <1 KB | Static | ~/.vscanrc INI file |
-| **HTML Reports** | 200-500 KB | Per report | Self-contained with embedded assets |
-| **JSON Reports** | 50-150 KB | Per report | Compact schema v2.0 |
-| **CSV Reports** | 10-30 KB | Per report | Minimal column set |
-
-**Disk Space Recommendations:**
-- Minimum: 20 MB (installation + small cache)
-- Recommended: 50 MB (includes room for reports)
-- Large deployments: 100 MB (extensive cache + report history)
-
-### 3.3 Network Usage
-
-| Operation | Data Transfer | API Calls | Rate Limit Impact |
-|-----------|---------------|-----------|-------------------|
-| **Initial scan (66 ext)** | ~500 KB | 66 | 1.5s delay between calls |
-| **Cached scan** | 0 KB | 0 | No network activity |
-| **Cache refresh** | ~300 KB | ~40 | Only outdated entries |
-| **Single extension** | ~8 KB | 1 | Per extension |
-
-**Network Optimization:**
-- HTTPS connection reuse across requests
-- Exponential backoff on transient failures (2s, 4s, 8s)
-- Configurable rate limiting (default 1.5s, range 0.5-10s)
-- Graceful handling of network failures
-
----
-
-## 4. Performance Optimization Strategies
-
-### 4.1 Caching Strategy
-
-**Multi-Level Caching:**
-1. **In-Memory Cache:** API client connection pooling
-2. **SQLite Cache:** Extension results with HMAC integrity
-3. **Version-Based Invalidation:** Automatic refresh on updates
-
-**Cache Hit Optimization:**
-- Store complete vscan.dev response
-- Include timestamp and version metadata
-- HMAC-SHA256 signatures prevent tampering
-- Configurable TTL (default 7 days, range 1-90 days)
-
-**Cache Management Best Practices:**
-```bash
-# Regular maintenance (monthly)
-vscan cache stats --cache-max-age 30  # Check for stale entries
-vscan cache clear                      # Clear if database grows >50MB
-
-# Performance tuning
-vscan config set cache.max_age 14      # Extend TTL for slower-changing extensions
-vscan config set cache.max_age 3       # Reduce TTL for active development
-```
-
-### 4.2 Parallel Processing Strategy
-
-**Threading Architecture:**
-- **ThreadPoolExecutor:** Python standard library, no external deps
-- **Worker Isolation:** Each worker has dedicated API client
-- **Thread-Safe Stats:** Lock-protected shared statistics collection
-- **Main Thread DB:** All SQLite writes occur in main thread (SQLite limitation)
-
-**Optimal Worker Count Selection:**
+**Memory usage test pattern:**
 ```python
-# Automatic selection based on extension count
-extensions_count < 10:  workers = 1  # Sequential for small scans
-extensions_count < 30:  workers = 2  # Moderate parallelism
-extensions_count >= 30: workers = 3  # Default optimal
+def test_cache_migration_memory():
+    """Cache migration doesn't load all data into memory."""
+    import tracemalloc
+
+    tracemalloc.start()
+    cache._migrate_cache_to_v2()
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    # Peak memory < 10MB
+    max_mb = 10
+    peak_mb = peak / (1024 * 1024)
+    assert peak_mb < max_mb, f"Peak memory {peak_mb}MB exceeds {max_mb}MB limit"
 ```
 
-**Rate Limit Protection:**
-- Distributed delays across workers
-- Per-worker exponential backoff
-- Global rate limit tracking
-- Automatic worker throttling on API errors
+### Test Assertions
 
-### 4.3 API Optimization
+**Performance test patterns:**
+- **Speedup Tests:** Assert minimum speedup ratio (e.g., `speedup >= 2.0`)
+- **Absolute Time:** Assert maximum duration (e.g., `duration < 1.0` seconds)
+- **Resource Limits:** Assert maximum memory/disk usage
+- **Scaling Tests:** Assert linear/sublinear scaling with input size
 
-**Request Optimization:**
-- Connection pooling for HTTPS requests
-- Request timeouts (30s connect, 60s read)
-- Automatic retry with exponential backoff
-- Jitter to prevent thundering herd
-
-**Response Handling:**
-- Streaming for large responses
-- 10 MB size limit prevents memory exhaustion
-- Incremental parsing of JSON responses
-- Error response caching (5-minute TTL)
-
-### 4.4 Database Optimization
-
-**SQLite Tuning:**
-```sql
--- Performance pragmas
-PRAGMA journal_mode = WAL;           -- Write-Ahead Logging for concurrency
-PRAGMA synchronous = NORMAL;         -- Balance safety and speed
-PRAGMA cache_size = -2000;           -- 2MB cache
-PRAGMA temp_store = MEMORY;          -- Use memory for temp storage
-```
-
-**Schema Optimization:**
-```sql
--- Indexes for fast lookups
-CREATE INDEX idx_extension_id ON extensions(extension_id);
-CREATE INDEX idx_timestamp ON extensions(timestamp);
-
--- Partial indexes for common queries
-CREATE INDEX idx_recent ON extensions(timestamp)
-  WHERE timestamp > datetime('now', '-7 days');
-```
-
-**Query Optimization:**
-- Prepared statements for all queries
-- Batch inserts in single transaction
-- Lazy connection initialization
-- Automatic VACUUM on cache clear
+**Test File:** `tests/test_performance.py`
 
 ---
 
-## 5. Benchmarking & Profiling
+## Benchmarking
 
-### 5.1 Benchmarking Methodology
+### Benchmarking Methodology
 
-**Test Scenarios:**
+**Controlled benchmark environment:**
+```bash
+# 1. Clear cache for cold-start test
+rm -rf ~/.vscan/cache.db
+
+# 2. Ensure stable system (close unnecessary apps)
+# 3. Run warmup scan (JIT compilation, etc.)
+vscan scan --quiet
+
+# 4. Run timed benchmark
+time vscan scan --quiet
+
+# 5. Repeat 3-5 times, calculate median
+```
+
+**Benchmark scenarios:**
 ```bash
 # Cold cache (first run)
 rm -rf ~/.vscan/cache.db
@@ -356,95 +186,362 @@ time vscan scan --workers 3 --quiet  # Parallel default
 time vscan scan --workers 5 --quiet  # Maximum workers
 
 # Network conditions
-vscan scan --delay 0.5  # Fast network
+vscan scan --delay 0.5  # Fast network (minimum API delay)
 vscan scan --delay 5.0  # Slow/restricted network
 ```
 
-**Metrics Collection:**
-- Total scan time (wall clock)
-- Per-extension scan time
-- Cache hit/miss rates
-- Memory usage (peak and average)
-- Network transfer volume
-- API call count and latency
+### Comparing Performance
 
-### 5.2 Load Testing
-
-**Stress Test Scenarios:**
+**Before/after comparison:**
 ```bash
-# Large extension count
-vscan scan --extensions-dir /path/to/200-extensions
+# Baseline (before optimization)
+git checkout baseline-branch
+time vscan scan --quiet > baseline.txt
 
-# Concurrent scans (multi-process)
-for i in {1..5}; do vscan scan & done
+# Optimized (after changes)
+git checkout optimization-branch
+time vscan scan --quiet > optimized.txt
 
-# Cache pressure
-vscan config set cache.max_age 1  # Force frequent invalidation
-for i in {1..100}; do vscan scan; sleep 86400; done
+# Compare results
+# Calculate: improvement = (baseline_time - optimized_time) / baseline_time * 100%
 ```
 
-**Performance Targets:**
-- ✅ Handle 200+ extensions without memory issues
-- ✅ Support 5 concurrent scan processes
-- ✅ Maintain <100MB total memory usage
-- ✅ Cache database stays <20MB for 200 extensions
+**Metrics to collect:**
+- **Total scan time** (wall clock)
+- **Per-extension scan time** (average)
+- **Cache hit/miss rates**
+- **Memory usage** (peak and average)
+- **Network transfer volume**
+- **API call count and latency**
 
-### 5.3 Profiling
+### Platform Considerations
 
-**CPU Profiling:**
+**Platform-specific factors:**
+- macOS: APFS filesystem, different SQLite performance
+- Linux: ext4/btrfs filesystem characteristics
+- Windows: NTFS, different file permission handling
+- Python version: 3.8 vs 3.11 performance differences
+
+**How to account for platform differences:**
+1. Always note platform in benchmark results
+2. Focus on **relative improvements** (e.g., "2x faster") not absolute times
+3. Re-run benchmarks when platform changes
+4. Use platform-appropriate tools (see Profiling section)
+
+---
+
+## Profiling
+
+### CPU Profiling
+
+**Python cProfile:**
 ```bash
-# Python cProfile
+# Profile full scan
 python -m cProfile -o profile.stats -m vscode_scanner.vscan scan
-python -m pstats profile.stats
 
-# Hotspot analysis
+# Analyze results
+python -m pstats profile.stats
 (pstats) sort cumtime
-(pstats) stats 20
+(pstats) stats 20  # Show top 20 time consumers
 ```
 
-**Memory Profiling:**
+**py-spy (sampling profiler):**
 ```bash
-# memory_profiler
-pip install memory_profiler
-python -m memory_profiler vscode_scanner/vscan.py scan
+# Install
+pip install py-spy
 
-# tracemalloc (built-in)
+# Profile running scan
+py-spy record -o profile.svg -- python -m vscode_scanner.vscan scan
+
+# View flamegraph (profile.svg)
+```
+
+**Interpreting CPU profiles:**
+- **cumtime:** Total time in function + callees (find bottlenecks)
+- **tottime:** Time in function only (find hot loops)
+- **ncalls:** Number of calls (find excessive calls)
+
+**Optimization targets:**
+- Functions with high cumtime (bottlenecks)
+- Functions with high tottime (hot spots)
+- Functions called many times (optimization multiplier)
+
+### Memory Profiling
+
+**tracemalloc (built-in):**
+```bash
+# Profile with tracemalloc
 python -X tracemalloc=5 -m vscode_scanner.vscan scan
+```
+
+**memory_profiler:**
+```bash
+# Install
+pip install memory_profiler
+
+# Profile specific function
+python -m memory_profiler vscode_scanner/vscan.py scan
+```
+
+**Monitoring during scan:**
+```bash
+# macOS
+/usr/bin/time -l vscan scan
+
+# Linux
+/usr/bin/time -v vscan scan
+```
+
+**Memory leak detection:**
+```python
+import tracemalloc
+
+tracemalloc.start()
+# Run operation
+snapshot1 = tracemalloc.take_snapshot()
+# Run operation again
+snapshot2 = tracemalloc.take_snapshot()
+
+# Compare
+top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+for stat in top_stats[:10]:
+    print(stat)
+```
+
+### Interpreting Results
+
+**What to look for:**
+- **High memory:** Large data structures, unnecessary copies, lack of streaming
+- **Memory growth:** Memory leaks, accumulating caches
+- **CPU hotspots:** Inefficient algorithms, excessive object creation
+- **I/O bottlenecks:** Disk thrashing, network latency
+
+**Optimization priority:**
+1. Fix memory leaks (unbounded growth)
+2. Optimize CPU hotspots (>10% cumtime)
+3. Reduce I/O operations (database, network)
+4. Eliminate unnecessary work (redundant calls)
+
+---
+
+## Optimization Strategies
+
+### Caching Strategy
+
+**Multi-level caching:**
+1. **In-Memory Cache:** API client connection pooling
+2. **SQLite Cache:** Extension results with HMAC integrity
+3. **Version-Based Invalidation:** Automatic refresh on updates
+
+**Cache implementation:**
+```python
+# Check cache first
+cached = cache_manager.get(extension_id)
+if cached and not is_expired(cached):
+    return cached
+
+# Fetch from API
+result = api_client.fetch(extension_id)
+
+# Store in cache
+cache_manager.set(extension_id, result)
+return result
+```
+
+**Cache tuning:**
+```bash
+# Adjust TTL (time-to-live)
+vscan config set cache.max_age 7   # Days (default: 7, range: 1-90)
+
+# Clear stale cache
+vscan cache clear
+
+# Monitor cache performance
+vscan cache stats
+```
+
+**Cache optimization techniques:**
+- Store complete API responses (avoid partial cache)
+- Use HMAC signatures (prevent tampering, see SECURITY.md)
+- Implement batch commits (reduce SQLite transaction overhead)
+- Run VACUUM after bulk deletes (reclaim disk space)
+
+### Parallel Processing
+
+**ThreadPoolExecutor configuration:**
+```python
+from concurrent.futures import ThreadPoolExecutor
+
+# Optimal worker count selection
+def calculate_workers(extension_count):
+    if extension_count < 10:
+        return 1  # Sequential for small scans
+    elif extension_count < 30:
+        return 2  # Moderate parallelism
+    else:
+        return 3  # Default optimal (best balance)
+
+# Execute with isolation
+with ThreadPoolExecutor(max_workers=workers) as executor:
+    # Each worker gets dedicated API client
+    futures = [executor.submit(scan_one, ext) for ext in extensions]
+    results = [f.result() for f in futures]
+```
+
+**Thread safety:**
+```python
+# Thread-safe statistics collection
+from threading import Lock
+
+class ThreadSafeStats:
+    def __init__(self):
+        self._lock = Lock()
+        self._data = {}
+
+    def increment(self, key, value):
+        with self._lock:
+            self._data[key] = self._data.get(key, 0) + value
+```
+
+**Rate limit protection:**
+- Distribute delays across workers
+- Implement per-worker exponential backoff
+- Track global rate limit
+- Auto-throttle on API errors
+
+**Worker count tuning:**
+```bash
+# Test different worker counts
+for w in 1 2 3 5; do
+    echo "Workers: $w"
+    time vscan scan --workers $w --quiet
+done
+```
+
+### Database Optimization
+
+**SQLite tuning:**
+```sql
+-- Performance pragmas (applied automatically)
+PRAGMA journal_mode = WAL;      -- Write-Ahead Logging
+PRAGMA synchronous = NORMAL;    -- Balance safety/speed
+PRAGMA cache_size = -2000;      -- 2MB cache
+PRAGMA temp_store = MEMORY;     -- Memory for temp tables
+```
+
+**Batch operations:**
+```python
+# BAD: Individual commits
+for result in results:
+    db.execute("INSERT ...", result)
+    db.commit()  # Slow!
+
+# GOOD: Batch commit
+db.execute("BEGIN")
+for result in results:
+    db.execute("INSERT ...", result)
+db.commit()  # Single transaction
+```
+
+**Index optimization:**
+```sql
+-- Create indexes for common queries
+CREATE INDEX idx_extension_id ON extensions(extension_id);
+CREATE INDEX idx_timestamp ON extensions(timestamp);
+
+-- Partial indexes for frequent filters
+CREATE INDEX idx_recent ON extensions(timestamp)
+  WHERE timestamp > datetime('now', '-7 days');
+```
+
+**Query optimization:**
+- Use prepared statements (security + performance)
+- Avoid `SELECT *` (fetch only needed columns)
+- Use `LIMIT` for large result sets
+- Run `EXPLAIN QUERY PLAN` for slow queries
+
+### API Optimization
+
+**Request optimization:**
+```python
+# Connection pooling (reuse HTTPS connections)
+import urllib.request
+
+opener = urllib.request.build_opener()
+# Connection stays alive across requests
+
+# Request configuration
+request = urllib.request.Request(
+    url,
+    headers={'Connection': 'keep-alive'}
+)
+```
+
+**Retry with exponential backoff:**
+```python
+def retry_with_backoff(func, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except RetryableError:
+            delay = min(2 ** attempt * random.uniform(0.8, 1.2), 30)
+            time.sleep(delay)
+    raise MaxRetriesExceeded()
+```
+
+**Response handling:**
+```python
+# Streaming for large responses
+response = urllib.request.urlopen(url)
+data = response.read(MAX_RESPONSE_SIZE)  # 10MB limit
+
+# Incremental JSON parsing
+import json
+result = json.loads(data)  # Parse once, cache result
 ```
 
 ---
 
-## 6. Performance Troubleshooting
+## Troubleshooting
 
-### 6.1 Slow Scans
+### Slow Scans
 
 **Symptoms:**
 - Scans take >2 minutes per extension
 - Frequent timeout errors
-- High CPU usage
+- High CPU usage without progress
 
 **Diagnosis:**
 ```bash
-# Check network latency
+# 1. Check network latency
 time curl -I https://vscan.dev
 
-# Check API delays
+# 2. Check API delay setting
 vscan config get scan.delay
 
-# Check worker count
+# 3. Check worker count
 vscan config get scan.workers
 
-# Profile execution
+# 4. Profile execution
 python -m cProfile -m vscode_scanner.vscan scan --quiet
 ```
 
 **Solutions:**
-- Increase `scan.delay` if rate limited: `vscan config set scan.delay 2.5`
-- Reduce `scan.workers` if network unstable: `vscan config set scan.workers 2`
-- Check firewall/proxy settings
-- Verify internet connectivity
+```bash
+# Increase delay if rate limited
+vscan config set scan.delay 2.5
 
-### 6.2 High Memory Usage
+# Reduce workers if network unstable
+vscan config set scan.workers 2
+
+# Check cache is working
+vscan cache stats  # Should show high hit rate on re-scans
+
+# Verify internet connectivity
+ping vscan.dev
+```
+
+### High Memory Usage
 
 **Symptoms:**
 - Memory usage >200MB
@@ -460,17 +557,23 @@ python -m cProfile -m vscode_scanner.vscan scan --quiet
 # Check cache size
 vscan cache stats
 
-# Check for memory leaks
+# Profile memory
 python -X tracemalloc=5 -m vscode_scanner.vscan scan
 ```
 
 **Solutions:**
-- Clear cache: `vscan cache clear --force`
-- Reduce workers: `vscan config set scan.workers 2`
-- Update to latest version (memory leak fixes)
-- Report issue if persistent
+```bash
+# Clear cache
+vscan cache clear --force
 
-### 6.3 Cache Issues
+# Reduce workers (less concurrent API clients)
+vscan config set scan.workers 2
+
+# Check for memory leaks (if persistent)
+# Run tracemalloc comparison (see Profiling section)
+```
+
+### Cache Issues
 
 **Symptoms:**
 - Cache not accelerating repeated scans
@@ -490,58 +593,76 @@ du -h ~/.vscan/cache.db
 ```
 
 **Solutions:**
-- Clear and rebuild: `vscan cache clear --force`
-- Adjust max age: `vscan config set cache.max_age 7`
-- Run VACUUM: `vscan cache clear` (automatic)
-- Check disk space availability
+```bash
+# Clear and rebuild cache
+vscan cache clear --force
+
+# Adjust cache TTL
+vscan config set cache.max_age 7
+
+# Run VACUUM (automatic on clear)
+vscan cache clear
+
+# Verify disk space
+df -h ~/.vscan
+```
 
 ---
 
-## 7. Performance Roadmap
+## Resource Monitoring
 
-### 7.1 Completed Optimizations
+**Memory monitoring:**
+```bash
+# During scan execution
+watch -n 1 'ps aux | grep vscan'
 
-- ✅ **v3.1.0:** SQLite caching (28x speedup)
-- ✅ **v3.1.0:** Batch database commits (87% faster inserts)
-- ✅ **v3.4.0:** Parallel processing (4.88x speedup with 3 workers)
-- ✅ **v3.5.0:** Thread-safe statistics collection
-- ✅ **v3.5.1:** Connection pooling and retry optimization
+# With detailed metrics
+/usr/bin/time -v python -m vscode_scanner.vscan scan
+```
 
-### 7.2 Future Optimizations (v3.6+)
+**Disk usage monitoring:**
+```bash
+# Cache database size
+du -h ~/.vscan/cache.db
 
-**Planned:**
-- 🔄 HTTP/2 multiplexing for concurrent API requests
-- 🔄 Differential scanning (only check changed extensions)
-- 🔄 Predictive cache pre-warming
-- 🔄 Async I/O for database operations
-- 🔄 Compressed cache storage
+# Report file sizes
+ls -lh *.html *.json *.csv
+```
 
-**Under Consideration:**
-- Binary protocol for faster API communication
-- Local vulnerability database mirror
-- Distributed caching across team members
-- GPU acceleration for report generation
+**Network monitoring:**
+```bash
+# Network activity (macOS)
+nettop -p python
+
+# Network activity (Linux)
+iftop -f "host vscan.dev"
+```
+
+**Resource limits:**
+- **Memory:** Should stay <100MB for typical scans (<200 extensions)
+- **Disk:** Cache typically 2-5MB (50KB per extension)
+- **Network:** ~8KB per extension (first scan), 0KB (cached)
 
 ---
 
-## 8. References
+## References
 
-### 8.1 Related Documentation
+### Related Documentation
 
-- **Test Suite:** `tests/test_performance.py` - Complete performance test validation
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design and threading model
-- **[TESTING.md](testing/TESTING.md)** - General testing patterns and methodology
+- **[TESTING.md](TESTING.md)** - General testing patterns (includes performance test section)
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design, threading model
 - **[API_REFERENCE.md](API_REFERENCE.md)** - vscan.dev API performance characteristics
 
-### 8.2 Performance Tools
+### Performance Tools
 
 - **[Python cProfile](https://docs.python.org/3/library/profile.html)** - CPU profiling
-- **[memory_profiler](https://pypi.org/project/memory-profiler/)** - Memory profiling
-- **[SQLite EXPLAIN QUERY PLAN](https://www.sqlite.org/eqp.html)** - Query optimization
-- **[py-spy](https://github.com/benfred/py-spy)** - Sampling profiler
+- **[memory_profiler](https://pypi.org/project/memory-profiler/)** - Line-by-line memory profiling
+- **[py-spy](https://github.com/benfred/py-spy)** - Sampling profiler (no code changes)
+- **[SQLite EXPLAIN QUERY PLAN](https://www.sqlite.org/eqp.html)** - Query optimization analysis
+
+### External Resources
+
+- **[Python Performance Tips](https://wiki.python.org/moin/PythonSpeed/PerformanceTips)** - General Python optimization
+- **[SQLite Performance Tuning](https://www.sqlite.org/speed.html)** - Database optimization
 
 ---
-
-**Document Version:** 2.0.0 (Consolidated)
-**Status:** Complete ✅
-**Last Updated:** 2025-11-03 (Merged TESTING_PERFORMANCE.md for maintainability)

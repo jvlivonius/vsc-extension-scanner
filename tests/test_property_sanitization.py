@@ -98,11 +98,11 @@ class TestSanitizeStringProperties:
     @given(st.integers(min_value=10, max_value=1000))
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_respects_any_max_length(self, max_len):
-        """Property: any valid max_length is respected (accounting for '...' suffix)."""
+        """Property: any valid max_length is respected exactly."""
         long_text = "x" * 2000
         result = sanitize_string(long_text, max_length=max_len)
-        # Result may be slightly longer due to "..." suffix, but should be close to max_len
-        assert len(result) <= max_len + 3  # Allow for "..." suffix
+        # Result should be exactly max_len (includes "..." suffix within that length)
+        assert len(result) == max_len
 
     @given(st.text())
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -176,8 +176,9 @@ class TestSanitizeStringRegressions:
 
         text = "x" * 501
         result = sanitize_string(text, max_length=500)
-        # May include "..." suffix, so allow slight overage
-        assert len(result) <= 503
+        # Should be truncated to exactly max_length (includes "..." within limit)
+        assert len(result) == 500
+        assert result.endswith("...")
 
 
 if __name__ == "__main__":

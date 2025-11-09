@@ -1,6 +1,7 @@
 # Branch Protection Configuration
 
-Complete guide for configuring GitHub branch protection rules for the VS Code Extension Scanner project.
+**Purpose:** GitHub branch protection rules configuration and management
+**Document Type:** Process Guide
 
 ---
 
@@ -466,105 +467,31 @@ gh api repos/:owner/:repo/branches/main/protection \
 
 ## Troubleshooting
 
-### Status Checks Not Appearing
-
-**Problem:** Status check names don't appear in protection settings dropdown
-
-**Solutions:**
-1. Ensure workflow file exists in `.github/workflows/`
-2. Workflow must have been triggered at least once
-3. Check workflow name matches exactly (case-sensitive)
-4. Wait a few minutes for GitHub to register workflows
-
-**Verify workflows:**
-```bash
-gh workflow list
-gh workflow view <workflow-name>
-```
-
-### Can't Enable Protection Rules
-
-**Problem:** "You don't have permission to enable branch protection"
-
-**Solutions:**
-1. Must be repository owner or admin
-2. Organization may have restrictions
-3. Check repository settings permissions
-
-**Verify permissions:**
-```bash
-gh api repos/:owner/:repo | jq '.permissions'
-```
-
-### PR Merges Without Approval
-
-**Problem:** PRs can merge without review despite protection rules
-
-**Solutions:**
-1. Verify "enforce_admins" is enabled
-2. Check if user has bypass permissions
-3. Ensure protection rule is active (not draft)
-
-**Verify enforcement:**
-```bash
-gh api repos/:owner/:repo/branches/main/protection \
-  | jq '.enforce_admins'
-```
-
-### Force Push Still Works
-
-**Problem:** Can still force push to main despite protection
-
-**Solutions:**
-1. Verify "allow_force_pushes" is false
-2. Check if using deploy keys with force push permission
-3. Verify protection rule targets correct branch
-
-**Verify force push setting:**
-```bash
-gh api repos/:owner/:repo/branches/main/protection \
-  | jq '.allow_force_pushes'
-```
+| Problem | Solution | Verification |
+|---------|----------|--------------|
+| **Status checks not appearing** | Workflow must exist in `.github/workflows/`, run at least once, and name matches exactly (case-sensitive) | `gh workflow list` |
+| **Can't enable protection** | Must be repo owner/admin; check org restrictions | `gh api repos/:owner/:repo \| jq '.permissions'` |
+| **PR merges without approval** | Verify `enforce_admins` setting and user bypass permissions | `gh api repos/:owner/:repo/branches/main/protection \| jq '.enforce_admins'` |
+| **Force push still works** | Verify `allow_force_pushes: false` and deploy key permissions | `gh api repos/:owner/:repo/branches/main/protection \| jq '.allow_force_pushes'` |
 
 ---
 
 ## Updating Protection Rules
 
-### Add New Status Check
+**Common updates** (see "Update Specific Settings" section above for full commands):
 
 ```bash
-# Get current checks
-gh api repos/:owner/:repo/branches/main/protection/required_status_checks \
-  | jq '.contexts'
-
-# Add new check
+# Add status check
 gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contexts \
-  --method POST \
-  --field contexts[]="new-check-name"
-```
+  --method POST --field contexts[]="new-check-name"
 
-### Change Required Approvals
-
-```bash
-# Increase to 2 approvals
+# Change required approvals
 gh api repos/:owner/:repo/branches/main/protection/required_pull_request_reviews \
-  --method PATCH \
-  --field required_approving_review_count=2
-```
+  --method PATCH --field required_approving_review_count=2
 
-### Temporarily Disable Protection
-
-**⚠️ DANGER:** Only for critical emergencies
-
-```bash
-# Disable protection (DANGEROUS!)
-gh api repos/:owner/:repo/branches/main/protection \
-  --method DELETE
-
-# Re-enable immediately after emergency
-gh api repos/:owner/:repo/branches/main/protection \
-  --method PUT \
-  --input .github/branch-protection-config.json
+# ⚠️ EMERGENCY ONLY: Disable protection temporarily
+gh api repos/:owner/:repo/branches/main/protection --method DELETE
+# Re-enable immediately: gh api repos/:owner/:repo/branches/main/protection --method PUT --input .github/branch-protection-config.json
 ```
 
 ---
@@ -639,6 +566,3 @@ gh api repos/:owner/:repo/branches/main/protection \
 - [GitHub Status Checks](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks)
 
 ---
-
-**Last Updated:** 2025-10-31
-**Version:** 1.1.0

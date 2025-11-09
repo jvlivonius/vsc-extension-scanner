@@ -14,7 +14,7 @@
 📋 **Plan** → write_memory("plan", goal_statement)
 → 🎯 **Phase** → write_memory("phase_X", milestone)
   → 📦 **Task** → write_memory("task_X.Y", deliverable)
-    → ✓ **Todo** → TodoWrite + write_memory("todo_X.Y.Z", status)
+    → ✓ **Todo** → Track tasks + write_memory("todo_X.Y.Z", status)
 
 ## Memory Operations
 
@@ -29,7 +29,7 @@
 ```
 1. write_memory("task_2.1", "completed: auth middleware")
 2. think_about_task_adherence() → Verify on track
-3. Update TodoWrite status in parallel
+3. Update task status in parallel
 4. write_memory("checkpoint", current_state) every 30min
 ```
 
@@ -44,7 +44,7 @@
 
 1. **Load**: list_memories() → read_memory() → Resume state
 2. **Plan**: Create hierarchy → write_memory() for each level
-3. **Track**: TodoWrite + memory updates in parallel
+3. **Track**: Task tracking + memory updates in parallel
 4. **Execute**: Update memories as tasks complete
 5. **Checkpoint**: Periodic write_memory() for state preservation
 6. **Complete**: Final memory update with outcomes
@@ -53,7 +53,7 @@
 
 | Task Type | Primary Tool | Memory Key |
 |-----------|-------------|------------|
-| Analysis | Sequential MCP | "analysis_results" |
+| Analysis | sequential-thinking | "analysis_results" |
 | Symbol Operations | Serena MCP | "refactoring_state" |
 | Testing | pytest + property tests | "test_results" |
 | Documentation | Context7 MCP | "doc_patterns" |
@@ -77,7 +77,7 @@ decisions: Key architectural/design choices made
 list_memories() → Check existing state
 write_memory("plan_v3.6", "Extract ProgressCallback pattern for testability")
 write_memory("phase_1", "Analysis - identify hard-to-test components")
-TodoWrite: Create specific refactoring todos
+Track tasks: Create specific refactoring todos
 Execute analysis → write_memory("task_1.1", "completed: Found 3 tightly-coupled modules")
 ```
 

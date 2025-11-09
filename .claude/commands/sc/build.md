@@ -35,8 +35,8 @@ Key behaviors:
 - Comprehensive build reporting with timing metrics and artifact analysis
 
 ## MCP Integration
-- **Playwright MCP**: Auto-activated for build validation and UI testing during builds
-- **DevOps Engineer Persona**: Activated for build optimization and deployment preparation
+- **Context7**: Auto-activated for build tool documentation (setuptools, build, wheel patterns)
+- **performance-engineer agent**: Activated for build optimization and artifact analysis
 - **Enhanced Capabilities**: Build pipeline integration, performance monitoring, artifact validation
 
 ## Tool Coordination
@@ -68,18 +68,18 @@ Key behaviors:
 # Minification, tree-shaking, and deployment preparation
 ```
 
-### Targeted Component Build
+### Targeted Package Build
 ```
-/sc:build frontend --verbose
-# Builds specific project component with detailed output
+/sc:build --verbose
+# Builds Python package with detailed output
 # Real-time progress monitoring and diagnostic information
 ```
 
 ### Development Build with Validation
 ```
 /sc:build --type dev --validate
-# Development build with Playwright validation
-# UI testing and build verification integration
+# Development build with pytest validation
+# Test execution and build verification integration
 ```
 
 ## Boundaries

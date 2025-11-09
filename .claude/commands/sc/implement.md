@@ -32,15 +32,15 @@ personas: [architect, backend, security, qa-specialist]
 5. **Integrate**: Update documentation and provide testing recommendations
 
 Key behaviors:
-- Context-based persona activation (architect, frontend, backend, security, qa)
-- Framework-specific implementation via Context7 and Magic MCP integration
-- Systematic multi-component coordination via Sequential MCP
-- Comprehensive testing integration with Playwright for validation
+- Context-based agent activation (python-expert, security-engineer, quality-engineer, performance-engineer)
+- Framework-specific implementation via Context7 integration
+- Systematic multi-component coordination via sequential-thinking
+- Comprehensive testing integration with pytest for validation
 
 ## MCP Integration (Python CLI Optimized)
-- **Context7 MCP**: Python patterns, pytest/hypothesis/typer/rich official docs ✅
-- **Sequential MCP**: Complex multi-step analysis and implementation planning ✅
-- **Serena MCP**: Symbol operations, refactoring, session persistence ✅
+- **Context7**: Python patterns, pytest/hypothesis/typer/rich official docs ✅
+- **sequential-thinking**: Complex multi-step analysis and implementation planning ✅
+- **Serena**: Symbol operations, refactoring, session persistence ✅
 
 <!-- ARCHIVED MCP INTEGRATION (Frontend/Browser):
 - Magic MCP: UI generation (archived - use Rich for terminal UI)
@@ -48,24 +48,24 @@ Key behaviors:
 -->
 
 ## Tool Coordination
-- **Write/Edit/MultiEdit**: Code generation and modification for implementation
+- **Write/Edit**: Code generation and modification for implementation (use multiple parallel Edits for multi-file)
 - **Read/Grep/Glob**: Project analysis and pattern detection for consistency
-- **TodoWrite**: Progress tracking for complex multi-file implementations
-- **Task**: Delegation for large-scale feature development requiring systematic coordination
+- **Task Tracking**: Progress tracking for complex multi-file implementations
+- **Delegation**: For large-scale feature development requiring systematic coordination
 
 ## Key Patterns
-- **Context Detection**: Framework/tech stack → appropriate persona and MCP activation
+- **Context Detection**: Tech stack → appropriate agent and MCP activation
 - **Implementation Flow**: Requirements → code generation → validation → integration
-- **Multi-Persona Coordination**: Frontend + Backend + Security → comprehensive solutions
+- **Multi-Agent Coordination**: python-expert + security-engineer + quality-engineer → comprehensive solutions
 - **Quality Integration**: Implementation → testing → documentation → validation
 
 ## Examples
 
-### React Component Implementation
+### CLI Command Implementation
 ```
-/sc:implement user profile component --type component --framework react
-# Magic MCP generates UI component with design system integration
-# Frontend persona ensures best practices and accessibility
+/sc:implement scan command --type cli --framework typer
+# python-expert generates CLI command with typer best practices
+# security-engineer ensures input validation and safe execution
 ```
 
 ### API Service Implementation
@@ -78,8 +78,8 @@ Key behaviors:
 ### Full-Stack Feature
 ```
 /sc:implement payment processing system --type feature --with-tests
-# Multi-persona coordination: architect, frontend, backend, security
-# Sequential MCP breaks down complex implementation steps
+# Multi-agent coordination: python-expert, security-engineer, quality-engineer
+# sequential-thinking breaks down complex implementation steps
 ```
 
 ### Framework-Specific Implementation

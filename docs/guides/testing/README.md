@@ -26,9 +26,9 @@ Essential testing documentation for comprehensive coverage:
   - End-to-end workflows: discovery → scanning → caching → output
   - 7 integration tests covering major user journeys
 
-- **[TESTING_COVERAGE.md](TESTING_COVERAGE.md)** - Coverage strategy (52% → 70%)
-  - Module-by-module coverage goals and gap analysis
-  - HTML coverage reports and measurement techniques
+- **[TESTING_COVERAGE.md](TESTING_COVERAGE.md)** - How to measure and improve test coverage
+  - Module-by-module coverage goals (85%+ overall, 95%+ security)
+  - Coverage measurement, analysis, and improvement workflows
 
 ---
 
@@ -40,25 +40,9 @@ Domain-specific testing guides:
   - Canonical mock objects for vscan.dev API
   - Mock validation and drift prevention patterns
 
-- **[TESTING_CLI.md](TESTING_CLI.md)** - CLI testing
-  - Command validation and argument parsing tests
-  - CliRunner patterns for Typer framework
-
-- **[TESTING_HTML_REPORTS.md](TESTING_HTML_REPORTS.md)** - HTML report testing
-  - Self-contained HTML structure validation
-  - Embedded CSS/JavaScript and chart generation tests
-
-- **[TESTING_RETRY.md](TESTING_RETRY.md)** - Retry mechanism testing
-  - Exponential backoff validation with jitter
-  - Retry-After header handling and error classification
-
-- **[TESTING_PARALLEL.md](TESTING_PARALLEL.md)** - Parallel scanning tests
-  - Thread-safe statistics validation (ThreadSafeStats)
-  - Worker isolation and race condition prevention
-
-- **[PERFORMANCE.md](../PERFORMANCE.md)** § 2 - Performance testing (formerly TESTING_PERFORMANCE.md)
-  - Cache speedup validation (50x+ improvement)
-  - Memory usage and parallel performance benchmarks
+- **[PERFORMANCE.md](../PERFORMANCE.md)** § 2 - Performance testing
+  - Cache speedup validation and benchmarking methodology
+  - Memory usage profiling and parallel performance testing
 
 ---
 
@@ -74,10 +58,8 @@ Domain-specific testing guides:
 
 - **Parent Guide:** [../TESTING.md](../TESTING.md) - Main testing overview
 - **Contributing:** [../../contributing/TESTING_CHECKLIST.md](../../contributing/TESTING_CHECKLIST.md) - Pre-release checklist
-- **Roadmap:** [../../project/v3.5.3-roadmap.md](../../project/v3.5.3-roadmap.md) - Testing Excellence plan
+- **Status:** [../../project/STATUS.md](../../project/STATUS.md) - Current test metrics and coverage
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-10-30
-**Total Test Suite:** 604 tests, 100% passing, 52.37% coverage
+**Total Test Suite:** Run `pytest --collect-only -q tests/` for count. See [STATUS.md](../../project/STATUS.md) for coverage.

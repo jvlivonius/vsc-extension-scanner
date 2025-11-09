@@ -64,16 +64,18 @@ pip-audit
 
 ### Coverage by File
 
-| Test File | Tests | Primary Focus | CVE Coverage |
-|-----------|-------|---------------|--------------|
-| test_security.py | 11 | Core vulnerabilities | CWE-22, CWE-89, CWE-400 |
-| test_path_validation.py | 24 | Path traversal protection | CWE-22 variants |
-| test_string_sanitization.py | 22 | Injection prevention | CWE-79, CWE-93, CWE-209 |
-| test_cache_integrity.py | 21 | HMAC validation | CWE-345 |
-| test_sqlite_security.py | Custom | SQLite audit | CWE-89, permissions |
-| test_security_regression.py | 24 | Regression prevention | All fixed CVEs |
+**Current Counts:** Run `pytest --collect-only -q tests/test_security*.py` for exact test counts.
 
-**Total Security Tests:** 100+ tests covering all major vulnerability classes
+| Test File | Primary Focus | CVE Coverage |
+|-----------|---------------|--------------|
+| test_security.py | Core vulnerabilities | CWE-22, CWE-89, CWE-400 |
+| test_path_validation.py | Path traversal protection | CWE-22 variants |
+| test_string_sanitization.py | Injection prevention | CWE-79, CWE-93, CWE-209 |
+| test_cache_integrity.py | HMAC validation | CWE-345 |
+| test_sqlite_security.py | SQLite audit | CWE-89, permissions |
+| test_security_regression.py | Regression prevention | All fixed CVEs |
+
+**Total Security Tests:** See → [STATUS.md](../../project/STATUS.md) for current security test coverage
 
 ---
 
@@ -86,6 +88,8 @@ Prevent **CWE-22: Path Traversal** attacks by validating all file paths before u
 **Function Under Test:** `vscode_scanner.utils.validate_path(path, path_type)`
 
 **Test File:** `tests/test_path_validation.py` (24 tests)
+
+**Requirements:** See [SECURITY.md - Path Validation](../SECURITY.md#1-path-validation-critical) for complete validation rules, protected paths, and restricted directories
 
 ### Test Examples
 
@@ -150,19 +154,11 @@ def test_system_directories_blocked():
             validate_path(sysdir, path_type="output")
 ```
 
-### Path Validation Coverage
+### Test Coverage
 
-**Attack Vectors Tested:**
-- Classic traversal: `../../etc/passwd`
-- Windows traversal: `..\\..\\Windows`
-- URL-encoded: `%2e%2e%2f`
-- Double-encoded: `%252e%252e%252f`
-- Mixed case encoding: `%2E%2e%2F`
-- Shell expansion: `~/../.ssh`
-- System directories: `/etc`, `/sys`, `/proc`, `C:\Windows\System32`
-- Null bytes: `file\x00.txt`
+**Attack Vectors:** Tests cover all validation rules from [SECURITY.md](../SECURITY.md#1-path-validation-critical) including path traversal (classic, URL-encoded, double-encoded), shell expansion, system directory access, and null byte injection.
 
-**Coverage Result:** 95%+ of `validate_path()` function
+**Coverage Result:** 95%+ of `validate_path()` function (24 tests)
 
 ---
 
@@ -175,6 +171,8 @@ Prevent **injection attacks** (CWE-79, CWE-93, CWE-209) by sanitizing all user-f
 **Function Under Test:** `vscode_scanner.utils.sanitize_string(s, context, max_length)`
 
 **Test File:** `tests/test_string_sanitization.py` (22 tests)
+
+**Requirements:** See [SECURITY.md - Error Handling](../SECURITY.md#4-error-handling-high) for sanitization requirements and implementation patterns
 
 ### Test Examples
 
@@ -233,23 +231,11 @@ def test_control_characters_removed():
     assert "Normaltext" in result or "Normal text" in result
 ```
 
-### String Sanitization Coverage
+### Test Coverage
 
-**Attack Vectors Tested:**
-- ANSI escape sequences: `\x1b[31m`
-- Terminal control: Clear screen, cursor movement
-- Control characters: `\x00`, `\x01`, `\x1f`
-- Log injection: Fake log entries with `\n`
-- Path disclosure: Sensitive file paths in errors
-- Carriage return attacks: `\r` overwrites
-- Null byte attacks: `\x00` filename truncation
+**Attack Vectors:** Tests cover ANSI escape sequences, terminal control characters, log injection, path disclosure in error messages, and null byte attacks across all contexts (output, log, error).
 
-**Contexts Tested:**
-- `output` - User-facing terminal output
-- `log` - Log file entries
-- `error` - Error messages (most restrictive)
-
-**Coverage Result:** 90%+ of `sanitize_string()` function
+**Coverage Result:** 90%+ of `sanitize_string()` function (22 tests)
 
 ---
 
@@ -826,8 +812,3 @@ def test_security_function_blocks_attack():
 - **[../contributing/TESTING_CHECKLIST.md](../contributing/TESTING_CHECKLIST.md)** - Pre-release security checklist
 
 ---
-
-**Document Version:** 1.0
-**Status:** Current
-**Last Updated:** 2025-10-30 (v3.5.3 Testing Excellence - Phase 4)
-**Maintained By:** Security Team

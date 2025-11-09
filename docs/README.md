@@ -131,6 +131,20 @@ docs/
 - Documented errors with causes and solutions
 - Troubleshooting guide
 
+**[guides/PERFORMANCE.md](guides/PERFORMANCE.md)** - Performance testing and optimization guide
+- HOW TO measure performance (pytest, benchmarking)
+- HOW TO test performance (cache speedup, parallel validation)
+- HOW TO optimize code (profiling, bottleneck analysis)
+- Threading model and parallel processing
+- Resource monitoring and troubleshooting
+
+**[guides/HTML_REPORTS.md](guides/HTML_REPORTS.md)** - HTML report generation guide
+- Report structure and sections
+- Self-contained design (embedded CSS/JS)
+- Visualizations (charts, gauges, tables)
+- Auto-detection from .html extension
+- Testing and validation
+
 ---
 
 ## Project Management
@@ -235,6 +249,14 @@ docs/
 - Archiving procedures and git best practices
 - Cross-reference management
 - Validation checklist and quick reference
+
+**[contributing/DOCUMENTATION_STANDARDS.md](contributing/DOCUMENTATION_STANDARDS.md)** - Documentation standards and best practices
+- Core principles: HOW TO focus, single responsibility, timeless content
+- Standard headers and section markers (§ 1, § 2)
+- Dynamic and canonical references (single source of truth)
+- Token efficiency and systematic reference verification
+- Pre-commit documentation checklist
+- Common patterns for creating, archiving, and extracting documentation
 
 ---
 
@@ -371,6 +393,17 @@ docs/
 ---
 
 ## Recent Updates
+
+- **2025-11-09** - Documentation Standardization & HOW TO Transformation
+  - Rewrote [guides/PERFORMANCE.md](guides/PERFORMANCE.md) as comprehensive HOW TO guide (measure, test, optimize)
+  - Created [guides/HTML_REPORTS.md](guides/HTML_REPORTS.md) - HTML report generation guide
+  - Created [contributing/DOCUMENTATION_STANDARDS.md](contributing/DOCUMENTATION_STANDARDS.md) - Documentation standards and checklist
+  - Standardized all guides with consistent header patterns (Purpose, Document Type, Applies To, Target Audience)
+  - Streamlined [guides/testing/TESTING_COVERAGE.md](guides/testing/TESTING_COVERAGE.md) - removed historical roadmap (283→256 lines)
+  - Consolidated coverage documentation (3 docs → 2, eliminated 60% duplication, 970→267 lines)
+  - Improved actionability: guides focus on HOW TO over WHY/historical context
+  - Fixed 8 broken cross-references, removed 4 stub files
+  - Total reduction: 703+ lines while improving clarity and usability
 
 - **2025-10-25** - Archive Reorganization (Version-Based Organization)
   - Reorganized docs/archive/ with version-based naming scheme

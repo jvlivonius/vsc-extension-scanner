@@ -28,21 +28,21 @@ personas: [architect, quality, security]
 5. **Report**: Generate cleanup summary with recommendations for ongoing maintenance
 
 Key behaviors:
-- Multi-persona coordination (architect, quality, security) based on cleanup type
-- Framework-specific cleanup patterns via Context7 MCP integration
-- Systematic analysis via Sequential MCP for complex cleanup operations
+- Multi-agent coordination (quality-engineer, security-engineer) based on cleanup type
+- Framework-specific cleanup patterns via Context7 integration
+- Systematic analysis via sequential-thinking for complex cleanup operations
 - Safety-first approach with backup and rollback capabilities
 
 ## MCP Integration
-- **Sequential MCP**: Auto-activated for complex multi-step cleanup analysis and planning
-- **Context7 MCP**: Framework-specific cleanup patterns and best practices
-- **Persona Coordination**: Architect (structure), Quality (debt), Security (credentials)
+- **sequential-thinking**: Auto-activated for complex multi-step cleanup analysis and planning
+- **Context7**: Framework-specific cleanup patterns and best practices
+- **Agent Coordination**: quality-engineer (debt), security-engineer (credentials)
 
 ## Tool Coordination
 - **Read/Grep/Glob**: Code analysis and pattern detection for cleanup opportunities
-- **Edit/MultiEdit**: Safe code modification and structure optimization
-- **TodoWrite**: Progress tracking for complex multi-file cleanup operations
-- **Task**: Delegation for large-scale cleanup workflows requiring systematic coordination
+- **Edit**: Safe code modification and structure optimization (use multiple parallel Edits for multi-file)
+- **Task Tracking**: Progress tracking for complex multi-file cleanup operations
+- **Delegation**: For large-scale cleanup workflows requiring systematic coordination
 
 ## Key Patterns
 - **Dead Code Detection**: Usage analysis → safe removal with dependency validation

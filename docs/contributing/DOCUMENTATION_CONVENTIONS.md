@@ -1,9 +1,7 @@
 # Documentation Conventions
 
 **Purpose:** Consistent naming, organization, and maintenance of project documentation
-
-**Version:** 2.0
-**Last Updated:** 2025-10-31
+**Document Type:** Reference Guide
 
 ---
 
@@ -196,7 +194,7 @@ python3 scripts/archive_release_docs.py vX.Y.Z --dry-run
 python3 scripts/archive_release_docs.py vX.Y.Z
 ```
 
-See [RELEASE_DOCUMENTATION.md](RELEASE_DOCUMENTATION.md) for complete guide.
+**Note:** The above section contains the complete archival workflow. For release process integration, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
 
 ---
 
@@ -477,6 +475,13 @@ find docs/archive/plans docs/archive/summaries -name "*.md" ! -name "v[0-9]*" ! 
 
 ---
 
-_These conventions prioritize clarity and consistency. When in doubt, use pattern-based descriptions and canonical references._
+## Related Documents
 
-**Maintained By:** Project Contributors
+- [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) - Version bump and automated documentation updates
+- [RELEASE_PROCESS.md](RELEASE_PROCESS.md) - Release workflow using these conventions
+- [GIT_WORKFLOW.md](GIT_WORKFLOW.md) - Git branching and commit practices
+- [docs/README.md](../README.md) - Complete documentation index
+
+---
+
+_These conventions prioritize clarity and consistency. When in doubt, use pattern-based descriptions and canonical references._

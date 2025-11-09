@@ -20,11 +20,9 @@ python3 tests/test_property_cache.py
 pytest tests/test_property_*.py -v
 ```
 
-**Current Status (v3.5.3):**
-- 20 total property tests
-- 1,250+ scenarios generated automatically
-- 90% pass rate (18/20 passing)
-- All CRITICAL security properties passing
+**Current Status:** See → [STATUS.md](../../project/STATUS.md) for current property test counts and pass rates.
+
+**Baseline:** 20+ property tests generating 1,000+ scenarios automatically
 
 ---
 
@@ -145,67 +143,40 @@ scan_results = st.fixed_dictionaries({
 
 ---
 
-## Success Story: Bug Discovery Case Study (v3.5.3)
+## Key Lessons from Property-Based Testing
 
-### Overview
-During v3.5.3 testing excellence initiative, property-based tests discovered **3 critical bugs** that traditional unit tests missed. This demonstrates the power of property-based testing for finding edge cases.
+**Property-based testing excels at finding edge cases that example-based tests miss:**
 
-### Bugs Discovered
+### Common Bug Patterns Discovered
 
-#### 1. Escape Sequence Regex Bug (SECURITY ISSUE)
-**Test:** `test_sanitize_not_empty_unless_input_empty`
-**Input:** `'\x1b0'` (escape character + digit '0')
-**Expected:** `'0'` (remove escape, preserve digit)
-**Actual:** `''` (removed BOTH characters!)
+1. **Regex Edge Cases**
+   - Example: Escape sequence handling that removes both escape and following character
+   - Lesson: Test with comprehensive character ranges, not just expected inputs
 
-**Root Cause:** Regex `r"\x1b[^[]"` matched escape + following char, removing both
-**Impact:** Printable content incorrectly stripped, potential data loss
-**Fix:** Changed to `r"\x1b(?![\[])"` (negative lookahead, preserves following char)
+2. **String Boundary Conditions**
+   - Example: Whitespace-only strings, empty strings, control characters
+   - Lesson: Define "valid" precisely - whitespace may be printable but not meaningful
 
-#### 2. Whitespace-Only String Handling
-**Test:** `test_sanitize_not_empty_unless_input_empty`
-**Input:** `' '` (single space)
-**Expected Behavior:** `' '` → `.strip()` = `''`
-**Test Expectation:** Printable input should not strip to empty
+3. **Test Strategy Configuration**
+   - Example: Hypothesis categories vs explicit codepoint ranges
+   - Lesson: Use explicit constraints (`min_codepoint=0x20`) over category exclusions
 
-**Root Cause:** Test considered whitespace "printable" (technically correct), but whitespace-only strings are edge case
-**Impact:** Test false positive
-**Fix:** Adjusted test expectation: `has_printable = any(c.isprintable() and not c.isspace() for c in input_str)`
+### Best Practices
 
-#### 3. Hypothesis Strategy Control Character Generation
-**Test:** `test_safe_strings_minimally_modified`
-**Expected:** No control characters generated (using `exclude_categories=["Cc"]`)
-**Actual:** Generated `'\x1f'` (unit separator, control character)
+✅ **Property Testing Works**
+- Finds bugs traditional unit tests miss
+- Validates security invariants across large input spaces
+- High ROI for security-critical functions
 
-**Root Cause:** Hypothesis strategy not explicit enough about codepoint ranges
-**Impact:** Test coverage gap - control chars in "safe" string tests
-**Fix:** Added explicit `min_codepoint=0x20` to start from space (ASCII 32)
+⚠️ **Test Expectations Matter**
+- Define precise requirements (not just "printable")
+- Document edge case handling explicitly
+- Test failures may indicate bugs OR incorrect expectations
 
-### Lessons Learned
-
-1. **Property Testing Works** ✅
-   - Found 3 bugs that unit tests missed
-   - Validated security invariants don't hold for all inputs
-   - Demonstrated ROI: ~2 hours debugging, prevented security vulnerabilities
-
-2. **Test Expectations Matter** ⚠️
-   - "Printable" includes whitespace - need precise definitions
-   - Edge cases need explicit handling or documentation
-   - Test failures can indicate bugs OR incorrect expectations
-
-3. **Hypothesis Configuration Critical** 🔧
-   - Explicit codepoint ranges more reliable than category exclusions
-   - Strategies need careful tuning for security-critical code
-   - Failed examples provide minimal reproducible cases
-
-### Impact on v3.5.3
-- ✅ 591 tests passing (100% pass rate)
-- ✅ Security vulnerability prevented (escape sequence handling)
-- ✅ Test robustness improved (explicit Hypothesis strategies)
-- ✅ Edge case handling documented (whitespace-only strings)
-
-**Time Investment:** ~3 hours total (investigation + fixes + documentation)
-**Value Delivered:** Prevented security bug, improved test quality, validated property-based testing ROI
+🔧 **Strategy Tuning Critical**
+- Use explicit constraints for security code
+- Tune generators for realistic attack patterns
+- Leverage failed examples for regression tests
 
 ---
 
@@ -222,6 +193,4 @@ For complete property-based testing documentation including:
 
 ---
 
-**Document Version:** 1.0 (Summary)
-**Full Documentation:** See TESTING.md § Property-Based Testing
-**Last Updated:** 2025-10-30
+**Full Documentation:** See [TESTING.md](../TESTING.md) § Property-Based Testing

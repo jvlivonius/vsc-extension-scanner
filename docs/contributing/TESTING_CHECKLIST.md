@@ -1,9 +1,7 @@
 # Testing Checklist
 
-**Document Type:** Timeless Reference
-**Last Updated:** 2025-10-31
-
-Comprehensive testing checklist for functional, performance, security, and compatibility validation.
+**Purpose:** Comprehensive testing checklist for functional, performance, security, and compatibility validation
+**Document Type:** Checklist
 
 **Version-Specific Details:** See [CHANGELOG.md](../../CHANGELOG.md) for version history and [docs/archive/summaries/](../archive/summaries/) for version-specific release notes.
 
@@ -530,5 +528,9 @@ Before release:
 
 ---
 
-**Maintained By:** Project contributors
-**Questions:** See [CHANGELOG.md](../../CHANGELOG.md) for version changes
+## Related Documents
+
+- [../guides/TESTING.md](../guides/TESTING.md) - Testing requirements and patterns
+- [CODE_REVIEW_CHECKLIST.md](CODE_REVIEW_CHECKLIST.md) - PR review checklist
+- [RELEASE_PROCESS.md](RELEASE_PROCESS.md) - Pre-release testing validation
+- [../guides/testing/](../guides/testing/) - Detailed testing guides

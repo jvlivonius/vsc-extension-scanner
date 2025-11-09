@@ -1,4 +1,6 @@
-# Serena MCP Server
+# Serena MCP Server - Usage Guidelines
+
+> **IMPORTANT**: This document describes WHEN to use Serena tools, not how to load the server. MCP servers configured via `claude mcp add` are always loaded at startup. See `MCP_LOADER.md` for configuration details.
 
 **Purpose**: Semantic code understanding with project memory and session persistence
 
@@ -11,22 +13,22 @@
 - Large codebase analysis (>50 files, complex architecture)
 
 ## Choose When
-- **Over Morphllm**: For symbol operations, not pattern-based edits
+- **For symbol operations**: Rename, extract, move with dependency tracking
 - **For semantic understanding**: Symbol references, dependency tracking, LSP integration
 - **For session persistence**: Project context, memory management, cross-session learning
 - **For large projects**: Multi-language codebases requiring architectural understanding
 - **Not for simple edits**: Basic text replacements, style enforcement, bulk operations
 
 ## Works Best With
-- **Morphllm**: Serena analyzes semantic context → Morphllm executes precise edits
-- **Sequential**: Serena provides project context → Sequential performs architectural analysis
+- **Edit tool**: Serena identifies symbols → Edit tool makes precise modifications
+- **sequential-thinking**: Serena provides project context → sequential-thinking performs architectural analysis
 
 ## Examples
 ```
-"rename getUserData function everywhere" → Serena (symbol operation with dependency tracking)
-"find all references to this class" → Serena (semantic search and navigation)
+"rename validate_path everywhere" → Serena (symbol operation with dependency tracking)
+"find all references to ScanResult" → Serena (semantic search and navigation)
 "load my project context" → Serena (/sc:load with project activation)
 "save my current work session" → Serena (/sc:save with memory persistence)
-"update all console.log to logger" → Morphllm (pattern-based replacement)
-"create a login form" → Magic (UI component generation)
+"extract ProgressCallback pattern" → Serena (symbol-based refactoring for testability)
+"analyze threading model" → Serena + sequential-thinking (architectural analysis)
 ```

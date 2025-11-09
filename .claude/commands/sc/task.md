@@ -29,15 +29,15 @@ personas: [architect, analyzer, backend, security, devops]
 5. **Optimize**: Analyze performance and provide enhancement recommendations
 
 Key behaviors:
-- Multi-persona coordination across architect, frontend, backend, security, devops domains
-- Intelligent MCP server routing (Sequential, Context7, Magic, Playwright, Morphllm, Serena)
+- Multi-agent coordination across python-expert, security-engineer, quality-engineer, performance-engineer
+- Intelligent MCP server routing (sequential-thinking, Context7, Serena)
 - Systematic execution with progressive task enhancement and cross-session persistence
 - Advanced task delegation with hierarchical breakdown and dependency management
 
 ## MCP Integration (Python CLI Optimized)
-- **Sequential MCP**: Complex multi-step task analysis and systematic execution planning ✅
-- **Context7 MCP**: Python patterns, pytest/typer/hypothesis best practices ✅
-- **Serena MCP**: Cross-session task persistence and project memory management ✅
+- **sequential-thinking**: Complex multi-step task analysis and systematic execution planning ✅
+- **Context7**: Python patterns, pytest/typer/hypothesis best practices ✅
+- **Serena**: Cross-session task persistence and project memory management ✅
 
 <!-- ARCHIVED MCP INTEGRATION (Frontend/Browser/Pattern Tools):
 - Magic MCP: UI/UX coordination (archived - frontend tool, not applicable to Python CLI)
@@ -46,8 +46,8 @@ Key behaviors:
 -->
 
 ## Tool Coordination
-- **TodoWrite**: Hierarchical task breakdown and progress tracking across Epic → Story → Task levels
-- **Task**: Advanced delegation for complex multi-agent coordination and sub-task management
+- **Task Tracking**: Hierarchical task breakdown and progress tracking across Epic → Story → Task levels
+- **Delegation**: Advanced delegation for complex multi-agent coordination and sub-task management
 - **Read/Write/Edit**: Task documentation and implementation coordination
 - **sequentialthinking**: Structured reasoning for complex task dependency analysis
 

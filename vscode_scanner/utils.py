@@ -13,6 +13,7 @@ from typing import Optional
 
 
 # Global verbosity flag
+# nosemgrep: threading-race-condition - Written once at startup, read-only during execution
 _VERBOSE = False
 
 
@@ -360,7 +361,11 @@ def sanitize_string(text: Optional[str], max_length: int = 500) -> str:
 
     # Truncate if too long (prevents DoS via extremely long strings)
     if len(text) > max_length:
-        text = text[:max_length] + "..."
+        # Reserve 3 chars for "..." suffix, unless max_length < 3
+        if max_length >= 3:
+            text = text[: max_length - 3] + "..."
+        else:
+            text = text[:max_length]
 
     return text
 

@@ -1,9 +1,7 @@
 # Release Process
 
-**Purpose:** Reproducible release workflow for VS Code Extension Security Scanner
-
-**Version:** 2.0
-**Last Updated:** 2025-10-31
+**Purpose:** Reproducible 3-phase release workflow with automation tools
+**Document Type:** Process Guide
 
 ---
 
@@ -11,17 +9,17 @@
 
 ### Three-Phase Workflow
 
-**Phase 1: Pre-Release Preparation** (20-30 min)
+**Phase 1: Pre-Release Preparation**
 - Version management with automated documentation updates (3 files auto-updated)
 - Manual documentation updates (2 files: CHANGELOG.md, release notes)
 - Comprehensive testing (automated + manual)
 
-**Phase 2: Build & Package** (15-20 min)
+**Phase 2: Build & Package**
 - Clean build environment
 - Distribution package creation
 - Installation verification in isolated environment
 
-**Phase 3: Version Control** (10-15 min)
+**Phase 3: Version Control**
 - Atomic release commit
 - Annotated version tag
 - GitHub release with artifacts
@@ -53,43 +51,20 @@
 
 ### Git Workflow Verification
 
-**BEFORE starting the release process, verify git state:**
+**CRITICAL:** Releases MUST be created from a clean `main` branch. Verify:
 
 ```bash
-# Check current branch and working directory
-git status
-git branch
-
-# Expected:
-# - On branch: main
-# - Working directory: clean (no uncommitted changes)
-# - All feature branches merged
-
-# If not on main:
-git checkout main
-git pull origin main
-
-# If uncommitted changes exist:
-git add .
-git commit -m "..."
-# OR
-git stash
+git status && git branch
+# Expected: On branch main, working directory clean
 ```
 
-**Branch Requirements:**
-- ✅ Must be on `main` branch (releases only from main)
-- ✅ Working directory must be clean (no uncommitted changes)
-- ✅ All feature branches for this release must be merged
-- ✅ Main branch must be up to date with remote (`git pull origin main`)
+**Requirements:**
+- ✅ On `main` branch (releases only from main)
+- ✅ Working directory clean (no uncommitted changes)
+- ✅ All feature branches merged
+- ✅ Up to date with remote: `git pull origin main`
 
-**If working on a feature branch:**
-1. Complete current feature work
-2. Create PR and get approval
-3. Merge PR to main
-4. Switch to main: `git checkout main && git pull origin main`
-5. Then start release process
-
-→ **See:** [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for complete branch workflow details
+→ **See:** [GIT_WORKFLOW.md § Release Workflow](GIT_WORKFLOW.md#release-workflow) for complete prerequisites and branch workflow
 
 ---
 
@@ -634,11 +609,9 @@ git log --oneline -1 vX.Y.Z
 
 ### Step 9b: Archive Release Documentation (Multi-Phase Releases)
 
-**For releases with intermediate documents (handoffs, phase summaries):**
+**For releases with intermediate documents (handoffs, phase summaries, roadmaps):**
 
-After creating comprehensive release notes, organize documentation following the archival workflow.
-
-**Option 1: Automated (Recommended)**
+Use automated archival to consolidate, archive, and remove intermediate documents:
 
 ```bash
 # Preview changes
@@ -646,51 +619,9 @@ python3 scripts/archive_release_docs.py vX.Y.Z --dry-run
 
 # Execute archival
 python3 scripts/archive_release_docs.py vX.Y.Z
-
-# Verify changes
-git status
 ```
 
-**Option 2: Manual**
-
-```bash
-# 1. Archive roadmap
-git mv docs/project/vX.Y-roadmap.md docs/archive/plans/vX.Y-roadmap.md
-
-# 2. Remove intermediate documents
-git rm docs/project/vX.Y-phase*-handoff.md
-git rm docs/project/vX.Y-phase*-summary.md
-git rm docs/archive/summaries/vX.Y-phase*-completion-summary.md
-
-# 3. Update indexes
-# Edit docs/archive/README.md (add version entry)
-# Edit docs/project/STATUS.md (change to "Released")
-
-# 4. Stage changes
-git add docs/archive/README.md docs/project/STATUS.md
-
-# 5. Commit
-git commit -m "docs(vX.Y): Archive release documentation
-
-Archived:
-- Roadmap to docs/archive/plans/
-
-Removed (superseded by release notes):
-- X handoff documents
-- Y phase summaries
-
-Updated:
-- docs/archive/README.md (version entry)
-- docs/project/STATUS.md (released status)"
-```
-
-**Document Naming Conventions:**
-- Handoffs: `vX.Y-phaseN-handoff.md` → REMOVE
-- Phase summaries: `vX.Y-phaseN-*-summary.md` → REMOVE
-- Roadmaps: `vX.Y-*-roadmap.md` → ARCHIVE to `docs/archive/plans/`
-- Release notes: `vX.Y.Z-release-notes.md` → KEEP
-
-See [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOCUMENTATION_CONVENTIONS.md#release-documentation-archival-pattern) for complete details.
+→ **See:** [DOCUMENTATION_CONVENTIONS.md § Release Documentation Archival Pattern](DOCUMENTATION_CONVENTIONS.md#release-documentation-archival-pattern) for complete workflow, naming conventions, and manual steps
 
 **Note:** Single-phase releases without intermediate documents can skip this step.
 
@@ -1045,81 +976,33 @@ gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
 
 ---
 
-## Remaining Automation Opportunities
+## Future Automation Opportunities
 
-### Current Manual Steps That Could Be Scripted
-
-1. **Documentation Updates**
-   - Script to update version badges across files
-   - Template-based CHANGELOG entry generation
-   - Automated link verification in docs
-
-2. **Testing Workflow**
-   - Single command to run all pre-release tests
-   - Automated version consistency checks in CI/CD
-   - Cross-platform test orchestration
-
-3. **Pre-commit Validation**
-   - Pre-commit hooks for version validation
-   - Automated CHANGELOG format checking
-
-### Enhancement Proposals
-
-- **Interactive release script:** Step-by-step wizard with validation for Phase 1
-- **Pre-release checklist validation:** Automated checks before allowing tag creation
-- **Rollback mechanism:** Quick rollback for failed releases
-- **Release metrics:** Track time, issues, improvements across releases
-- **PyPI publishing:** Automatic PyPI upload after successful GitHub release
+Potential enhancements: Interactive release wizard, pre-release checklist validation, rollback mechanism, PyPI auto-publishing
 
 ---
 
 ## Time Estimates
 
-**With Full Automation (Current - v3.7.1+):**
+**Current Process (v3.7.1+):**
+- Phase 1 (Preparation): 15-20 min (80% automated via `bump_version.py --auto-update`)
+- Phase 2 (Build & Package): ~5 min (automated: `smoke_test.py` validation)
+- Phase 3 (Version Control): ~5 min (git tag, push, GitHub Actions release)
+- **Total: 30-40 minutes**
 
-- **Pre-Release Check** (before Phase 1): ~5 minutes (`pre_release_check.py`)
-- **Phase 1** (Preparation): 15-20 minutes (80% automated)
-  - Version bump with validation: ~1 minute (`bump_version.py --validate-notes`)
-  - Manual doc updates (2 files): ~8-12 minutes (CHANGELOG, release notes)
-  - Pre-release validation: ~5 minutes (automated via pre_release_check.py - optional if run before Phase 1)
-- **Phase 2** (Build & Package): ~5 minutes (fully automated)
-  - Clean build: ~1 minute
-  - Build wheel: ~1 minute
-  - Smoke testing: ~3 minutes (`smoke_test.py` with real API calls)
-- **Phase 3** (Version Control): ~5 minutes (mostly automated)
-- **Total:** 30-40 minutes (50-60% time reduction from legacy manual process)
+**Automation Tools:**
+- `pre_release_check.py` - Git, version, tests, security, coverage validation
+- `bump_version.py --auto-update` - Version bump + 3-file doc updates
+- `smoke_test.py` - Package installation and CLI verification
 
-**Key Automation Tools (v3.7.1+):**
-- `pre_release_check.py` - 5-step validation (version, git, tests, security, coverage)
-- `smoke_test.py` - 7-step package validation (virtualenv, install, CLI, scan, outputs, cache)
-- `bump_version.py --validate-notes` - Release notes validation
-- `run_tests.py --ci --coverage` - Dynamic marker system with comprehensive testing
+**Efficiency Gains vs. Manual Process (pre-v3.7.1):**
 
-**Breakdown of Time Savings:**
-
-| Component | Legacy (Manual) | Automated (v3.7.1+) | Time Saved | % Reduction |
-|-----------|----------------|---------------------|------------|-------------|
-| Version management | 15-20 min (8 files) | 1 min (auto-update) | 14-19 min | 93% |
-| Pre-release testing | 15-20 min (manual) | 5 min (pre_release_check.py) | 10-15 min | 67% |
-| Package verification | 10-15 min (manual venv) | 3 min (smoke_test.py) | 7-12 min | 70% |
-| Documentation | 10-15 min (8 files) | 8-12 min (2 files) | 2-3 min | 20% |
-| Build & package | 8-10 min (manual) | 5 min (automated) | 3-5 min | 38% |
-| **Total** | **55-80 min** | **30-40 min** | **25-40 min** | **50-60%** |
-
-**Legacy Manual Process (pre-v3.7.1):**
-- Phase 1 (Preparation): 30-45 minutes (all manual doc updates + manual testing)
-  - Version bump: ~2 minutes (single file)
-  - Documentation updates: 15-20 minutes (8 files manually)
-  - Manual testing: 15-20 minutes (pytest + manual verification)
-- Phase 2 (Build & Package): 15-20 minutes (manual build + manual verification)
-  - Clean build: ~1 minute
-  - Build wheel: ~2 minutes
-  - Manual virtualenv setup: ~5 minutes
-  - Manual package verification: ~10 minutes
-- Phase 3 (Version Control): 10-15 minutes (manual steps)
-- **Total:** 55-80 minutes for complete release
-
-**First-time release:** Add 15-30 minutes for familiarization with automation tools and workflow.
+| Component | Manual | Automated | Reduction |
+|-----------|--------|-----------|-----------|
+| Version management | 15-20 min | 1 min | 93% |
+| Pre-release testing | 15-20 min | 5 min | 67% |
+| Package verification | 10-15 min | 3 min | 70% |
+| **Total** | **55-80 min** | **30-40 min** | **50-60%** |
 
 ---
 
@@ -1134,7 +1017,3 @@ gpg --armor --detach-sign dist/vscode_extension_scanner-X.Y.Z-py3-none-any.whl
 - [DISTRIBUTION.md](../../DISTRIBUTION.md) - Distribution process
 
 ---
-
-**Process Version:** 2.1
-**Last Updated:** 2025-11-01
-**Changes:** Added automated GitHub Actions workflow for build and release (v2.0 → v2.1)

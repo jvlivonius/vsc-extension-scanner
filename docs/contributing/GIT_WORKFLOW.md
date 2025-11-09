@@ -1,6 +1,7 @@
 # Git Workflow Guide
 
-Branching strategy and git workflow guidelines for VS Code Extension Scanner development.
+**Purpose:** Branching strategy and git workflow for development
+**Document Type:** Process Guide
 
 ---
 
@@ -31,7 +32,7 @@ This project uses **Simplified GitHub Flow** as its branching strategy. This app
 - **Short-lived feature branches**: Create focused branches for specific work
 - **Pull request workflow**: All changes merge via reviewed PRs
 - **Release via tags**: Stable versions marked with annotated git tags (`vX.Y.Z`)
-- **Strong testing**: 628 tests must pass, 72%+ coverage, 0 security vulnerabilities
+- **Strong testing**: All tests must pass, meet coverage targets, 0 security vulnerabilities (see [STATUS.md](../project/STATUS.md))
 
 **Why GitHub Flow?**
 - ✅ Simple for small teams (no `develop` or `release` branch overhead)
@@ -311,8 +312,8 @@ gh pr create \
 - Updated documentation
 
 ## Testing
-- All 628 tests pass
-- Coverage: 73%+
+- All tests pass (run pytest --collect-only -q tests/ for current count)
+- Coverage meets project targets (see STATUS.md)
 - Security: 0 vulnerabilities
 
 ## Checklist
@@ -368,178 +369,51 @@ git branch -d feature/your-feature-name
 
 ## Branch Cleanup
 
-After PRs are merged, GitHub automatically deletes remote branches (via `deleteBranchOnMerge` setting), but **local branches remain**. This section covers how to clean up local branches efficiently.
+GitHub auto-deletes remote branches after PR merge, but **local branches must be manually deleted**. Git keeps them for safety to prevent accidental loss of work.
 
-### Understanding Branch Cleanup
+### Manual Cleanup Commands
 
-**Why Local Branches Aren't Auto-Deleted:**
-- Git keeps local and remote branches independent for safety
-- Prevents accidental loss of uncommitted work
-- You must explicitly delete local branches after PR merge
+| Operation | Command |
+|-----------|---------|
+| **Check stale branches** | `git branch -vv` (look for `[origin/branch: gone]`) |
+| **Delete specific branch** | `git branch -d feature/name` (safe) or `-D` (force, for squash-merge) |
+| **Delete all merged** | `git fetch --prune && git branch --merged main \| grep -v 'main' \| xargs git branch -d` |
 
-**Identifying Stale Branches:**
-```bash
-# Show all local branches with tracking status
-git branch -vv
-
-# Branches marked [origin/branch-name: gone] have been deleted remotely
-```
-
-### Manual Cleanup (Recommended)
-
-#### Delete Specific Branch
-
-```bash
-# Safe delete (only if merged)
-git branch -d feature/branch-name
-
-# Force delete (use after squash-merge or if commits differ)
-git branch -D feature/branch-name
-
-# Why -D? Squash-merges create new commits, so git sees branch as "unmerged"
-```
-
-#### Delete All Merged Branches
-
-```bash
-# Prune remote tracking references first
-git fetch --prune
-
-# List branches safe to delete
-git branch --merged main | grep -v "^\*" | grep -v "main"
-
-# Delete all merged branches
-git branch --merged main | grep -v "^\*" | grep -v "main" | xargs git branch -d
-```
+**Why -D after squash-merge?** Squash creates new commits, so git sees the branch as "unmerged" even though the PR merged.
 
 ### Automated Cleanup with Git Aliases
 
-Add these helpful aliases to your git configuration:
-
-#### Option 1: Project-Level Config (Recommended)
-
-Add to `.git/config` in project root:
+Add to `.git/config` (project-level) or `~/.gitconfig` (global):
 
 ```ini
 [alias]
-    # Clean up all merged branches
     cleanup = !git fetch --prune && git branch --merged main | grep -v 'main' | xargs git branch -d 2>/dev/null || true && echo '✅ Cleanup complete'
-
-    # Show branches that can be deleted (preview)
-    cleanable = !git branch --merged main | grep -v 'main'
-
-    # Clean up branches whose remotes are gone (after squash-merge)
     cleanup-gone = !git fetch --prune && git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true && echo '✅ Cleanup complete'
 ```
 
-#### Option 2: Global Config
-
-Add to `~/.gitconfig` for all repositories:
-
+**Usage:**
 ```bash
-# Add globally
-git config --global alias.cleanup "!git fetch --prune && git branch --merged main | grep -v 'main' | xargs git branch -d 2>/dev/null || true && echo '✅ Cleanup complete'"
-git config --global alias.cleanable "!git branch --merged main | grep -v 'main'"
-git config --global alias.cleanup-gone "!git fetch --prune && git branch -vv | grep ': gone]' | awk '{print \$1}' | xargs git branch -D 2>/dev/null || true && echo '✅ Cleanup complete'"
+git cleanup && git cleanup-gone  # Clean up all stale branches
 ```
 
-#### Using the Aliases
+### Workflow Integration
 
+**After PR merge:**
 ```bash
-# Preview branches that will be deleted
-git cleanable
-
-# Clean up merged branches (safe)
-git cleanup
-
-# Clean up squash-merged branches (after PR merge)
-git cleanup-gone
-
-# Or do both
-git cleanup && git cleanup-gone
-```
-
-### Automated Cleanup via Git Hooks
-
-For automatic cleanup after pulling main, create `.git/hooks/post-merge`:
-
-```bash
-#!/bin/bash
-# Auto-cleanup after merging to main
-
-# Only run on main branch
-CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
-if [ "$CURRENT_BRANCH" = "main" ]; then
-    echo "🧹 Cleaning up merged branches..."
-
-    # Prune remote references
-    git fetch --prune > /dev/null 2>&1
-
-    # Delete merged branches
-    DELETED=$(git branch --merged main | grep -v "main" | xargs git branch -d 2>/dev/null)
-
-    # Delete branches whose remotes are gone
-    DELETED_GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null)
-
-    if [ -n "$DELETED" ] || [ -n "$DELETED_GONE" ]; then
-        echo "✅ Cleaned up stale branches"
-    fi
-fi
-```
-
-Make it executable:
-```bash
-chmod +x .git/hooks/post-merge
-```
-
-### Best Practices
-
-**Weekly Cleanup Routine:**
-```bash
-# Update main
-git checkout main
-git pull
-
-# Clean up everything
-git cleanup && git cleanup-gone
-
-# Verify clean state
-git branch -vv
-```
-
-**After Each PR Merge:**
-```bash
-# Merge PR via GitHub
 gh pr merge --squash
-
-# Update local main
-git checkout main
-git pull
-
-# Delete the feature branch
+git checkout main && git pull
 git branch -D feature/branch-name
+```
+
+**Weekly cleanup:**
+```bash
+git checkout main && git pull
+git cleanup && git cleanup-gone
 ```
 
 **Troubleshooting:**
-
-**Branch won't delete with `-d`:**
-```bash
-# This happens with squash-merge (commits differ)
-# Safe to use -D if PR was merged
-git branch -D feature/branch-name
-```
-
-**Want to keep branch for reference:**
-```bash
-# Tag it first
-git tag archive/feature-name feature/branch-name
-
-# Then delete branch
-git branch -d feature/branch-name
-
-# Later: restore from tag if needed
-git checkout -b feature/branch-name archive/feature-name
-```
+- Branch won't delete with `-d`: Use `-D` if PR was already merged (safe after squash-merge)
+- Keep branch for reference: `git tag archive/name feature/name` → then delete branch → restore later from tag
 
 ---
 
@@ -563,8 +437,8 @@ git status
 python3 -m pytest tests/
 python3 tests/test_security_regression.py
 
-# All 628 tests must pass
-# Coverage must be 70%+
+# All tests must pass (check STATUS.md for current metrics)
+# Coverage must meet project targets
 # Security tests must show 0 vulnerabilities
 ```
 
@@ -762,7 +636,7 @@ python3 tests/test_security_regression.py
 
 # Run full test suite
 python3 -m pytest tests/
-# All 628 tests must pass
+# All tests must pass (see STATUS.md for current count)
 ```
 
 #### 3. Bump Patch Version
@@ -1024,93 +898,14 @@ Fixes CVE-2024-12345
 
 ## Branch Protection
 
-### Main Branch Protection Rules
+The `main` branch is protected with the following key rules:
+- ✅ Pull request reviews required (1 approval minimum)
+- ✅ Status checks must pass (security, tests, coverage, semgrep)
+- ✅ Branch must be up to date before merge
+- ❌ Direct pushes blocked
+- ❌ Force pushes blocked
 
-Configure via **GitHub Settings → Branches → Branch protection rules**
-
-#### Required Settings
-
-**Require pull request reviews:**
-- ✅ Require approvals: **1**
-- ✅ Dismiss stale reviews when new commits pushed
-- ✅ Require review from Code Owners (if CODEOWNERS file exists)
-
-**Require status checks:**
-- ✅ Require status checks to pass before merging
-- ✅ Require branches to be up to date before merging
-- **Required checks:**
-  - `security-scan` (Bandit, Safety, pip-audit)
-  - `coverage-test` (minimum 70% coverage)
-  - `test` (all 628 tests must pass)
-  - `semgrep` (static analysis)
-
-**Require merge queue:** (optional, for higher traffic)
-- ⬜ Enable merge queue (not needed for current team size)
-
-**Require deployments:**
-- ⬜ Not applicable (package distribution, not deployment)
-
-**Rules applied to administrators:**
-- ✅ Include administrators (no one bypasses)
-
-**Restrict pushes:**
-- ✅ Restrict who can push to matching branches
-- ✅ Only allow pull requests (no direct pushes)
-
-**Allow force pushes:**
-- ❌ Do not allow force pushes
-
-**Allow deletions:**
-- ❌ Do not allow branch deletion
-
-### GitHub CLI Configuration
-
-```bash
-# Install gh CLI if not already installed
-# https://cli.github.com/
-
-# Configure branch protection
-gh api repos/:owner/:repo/branches/main/protection \
-  --method PUT \
-  --input - <<EOF
-{
-  "required_status_checks": {
-    "strict": true,
-    "contexts": [
-      "security-scan",
-      "coverage-test",
-      "test",
-      "semgrep"
-    ]
-  },
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "dismissal_restrictions": {},
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false,
-    "required_approving_review_count": 1
-  },
-  "restrictions": null,
-  "allow_force_pushes": false,
-  "allow_deletions": false
-}
-EOF
-```
-
-### Verification
-
-```bash
-# View current protection rules
-gh api repos/:owner/:repo/branches/main/protection
-
-# Test protection (should fail)
-git checkout main
-echo "test" >> test.txt
-git add test.txt
-git commit -m "test: should fail"
-git push origin main
-# Expected: remote rejected (protected branch)
-```
+→ **See:** [BRANCH_PROTECTION.md](BRANCH_PROTECTION.md) for complete protection rules, GitHub CLI configuration, and verification procedures
 
 ---
 
@@ -1374,6 +1169,3 @@ git revert HEAD
 - [../guides/TESTING.md](../guides/TESTING.md) - Testing requirements and patterns
 
 ---
-
-**Last Updated:** 2025-01-31
-**Version:** 1.0.0
