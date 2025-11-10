@@ -1,0 +1,192 @@
+name: Feature Implementation
+description: Feature planned for implementation (created from feature plan)
+title: "[FEATURE] "
+labels: [feature, P2-medium, complexity/M]
+assignees:
+  - jvlivonius
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Overview
+
+        Please provide a clear description of the feature being implemented.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief one-sentence description of what this feature does
+      placeholder: "Add CSV export functionality for scan results"
+    validations:
+      required: true
+
+  - type: input
+    id: feature-plan
+    attributes:
+      label: Related Feature Plan
+      description: Link to the feature plan markdown
+      placeholder: "docs/archive/plans/v3.8-feature-name.md"
+    validations:
+      required: false
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: Target version for this feature
+      placeholder: "v3.8.0"
+    validations:
+      required: false
+
+  - type: input
+    id: required-docs
+    attributes:
+      label: Required Documentation
+      description: Comma-separated list of documentation files to read before implementing
+      placeholder: "ARCHITECTURE.md, SECURITY.md, PRD.md"
+      value: "ARCHITECTURE.md, SECURITY.md, PRD.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: |
+        List any issue dependencies:
+        - **Blocks**: Issues that must wait for this
+        - **Blocked By**: Issues this depends on
+        - **Related**: Related but not blocking
+      placeholder: |
+        Blocks: #123, #124
+        Blocked By: #120
+        Related: #125
+      value: |
+        Blocks: None
+        Blocked By: None
+        Related: None
+    validations:
+      required: false
+
+  - type: textarea
+    id: changes-required
+    attributes:
+      label: Changes Required
+      description: Detailed list of changes needed
+      placeholder: |
+        **Files to Create:**
+        - vscode_scanner/csv_exporter.py
+
+        **Files to Modify:**
+        - vscode_scanner/output_formatter.py - Add CSV export method
+        - vscode_scanner/cli.py - Add --output flag support
+
+        **Tests to Add:**
+        - tests/test_csv_exporter.py - Unit tests for CSV export
+        - tests/test_cli_csv.py - Integration tests for CLI CSV output
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Architecture Layer
+      description: Which layer of the 3-layer architecture does this primarily affect?
+      options:
+        - Presentation (CLI, HTML reports, display)
+        - Application (Scanner, business logic)
+        - Infrastructure (API, cache, file operations)
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies-packages
+    attributes:
+      label: Package Dependencies
+      description: Any new Python packages or modules needed
+      placeholder: |
+        - None (or list packages)
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes
+      description: Does this feature introduce breaking changes?
+      options:
+        - label: "Yes - requires major version bump (X.0.0)"
+        - label: "No - minor/patch version is sufficient"
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Acceptance Criteria
+
+        Implementation is complete when all items are checked:
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: Completion Checklist
+      options:
+        - label: All required documentation has been read and patterns followed
+        - label: Code implements the feature as specified in feature plan
+        - label: Security validation applied (validate_path(), sanitize_string() where applicable)
+        - label: Unit tests written with ≥80% coverage for new code
+        - label: Integration tests verify feature works end-to-end
+        - label: Property tests added for complex logic (if applicable)
+        - label: Architecture tests pass (python tests/test_architecture.py)
+        - label: Security tests pass (python tests/test_security.py)
+        - label: Pre-commit hooks pass (bandit, pip-audit, black, isort)
+        - label: Documentation updated (docs/ files as needed)
+        - label: CHANGELOG.md updated with feature description
+        - label: Manual testing performed with ./vscan wrapper
+
+  - type: textarea
+    id: implementation-notes
+    attributes:
+      label: Implementation Notes
+      description: Special considerations, edge cases, or important details
+      placeholder: |
+        **Special Considerations:**
+        - Threading: Worker pool implications if applicable
+        - Performance: Profiling requirements
+        - Security: Threat model considerations
+
+        **Edge Cases to Handle:**
+        - List known edge cases that must be tested
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Agent Implementation
+
+        **Agent-Ready Criteria:**
+        - All dependencies resolved (blocked-by issues closed)
+        - Required documentation listed above
+        - Acceptance criteria clearly defined
+        - Implementation guidance provided
+
+        **To trigger agent implementation:**
+        ```bash
+        /sc:implement-issue #<issue-number>
+        ```
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional context, mockups, examples, or implementation guidance
+      placeholder: |
+        Add any additional information that would help with implementation:
+        - Design mockups
+        - Example code
+        - User stories
+        - Performance benchmarks
+    validations:
+      required: false

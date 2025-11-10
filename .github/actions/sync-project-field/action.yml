@@ -166,7 +166,7 @@ runs:
 
         # GraphQL query to find the project item ID for this issue
         QUERY=$(cat <<'EOF'
-        query($repo: String!, $owner: String!, $number: Int!, $projectNumber: Int!) {
+        query($repo: String!, $owner: String!, $number: Int!) {
           repository(name: $repo, owner: $owner) {
             issueOrPullRequest(number: $number) {
               ... on Issue {
@@ -202,8 +202,7 @@ runs:
           -f query="$QUERY" \
           -f owner="$OWNER" \
           -f repo="$REPO_NAME" \
-          -F number="$ISSUE_NUMBER" \
-          -F projectNumber="${{ inputs.project-number }}")
+          -F number="$ISSUE_NUMBER")
 
         # Extract project item ID for the specified project number
         ITEM_ID=$(echo "$RESPONSE" | jq -r \

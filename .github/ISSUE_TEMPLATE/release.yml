@@ -1,0 +1,303 @@
+name: Release Tracking
+description: Track a specific version release (auto-created by release process)
+title: "[RELEASE] vX.Y.Z"
+labels: [release, P1-high]
+assignees:
+  - jvlivonius
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Release Information
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release version number
+      placeholder: "v3.8.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: release-type
+    attributes:
+      label: Release Type
+      description: Type of release
+      options:
+        - Major (breaking changes)
+        - Minor (new features, backwards compatible)
+        - Patch (bug fixes only)
+    validations:
+      required: true
+
+  - type: input
+    id: target-date
+    attributes:
+      label: Target Date
+      description: Planned release date
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: false
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: Link to GitHub milestone
+      placeholder: "https://github.com/jvlivonius/vsc-extension-scanner/milestone/<number>"
+    validations:
+      required: false
+
+  - type: textarea
+    id: features
+    attributes:
+      label: Features Included
+      description: List all feature issues in this release
+      placeholder: |
+        - #142 - Add CSV export functionality
+        - #145 - Improve cache performance
+    validations:
+      required: false
+
+  - type: textarea
+    id: bugs-fixed
+    attributes:
+      label: Bugs Fixed
+      description: List all bug fix issues in this release
+      placeholder: |
+        - #150 - Fix cache corruption on network errors
+        - #151 - Resolve HMAC validation issues
+    validations:
+      required: false
+
+  - type: textarea
+    id: docs-updated
+    attributes:
+      label: Documentation Updates
+      description: List documentation changes
+      placeholder: |
+        - #152 - Update API reference for CSV export
+        - #153 - Add performance optimization guide
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Release Checklist
+
+        ### Phase 1: Pre-Release Preparation
+
+  - type: checkboxes
+    id: version-management
+    attributes:
+      label: Version Management
+      options:
+        - label: Run `python3 scripts/bump_version.py X.Y.Z --auto-update --validate-notes`
+        - label: Verify version updated in README.md, CLAUDE.md, PRD.md, _version.py
+        - label: Update CHANGELOG.md with release notes
+        - label: Create release notes docs/archive/summaries/vX.Y.Z-release-notes.md
+
+  - type: checkboxes
+    id: validation
+    attributes:
+      label: Validation
+      options:
+        - label: Run `python3 scripts/pre_release_check.py --verbose`
+        - label: Verify git status clean (no uncommitted changes)
+        - label: All tests pass (`python3 -m pytest tests/`)
+        - label: Security scans clean (`python3 tests/test_security.py`)
+        - label: Coverage ≥80% overall, ≥95% security (`coverage report`)
+
+  - type: checkboxes
+    id: github-projects
+    attributes:
+      label: GitHub Projects
+      options:
+        - label: All milestone issues closed or moved to next release
+        - label: Project board updated (all items in Done column)
+        - label: Milestone issues have acceptance criteria checked
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Phase 2: Build & Package
+
+  - type: checkboxes
+    id: build-process
+    attributes:
+      label: Build Process
+      options:
+        - label: "Clean previous builds: `rm -rf dist/ build/ *.egg-info`"
+        - label: "Build package: `python3 -m build`"
+        - label: "Run smoke tests: `python3 scripts/smoke_test.py dist/*.whl --verbose`"
+
+  - type: checkboxes
+    id: smoke-tests
+    attributes:
+      label: Smoke Test Validation
+      options:
+        - label: Package installs in isolated environment
+        - label: CLI entry point works (`vscan --version`)
+        - label: Core commands functional (scan, cache, config)
+        - label: Exit codes correct (0, 1, 2)
+        - label: Help text displays correctly
+        - label: Dependencies resolve correctly
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Phase 3: Version Control
+
+  - type: checkboxes
+    id: git-workflow
+    attributes:
+      label: Git Workflow
+      options:
+        - label: "Review changes: `git diff`"
+        - label: "Stage release files: `git add` (CHANGELOG, README, etc.)"
+        - label: "Create release commit: `git commit -m 'chore(release): prepare vX.Y.Z release'`"
+        - label: "Create annotated tag: `git tag -a vX.Y.Z -m 'Release vX.Y.Z: <summary>'`"
+        - label: "Push commit: `git push origin main`"
+        - label: "Push tag: `git push origin vX.Y.Z`"
+
+  - type: checkboxes
+    id: github-release
+    attributes:
+      label: GitHub Release
+      options:
+        - label: Wait for GitHub Actions workflow to complete
+        - label: "Verify draft release created: `gh release list`"
+        - label: Review release assets (wheel, source, SHA256SUMS)
+        - label: Edit and publish release on GitHub
+
+  - type: checkboxes
+    id: milestone-closure
+    attributes:
+      label: Milestone Closure
+      options:
+        - label: Close all milestone issues with release comment
+        - label: Move project board items to Done
+        - label: "Close milestone: `gh api repos/jvlivonius/vsc-extension-scanner/milestones/<number> -X PATCH -F state=closed`"
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Phase 4: Post-Release
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      options:
+        - label: "Test installation from GitHub: `pip install https://github.com/.../releases/download/vX.Y.Z/<file>.whl`"
+        - label: "Verify version: `vscan --version` shows vX.Y.Z"
+        - label: "Run integration test: `./vscan scan --publisher microsoft`"
+
+  - type: checkboxes
+    id: documentation-updates
+    attributes:
+      label: Documentation
+      options:
+        - label: Archive roadmap to docs/archive/plans/vX.Y.Z-roadmap.md
+        - label: Update STATUS.md with new version and metrics
+        - label: Update project board with next milestone
+
+  - type: checkboxes
+    id: communication
+    attributes:
+      label: Communication
+      options:
+        - label: Announce release (if applicable)
+        - label: Update README badges (if version scheme changed)
+        - label: Close this release tracking issue
+
+  - type: textarea
+    id: release-notes-draft
+    attributes:
+      label: Release Notes Draft
+      description: Draft of the release notes
+      placeholder: |
+        ### Summary
+        Brief 2-3 sentence summary of this release's focus and key improvements.
+
+        ### Breaking Changes
+        - None (or list changes)
+
+        ### New Features
+        - **Feature name** (#issue): Description
+
+        ### Improvements
+        - **Area improved** (#issue): Description
+
+        ### Bug Fixes
+        - **Bug fixed** (#issue): Description
+
+        ### Security
+        - **Security improvement** (#issue): Description (if applicable)
+
+        ### Documentation
+        - **Doc update** (#issue): What was documented
+
+        ### Internal
+        - Refactoring, dependency updates (#issue)
+    validations:
+      required: false
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Release Metrics
+      description: Test coverage and quality metrics
+      placeholder: |
+        **Test Coverage:**
+        - Overall: 87.XX%
+        - Critical modules: 85.XX%
+        - Security modules: 95.XX%
+
+        **Quality:**
+        - Issues closed: X
+        - PRs merged: X
+        - Contributors: X
+    validations:
+      required: false
+
+  - type: dropdown
+    id: risk-level
+    attributes:
+      label: Release Risk
+      description: Overall risk assessment
+      options:
+        - LOW (patch fixes, minor features)
+        - MEDIUM (significant features, no breaking changes)
+        - HIGH (breaking changes, major refactoring)
+    validations:
+      required: false
+
+  - type: textarea
+    id: mitigation-strategy
+    attributes:
+      label: Risk Mitigation
+      description: If risk > LOW, describe mitigation strategy and rollback plan
+      placeholder: |
+        **Mitigation Strategy:**
+        - Extensive testing in staging
+        - Gradual rollout
+        - Close monitoring
+
+        **Rollback Plan:**
+        - Previous stable version: vX.Y.Z
+        - Rollback command: `pip install vscode-scanner==X.Y.Z`
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        **Auto-generated by:** `/sc:gh-projects generate-release-notes`
+
+        **Note:** Update this issue as you progress through the checklist.
