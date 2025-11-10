@@ -1,5 +1,5 @@
 name: 'Sync Project Field'
-description: 'Sync a repository label to a GitHub Projects V2 custom field'
+description: 'Sync a repository label to a GitHub Projects V2 custom field. Requires issue to be in project first. Designed for labeled/unlabeled events.'
 author: 'VS Code Extension Scanner Team'
 
 inputs:
