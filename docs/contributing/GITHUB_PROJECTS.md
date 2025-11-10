@@ -42,7 +42,7 @@
 - Up to 50 issues per relationship type
 - Don't create custom "Dependencies" field
 
-**Auto-Sync:** Priority and Complexity labels automatically sync to project fields via GitHub Actions.
+**Auto-Sync:** Priority and Complexity labels automatically sync to project fields when labels are added or changed via GitHub Actions (not on issue creation).
 
 ### Issue Template Fields (Not Project Fields)
 
@@ -247,6 +247,8 @@ Updates project board from milestone status → Reports summary
 
 **How it works:**
 - Add/remove labels → GitHub Actions triggers → Project fields update
+- **Trigger Events:** `labeled` and `unlabeled` (sync runs when labels change, not on issue creation)
+- **Timing:** Labels must be added after issue creation to trigger sync (prevents race condition with project auto-add)
 - Highest priority wins: P0 > P1 > P2 > P3
 - Smallest complexity wins: XS > S > M > L > XL
 
@@ -277,9 +279,17 @@ gh run list --workflow=sync-project-fields.yml
 # View specific run
 gh run view <run-id> --log
 
+# Manual sync: Remove and re-add label to trigger workflow
+gh issue edit 142 --remove-label "P1-high"
+gh issue edit 142 --add-label "P1-high"
+
 # Re-fetch IDs if fields recreated
 ./scripts/github-projects/get-project-ids.sh
 ```
+
+**Common Issues:**
+- **Labels not syncing on new issues?** Labels must be added after issue creation (not during). Add labels separately to trigger sync.
+- **Issue created with labels?** Remove and re-add the label to trigger the sync workflow.
 
 ---
 
