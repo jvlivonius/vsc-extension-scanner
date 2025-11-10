@@ -10,12 +10,16 @@ Usage:
     python scripts/bump_version.py 2.3.0 --auto-update          # Set version + auto-update docs
     python scripts/bump_version.py 2.3.0 --validate-notes       # Set version (blocks if notes missing)
     python scripts/bump_version.py 2.3.0 --auto-update --validate-notes  # Combined flags
+    python scripts/bump_version.py 2.3.0 --milestone            # Set version + create GitHub milestone
+    python scripts/bump_version.py 2.3.0 --milestone --create-release-issue  # With tracking issue
     python scripts/bump_version.py --check                      # Check version consistency
     python scripts/bump_version.py --check-notes 2.3.0          # Check if release notes exist
     python scripts/bump_version.py --show                       # Show current version
 """
 
+import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -270,6 +274,151 @@ def show_version():
     print(f"Schema version: {schema_version}")
 
 
+def run_gh_command(args, capture_output=True):
+    """Run a gh CLI command and return the result."""
+    try:
+        result = subprocess.run(
+            ["gh"] + args,
+            capture_output=capture_output,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip() if capture_output else None
+    except subprocess.CalledProcessError as e:
+        print(f"❌ ERROR: gh CLI command failed: {' '.join(args)}")
+        if e.stderr:
+            print(f"   {e.stderr.strip()}")
+        return None
+    except FileNotFoundError:
+        print("❌ ERROR: gh CLI not found. Install it from https://cli.github.com/")
+        return None
+
+
+def check_gh_authenticated():
+    """Check if gh CLI is authenticated."""
+    result = run_gh_command(["auth", "status"])
+    return result is not None
+
+
+def get_or_create_milestone(version):
+    """Get or create a GitHub milestone for the version.
+
+    Returns:
+        str: Milestone number if successful, None otherwise
+    """
+    if not check_gh_authenticated():
+        print("⚠️  WARNING: gh CLI not authenticated, skipping milestone creation")
+        return None
+
+    milestone_title = f"v{version}"
+
+    # Check if milestone already exists
+    print(f"Checking for milestone '{milestone_title}'...")
+    result = run_gh_command(
+        [
+            "api",
+            "repos/:owner/:repo/milestones",
+            "--jq",
+            f'.[] | select(.title == "{milestone_title}") | .number',
+        ]
+    )
+
+    if result and result.strip():
+        milestone_number = result.strip()
+        print(f"  ✓ Milestone '{milestone_title}' already exists (#{milestone_number})")
+        return milestone_number
+
+    # Create new milestone
+    print(f"  Creating milestone '{milestone_title}'...")
+    result = run_gh_command(
+        [
+            "api",
+            "repos/:owner/:repo/milestones",
+            "-F",
+            f"title={milestone_title}",
+            "-F",
+            f"description=Release {version}",
+            "--jq",
+            ".number",
+        ]
+    )
+
+    if result:
+        print(f"  ✓ Created milestone '{milestone_title}' (#{result})")
+        return result
+    else:
+        print(f"  ❌ Failed to create milestone '{milestone_title}'")
+        return None
+
+
+def create_release_issue(version, milestone_number=None):
+    """Create a release tracking issue.
+
+    Args:
+        version: Version number (e.g., "3.8.0")
+        milestone_number: Optional milestone number to link to
+
+    Returns:
+        str: Issue number if successful, None otherwise
+    """
+    if not check_gh_authenticated():
+        print("⚠️  WARNING: gh CLI not authenticated, skipping release issue creation")
+        return None
+
+    print(f"Creating release tracking issue for v{version}...")
+
+    # Read the release issue template
+    root = Path(__file__).parent.parent
+    template_file = root / ".github" / "ISSUE_TEMPLATE" / "release.md"
+
+    if not template_file.exists():
+        print(f"  ❌ Release issue template not found: {template_file}")
+        return None
+
+    template_content = template_file.read_text(encoding="utf-8")
+
+    # Replace version placeholders in template
+    issue_body = template_content.replace("vX.Y.Z", f"v{version}")
+    issue_body = issue_body.replace("X.Y.Z", version)
+    issue_body = issue_body.replace("YYYY-MM-DD", "TBD")  # User will fill in dates
+
+    # Remove the frontmatter (YAML between ---) for issue body
+    issue_body = re.sub(r"^---\n.*?---\n", "", issue_body, flags=re.DOTALL)
+
+    # Create the issue
+    args = [
+        "issue",
+        "create",
+        "--title",
+        f"[RELEASE] v{version}",
+        "--body",
+        issue_body,
+        "--label",
+        "release,P1-high",
+    ]
+
+    if milestone_number:
+        args.extend(["--milestone", f"v{version}"])
+
+    result = run_gh_command(args)
+
+    if result:
+        # Extract issue number from URL (gh returns URL)
+        match = re.search(r"/issues/(\d+)$", result)
+        if match:
+            issue_number = match.group(1)
+            print(f"  ✓ Created release tracking issue: #{issue_number}")
+            print(f"    {result}")
+            return issue_number
+        else:
+            print(f"  ✓ Created release tracking issue")
+            print(f"    {result}")
+            return "created"
+    else:
+        print(f"  ❌ Failed to create release tracking issue")
+        return None
+
+
 def main():
     """Main entry point."""
     if len(sys.argv) < 2:
@@ -301,11 +450,17 @@ def main():
             # Check for flags
             auto_update = False
             validate_notes = False
+            create_milestone = False
+            create_issue = False
             for i in range(2, len(sys.argv)):
                 if sys.argv[i] == "--auto-update":
                     auto_update = True
                 elif sys.argv[i] == "--validate-notes":
                     validate_notes = True
+                elif sys.argv[i] == "--milestone":
+                    create_milestone = True
+                elif sys.argv[i] == "--create-release-issue":
+                    create_issue = True
 
             # Check release notes exist if validation requested
             if validate_notes:
@@ -325,18 +480,56 @@ def main():
                 print("\nAuto-updating documentation files:")
                 auto_update_docs(arg)
 
+            # Create or get milestone if requested
+            milestone_number = None
+            if create_milestone:
+                print("\nGitHub Milestone:")
+                milestone_number = get_or_create_milestone(arg)
+
+            # Create release tracking issue if requested
+            if create_issue:
+                if not milestone_number and create_milestone:
+                    print(
+                        "\n⚠️  WARNING: Milestone creation failed, release issue may not be linked"
+                    )
+                print("\nRelease Tracking Issue:")
+                issue_number = create_release_issue(arg, milestone_number)
+                if issue_number:
+                    print(f"\n✓ Release tracking issue created successfully")
+                    print(f"  Update the issue with:")
+                    print(f"  - Target date")
+                    print(f"  - Feature list")
+                    print(f"  - Test results")
+                else:
+                    print("\n⚠️  WARNING: Release tracking issue creation failed")
+
             # Validate consistency
             print()
             check_consistency()
 
-            # Reminder about release notes if not validated
-            if not validate_notes:
-                print()
-                print(
-                    "📝 REMINDER: Before tagging this release, ensure release notes exist:"
-                )
-                print(f"   python scripts/bump_version.py --check-notes {arg}")
-                print(f"   Or create: docs/archive/summaries/v{arg}-release-notes.md")
+            # Summary and reminders
+            print()
+            if create_milestone or create_issue:
+                print("✓ Version bump complete with GitHub integration!")
+                print(f"\nNext steps for v{arg}:")
+                if milestone_number:
+                    print(f"  1. Link issues to milestone v{arg}")
+                    print(f"     gh issue edit <number> --milestone v{arg}")
+                if create_issue:
+                    print(f"  2. Update release tracking issue with details")
+                if not validate_notes:
+                    print(f"  3. Create release notes:")
+                    print(f"     docs/archive/summaries/v{arg}-release-notes.md")
+            else:
+                # Reminder about release notes if not validated
+                if not validate_notes:
+                    print(
+                        "📝 REMINDER: Before tagging this release, ensure release notes exist:"
+                    )
+                    print(f"   python scripts/bump_version.py --check-notes {arg}")
+                    print(
+                        f"   Or create: docs/archive/summaries/v{arg}-release-notes.md"
+                    )
         except ValueError as e:
             print(f"Error: {e}")
             sys.exit(1)

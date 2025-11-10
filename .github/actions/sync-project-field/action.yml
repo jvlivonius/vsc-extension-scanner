@@ -1,0 +1,229 @@
+name: 'Sync Project Field'
+description: 'Sync a repository label to a GitHub Projects V2 custom field'
+author: 'VS Code Extension Scanner Team'
+
+inputs:
+  project-number:
+    description: 'Project number (e.g., 3 for Project #3)'
+    required: true
+  issue-number:
+    description: 'Issue or PR number'
+    required: true
+  field-name:
+    description: 'Custom field name (Priority or Complexity)'
+    required: true
+  field-value:
+    description: 'Field value (Critical, High, Medium, Low, XS, S, M, L, XL) or "null" to clear'
+    required: true
+  github-token:
+    description: 'GitHub token with project permissions'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        echo "::group::Validating inputs"
+        if [[ -z "${{ inputs.project-number }}" ]]; then
+          echo "::error::project-number is required"
+          exit 1
+        fi
+        if [[ -z "${{ inputs.issue-number }}" ]]; then
+          echo "::error::issue-number is required"
+          exit 1
+        fi
+        if [[ -z "${{ inputs.field-name }}" ]]; then
+          echo "::error::field-name is required"
+          exit 1
+        fi
+        if [[ ! "${{ inputs.field-name }}" =~ ^(Priority|Complexity)$ ]]; then
+          echo "::error::field-name must be 'Priority' or 'Complexity'"
+          exit 1
+        fi
+        echo "✅ All inputs valid"
+        echo "::endgroup::"
+
+    - name: Get project and field IDs from cache
+      shell: bash
+      env:
+        FIELD_NAME: ${{ inputs.field-name }}
+        FIELD_VALUE: ${{ inputs.field-value }}
+      run: |
+        echo "::group::Fetching cached IDs"
+
+        # Get project ID from repository variable
+        PROJECT_ID="${{ vars.PROJECT_ID }}"
+        if [[ -z "$PROJECT_ID" ]]; then
+          echo "::error::PROJECT_ID repository variable not set. Run scripts/github-projects/get-project-ids.sh"
+          exit 1
+        fi
+        echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+
+        # Get field ID based on field name
+        if [[ "$FIELD_NAME" == "Priority" ]]; then
+          FIELD_ID="${{ vars.PRIORITY_FIELD_ID }}"
+        else
+          FIELD_ID="${{ vars.COMPLEXITY_FIELD_ID }}"
+        fi
+
+        if [[ -z "$FIELD_ID" ]]; then
+          echo "::error::${FIELD_NAME}_FIELD_ID repository variable not set"
+          exit 1
+        fi
+        echo "FIELD_ID=$FIELD_ID" >> $GITHUB_ENV
+
+        # Get option ID based on field value (if not null)
+        if [[ "$FIELD_VALUE" != "null" ]]; then
+          VAR_NAME="${FIELD_NAME^^}_${FIELD_VALUE^^}_OPTION_ID"
+          VAR_NAME="${VAR_NAME//-/_}"  # Replace hyphens with underscores
+          OPTION_ID="${!VAR_NAME}"
+
+          if [[ -z "$OPTION_ID" ]]; then
+            echo "::error::${VAR_NAME} repository variable not set"
+            exit 1
+          fi
+          echo "OPTION_ID=$OPTION_ID" >> $GITHUB_ENV
+        else
+          echo "OPTION_ID=null" >> $GITHUB_ENV
+        fi
+
+        echo "✅ All IDs fetched successfully"
+        echo "::endgroup::"
+
+    - name: Find project item ID for issue
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        ISSUE_NUMBER: ${{ inputs.issue-number }}
+      run: |
+        echo "::group::Finding project item ID"
+
+        # GraphQL query to find the project item ID for this issue
+        QUERY=$(cat <<'EOF'
+        query($repo: String!, $owner: String!, $number: Int!, $projectNumber: Int!) {
+          repository(name: $repo, owner: $owner) {
+            issueOrPullRequest(number: $number) {
+              ... on Issue {
+                projectItems(first: 10) {
+                  nodes {
+                    id
+                    project {
+                      number
+                    }
+                  }
+                }
+              }
+              ... on PullRequest {
+                projectItems(first: 10) {
+                  nodes {
+                    id
+                    project {
+                      number
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        EOF
+        )
+
+        OWNER=$(echo "$REPO" | cut -d'/' -f1)
+        REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+
+        RESPONSE=$(gh api graphql \
+          -f query="$QUERY" \
+          -f owner="$OWNER" \
+          -f repo="$REPO_NAME" \
+          -F number="$ISSUE_NUMBER" \
+          -F projectNumber="${{ inputs.project-number }}")
+
+        # Extract project item ID for the specified project number
+        ITEM_ID=$(echo "$RESPONSE" | jq -r \
+          --arg projectNum "${{ inputs.project-number }}" \
+          '.data.repository.issueOrPullRequest.projectItems.nodes[] | select(.project.number == ($projectNum | tonumber)) | .id')
+
+        if [[ -z "$ITEM_ID" || "$ITEM_ID" == "null" ]]; then
+          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #${{ inputs.project-number }}. Skipping field sync."
+          echo "ITEM_ID=NOT_IN_PROJECT" >> $GITHUB_ENV
+          exit 0
+        fi
+
+        echo "ITEM_ID=$ITEM_ID" >> $GITHUB_ENV
+        echo "✅ Found project item ID: $ITEM_ID"
+        echo "::endgroup::"
+
+    - name: Update project field
+      if: env.ITEM_ID != 'NOT_IN_PROJECT'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        FIELD_NAME: ${{ inputs.field-name }}
+        FIELD_VALUE: ${{ inputs.field-value }}
+      run: |
+        echo "::group::Updating $FIELD_NAME field to $FIELD_VALUE"
+
+        # Build the mutation based on whether we're clearing or setting
+        if [[ "$OPTION_ID" == "null" ]]; then
+          # Clear the field
+          MUTATION=$(cat <<'EOF'
+        mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
+          clearProjectV2ItemFieldValue(input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+          }) {
+            projectV2Item {
+              id
+            }
+          }
+        }
+        EOF
+          )
+
+          RESPONSE=$(gh api graphql \
+            -f query="$MUTATION" \
+            -f projectId="$PROJECT_ID" \
+            -f itemId="$ITEM_ID" \
+            -f fieldId="$FIELD_ID")
+        else
+          # Set the field value
+          MUTATION=$(cat <<'EOF'
+        mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+          updateProjectV2ItemFieldValue(input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+            value: {
+              singleSelectOptionId: $optionId
+            }
+          }) {
+            projectV2Item {
+              id
+            }
+          }
+        }
+        EOF
+          )
+
+          RESPONSE=$(gh api graphql \
+            -f query="$MUTATION" \
+            -f projectId="$PROJECT_ID" \
+            -f itemId="$ITEM_ID" \
+            -f fieldId="$FIELD_ID" \
+            -f optionId="$OPTION_ID")
+        fi
+
+        # Check for errors
+        ERRORS=$(echo "$RESPONSE" | jq -r '.errors // empty')
+        if [[ -n "$ERRORS" ]]; then
+          echo "::error::GraphQL mutation failed: $ERRORS"
+          exit 1
+        fi
+
+        echo "✅ Successfully updated $FIELD_NAME field to $FIELD_VALUE"
+        echo "::endgroup::"

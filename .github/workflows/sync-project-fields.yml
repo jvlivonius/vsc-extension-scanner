@@ -1,0 +1,126 @@
+name: Sync Project Fields
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled]
+  pull_request:
+    types: [opened, labeled, unlabeled]
+
+permissions:
+  issues: read
+  pull-requests: read
+  repository-projects: write
+
+jobs:
+  sync-priority:
+    name: Sync Priority Field
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.issue.labels.*.name, 'P0-critical') ||
+      contains(github.event.issue.labels.*.name, 'P1-high') ||
+      contains(github.event.issue.labels.*.name, 'P2-medium') ||
+      contains(github.event.issue.labels.*.name, 'P3-low') ||
+      contains(github.event.pull_request.labels.*.name, 'P0-critical') ||
+      contains(github.event.pull_request.labels.*.name, 'P1-high') ||
+      contains(github.event.pull_request.labels.*.name, 'P2-medium') ||
+      contains(github.event.pull_request.labels.*.name, 'P3-low') ||
+      (github.event.action == 'unlabeled' && contains(fromJSON('["P0-critical", "P1-high", "P2-medium", "P3-low"]'), github.event.label.name))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine priority value
+        id: priority
+        env:
+          LABELS: ${{ toJSON(github.event.issue.labels.*.name || github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "Labels: $LABELS"
+
+          # Parse labels array and find highest priority
+          # Priority order: P0-critical > P1-high > P2-medium > P3-low
+
+          if echo "$LABELS" | jq -e '. | contains(["P0-critical"])' > /dev/null; then
+            echo "value=Critical" >> $GITHUB_OUTPUT
+            echo "Found P0-critical → Critical"
+          elif echo "$LABELS" | jq -e '. | contains(["P1-high"])' > /dev/null; then
+            echo "value=High" >> $GITHUB_OUTPUT
+            echo "Found P1-high → High"
+          elif echo "$LABELS" | jq -e '. | contains(["P2-medium"])' > /dev/null; then
+            echo "value=Medium" >> $GITHUB_OUTPUT
+            echo "Found P2-medium → Medium"
+          elif echo "$LABELS" | jq -e '. | contains(["P3-low"])' > /dev/null; then
+            echo "value=Low" >> $GITHUB_OUTPUT
+            echo "Found P3-low → Low"
+          else
+            echo "value=null" >> $GITHUB_OUTPUT
+            echo "No priority labels → Clear field"
+          fi
+
+      - name: Sync to project
+        uses: ./.github/actions/sync-project-field
+        with:
+          project-number: '3'
+          issue-number: ${{ github.event.issue.number || github.event.pull_request.number }}
+          field-name: 'Priority'
+          field-value: ${{ steps.priority.outputs.value }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  sync-complexity:
+    name: Sync Complexity Field
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.issue.labels.*.name, 'complexity/XS') ||
+      contains(github.event.issue.labels.*.name, 'complexity/S') ||
+      contains(github.event.issue.labels.*.name, 'complexity/M') ||
+      contains(github.event.issue.labels.*.name, 'complexity/L') ||
+      contains(github.event.issue.labels.*.name, 'complexity/XL') ||
+      contains(github.event.pull_request.labels.*.name, 'complexity/XS') ||
+      contains(github.event.pull_request.labels.*.name, 'complexity/S') ||
+      contains(github.event.pull_request.labels.*.name, 'complexity/M') ||
+      contains(github.event.pull_request.labels.*.name, 'complexity/L') ||
+      contains(github.event.pull_request.labels.*.name, 'complexity/XL') ||
+      (github.event.action == 'unlabeled' && contains(fromJSON('["complexity/XS", "complexity/S", "complexity/M", "complexity/L", "complexity/XL"]'), github.event.label.name))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine complexity value
+        id: complexity
+        env:
+          LABELS: ${{ toJSON(github.event.issue.labels.*.name || github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "Labels: $LABELS"
+
+          # Parse labels array and find highest priority complexity
+          # Priority order: XS > S > M > L > XL (smallest wins)
+
+          if echo "$LABELS" | jq -e '. | contains(["complexity/XS"])' > /dev/null; then
+            echo "value=XS" >> $GITHUB_OUTPUT
+            echo "Found complexity/XS → XS"
+          elif echo "$LABELS" | jq -e '. | contains(["complexity/S"])' > /dev/null; then
+            echo "value=S" >> $GITHUB_OUTPUT
+            echo "Found complexity/S → S"
+          elif echo "$LABELS" | jq -e '. | contains(["complexity/M"])' > /dev/null; then
+            echo "value=M" >> $GITHUB_OUTPUT
+            echo "Found complexity/M → M"
+          elif echo "$LABELS" | jq -e '. | contains(["complexity/L"])' > /dev/null; then
+            echo "value=L" >> $GITHUB_OUTPUT
+            echo "Found complexity/L → L"
+          elif echo "$LABELS" | jq -e '. | contains(["complexity/XL"])' > /dev/null; then
+            echo "value=XL" >> $GITHUB_OUTPUT
+            echo "Found complexity/XL → XL"
+          else
+            echo "value=null" >> $GITHUB_OUTPUT
+            echo "No complexity labels → Clear field"
+          fi
+
+      - name: Sync to project
+        uses: ./.github/actions/sync-project-field
+        with:
+          project-number: '3'
+          issue-number: ${{ github.event.issue.number || github.event.pull_request.number }}
+          field-name: 'Complexity'
+          field-value: ${{ steps.complexity.outputs.value }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
