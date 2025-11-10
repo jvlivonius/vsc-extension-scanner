@@ -2,14 +2,24 @@
 
 ## Supported Versions
 
-| Version | Supported          | Status | End of Life |
-| ------- | ------------------ | ------ | ----------- |
-| 3.6.0   | :white_check_mark: | Latest stable | - |
-| 3.5.6   | :white_check_mark: | Maintenance | 2026-01-04 |
-| 3.5.0-3.5.5 | :x: | Security fixes only | Upgrade recommended |
-| < 3.5   | :x: | Unsupported | Immediate upgrade required |
+**Current Version:** See [docs/project/STATUS.md](docs/project/STATUS.md) for the latest stable release.
 
-**Support Policy:** Latest stable release + previous minor version receive full support. Older versions receive critical security fixes only. Users should upgrade to latest stable version.
+**Support Policy:**
+
+- **Latest stable release:** Full support (bug fixes, features, security updates)
+- **Previous minor version:** Maintenance support (security fixes, critical bugs)
+- **Older versions:** Security fixes only (upgrade recommended)
+- **Unsupported versions:** No support (immediate upgrade required)
+
+**Version Support Table:**
+
+| Version Pattern | Support Level | Recommendation |
+| --------------- | ------------- | -------------- |
+| Latest stable (5.x) | ✅ Full support | Recommended |
+| Previous minor (4.x) | ⚠️ Maintenance | Security updates only |
+| Older (3.x and below) | ❌ Unsupported | Upgrade immediately |
+
+**To check your version:** Run `vscan --version` or see [docs/project/STATUS.md](docs/project/STATUS.md)
 
 ## Reporting a Vulnerability
 
@@ -61,12 +71,13 @@ python3 scripts/run_tests.py --pre-release
 ```
 
 **Test Coverage:**
-- 127 security tests across 8 test files
-- 95%+ coverage of security-critical modules
-- 1,250+ property-based test scenarios (Hypothesis)
-- CWE-22 (Path Traversal), CWE-345 (HMAC), CWE-209 (Error Disclosure)
 
-**See:** [docs/guides/SECURITY.md](docs/guides/SECURITY.md) for comprehensive security architecture and [docs/guides/testing/TESTING_SECURITY.md](docs/guides/testing/TESTING_SECURITY.md) for detailed testing guide (21K documentation).
+- 120+ security-focused tests across multiple test files
+- 95%+ coverage of security-critical modules
+- 1,000+ property-based test scenarios (Hypothesis framework)
+- Comprehensive coverage of CWE patterns: CWE-22 (Path Traversal), CWE-345 (HMAC), CWE-209 (Error Disclosure)
+
+**See:** [docs/guides/SECURITY.md](docs/guides/SECURITY.md) for comprehensive security architecture and [docs/guides/testing/TESTING_SECURITY.md](docs/guides/testing/TESTING_SECURITY.md) for detailed testing guide.
 
 ## Security Features
 
@@ -135,20 +146,20 @@ https://github.com/jvlivonius/vsc-extension-scanner/security/advisories/new
 
 ## Security Fixes History
 
-**v3.5.6 (2025-11-01):**
-- Fixed case-insensitive filesystem bypass for system paths validation
+**Recent Security Fixes:**
 
-**v3.5.1 (2025-10-27):**
-- Fixed 3 critical path traversal vulnerabilities (CWE-22)
-- Fixed 2 high-severity resource exhaustion vulnerabilities
-- Added HMAC-SHA256 cache integrity protection (CWE-345)
-- Implemented comprehensive input validation
-- Enforced restrictive file permissions
+Security fixes are documented in [CHANGELOG.md](CHANGELOG.md) and release notes. Notable security improvements include:
 
-**v3.5.0 and earlier:**
-- No publicly disclosed vulnerabilities
-- Internal security improvements and hardening
+- **Path traversal protection:** Comprehensive validation preventing directory traversal attacks (CWE-22)
+- **HMAC cache integrity:** Cryptographic signatures prevent cache tampering (CWE-345)
+- **Input validation:** Context-aware string sanitization preventing injection attacks
+- **File permissions:** Restrictive permissions (0o600 files, 0o700 directories)
+- **Error disclosure prevention:** Sanitized error messages without sensitive information (CWE-209)
 
-**Transparency:** We maintain full disclosure of all security fixes in CHANGELOG.md and release notes.
+**Transparency Commitment:**
 
-**See:** [docs/archive/reviews/security-analysis.md](docs/archive/reviews/security-analysis.md) for historical vulnerability details
+- All security fixes are documented in [CHANGELOG.md](CHANGELOG.md)
+- Critical vulnerabilities disclosed via [GitHub Security Advisories](https://github.com/jvlivonius/vsc-extension-scanner/security/advisories)
+- Historical vulnerability analysis in [docs/archive/reviews/security-analysis.md](docs/archive/reviews/security-analysis.md)
+
+**To review specific version fixes:** Check [CHANGELOG.md](CHANGELOG.md) or [docs/project/STATUS.md](docs/project/STATUS.md)

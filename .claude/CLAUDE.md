@@ -58,23 +58,28 @@ Recommended agents and tools for common development tasks:
 ## Auto-Active Agents
 These agents provide specialized expertise for all relevant tasks:
 
-@agents/python-expert.md
+**python-expert**
+- @agents/python-expert.md
 - Production-quality Python, SOLID principles, TDD approach
 - Clean architecture, dependency injection, separation of concerns
 
-@agents/security-engineer.md
+**security-engineer**
+- @agents/security-engineer.md
 - OWASP compliance, vulnerability assessment
 - Critical patterns: validate_path(), sanitize_string()
 
-@agents/quality-engineer.md
+**quality-engineer**
+- @agents/quality-engineer.md
 - pytest + hypothesis (property-based testing)
 - Test strategy, edge case detection, coverage analysis
 
-@agents/performance-engineer.md
+**performance-engineer**
+- @agents/performance-engineer.md
 - ThreadPoolExecutor optimization (3 workers, configurable 1-5)
 - Profiling-based optimization, memory efficiency
 
-@agents/root-cause-analyst.md
+**root-cause-analyst**
+- @agents/root-cause-analyst.md
 - Systematic debugging, evidence-based analysis
 - Hypothesis testing, pattern recognition
 
