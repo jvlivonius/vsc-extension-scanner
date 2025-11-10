@@ -113,13 +113,13 @@ done
 get_priority_from_labels() {
     local labels="$1"
 
-    if echo "$labels" | grep -q "P0-critical"; then
+    if [[ "$labels" == *"P0-critical"* ]]; then
         echo "Critical"
-    elif echo "$labels" | grep -q "P1-high"; then
+    elif [[ "$labels" == *"P1-high"* ]]; then
         echo "High"
-    elif echo "$labels" | grep -q "P2-medium"; then
+    elif [[ "$labels" == *"P2-medium"* ]]; then
         echo "Medium"
-    elif echo "$labels" | grep -q "P3-low"; then
+    elif [[ "$labels" == *"P3-low"* ]]; then
         echo "Low"
     else
         echo ""
@@ -130,15 +130,15 @@ get_priority_from_labels() {
 get_complexity_from_labels() {
     local labels="$1"
 
-    if echo "$labels" | grep -q "complexity/XS"; then
+    if [[ "$labels" == *"complexity/XS"* ]]; then
         echo "XS"
-    elif echo "$labels" | grep -q "complexity/S"; then
+    elif [[ "$labels" == *"complexity/S"* ]]; then
         echo "S"
-    elif echo "$labels" | grep -q "complexity/M"; then
+    elif [[ "$labels" == *"complexity/M"* ]]; then
         echo "M"
-    elif echo "$labels" | grep -q "complexity/L"; then
+    elif [[ "$labels" == *"complexity/L"* ]]; then
         echo "L"
-    elif echo "$labels" | grep -q "complexity/XL"; then
+    elif [[ "$labels" == *"complexity/XL"* ]]; then
         echo "XL"
     else
         echo ""
@@ -184,30 +184,72 @@ if [[ "$DRY_RUN" == true ]]; then
     log_warning "DRY RUN MODE - No changes will be made"
 fi
 
-# Get all issues in the project with their labels
+# Get all issues in the project with their labels and current field values
 log_info "Fetching issues from project..."
 
-ISSUES=$(gh issue list --limit 100 --json number,title,labels,projectItems --jq '.[] | select(.projectItems | length > 0) | {number, title, labels: [.labels[].name]}')
+# Fetch issues as JSON array
+ISSUES_JSON=$(gh issue list --limit 100 --json number,title,labels,projectItems --jq '[.[] | select(.projectItems | length > 0)]')
 
-if [[ -z "$ISSUES" ]]; then
+if [[ "$ISSUES_JSON" == "[]" ]]; then
     log_warning "No issues found in project"
     exit 0
 fi
 
 # Count issues
-TOTAL_ISSUES=$(echo "$ISSUES" | jq -s 'length')
+TOTAL_ISSUES=$(echo "$ISSUES_JSON" | jq 'length')
 log_info "Found $TOTAL_ISSUES issues in project"
 echo
+
+# Get project field values for all issues
+log_info "Fetching current project field values..."
+
+# GraphQL query to get project items with field values
+QUERY=$(cat <<'EOF'
+query($projectNumber: Int!, $owner: String!) {
+  user(login: $owner) {
+    projectV2(number: $projectNumber) {
+      items(first: 100) {
+        nodes {
+          content {
+            ... on Issue {
+              number
+            }
+          }
+          fieldValues(first: 20) {
+            nodes {
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field {
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+EOF
+)
+
+OWNER=$(gh repo view --json owner -q '.owner.login')
+PROJECT_FIELDS=$(gh api graphql -f query="$QUERY" -F projectNumber="$PROJECT_NUMBER" -f owner="$OWNER")
 
 # Track statistics
 SYNCED_COUNT=0
 SKIPPED_COUNT=0
+ALREADY_SYNCED=0
 
 # Process each issue
-while IFS= read -r issue_json; do
+for i in $(seq 0 $((TOTAL_ISSUES - 1))); do
+    issue_json=$(echo "$ISSUES_JSON" | jq ".[$i]")
+
     ISSUE_NUMBER=$(echo "$issue_json" | jq -r '.number')
     ISSUE_TITLE=$(echo "$issue_json" | jq -r '.title')
-    LABELS=$(echo "$issue_json" | jq -r '.labels | join(",")')
+    LABELS=$(echo "$issue_json" | jq -r '[.labels[].name] | join(",")')
 
     log_info "Issue #$ISSUE_NUMBER: $ISSUE_TITLE"
 
@@ -233,26 +275,80 @@ while IFS= read -r issue_json; do
     # Check if there's anything to sync
     if [[ -z "$PRIORITY_LABEL" ]] && [[ -z "$COMPLEXITY_LABEL" ]]; then
         log_warning "  No Priority or Complexity labels - skipping"
-        ((SKIPPED_COUNT++))
+        SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
     else
-        sync_issue_fields "$ISSUE_NUMBER" "$PRIORITY_LABEL" "$COMPLEXITY_LABEL"
-        ((SYNCED_COUNT++))
+        # Get current field values for this issue
+        CURRENT_PRIORITY=$(echo "$PROJECT_FIELDS" | jq -r \
+            --arg issue "$ISSUE_NUMBER" \
+            '.data.user.projectV2.items.nodes[] |
+             select(.content.number == ($issue | tonumber)) |
+             .fieldValues.nodes[] |
+             select(.field.name == "Priority") |
+             .name // ""' || echo "")
 
-        if [[ "$DRY_RUN" == false ]]; then
-            # Wait a bit between issues to avoid rate limiting
-            sleep 2
+        CURRENT_COMPLEXITY=$(echo "$PROJECT_FIELDS" | jq -r \
+            --arg issue "$ISSUE_NUMBER" \
+            '.data.user.projectV2.items.nodes[] |
+             select(.content.number == ($issue | tonumber)) |
+             .fieldValues.nodes[] |
+             select(.field.name == "Complexity") |
+             .name // ""' || echo "")
+
+        # Check if sync is needed
+        NEEDS_PRIORITY_SYNC=false
+        NEEDS_COMPLEXITY_SYNC=false
+
+        if [[ -n "$PRIORITY" ]] && [[ "$CURRENT_PRIORITY" != "$PRIORITY" ]]; then
+            NEEDS_PRIORITY_SYNC=true
+            log_info "  Priority: $CURRENT_PRIORITY → $PRIORITY (needs sync)"
+        elif [[ -n "$PRIORITY" ]] && [[ "$CURRENT_PRIORITY" == "$PRIORITY" ]]; then
+            log_info "  Priority: $PRIORITY (already synced)"
+        fi
+
+        if [[ -n "$COMPLEXITY" ]] && [[ "$CURRENT_COMPLEXITY" != "$COMPLEXITY" ]]; then
+            NEEDS_COMPLEXITY_SYNC=true
+            log_info "  Complexity: $CURRENT_COMPLEXITY → $COMPLEXITY (needs sync)"
+        elif [[ -n "$COMPLEXITY" ]] && [[ "$CURRENT_COMPLEXITY" == "$COMPLEXITY" ]]; then
+            log_info "  Complexity: $COMPLEXITY (already synced)"
+        fi
+
+        # Only sync if needed
+        if [[ "$NEEDS_PRIORITY_SYNC" == true ]] || [[ "$NEEDS_COMPLEXITY_SYNC" == true ]]; then
+            # Determine which labels to sync
+            SYNC_PRIORITY_LABEL=""
+            SYNC_COMPLEXITY_LABEL=""
+
+            if [[ "$NEEDS_PRIORITY_SYNC" == true ]]; then
+                SYNC_PRIORITY_LABEL="$PRIORITY_LABEL"
+            fi
+
+            if [[ "$NEEDS_COMPLEXITY_SYNC" == true ]]; then
+                SYNC_COMPLEXITY_LABEL="$COMPLEXITY_LABEL"
+            fi
+
+            sync_issue_fields "$ISSUE_NUMBER" "$SYNC_PRIORITY_LABEL" "$SYNC_COMPLEXITY_LABEL"
+            SYNCED_COUNT=$((SYNCED_COUNT + 1))
+
+            if [[ "$DRY_RUN" == false ]]; then
+                # Wait a bit between issues to avoid rate limiting
+                sleep 2
+            fi
+        else
+            log_success "  Already synced - skipping"
+            ALREADY_SYNCED=$((ALREADY_SYNCED + 1))
         fi
     fi
 
     echo
-done <<< "$ISSUES"
+done
 
 # Summary
 echo "================================"
 log_success "Sync complete!"
 log_info "  Total issues: $TOTAL_ISSUES"
 log_info "  Synced: $SYNCED_COUNT"
-log_info "  Skipped: $SKIPPED_COUNT"
+log_info "  Already synced: $ALREADY_SYNCED"
+log_info "  Skipped (no labels): $SKIPPED_COUNT"
 
 if [[ "$DRY_RUN" == false ]]; then
     log_info ""
