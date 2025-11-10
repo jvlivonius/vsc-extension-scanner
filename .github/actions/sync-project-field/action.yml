@@ -155,6 +155,33 @@ runs:
         echo "✅ All IDs processed successfully"
         echo "::endgroup::"
 
+    - name: Validate project access
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PROJECT_ID: ${{ inputs.project-id }}
+      run: |
+        echo "::group::Validating project permissions"
+
+        # Verify token is valid
+        if ! gh api graphql -f query='query { viewer { login } }' &>/dev/null; then
+          echo "::error::GitHub token invalid or expired"
+          exit 1
+        fi
+
+        # Verify project access with PROJECT_TOKEN
+        PROJECT_TEST=$(gh api graphql -f query="query { node(id: \"$PROJECT_ID\") { id } }" 2>&1)
+
+        if echo "$PROJECT_TEST" | grep -q "error\|Could not resolve"; then
+          echo "::error::Cannot access project (ID: $PROJECT_ID)"
+          echo "::error::Verify PROJECT_TOKEN has 'project' scope (not GITHUB_TOKEN)"
+          echo "::error::See docs/contributing/GITHUB_PROJECTS_SETUP.md for token setup"
+          exit 1
+        fi
+
+        echo "✅ Project access validated"
+        echo "::endgroup::"
+
     - name: Find project item ID for issue
       shell: bash
       env:
@@ -164,8 +191,8 @@ runs:
       run: |
         echo "::group::Finding project item ID"
 
-        # This action handles eventual consistency delays in GitHub's distributed systems
-        # by polling for up to 20 seconds before giving up on field sync
+        # This action handles GitHub's internal propagation delays
+        # by polling for up to 10 seconds (reduced from 20s since permission fix)
 
         # GraphQL query to find the project item ID for this issue
         QUERY=$(cat <<'EOF'
@@ -202,8 +229,8 @@ runs:
         REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
         PROJECT_NUM="${{ inputs.project-number }}"
 
-        # Poll for project item ID (handles eventual consistency)
-        MAX_ATTEMPTS=10
+        # Poll for project item ID (handles GitHub internal propagation)
+        MAX_ATTEMPTS=5
         ATTEMPT=1
         ITEM_ID=""
 
@@ -217,10 +244,6 @@ runs:
             -f owner="$OWNER" \
             -f repo="$REPO_NAME" \
             -F number="$ISSUE_NUMBER" 2>&1)
-
-          # Debug: Show the GraphQL response
-          echo "DEBUG: GraphQL Response:"
-          echo "$RESPONSE" | jq '.'
 
           # Extract project item ID for the specified project number
           ITEM_ID=$(echo "$RESPONSE" | jq -r \
@@ -239,8 +262,12 @@ runs:
 
         # Final check after polling
         if [[ -z "$ITEM_ID" || "$ITEM_ID" == "null" ]]; then
-          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #$PROJECT_NUM after $MAX_ATTEMPTS attempts (20s). Skipping field sync."
-          echo "This may indicate the issue was not added to the project, or GitHub's propagation is delayed."
+          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #$PROJECT_NUM after $MAX_ATTEMPTS attempts (10s). Skipping field sync."
+          echo "::warning::This usually indicates:"
+          echo "::warning::  1. Issue not auto-added to project - check project auto-add workflow"
+          echo "::warning::  2. GitHub API delay - retry label addition to re-trigger sync"
+          echo "::warning::  3. Permission issue - verify PROJECT_TOKEN has 'project' scope"
+          echo "::warning::See: docs/contributing/GITHUB_PROJECTS_SETUP.md"
           echo "ITEM_ID=NOT_IN_PROJECT" >> $GITHUB_ENV
           exit 0
         fi
