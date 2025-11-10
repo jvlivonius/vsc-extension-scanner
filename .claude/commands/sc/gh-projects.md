@@ -75,6 +75,11 @@ Required Docs: ARCHITECTURE.md, SECURITY.md
 Acceptance Criteria: [checklist from template]
 ```
 
+**Label Sync Timing:**
+- Priority/Complexity labels sync to project fields when labels are added/changed
+- Add labels after issue creation (not during) to trigger sync workflow
+- Workflow triggers on `labeled`/`unlabeled` events only
+
 ### Pattern 3: Release Notes Generation
 ```
 Input: Milestone vX.Y.Z with closed issues
