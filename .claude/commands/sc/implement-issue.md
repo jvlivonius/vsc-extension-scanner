@@ -77,16 +77,22 @@ If any open → Error: "Dependencies not resolved: #140 (open)"
 
 ### Pattern 3: Documentation Reading
 ```
-Required Docs in issue:
-  - [ ] ARCHITECTURE.md
-  - [ ] SECURITY.md
-  - [ ] API_REFERENCE.md
+Required Docs in issue (text field):
+  "ARCHITECTURE.md, SECURITY.md, PRD.md"
 
-Workflow:
-  1. Read each doc in order
-  2. Extract relevant patterns and constraints
-  3. Apply patterns during implementation
-  4. Verify compliance before PR creation
+Parse workflow:
+  1. Extract from issue body: grep -oP '### Required Documentation.*?```.*?\n(.*?)\n```'
+  2. Split by commas: split(',')
+  3. Trim whitespace: map(trim)
+  4. Resolve paths: map(doc => "docs/guides/${doc}")
+  5. Read each doc in order
+  6. Extract relevant patterns and constraints
+  7. Apply patterns during implementation
+  8. Verify compliance before PR creation
+
+Example parsing:
+  Input: "ARCHITECTURE.md, SECURITY.md, PRD.md"
+  Output: ["docs/guides/ARCHITECTURE.md", "docs/guides/SECURITY.md", "docs/project/PRD.md"]
 ```
 
 ### Pattern 4: Acceptance Criteria Verification
@@ -203,12 +209,29 @@ done
 
 ### Step 3: Read Required Documentation
 ```bash
-# Parse required docs from body
-REQUIRED_DOCS=$(echo "$BODY" | grep -oP '- \[ \] \[([^\]]+)\]' | sed 's/.*\[\([^]]*\)\].*/\1/')
+# Parse required docs from issue body (YAML form text field)
+# Look for "### Required Documentation" section followed by value
+REQUIRED_DOCS_RAW=$(echo "$BODY" | grep -A 2 "### Required Documentation" | tail -1)
+
+# Split comma-separated list and trim whitespace
+IFS=',' read -ra DOC_ARRAY <<< "$REQUIRED_DOCS_RAW"
 
 # Read each document
-for doc in $REQUIRED_DOCS; do
-  echo "Reading: $doc"
+for doc_name in "${DOC_ARRAY[@]}"; do
+  # Trim whitespace
+  doc_name=$(echo "$doc_name" | xargs)
+
+  # Resolve path based on doc name
+  case "$doc_name" in
+    ARCHITECTURE.md) doc_path="docs/guides/ARCHITECTURE.md" ;;
+    SECURITY.md) doc_path="docs/guides/SECURITY.md" ;;
+    PRD.md) doc_path="docs/project/PRD.md" ;;
+    TESTING.md) doc_path="docs/guides/TESTING.md" ;;
+    PERFORMANCE.md) doc_path="docs/guides/PERFORMANCE.md" ;;
+    *) doc_path="docs/guides/$doc_name" ;;  # Default to guides/
+  esac
+
+  echo "Reading: $doc_path"
   # Use Read tool to load documentation
   # Extract patterns and constraints
 done
@@ -282,11 +305,13 @@ Action: Wait for dependencies to be resolved, or remove dependency if incorrect
 
 ### Missing Required Documentation
 ```
-Error: Issue #142 missing required documentation links
-  Expected: Links to ARCHITECTURE.md, SECURITY.md in issue body
-  Found: None
+Error: Issue #142 missing required documentation field
+  Expected: "Required Documentation" field with comma-separated doc names
+  Found: Empty or missing field
 
-Action: Update issue body with required documentation links
+Action: Update issue with required documentation:
+  Edit issue → Fill in "Required Documentation" field
+  Example: "ARCHITECTURE.md, SECURITY.md, PRD.md"
 ```
 
 ### Test Failures

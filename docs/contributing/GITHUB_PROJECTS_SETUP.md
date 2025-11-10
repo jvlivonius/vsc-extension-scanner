@@ -300,13 +300,166 @@ gh variable list
 
 ---
 
+## Troubleshooting
+
+### Issue Not Auto-Added to Project
+
+**Symptom**: Created issue doesn't appear in Project #3
+
+**Common Causes:**
+1. **Auto-add workflow not configured properly**
+2. **Repository not selected in filter**
+3. **Issue matches exclusion filter**
+
+**Solution:**
+```bash
+# 1. Check auto-add workflow configuration (Web UI Required)
+# Navigate to: https://github.com/users/jvlivonius/projects/3
+# → Click "..." menu → Workflows → "Auto-add to project"
+# → Verify:
+#   - Toggle: ON
+#   - Repository: jvlivonius/vsc-extension-scanner (CHECKED)
+#   - Filter: is:issue,pr is:open -label:duplicate
+# → Save if changes needed
+
+# 2. Manually add issue as workaround
+gh project item-add 3 --owner jvlivonius --url https://github.com/jvlivonius/vsc-extension-scanner/issues/<number>
+
+# 3. Test with new issue
+gh issue create --title "[TEST] Auto-add test" --body "Testing" --label "feature"
+# Wait 1-2 minutes, then check project board
+```
+
+### Field Sync Workflow Failing
+
+**Symptom**: Workflow fails with exit code 1
+
+**Common Causes:**
+1. **Repository variables not set** (PROJECT_ID, field IDs, option IDs)
+2. **Issue not in project** (sync can't update fields for non-project items)
+3. **GraphQL query errors**
+
+**Solution:**
+```bash
+# 1. Verify repository variables exist
+gh variable list
+# Should show: PROJECT_ID, PRIORITY_FIELD_ID, COMPLEXITY_FIELD_ID, and all option IDs
+
+# 2. If variables missing, re-run ID script
+./scripts/github-projects/get-project-ids.sh
+# Copy and run all output commands
+
+# 3. Check workflow logs
+gh run list --workflow=sync-project-fields.yml
+gh run view <run-id> --log
+
+# 4. Manually add issue to project first
+gh project item-add 3 --owner jvlivonius --url https://github.com/jvlivonius/vsc-extension-scanner/issues/<number>
+
+# 5. Re-trigger sync by adding/removing label
+gh issue edit <number> --remove-label "P2-medium" --add-label "P1-high"
+```
+
+### Custom Fields Not Showing
+
+**Symptom**: Priority or Complexity fields missing from project views
+
+**Solution:**
+```bash
+# 1. Enable fields in view (Web UI)
+# Project #3 → Table view → View menu (▼) → Fields
+# → Toggle ON: Priority, Complexity
+
+# 2. Verify fields exist in project
+# Project #3 → Settings (⚙️) → Fields
+# → Should show: Priority (Critical, High, Medium, Low)
+# →              Complexity (XS, S, M, L, XL)
+
+# 3. If fields missing, create them manually:
+# Project #3 → Settings → Fields → New field
+# → Name: Priority, Type: Single select
+# → Options: Critical, High, Medium, Low
+# Repeat for Complexity with options: XS, S, M, L, XL
+
+# 4. Re-run ID script to get new field IDs
+./scripts/github-projects/get-project-ids.sh
+```
+
+### Milestone Field Not Visible
+
+**Symptom**: Can't see milestone column in project views
+
+**Solution:**
+```bash
+# Milestone is a BUILT-IN field, not custom
+
+# 1. Enable in view (Web UI)
+# Project #3 → Table view → View menu (▼) → Fields
+# → Toggle ON: Milestone
+
+# 2. Create milestones in repository
+gh api repos/jvlivonius/vsc-extension-scanner/milestones \
+  -F title="v3.8.0" \
+  -F description="Release 3.8.0"
+
+# 3. Assign milestone to issues
+gh issue edit <number> --milestone "v3.8.0"
+```
+
+### Labels Not Syncing to Fields
+
+**Symptom**: Adding priority/complexity labels doesn't update project fields
+
+**Common Causes:**
+1. **Workflow not triggered** (issue/PR not in watched events)
+2. **Issue not in project** (can't update fields for non-project items)
+3. **Variable mismatch** (label value doesn't match expected format)
+
+**Solution:**
+```bash
+# 1. Verify workflow triggers
+cat .github/workflows/sync-project-fields.yml | grep -A 5 "on:"
+# Should include: issues.types [opened, labeled, unlabeled]
+
+# 2. Check recent workflow runs
+gh run list --workflow=sync-project-fields.yml --limit 10
+
+# 3. Verify label format
+gh label list | grep -E "P[0-3]|complexity"
+# Should show: P0-critical, P1-high, P2-medium, P3-low
+#              complexity/XS, complexity/S, complexity/M, complexity/L, complexity/XL
+
+# 4. Test sync manually
+gh issue edit <number> --add-label "P1-high"
+# Wait 30 seconds, then check project board
+
+# 5. If still failing, check workflow logs
+gh run list --workflow=sync-project-fields.yml
+gh run view <latest-run-id> --log
+```
+
+### Can't Filter by Documentation Requirements
+
+**Note**: As of the latest version, documentation requirements use a text input field, not labels.
+
+**To find issues by required docs:**
+```bash
+# Search issue bodies
+gh issue list --json number,title,body --jq '.[] | select(.body | contains("ARCHITECTURE.md")) | "\(.number): \(.title)"'
+
+# Or use project view filters with text search
+# Project #3 → Filter: text:"ARCHITECTURE.md"
+```
+
+---
+
 ## Next Steps
 
 Setup complete. See [GITHUB_PROJECTS.md](GITHUB_PROJECTS.md) for:
 - Daily development workflows
 - Using filters and views
 - Slash command reference
-- Troubleshooting common issues
+- Common workflow patterns
 
 ---
 

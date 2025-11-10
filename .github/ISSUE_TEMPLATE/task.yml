@@ -1,0 +1,229 @@
+name: Implementation Task
+description: Specific implementation task (broken down from feature or epic)
+title: "[TASK] "
+labels: [task, P2-medium, complexity/M]
+assignees:
+  - jvlivonius
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Task Description
+
+        Provide details about this specific implementation task.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief one-sentence description of this specific task
+      placeholder: "Implement CSV formatter class with proper escaping"
+    validations:
+      required: true
+
+  - type: input
+    id: parent-feature
+    attributes:
+      label: Parent Feature
+      description: Issue number or link to parent feature/plan
+      placeholder: "#142 or docs/archive/plans/v3.8-feature-name.md"
+    validations:
+      required: false
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: Target version for this task
+      placeholder: "v3.8.0"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: estimated-effort
+    attributes:
+      label: Estimated Effort
+      description: How long will this task take?
+      options:
+        - XS (<2 hours)
+        - S (2-4 hours)
+        - M (4-8 hours)
+        - L (1-2 days)
+        - XL (>2 days)
+    validations:
+      required: true
+
+  - type: input
+    id: required-docs
+    attributes:
+      label: Required Documentation
+      description: Comma-separated list of documentation files to read before implementing
+      placeholder: "ARCHITECTURE.md, TESTING.md"
+      value: "ARCHITECTURE.md, SECURITY.md, TESTING.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: |
+        List dependencies:
+        - **Blocked By**: Must be completed first
+        - **Blocks**: This must be done before these can start
+      placeholder: |
+        Blocked By: #140
+        Blocks: #145
+      value: |
+        Blocked By: None
+        Blocks: None
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-to-implement
+    attributes:
+      label: What to Implement
+      description: Specific changes needed
+      placeholder: |
+        **Files to Modify:**
+        - vscode_scanner/csv_exporter.py - Add escape_csv_field() method
+        - vscode_scanner/output_formatter.py - Use new CSV escaping
+
+        **Functions/Classes to Add/Modify:**
+        - CSVExporter.escape_csv_field() - Properly escape special characters
+        - CSVExporter.format_row() - Use escaping for all fields
+
+        **Tests to Add:**
+        - tests/test_csv_exporter.py::test_escape_csv_field() - Test escaping logic
+        - tests/test_csv_exporter.py::test_format_row_with_special_chars() - Integration test
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: What NOT to Include
+      description: Anything explicitly out of scope for this task
+      placeholder: |
+        - Do not implement JSON export, that's for issue #150
+        - Do not add CLI flags, that's handled in parent feature
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Acceptance Criteria
+
+        This task is complete when:
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: Completion Checklist
+      options:
+        - label: Documented requirements followed
+        - label: Code changes implemented as described
+        - label: Tests added/updated with passing status
+        - label: Coverage maintained (≥80% overall, ≥95% security modules)
+        - label: Pre-commit hooks pass (security, linting, formatting)
+        - label: Manual verification completed
+
+  - type: checkboxes
+    id: security-requirements
+    attributes:
+      label: Security Requirements (if applicable)
+      options:
+        - label: validate_path() used for all file operations
+        - label: sanitize_string() used for all user input
+        - label: No path disclosure in error messages
+
+  - type: checkboxes
+    id: architecture-requirements
+    attributes:
+      label: Architecture Requirements (if applicable)
+      options:
+        - label: Respects layer boundaries (P → A → I, one-way only)
+        - label: Follows command-query separation
+        - label: No infrastructure imports in presentation layer
+
+  - type: textarea
+    id: implementation-approach
+    attributes:
+      label: Implementation Approach
+      description: Recommended approach and key patterns
+      placeholder: |
+        **Approach:**
+        1. Add escape_csv_field() method with RFC 4180 compliance
+        2. Update format_row() to use escaping
+        3. Add comprehensive tests for edge cases
+
+        **Key Patterns to Follow:**
+        - Use AAA pattern for tests
+        - Follow existing error handling pattern in output_formatter.py
+
+        **Edge Cases:**
+        - Fields containing commas, quotes, newlines
+        - Empty fields and None values
+        - Unicode characters
+    validations:
+      required: false
+
+  - type: textarea
+    id: example-code
+    attributes:
+      label: Example Code (optional)
+      description: Example implementation or pattern to follow
+      placeholder: |
+        ```python
+        def escape_csv_field(value: str) -> str:
+            """Escape special characters for CSV format."""
+            if ',' in value or '"' in value or '\n' in value:
+                return f'"{value.replace(chr(34), chr(34)*2)}"'
+            return value
+        ```
+      render: python
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Agent Implementation
+
+        **Agent-Ready Criteria:**
+        - Dependencies resolved (all blocked-by issues closed)
+        - Required documentation listed above
+        - Implementation guidance provided
+        - Acceptance criteria clear
+
+        **To trigger implementation:**
+        ```bash
+        /sc:implement-issue #<issue-number>
+        ```
+
+  - type: textarea
+    id: verification-steps
+    attributes:
+      label: Manual Verification Steps
+      description: How to verify the implementation works
+      placeholder: |
+        1. Test command: ./vscan scan --output test.csv
+        2. Expected behavior: CSV file created with properly escaped fields
+        3. Verify logs/output: No errors, special characters handled correctly
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any additional context, gotchas, or considerations
+      placeholder: |
+        - Be careful with thread safety in this module
+        - Similar pattern used in scanner.py:450
+        - Performance consideration: CSV writing is buffered
+    validations:
+      required: false
