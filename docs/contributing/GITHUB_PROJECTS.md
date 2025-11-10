@@ -42,12 +42,24 @@
 - Up to 50 issues per relationship type
 - Don't create custom "Dependencies" field
 
-**Documentation Requirements** (requires:\* labels):
-- `requires:architecture`, `requires:security`, `requires:prd`, etc.
-- Issue templates automatically apply appropriate labels
-- Claude Code agents extract required docs from labels before implementation
-
 **Auto-Sync:** Priority and Complexity labels automatically sync to project fields via GitHub Actions.
+
+### Issue Template Fields (Not Project Fields)
+
+**Documentation Requirements** (YAML template text input):
+- **Location**: Issue body field (from `.github/ISSUE_TEMPLATE/*.yml`)
+- **Format**: Comma-separated list: "ARCHITECTURE.md, SECURITY.md, PRD.md"
+- **Templates**: `feature.yml`, `task.yml`, `release.yml` all include this field
+- **Default Value**: "ARCHITECTURE.md, SECURITY.md, TESTING.md" (feature/task)
+- **Agent Parsing**: `/sc:implement-issue` extracts and reads each document before implementation
+- **Not a Project Field**: This appears in issue body, not as a custom project column
+
+**Dependencies** (YAML template textarea):
+- **Location**: Issue body field (from `.github/ISSUE_TEMPLATE/*.yml`)
+- **Format**: Plain text with "Blocked By:" and "Blocks:" sections
+- **Templates**: `feature.yml`, `task.yml` include this field
+- **Agent Parsing**: `/sc:implement-issue` validates "Blocked By" issues are closed
+- **Not a Project Field**: Use built-in issue dependencies for visual tracking
 
 ---
 
@@ -55,28 +67,80 @@
 
 ### Creating Issues
 
+**Recommended: Use YAML issue templates via web UI**
+
+Navigate to: https://github.com/jvlivonius/vsc-extension-scanner/issues/new/choose
+
+**Available templates:**
+- **`feature.yml`** - Feature implementation
+  - Required Documentation field (default: "ARCHITECTURE.md, SECURITY.md, PRD.md")
+  - Dependencies field (Blocked By, Blocks)
+  - Architecture layer selection
+  - Breaking changes checkbox
+  - Comprehensive acceptance criteria
+
+- **`task.yml`** - Implementation task
+  - Required Documentation field (default: "ARCHITECTURE.md, SECURITY.md, TESTING.md")
+  - Dependencies field
+  - Estimated effort dropdown (XS, S, M, L, XL)
+  - Implementation approach guidance
+
+- **`release.yml`** - Release tracking
+  - Comprehensive 4-phase checklist (Pre-Release, Build, Version Control, Post-Release)
+  - Version management integration
+  - Release notes draft section
+
+**Via CLI (for programmatic workflows):**
 ```bash
-# Create feature with labels (including documentation requirements)
+# Create feature with all required fields
 gh issue create \
   --title "[FEATURE] Add CSV export" \
-  --body "Export scan results as JSON" \
-  --label "feature,P1-high,complexity/M,requires:architecture,requires:security" \
+  --body "$(cat <<'EOF'
+### Summary
+Export scan results as CSV format
+
+### Required Documentation
+ARCHITECTURE.md, SECURITY.md, PRD.md
+
+### Dependencies
+
+Blocked By: None
+Blocks: None
+
+### Changes Required
+
+**Files to Create:**
+- vscode_scanner/csv_exporter.py
+
+**Files to Modify:**
+- vscode_scanner/output_formatter.py - Add CSV export method
+
+**Tests to Add:**
+- tests/test_csv_exporter.py - Unit tests
+EOF
+)" \
+  --label "feature,P1-high,complexity/M" \
   --milestone "v3.8.0"
 
 # Result:
-# 1. Issue created with labels
+# 1. Issue created with all structured fields in body
 # 2. Auto-added to Project #3 (Status = "Backlog")
-# 3. Priority field set to "High" (auto-synced)
-# 4. Complexity field set to "M" (auto-synced)
-# 5. Milestone field shows "v3.8.0" (auto-synced)
-# 6. requires:* labels tell agents which docs to read before implementation
+# 3. Priority field set to "High" (auto-synced from P1-high label)
+# 4. Complexity field set to "M" (auto-synced from complexity/M label)
+# 5. Milestone field shows "v3.8.0" (auto-synced from repository milestone)
+# 6. Required docs field parsed by /sc:implement-issue before implementation
 ```
 
 **Setting dependencies:**
 ```bash
-# Dependencies set via issue sidebar → Relationships section (web UI)
-# Or programmatically during issue creation via API
-# Claude Code /sc:gh-projects automatically sets "blocked-by" relationships
+# Method 1: Via issue body (parsed by agents)
+# Include "Blocked By: #140, #141" in Dependencies field
+
+# Method 2: Via issue sidebar → Relationships section (web UI - creates visual links)
+# Navigate to issue → Sidebar → Relationships → Mark as blocked by
+
+# Method 3: Programmatically via GraphQL API
+# See: https://docs.github.com/en/graphql/reference/mutations#createlinkedbranchforissue
 ```
 
 ### Moving Issues Through Workflow
