@@ -42,10 +42,10 @@
 - Up to 50 issues per relationship type
 - Don't create custom "Dependencies" field
 
-**Documentation Requirements** (requires:\* labels):
-- `requires:architecture`, `requires:security`, `requires:prd`, etc.
-- Issue templates automatically apply appropriate labels
-- Claude Code agents extract required docs from labels before implementation
+**Documentation Requirements** (text field):
+- YAML issue templates include "Required Documentation" text input field
+- Comma-separated format: "ARCHITECTURE.md, SECURITY.md, PRD.md"
+- Claude Code agents parse and read required docs before implementation
 
 **Auto-Sync:** Priority and Complexity labels automatically sync to project fields via GitHub Actions.
 
@@ -55,28 +55,49 @@
 
 ### Creating Issues
 
+**Recommended: Use YAML issue templates via web UI**
+
+Navigate to: https://github.com/jvlivonius/vsc-extension-scanner/issues/new/choose
+
+**Available templates:**
+- `feature.yml` - Feature implementation with structured documentation requirements
+- `task.yml` - Implementation task with effort estimation
+- `release.yml` - Release tracking with comprehensive checklist
+
+**Via CLI (for programmatic workflows):**
 ```bash
-# Create feature with labels (including documentation requirements)
+# Create feature with labels
 gh issue create \
   --title "[FEATURE] Add CSV export" \
-  --body "Export scan results as JSON" \
-  --label "feature,P1-high,complexity/M,requires:architecture,requires:security" \
+  --body "$(cat <<'EOF'
+## Summary
+Export scan results as CSV format
+
+## Required Documentation
+ARCHITECTURE.md, SECURITY.md, PRD.md
+
+## Dependencies
+Blocked By: None
+Blocks: None
+EOF
+)" \
+  --label "feature,P1-high,complexity/M" \
   --milestone "v3.8.0"
 
 # Result:
 # 1. Issue created with labels
 # 2. Auto-added to Project #3 (Status = "Backlog")
-# 3. Priority field set to "High" (auto-synced)
-# 4. Complexity field set to "M" (auto-synced)
+# 3. Priority field set to "High" (auto-synced from P1-high label)
+# 4. Complexity field set to "M" (auto-synced from complexity/M label)
 # 5. Milestone field shows "v3.8.0" (auto-synced)
-# 6. requires:* labels tell agents which docs to read before implementation
+# 6. Required docs field parsed by agents before implementation
 ```
 
 **Setting dependencies:**
 ```bash
 # Dependencies set via issue sidebar → Relationships section (web UI)
 # Or programmatically during issue creation via API
-# Claude Code /sc:gh-projects automatically sets "blocked-by" relationships
+# Claude Code /sc:implement-issue parses "Blocked By:" from issue body
 ```
 
 ### Moving Issues Through Workflow
@@ -161,14 +182,15 @@ Updates project board from milestone status → Reports summary
 ```
 
 **What it does:**
-1. Fetches issue #142 details
-2. Validates prerequisites (dependencies resolved, docs linked)
-3. Reads required documentation
-4. Creates feature branch
-5. Implements code with tests
-6. Runs quality gates (pytest, security, architecture)
-7. Creates PR with `Closes #142`
-8. Updates issue with `agent-implemented` label
+1. Fetches issue #142 details (title, body, labels, milestone)
+2. Validates prerequisites (dependencies resolved)
+3. Parses "Required Documentation" field (comma-separated: "ARCHITECTURE.md, SECURITY.md")
+4. Reads each required document before implementation
+5. Creates feature branch
+6. Implements code following acceptance criteria with tests
+7. Runs quality gates (pytest, security, architecture)
+8. Creates PR with `Closes #142`
+9. Updates issue with `agent-implemented` label
 
 **Options:**
 ```bash

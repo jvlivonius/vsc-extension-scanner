@@ -64,7 +64,7 @@ Navigate to project → Table view → Click **"+"** in rightmost field header
 **Note:** Use built-in features instead of custom fields for:
 - **Milestone** field for version tracking (v3.8.0, v3.9.0) - don't create custom "Release" field
 - **Issue Dependencies** (Blocked by/Blocking) for dependencies - don't create custom "Dependencies" field
-- **requires:\*** labels + issue template task lists for documentation - don't create custom "Required Docs" field
+- **Text input fields** in YAML issue templates for documentation requirements - don't create custom "Required Docs" field
 
 ---
 
@@ -152,17 +152,9 @@ gh label create "complexity/S" --description "2-4 hours" --color "bfdadc"
 gh label create "complexity/M" --description "4-8 hours" --color "fef2c0"
 gh label create "complexity/L" --description "1-2 days" --color "fad8c7"
 gh label create "complexity/XL" --description "> 2 days" --color "f9d0c4"
-
-# Documentation requirement labels
-gh label create "requires:architecture" --description "Requires ARCHITECTURE.md" --color "0e8a16"
-gh label create "requires:security" --description "Requires SECURITY.md" --color "d73a4a"
-gh label create "requires:prd" --description "Requires PRD.md" --color "fbca04"
-gh label create "requires:testing" --description "Requires TESTING.md" --color "c2e0c6"
-gh label create "requires:performance" --description "Requires PERFORMANCE.md" --color "fad8c7"
-gh label create "requires:api" --description "Requires API_REFERENCE.md" --color "0075ca"
 ```
 
-**Usage:** Issue templates automatically apply appropriate `requires:*` labels. Claude Code agents extract required documentation from labels before implementation.
+**Note:** Documentation requirements are handled via text input fields in YAML issue templates (`.github/ISSUE_TEMPLATE/*.yml`), not labels. See templates for "Required Documentation" field with comma-separated format: "ARCHITECTURE.md, SECURITY.md, PRD.md"
 
 ---
 
