@@ -65,6 +65,12 @@ jobs:
           field-name: 'Priority'
           field-value: ${{ steps.priority.outputs.value }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          project-id: ${{ vars.PROJECT_ID }}
+          priority-field-id: ${{ vars.PRIORITY_FIELD_ID }}
+          priority-critical-id: ${{ vars.PRIORITY_CRITICAL_OPTION_ID }}
+          priority-high-id: ${{ vars.PRIORITY_HIGH_OPTION_ID }}
+          priority-medium-id: ${{ vars.PRIORITY_MEDIUM_OPTION_ID }}
+          priority-low-id: ${{ vars.PRIORITY_LOW_OPTION_ID }}
 
   sync-complexity:
     name: Sync Complexity Field
@@ -124,3 +130,10 @@ jobs:
           field-name: 'Complexity'
           field-value: ${{ steps.complexity.outputs.value }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          project-id: ${{ vars.PROJECT_ID }}
+          complexity-field-id: ${{ vars.COMPLEXITY_FIELD_ID }}
+          complexity-xs-id: ${{ vars.COMPLEXITY_XS_OPTION_ID }}
+          complexity-s-id: ${{ vars.COMPLEXITY_S_OPTION_ID }}
+          complexity-m-id: ${{ vars.COMPLEXITY_M_OPTION_ID }}
+          complexity-l-id: ${{ vars.COMPLEXITY_L_OPTION_ID }}
+          complexity-xl-id: ${{ vars.COMPLEXITY_XL_OPTION_ID }}

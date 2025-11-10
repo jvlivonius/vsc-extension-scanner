@@ -18,6 +18,42 @@ inputs:
   github-token:
     description: 'GitHub token with project permissions'
     required: true
+  project-id:
+    description: 'GitHub Project V2 global ID'
+    required: true
+  priority-field-id:
+    description: 'Priority field ID (required if field-name is Priority)'
+    required: false
+  priority-critical-id:
+    description: 'Priority Critical option ID'
+    required: false
+  priority-high-id:
+    description: 'Priority High option ID'
+    required: false
+  priority-medium-id:
+    description: 'Priority Medium option ID'
+    required: false
+  priority-low-id:
+    description: 'Priority Low option ID'
+    required: false
+  complexity-field-id:
+    description: 'Complexity field ID (required if field-name is Complexity)'
+    required: false
+  complexity-xs-id:
+    description: 'Complexity XS option ID'
+    required: false
+  complexity-s-id:
+    description: 'Complexity S option ID'
+    required: false
+  complexity-m-id:
+    description: 'Complexity M option ID'
+    required: false
+  complexity-l-id:
+    description: 'Complexity L option ID'
+    required: false
+  complexity-xl-id:
+    description: 'Complexity XL option ID'
+    required: false
 
 runs:
   using: 'composite'
@@ -45,43 +81,70 @@ runs:
         echo "✅ All inputs valid"
         echo "::endgroup::"
 
-    - name: Get project and field IDs from cache
+    - name: Get project and field IDs from inputs
       shell: bash
       env:
         FIELD_NAME: ${{ inputs.field-name }}
         FIELD_VALUE: ${{ inputs.field-value }}
+        PROJECT_ID: ${{ inputs.project-id }}
+        PRIORITY_FIELD_ID: ${{ inputs.priority-field-id }}
+        PRIORITY_CRITICAL_ID: ${{ inputs.priority-critical-id }}
+        PRIORITY_HIGH_ID: ${{ inputs.priority-high-id }}
+        PRIORITY_MEDIUM_ID: ${{ inputs.priority-medium-id }}
+        PRIORITY_LOW_ID: ${{ inputs.priority-low-id }}
+        COMPLEXITY_FIELD_ID: ${{ inputs.complexity-field-id }}
+        COMPLEXITY_XS_ID: ${{ inputs.complexity-xs-id }}
+        COMPLEXITY_S_ID: ${{ inputs.complexity-s-id }}
+        COMPLEXITY_M_ID: ${{ inputs.complexity-m-id }}
+        COMPLEXITY_L_ID: ${{ inputs.complexity-l-id }}
+        COMPLEXITY_XL_ID: ${{ inputs.complexity-xl-id }}
       run: |
-        echo "::group::Fetching cached IDs"
+        echo "::group::Processing IDs"
 
-        # Get project ID from repository variable
-        PROJECT_ID="${{ vars.PROJECT_ID }}"
+        # Validate project ID
         if [[ -z "$PROJECT_ID" ]]; then
-          echo "::error::PROJECT_ID repository variable not set. Run scripts/github-projects/get-project-ids.sh"
+          echo "::error::project-id input not provided"
           exit 1
         fi
         echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
 
         # Get field ID based on field name
         if [[ "$FIELD_NAME" == "Priority" ]]; then
-          FIELD_ID="${{ vars.PRIORITY_FIELD_ID }}"
+          FIELD_ID="$PRIORITY_FIELD_ID"
         else
-          FIELD_ID="${{ vars.COMPLEXITY_FIELD_ID }}"
+          FIELD_ID="$COMPLEXITY_FIELD_ID"
         fi
 
         if [[ -z "$FIELD_ID" ]]; then
-          echo "::error::${FIELD_NAME}_FIELD_ID repository variable not set"
+          echo "::error::${FIELD_NAME} field ID not provided"
           exit 1
         fi
         echo "FIELD_ID=$FIELD_ID" >> $GITHUB_ENV
 
         # Get option ID based on field value (if not null)
         if [[ "$FIELD_VALUE" != "null" ]]; then
-          VAR_NAME="${FIELD_NAME^^}_${FIELD_VALUE^^}_OPTION_ID"
-          VAR_NAME="${VAR_NAME//-/_}"  # Replace hyphens with underscores
-          OPTION_ID="${!VAR_NAME}"
+          # Map field value to option ID
+          if [[ "$FIELD_NAME" == "Priority" ]]; then
+            case "$FIELD_VALUE" in
+              Critical) OPTION_ID="$PRIORITY_CRITICAL_ID" ;;
+              High) OPTION_ID="$PRIORITY_HIGH_ID" ;;
+              Medium) OPTION_ID="$PRIORITY_MEDIUM_ID" ;;
+              Low) OPTION_ID="$PRIORITY_LOW_ID" ;;
+              *) echo "::error::Unknown Priority value: $FIELD_VALUE"; exit 1 ;;
+            esac
+          else
+            case "$FIELD_VALUE" in
+              XS) OPTION_ID="$COMPLEXITY_XS_ID" ;;
+              S) OPTION_ID="$COMPLEXITY_S_ID" ;;
+              M) OPTION_ID="$COMPLEXITY_M_ID" ;;
+              L) OPTION_ID="$COMPLEXITY_L_ID" ;;
+              XL) OPTION_ID="$COMPLEXITY_XL_ID" ;;
+              *) echo "::error::Unknown Complexity value: $FIELD_VALUE"; exit 1 ;;
+            esac
+          fi
 
           if [[ -z "$OPTION_ID" ]]; then
-            echo "::error::${VAR_NAME} repository variable not set"
+            echo "::error::Option ID for ${FIELD_NAME}=${FIELD_VALUE} not provided"
             exit 1
           fi
           echo "OPTION_ID=$OPTION_ID" >> $GITHUB_ENV
@@ -89,7 +152,7 @@ runs:
           echo "OPTION_ID=null" >> $GITHUB_ENV
         fi
 
-        echo "✅ All IDs fetched successfully"
+        echo "✅ All IDs processed successfully"
         echo "::endgroup::"
 
     - name: Find project item ID for issue
