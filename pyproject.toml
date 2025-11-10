@@ -54,7 +54,7 @@ test = [
     "tomli>=2.0.0,<3.0.0; python_version < '3.11'",  # TOML parsing for Python 3.8-3.10
 ]
 dev = [
-    "bandit==1.7.6",  # AST-based security scanner (pinned for consistency)
+    "bandit==1.8.6",  # AST-based security scanner (pinned for consistency)
     "safety>=2.3.0",  # Dependency vulnerability scanner
     "pip-audit>=2.4.0",  # PyPI package auditing
     "pre-commit>=3.0.0",  # Pre-commit hooks framework
