@@ -164,6 +164,9 @@ runs:
       run: |
         echo "::group::Finding project item ID"
 
+        # This action handles eventual consistency delays in GitHub's distributed systems
+        # by polling for up to 20 seconds before giving up on field sync
+
         # GraphQL query to find the project item ID for this issue
         QUERY=$(cat <<'EOF'
         query($repo: String!, $owner: String!, $number: Int!) {
@@ -197,26 +200,49 @@ runs:
 
         OWNER=$(echo "$REPO" | cut -d'/' -f1)
         REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+        PROJECT_NUM="${{ inputs.project-number }}"
 
-        RESPONSE=$(gh api graphql \
-          -f query="$QUERY" \
-          -f owner="$OWNER" \
-          -f repo="$REPO_NAME" \
-          -F number="$ISSUE_NUMBER")
+        # Poll for project item ID (handles eventual consistency)
+        MAX_ATTEMPTS=10
+        ATTEMPT=1
+        ITEM_ID=""
 
-        # Extract project item ID for the specified project number
-        ITEM_ID=$(echo "$RESPONSE" | jq -r \
-          --arg projectNum "${{ inputs.project-number }}" \
-          '.data.repository.issueOrPullRequest.projectItems.nodes[] | select(.project.number == ($projectNum | tonumber)) | .id')
+        echo "Looking up project item ID for issue #$ISSUE_NUMBER in Project #$PROJECT_NUM..."
 
+        while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
+          echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Querying for project item..."
+
+          RESPONSE=$(gh api graphql \
+            -f query="$QUERY" \
+            -f owner="$OWNER" \
+            -f repo="$REPO_NAME" \
+            -F number="$ISSUE_NUMBER" 2>&1)
+
+          # Extract project item ID for the specified project number
+          ITEM_ID=$(echo "$RESPONSE" | jq -r \
+            --arg projectNum "$PROJECT_NUM" \
+            '.data.repository.issueOrPullRequest.projectItems.nodes[] | select(.project.number == ($projectNum | tonumber)) | .id')
+
+          if [[ -n "$ITEM_ID" && "$ITEM_ID" != "null" ]]; then
+            echo "✅ Found project item ID: $ITEM_ID (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+            break
+          fi
+
+          echo "  Issue not yet in project, waiting 2 seconds..."
+          sleep 2
+          ((ATTEMPT++))
+        done
+
+        # Final check after polling
         if [[ -z "$ITEM_ID" || "$ITEM_ID" == "null" ]]; then
-          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #${{ inputs.project-number }}. Skipping field sync."
+          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #$PROJECT_NUM after $MAX_ATTEMPTS attempts (20s). Skipping field sync."
+          echo "This may indicate the issue was not added to the project, or GitHub's propagation is delayed."
           echo "ITEM_ID=NOT_IN_PROJECT" >> $GITHUB_ENV
           exit 0
         fi
 
         echo "ITEM_ID=$ITEM_ID" >> $GITHUB_ENV
-        echo "✅ Found project item ID: $ITEM_ID"
+        echo "✅ Project item lookup successful"
         echo "::endgroup::"
 
     - name: Update project field
