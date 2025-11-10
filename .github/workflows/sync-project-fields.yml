@@ -64,7 +64,7 @@ jobs:
           issue-number: ${{ github.event.issue.number || github.event.pull_request.number }}
           field-name: 'Priority'
           field-value: ${{ steps.priority.outputs.value }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PROJECT_TOKEN }}
           project-id: ${{ vars.PROJECT_ID }}
           priority-field-id: ${{ vars.PRIORITY_FIELD_ID }}
           priority-critical-id: ${{ vars.PRIORITY_CRITICAL_OPTION_ID }}
@@ -129,7 +129,7 @@ jobs:
           issue-number: ${{ github.event.issue.number || github.event.pull_request.number }}
           field-name: 'Complexity'
           field-value: ${{ steps.complexity.outputs.value }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PROJECT_TOKEN }}
           project-id: ${{ vars.PROJECT_ID }}
           complexity-field-id: ${{ vars.COMPLEXITY_FIELD_ID }}
           complexity-xs-id: ${{ vars.COMPLEXITY_XS_OPTION_ID }}
