@@ -170,6 +170,11 @@ gh label create "requires:api" --description "Requires API_REFERENCE.md" --color
 
 **Automatically sync Priority and Complexity labels to project fields.**
 
+**How it works:**
+- Workflow triggers on `labeled` and `unlabeled` events (not `opened`)
+- When labels are added/changed, the sync action updates project fields
+- Issue must already be in the project for sync to work (prevents race condition)
+
 ### Prerequisites
 
 ✅ Workflow files exist:
@@ -212,14 +217,19 @@ gh variable set COMPLEXITY_XL_OPTION_ID --body "..."
 ### Test Automation
 
 ```bash
-# Create test issue
-gh issue create --title "Test automatic field sync" --body "Testing" --label "P1-high,complexity/M"
+# Create test issue (without labels initially)
+gh issue create --title "Test automatic field sync" --body "Testing"
+
+# Add labels separately to trigger sync workflow
+gh issue edit <issue-number> --add-label "P1-high,complexity/M"
 
 # Verify workflow ran
 gh run list --workflow=sync-project-fields.yml
 
 # Check project board - Priority should be "High", Complexity should be "M"
 ```
+
+**Note:** Labels must be added after issue creation (not during) to trigger the sync workflow. This prevents race condition with project auto-add.
 
 ---
 
@@ -332,12 +342,13 @@ gh issue create --title "[TEST] Auto-add test" --body "Testing" --label "feature
 
 ### Field Sync Workflow Failing
 
-**Symptom**: Workflow fails with exit code 1
+**Symptom**: Workflow fails with exit code 1 or sync doesn't run
 
 **Common Causes:**
 1. **Repository variables not set** (PROJECT_ID, field IDs, option IDs)
 2. **Issue not in project** (sync can't update fields for non-project items)
-3. **GraphQL query errors**
+3. **Labels added during issue creation** (workflow only triggers on label changes, not `opened` event)
+4. **GraphQL query errors**
 
 **Solution:**
 ```bash
@@ -356,9 +367,12 @@ gh run view <run-id> --log
 # 4. Manually add issue to project first
 gh project item-add 3 --owner jvlivonius --url https://github.com/jvlivonius/vsc-extension-scanner/issues/<number>
 
-# 5. Re-trigger sync by adding/removing label
-gh issue edit <number> --remove-label "P2-medium" --add-label "P1-high"
+# 5. Re-trigger sync by removing and re-adding label
+gh issue edit <number> --remove-label "P2-medium"
+gh issue edit <number> --add-label "P1-high"
 ```
+
+**Note:** The sync workflow triggers on `labeled`/`unlabeled` events only. If you create an issue with labels, the workflow won't run until labels are changed.
 
 ### Custom Fields Not Showing
 
@@ -411,32 +425,39 @@ gh issue edit <number> --milestone "v3.8.0"
 **Symptom**: Adding priority/complexity labels doesn't update project fields
 
 **Common Causes:**
-1. **Workflow not triggered** (issue/PR not in watched events)
-2. **Issue not in project** (can't update fields for non-project items)
-3. **Variable mismatch** (label value doesn't match expected format)
+1. **Labels added during issue creation** (workflow only triggers on label changes, not `opened`)
+2. **Workflow not triggered** (issue/PR not in watched events)
+3. **Issue not in project** (can't update fields for non-project items)
+4. **Variable mismatch** (label value doesn't match expected format)
 
 **Solution:**
 ```bash
 # 1. Verify workflow triggers
 cat .github/workflows/sync-project-fields.yml | grep -A 5 "on:"
-# Should include: issues.types [opened, labeled, unlabeled]
+# Should show: issues.types [labeled, unlabeled]  (NOT opened)
 
-# 2. Check recent workflow runs
+# 2. If issue was created with labels, re-trigger sync
+gh issue edit <number> --remove-label "P1-high"
+gh issue edit <number> --add-label "P1-high"
+
+# 3. Check recent workflow runs
 gh run list --workflow=sync-project-fields.yml --limit 10
 
-# 3. Verify label format
+# 4. Verify label format
 gh label list | grep -E "P[0-3]|complexity"
 # Should show: P0-critical, P1-high, P2-medium, P3-low
 #              complexity/XS, complexity/S, complexity/M, complexity/L, complexity/XL
 
-# 4. Test sync manually
-gh issue edit <number> --add-label "P1-high"
+# 5. Test sync manually
+gh issue edit <number> --add-label "P2-medium"
 # Wait 30 seconds, then check project board
 
-# 5. If still failing, check workflow logs
+# 6. If still failing, check workflow logs
 gh run list --workflow=sync-project-fields.yml
 gh run view <latest-run-id> --log
 ```
+
+**Remember:** Always add labels after issue creation, not during, to ensure sync workflow triggers.
 
 ### Can't Filter by Documentation Requirements
 
