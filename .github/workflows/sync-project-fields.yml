@@ -2,9 +2,9 @@ name: Sync Project Fields
 
 on:
   issues:
-    types: [opened, labeled, unlabeled]
+    types: [labeled, unlabeled]
   pull_request:
-    types: [opened, labeled, unlabeled]
+    types: [labeled, unlabeled]
 
 permissions:
   issues: read
