@@ -52,7 +52,7 @@ Key behaviors:
 
 ## Key Patterns
 
-### Pattern 1: Feature Plan → Issues
+### Pattern 1: Feature Plan → Issues with Parent-Child Relationships
 ```
 Feature Plan Structure:
 ## Phase N: Phase Name
@@ -62,9 +62,47 @@ Feature Plan Structure:
 
 Generated Issues:
 - [FEATURE] Phase Name (#parent)
-  - [TASK] N.1 Specific Task (blocked-by: #parent)
-  - [TASK] N.2 Next Task (blocked-by: #previous)
+  - [TASK] N.1 Specific Task (parent: #parent)
+  - [TASK] N.2 Next Task (parent: #parent)
 ```
+
+**IMPORTANT: Parent-Child Relationships**
+
+Parent-child relationships must be set using the GitHub GraphQL API's `addSubIssue` mutation.
+This cannot be done via the REST API or Projects API.
+
+**Correct Approach:**
+1. Create all feature and task issues
+2. Get node IDs for parent issues: `gh api repos/OWNER/REPO/issues/N --jq '.node_id'`
+3. Get node IDs for child issues: `gh api repos/OWNER/REPO/issues/M --jq '.node_id'`
+4. Use GraphQL mutation to create relationships:
+   ```bash
+   gh api graphql -f query='mutation {
+     addSubIssue(input: {issueId: "PARENT_NODE_ID", subIssueId: "CHILD_NODE_ID"}) {
+       issue { number }
+     }
+   }'
+   ```
+
+**Automated Script:** Use `scripts/set_issue_parents.sh`:
+```bash
+./scripts/set_issue_parents.sh OWNER REPO PARENT_NUM CHILD1 CHILD2 CHILD3...
+```
+
+**Verification:**
+```bash
+# Check parent has sub-issues
+gh api repos/OWNER/REPO/issues/PARENT_NUM --jq '.sub_issues_summary.total'
+
+# Check child has parent
+gh api repos/OWNER/REPO/issues/CHILD_NUM --jq '.parent_issue_url'
+```
+
+**Common Mistakes:**
+- ❌ Using REST API PATCH with `parent_issue_id` field (doesn't work)
+- ❌ Using Projects API to set "Parent issue" field (read-only)
+- ❌ Using issue dependencies API (creates blocked-by, not parent relationship)
+- ✅ Using GraphQL `addSubIssue` mutation (correct approach)
 
 ### Pattern 2: Issue Metadata
 ```yaml
