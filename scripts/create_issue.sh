@@ -20,7 +20,6 @@
 #   --complexity SIZE        Complexity: XS, S, M, L, XL (maps to complexity/* labels)
 #   --labels LABELS          Comma-separated additional labels
 #   --project PROJECT        Project title (default: "VS Code Extension Scanner Development")
-#   --template FILE          Path to template file (optional)
 #   --help                   Show this help message
 #
 # Examples:
@@ -31,8 +30,7 @@
 #     --body "Export scan results as CSV format" \
 #     --milestone v5.0.3 \
 #     --priority High \
-#     --complexity M \
-#     --template .github/ISSUE_TEMPLATE/feature.yml
+#     --complexity M
 #
 #   # Create bugfix with minimal options
 #   ./scripts/create_issue.sh \
@@ -49,6 +47,18 @@
 #     --complexity S \
 #     --labels "good first issue,documentation"
 #
+# Prerequisites:
+#   - GitHub CLI (`gh`) installed and authenticated
+#   - Write access to the repository
+#   - Project must exist and be owned by authenticated user
+#   - Milestone must exist if specified
+#
+# Limitations:
+#   - Project lookup requires exact title match
+#   - Eventual consistency: 2-second delay before verification
+#   - Label sync to project fields handled by GitHub Actions
+#   - Failed label additions logged but don't block issue creation
+#
 
 set -euo pipefail
 
@@ -59,13 +69,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Constants
+readonly DEFAULT_PROJECT_TITLE="VS Code Extension Scanner Development"
+readonly LABEL_SYNC_EXPECTED_TIME="5-10 seconds"
+readonly EVENTUAL_CONSISTENCY_DELAY=2
+
 # Default values
 ASSIGNEE="@me"
-PROJECT_TITLE="VS Code Extension Scanner Development"
+PROJECT_TITLE="$DEFAULT_PROJECT_TITLE"
 PRIORITY=""
 COMPLEXITY=""
 ADDITIONAL_LABELS=""
-TEMPLATE=""
 
 # Required arguments (will be validated)
 ISSUE_TYPE=""
@@ -90,6 +104,35 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $*" >&2
 }
 
+# Helper function to trim whitespace
+trim_string() {
+    echo "$1" | xargs
+}
+
+# Helper function to sanitize strings for safe output
+sanitize_string() {
+    local input="$1"
+    # Remove control characters and limit length
+    echo "$input" | tr -d '[:cntrl:]' | cut -c1-200
+}
+
+# Function to check repository permissions
+check_permissions() {
+    log_info "Checking repository permissions..."
+
+    # Try to get repo info to verify access
+    if ! gh repo view &>/dev/null; then
+        log_error "Unable to access repository. Please check:"
+        log_error "  1. You have the 'gh' CLI installed and authenticated"
+        log_error "  2. You have write access to this repository"
+        log_error "  3. You are in a valid git repository"
+        return 1
+    fi
+
+    log_success "Permission check passed"
+    return 0
+}
+
 # Function to show usage
 usage() {
     cat << EOF
@@ -110,7 +153,6 @@ Optional Arguments:
   --complexity SIZE        Complexity: XS, S, M, L, XL (maps to complexity/* labels)
   --labels LABELS          Comma-separated additional labels
   --project PROJECT        Project title (default: "VS Code Extension Scanner Development")
-  --template FILE          Path to template file (optional)
   --help                   Show this help message
 
 Examples:
@@ -245,36 +287,27 @@ validate_milestone() {
     return 0
 }
 
-# Function to validate template file
-validate_template() {
-    local template="$1"
-
-    if [[ -z "$template" ]]; then
-        return 0  # No template specified, skip validation
-    fi
-
-    log_info "Validating template: $template"
-
-    if [[ ! -f "$template" ]]; then
-        log_error "Template file not found: $template"
-        return 1
-    fi
-
-    log_success "Template validated: $template"
-    return 0
-}
-
 # Function to get project ID by title
 get_project_id() {
     local project_title="$1"
 
     log_info "Looking up project: $project_title" >&2
 
+    # Try to get project list with error handling
+    local project_list
+    if ! project_list=$(gh project list --owner @me --format json 2>&1); then
+        log_warning "Failed to query projects (gh project list failed)" >&2
+        log_warning "Issue will be created without project assignment" >&2
+        echo ""
+        return 0
+    fi
+
+    # Parse project info with error handling
     local project_info
-    project_info=$(gh project list --owner @me --format json 2>&1 | jq -r ".projects[] | select(.title == \"$project_title\") | .number")
+    project_info=$(echo "$project_list" | jq -r ".projects[] | select(.title == \"$project_title\") | .number" 2>/dev/null) || true
 
     if [[ -z "$project_info" ]]; then
-        log_warning "Project '$project_title' not found" >&2
+        log_warning "Project '$project_title' not found in your projects" >&2
         log_warning "Issue will be created without project assignment" >&2
         echo ""
         return 0
@@ -326,9 +359,9 @@ build_labels() {
     if [[ -n "$additional" ]]; then
         IFS=',' read -ra ADDR <<< "$additional"
         for label in "${ADDR[@]}"; do
-            # Trim whitespace
-            label=$(echo "$label" | xargs)
-            labels+=("$label")
+            label=$(trim_string "$label")
+            # Skip empty labels
+            [[ -n "$label" ]] && labels+=("$label")
         done
     fi
 
@@ -346,7 +379,10 @@ separate_labels() {
     IFS=',' read -ra ADDR <<< "$all_labels"
 
     for label in "${ADDR[@]}"; do
-        label=$(echo "$label" | xargs)
+        label=$(trim_string "$label")
+
+        # Skip empty labels
+        [[ -z "$label" ]] && continue
 
         if [[ "$label_type" == "type" ]]; then
             # Type labels: issue type and additional labels (not P* or complexity/*)
@@ -405,10 +441,6 @@ while [[ $# -gt 0 ]]; do
             PROJECT_TITLE="$2"
             shift 2
             ;;
-        --template)
-            TEMPLATE="$2"
-            shift 2
-            ;;
         --help)
             usage
             exit 0
@@ -452,7 +484,10 @@ if [[ -n "$COMPLEXITY" ]]; then
 fi
 
 validate_milestone "$MILESTONE" || exit 1
-validate_template "$TEMPLATE" || exit 1
+
+# Check permissions before proceeding
+check_permissions || exit 1
+echo ""
 
 # Build components
 FULL_TITLE=$(build_title "$ISSUE_TYPE" "$TITLE")
@@ -493,10 +528,6 @@ if [[ -n "$TYPE_LABELS" ]]; then
     GH_CMD+=(--label "$TYPE_LABELS")
 fi
 
-if [[ -n "$TEMPLATE" ]]; then
-    GH_CMD+=(--template "$TEMPLATE")
-fi
-
 # Add project by title if available
 if [[ -n "$PROJECT_ID" ]]; then
     GH_CMD+=(--project "$PROJECT_TITLE")
@@ -516,19 +547,41 @@ log_success "Issue created: $ISSUE_URL"
 # Extract issue number from URL
 ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
 
+# Validate extraction succeeded
+if [[ -z "$ISSUE_NUMBER" ]]; then
+    log_error "Failed to extract issue number from URL: $ISSUE_URL"
+    log_error "Cannot proceed with label addition"
+    exit 1
+fi
+
 # Step 2: Add priority/complexity labels to trigger auto-sync
-# Note: GitHub auto-add is instantaneous, no wait needed
 if [[ -n "$SYNC_LABELS" ]]; then
     log_info "Step 2: Adding priority/complexity labels to trigger auto-sync..."
 
+    local success_count=0
+    local fail_count=0
+
     IFS=',' read -ra LABEL_ARRAY <<< "$SYNC_LABELS"
     for label in "${LABEL_ARRAY[@]}"; do
-        label=$(echo "$label" | xargs)
+        label=$(trim_string "$label")
+
+        # Skip empty labels
+        [[ -z "$label" ]] && continue
+
         log_info "  Adding label: $label"
-        gh issue edit "$ISSUE_NUMBER" --add-label "$label"
+        if gh issue edit "$ISSUE_NUMBER" --add-label "$label" &>/dev/null; then
+            ((success_count++))
+        else
+            log_warning "  ⚠️  Failed to add label: $label"
+            ((fail_count++))
+        fi
     done
 
-    log_success "Labels added. GitHub Actions will sync to project fields."
+    if [[ $fail_count -eq 0 ]]; then
+        log_success "All labels added successfully ($success_count/$success_count). GitHub Actions will sync to project fields."
+    else
+        log_warning "Label addition completed with failures: $success_count succeeded, $fail_count failed"
+    fi
 fi
 
 log_success "✓ Issue created successfully!"
@@ -539,5 +592,18 @@ if [[ -n "$PROJECT_ID" ]]; then
 fi
 
 if [[ -n "$SYNC_LABELS" ]]; then
-    log_info "Note: Label sync to project fields should complete within 5-10 seconds"
+    log_info "Note: Label sync to project fields should complete within $LABEL_SYNC_EXPECTED_TIME"
+fi
+
+# Verification step (with eventual consistency delay)
+echo ""
+log_info "Verifying issue creation..."
+sleep "$EVENTUAL_CONSISTENCY_DELAY"
+
+# Verify issue exists and get label count
+if issue_data=$(gh issue view "$ISSUE_NUMBER" --json labels 2>/dev/null); then
+    label_count=$(echo "$issue_data" | jq '.labels | length')
+    log_success "✓ Verification passed: Issue #$ISSUE_NUMBER exists with $label_count label(s)"
+else
+    log_warning "⚠️  Verification skipped: Unable to query issue #$ISSUE_NUMBER"
 fi
