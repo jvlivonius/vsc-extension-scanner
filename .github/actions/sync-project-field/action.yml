@@ -1,5 +1,5 @@
 name: 'Sync Project Field'
-description: 'Sync a repository label to a GitHub Projects V2 custom field. Requires issue to be in project first. Designed for labeled/unlabeled events.'
+description: 'Sync a repository label to a GitHub Projects V2 custom field'
 author: 'VS Code Extension Scanner Team'
 
 inputs:
@@ -155,33 +155,6 @@ runs:
         echo "✅ All IDs processed successfully"
         echo "::endgroup::"
 
-    - name: Validate project access
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-        PROJECT_ID: ${{ inputs.project-id }}
-      run: |
-        echo "::group::Validating project permissions"
-
-        # Verify token is valid
-        if ! gh api graphql -f query='query { viewer { login } }' &>/dev/null; then
-          echo "::error::GitHub token invalid or expired"
-          exit 1
-        fi
-
-        # Verify project access with PROJECT_TOKEN
-        PROJECT_TEST=$(gh api graphql -f query="query { node(id: \"$PROJECT_ID\") { id } }" 2>&1)
-
-        if echo "$PROJECT_TEST" | grep -q "error\|Could not resolve"; then
-          echo "::error::Cannot access project (ID: $PROJECT_ID)"
-          echo "::error::Verify PROJECT_TOKEN has 'project' scope (not GITHUB_TOKEN)"
-          echo "::error::See docs/contributing/GITHUB_PROJECTS_SETUP.md for token setup"
-          exit 1
-        fi
-
-        echo "✅ Project access validated"
-        echo "::endgroup::"
-
     - name: Find project item ID for issue
       shell: bash
       env:
@@ -190,9 +163,6 @@ runs:
         ISSUE_NUMBER: ${{ inputs.issue-number }}
       run: |
         echo "::group::Finding project item ID"
-
-        # This action handles GitHub's internal propagation delays
-        # by polling for up to 10 seconds (reduced from 20s since permission fix)
 
         # GraphQL query to find the project item ID for this issue
         QUERY=$(cat <<'EOF'
@@ -227,53 +197,26 @@ runs:
 
         OWNER=$(echo "$REPO" | cut -d'/' -f1)
         REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
-        PROJECT_NUM="${{ inputs.project-number }}"
 
-        # Poll for project item ID (handles GitHub internal propagation)
-        MAX_ATTEMPTS=5
-        ATTEMPT=1
-        ITEM_ID=""
+        RESPONSE=$(gh api graphql \
+          -f query="$QUERY" \
+          -f owner="$OWNER" \
+          -f repo="$REPO_NAME" \
+          -F number="$ISSUE_NUMBER")
 
-        echo "Looking up project item ID for issue #$ISSUE_NUMBER in Project #$PROJECT_NUM..."
+        # Extract project item ID for the specified project number
+        ITEM_ID=$(echo "$RESPONSE" | jq -r \
+          --arg projectNum "${{ inputs.project-number }}" \
+          '.data.repository.issueOrPullRequest.projectItems.nodes[] | select(.project.number == ($projectNum | tonumber)) | .id')
 
-        while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
-          echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Querying for project item..."
-
-          RESPONSE=$(gh api graphql \
-            -f query="$QUERY" \
-            -f owner="$OWNER" \
-            -f repo="$REPO_NAME" \
-            -F number="$ISSUE_NUMBER" 2>&1)
-
-          # Extract project item ID for the specified project number
-          ITEM_ID=$(echo "$RESPONSE" | jq -r \
-            --arg projectNum "$PROJECT_NUM" \
-            '.data.repository.issueOrPullRequest.projectItems.nodes[] | select(.project.number == ($projectNum | tonumber)) | .id')
-
-          if [[ -n "$ITEM_ID" && "$ITEM_ID" != "null" ]]; then
-            echo "✅ Found project item ID: $ITEM_ID (attempt $ATTEMPT/$MAX_ATTEMPTS)"
-            break
-          fi
-
-          echo "  Issue not yet in project, waiting 2 seconds..."
-          sleep 2
-          ((ATTEMPT++))
-        done
-
-        # Final check after polling
         if [[ -z "$ITEM_ID" || "$ITEM_ID" == "null" ]]; then
-          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #$PROJECT_NUM after $MAX_ATTEMPTS attempts (10s). Skipping field sync."
-          echo "::warning::This usually indicates:"
-          echo "::warning::  1. Issue not auto-added to project - check project auto-add workflow"
-          echo "::warning::  2. GitHub API delay - retry label addition to re-trigger sync"
-          echo "::warning::  3. Permission issue - verify PROJECT_TOKEN has 'project' scope"
-          echo "::warning::See: docs/contributing/GITHUB_PROJECTS_SETUP.md"
+          echo "::warning::Issue #$ISSUE_NUMBER is not in Project #${{ inputs.project-number }}. Skipping field sync."
           echo "ITEM_ID=NOT_IN_PROJECT" >> $GITHUB_ENV
           exit 0
         fi
 
         echo "ITEM_ID=$ITEM_ID" >> $GITHUB_ENV
-        echo "✅ Project item lookup successful"
+        echo "✅ Found project item ID: $ITEM_ID"
         echo "::endgroup::"
 
     - name: Update project field

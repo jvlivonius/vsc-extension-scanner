@@ -42,24 +42,12 @@
 - Up to 50 issues per relationship type
 - Don't create custom "Dependencies" field
 
-**Auto-Sync:** Priority and Complexity labels automatically sync to project fields when labels are added or changed via GitHub Actions (not on issue creation).
+**Documentation Requirements** (text field):
+- YAML issue templates include "Required Documentation" text input field
+- Comma-separated format: "ARCHITECTURE.md, SECURITY.md, PRD.md"
+- Claude Code agents parse and read required docs before implementation
 
-### Issue Template Fields (Not Project Fields)
-
-**Documentation Requirements** (YAML template text input):
-- **Location**: Issue body field (from `.github/ISSUE_TEMPLATE/*.yml`)
-- **Format**: Comma-separated list: "ARCHITECTURE.md, SECURITY.md, PRD.md"
-- **Templates**: `feature.yml`, `task.yml`, `release.yml` all include this field
-- **Default Value**: "ARCHITECTURE.md, SECURITY.md, TESTING.md" (feature/task)
-- **Agent Parsing**: `/sc:implement-issue` extracts and reads each document before implementation
-- **Not a Project Field**: This appears in issue body, not as a custom project column
-
-**Dependencies** (YAML template textarea):
-- **Location**: Issue body field (from `.github/ISSUE_TEMPLATE/*.yml`)
-- **Format**: Plain text with "Blocked By:" and "Blocks:" sections
-- **Templates**: `feature.yml`, `task.yml` include this field
-- **Agent Parsing**: `/sc:implement-issue` validates "Blocked By" issues are closed
-- **Not a Project Field**: Use built-in issue dependencies for visual tracking
+**Auto-Sync:** Priority and Complexity labels automatically sync to project fields via GitHub Actions.
 
 ---
 
@@ -72,75 +60,44 @@
 Navigate to: https://github.com/jvlivonius/vsc-extension-scanner/issues/new/choose
 
 **Available templates:**
-- **`feature.yml`** - Feature implementation
-  - Required Documentation field (default: "ARCHITECTURE.md, SECURITY.md, PRD.md")
-  - Dependencies field (Blocked By, Blocks)
-  - Architecture layer selection
-  - Breaking changes checkbox
-  - Comprehensive acceptance criteria
-
-- **`task.yml`** - Implementation task
-  - Required Documentation field (default: "ARCHITECTURE.md, SECURITY.md, TESTING.md")
-  - Dependencies field
-  - Estimated effort dropdown (XS, S, M, L, XL)
-  - Implementation approach guidance
-
-- **`release.yml`** - Release tracking
-  - Comprehensive 4-phase checklist (Pre-Release, Build, Version Control, Post-Release)
-  - Version management integration
-  - Release notes draft section
+- `feature.yml` - Feature implementation with structured documentation requirements
+- `task.yml` - Implementation task with effort estimation
+- `release.yml` - Release tracking with comprehensive checklist
 
 **Via CLI (for programmatic workflows):**
 ```bash
-# Create feature with all required fields
+# Create feature with labels
 gh issue create \
   --title "[FEATURE] Add CSV export" \
   --body "$(cat <<'EOF'
-### Summary
+## Summary
 Export scan results as CSV format
 
-### Required Documentation
+## Required Documentation
 ARCHITECTURE.md, SECURITY.md, PRD.md
 
-### Dependencies
-
+## Dependencies
 Blocked By: None
 Blocks: None
-
-### Changes Required
-
-**Files to Create:**
-- vscode_scanner/csv_exporter.py
-
-**Files to Modify:**
-- vscode_scanner/output_formatter.py - Add CSV export method
-
-**Tests to Add:**
-- tests/test_csv_exporter.py - Unit tests
 EOF
 )" \
   --label "feature,P1-high,complexity/M" \
   --milestone "v3.8.0"
 
 # Result:
-# 1. Issue created with all structured fields in body
+# 1. Issue created with labels
 # 2. Auto-added to Project #3 (Status = "Backlog")
 # 3. Priority field set to "High" (auto-synced from P1-high label)
 # 4. Complexity field set to "M" (auto-synced from complexity/M label)
-# 5. Milestone field shows "v3.8.0" (auto-synced from repository milestone)
-# 6. Required docs field parsed by /sc:implement-issue before implementation
+# 5. Milestone field shows "v3.8.0" (auto-synced)
+# 6. Required docs field parsed by agents before implementation
 ```
 
 **Setting dependencies:**
 ```bash
-# Method 1: Via issue body (parsed by agents)
-# Include "Blocked By: #140, #141" in Dependencies field
-
-# Method 2: Via issue sidebar → Relationships section (web UI - creates visual links)
-# Navigate to issue → Sidebar → Relationships → Mark as blocked by
-
-# Method 3: Programmatically via GraphQL API
-# See: https://docs.github.com/en/graphql/reference/mutations#createlinkedbranchforissue
+# Dependencies set via issue sidebar → Relationships section (web UI)
+# Or programmatically during issue creation via API
+# Claude Code /sc:implement-issue parses "Blocked By:" from issue body
 ```
 
 ### Moving Issues Through Workflow
@@ -225,14 +182,15 @@ Updates project board from milestone status → Reports summary
 ```
 
 **What it does:**
-1. Fetches issue #142 details
-2. Validates prerequisites (dependencies resolved, docs linked)
-3. Reads required documentation
-4. Creates feature branch
-5. Implements code with tests
-6. Runs quality gates (pytest, security, architecture)
-7. Creates PR with `Closes #142`
-8. Updates issue with `agent-implemented` label
+1. Fetches issue #142 details (title, body, labels, milestone)
+2. Validates prerequisites (dependencies resolved)
+3. Parses "Required Documentation" field (comma-separated: "ARCHITECTURE.md, SECURITY.md")
+4. Reads each required document before implementation
+5. Creates feature branch
+6. Implements code following acceptance criteria with tests
+7. Runs quality gates (pytest, security, architecture)
+8. Creates PR with `Closes #142`
+9. Updates issue with `agent-implemented` label
 
 **Options:**
 ```bash
@@ -247,8 +205,6 @@ Updates project board from milestone status → Reports summary
 
 **How it works:**
 - Add/remove labels → GitHub Actions triggers → Project fields update
-- **Trigger Events:** `labeled` and `unlabeled` (sync runs when labels change, not on issue creation)
-- **Timing:** Labels must be added after issue creation to trigger sync (prevents race condition with project auto-add)
 - Highest priority wins: P0 > P1 > P2 > P3
 - Smallest complexity wins: XS > S > M > L > XL
 
@@ -279,17 +235,9 @@ gh run list --workflow=sync-project-fields.yml
 # View specific run
 gh run view <run-id> --log
 
-# Manual sync: Remove and re-add label to trigger workflow
-gh issue edit 142 --remove-label "P1-high"
-gh issue edit 142 --add-label "P1-high"
-
 # Re-fetch IDs if fields recreated
 ./scripts/github-projects/get-project-ids.sh
 ```
-
-**Common Issues:**
-- **Labels not syncing on new issues?** Labels must be added after issue creation (not during). Add labels separately to trigger sync.
-- **Issue created with labels?** Remove and re-add the label to trigger the sync workflow.
 
 ---
 
