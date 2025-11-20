@@ -185,6 +185,9 @@ tests/
 ├── test_parallel_scanning.py          # Multi-threaded execution
 ├── test_retry*.py                     # Retry mechanism (3 files)
 ├── test_performance.py                # Performance benchmarks
+├── integration/                       # Shell script integration tests
+│   ├── test_github_projects_workflow.sh  # GitHub Projects workflow tests
+│   └── test_github_workflow_p0.sh        # P0 security workflow tests
 └── fixtures/                          # Test data and fixtures
     └── canonical_mock.py              # Canonical mock implementation
 ```
@@ -233,9 +236,169 @@ tests/
 **See:** [TESTING_PROPERTY_BASED.md](testing/TESTING_PROPERTY_BASED.md) for complete guide
 
 ### 6. Performance Tests
+
 **Purpose:** Verify performance characteristics
 **Focus:** Timing, memory, scalability
 **See:** [PERFORMANCE.md](PERFORMANCE.md) § 2 (Performance Testing)
+
+### 7. Shell Script Integration Tests
+
+**Purpose:** Validate GitHub Projects workflow automation against real GitHub API
+**Location:** `tests/integration/`
+**Framework:** Bash shell scripts with color output, test tracking, and cleanup
+
+#### 7.1 GitHub Projects Workflow Tests
+
+**File:** `tests/integration/test_github_projects_workflow.sh`
+
+**Coverage Areas:**
+
+- Parent-child relationship creation and tracking (via GraphQL sub_issues API)
+- Milestone closure validation (P0 issues, parent completion, blocking dependencies)
+- Blocking dependency management (blocked_by relationships)
+- Bulk operations (batch parent-child creation, batch blocking relationships)
+- Error handling (missing parent, duplicate relationships)
+- Issue structure validation integration
+- Milestone report generation
+
+**Prerequisites:**
+```bash
+# GitHub CLI authenticated with repo access
+gh auth status
+
+# Write permissions to create/close test issues
+gh auth status | grep "Token scopes" | grep "repo"
+
+# Rate limit check (at least 500 API requests available)
+source scripts/github-projects/rate_limit.sh
+check_rate_limit
+```
+
+**Running Tests:**
+```bash
+# Local execution (requires gh CLI authentication)
+./tests/integration/test_github_projects_workflow.sh
+
+# With rate limit guard
+source scripts/github-projects/rate_limit.sh
+rate_limit_guard && ./tests/integration/test_github_projects_workflow.sh
+```
+
+**CI/CD Integration Considerations:**
+
+⚠️ **These integration tests require authenticated GitHub CLI access and are NOT suitable for standard CI/CD pipelines.**
+
+**Limitations:**
+- **Authentication Required:** Tests need `gh` CLI authenticated with repo write access
+- **Rate Limiting:** Consumes 200-300 API requests per full test run
+- **Resource Creation:** Creates real GitHub issues/milestones (requires cleanup)
+- **Test Isolation:** Cannot run concurrently on same repository
+
+**Alternatives for CI/CD:**
+1. **Manual Execution:** Run tests locally before major releases
+2. **Scheduled Jobs:** Weekly/monthly test runs with dedicated test repository
+3. **Mock Testing:** Separate test suite using GitHub API mocks (not yet implemented)
+4. **Dedicated Test Repo:** Configure CI to run against throwaway test repository
+
+**Recommended Workflow:**
+- **Local Development:** Run full integration suite before submitting PRs
+- **CI Pipeline:** Run unit/property tests only (pytest suite)
+- **Pre-Release:** Manual integration test execution with full verification
+
+**Test Output Example:**
+
+```
+ℹ️  Starting GitHub Projects Integration Tests
+
+✓ Test 1 PASSED: Created parent #142 with 3 children (#143 #144 #145)
+✓ Test 2 PASSED: Parent completion tracking working (50% complete)
+✓ Test 3 PASSED: Milestone validation working correctly
+✓ Test 4 PASSED: Blocking dependency created (#146 blocked by #147)
+✓ Test 5 PASSED: Created 10 parent-child pairs successfully
+...
+
+=========================================
+Test Summary:
+  Total: 10
+  Passed: 10
+  Failed: 0
+=========================================
+
+Rate Limit Summary:
+  Used: 125/5000 requests
+  Remaining: 4875 requests
+  Resets in: 52 minutes
+```
+
+**Cleanup:**
+
+- **Automatic:** `trap` cleanup function on script exit
+- **Manual:** All test issues labeled with "test-issue"
+- **Labels:** Test issues tagged for easy identification and cleanup
+
+**Coverage Goals:**
+
+- **Overall:** 90%+ of GitHub Projects workflow scripts (`scripts/github-projects/*.sh`)
+- **Critical Paths:** 100% (parent-child, blocking, milestones, validation)
+- **Error Handling:** 85%+ (missing parent, duplicates, validation failures)
+
+#### 7.2 Security Workflow Tests
+
+**File:** `tests/integration/test_github_workflow_p0.sh`
+
+**Purpose:** Validate P0 security fixes and automation features
+
+**Coverage Areas:**
+
+- Path validation (directory traversal prevention via `validate_path()`)
+- Input sanitization (dangerous character removal via `sanitize_string()`)
+- Dependency synchronization
+- Pre-implementation validation (`validate-agent-ready.sh`)
+- Complete issue validation
+- Parent-child relationship management via GraphQL
+
+**Running:**
+```bash
+./tests/integration/test_github_workflow_p0.sh
+```
+
+**Note:** This suite validates security-critical features. **DO NOT skip or disable these tests.**
+
+#### Shell Test Best Practices
+
+1. **Use Color Output:** Consistent log_info/log_success/log_error/log_warning functions
+2. **Track Test Results:** TESTS_RUN, TESTS_PASSED, TESTS_FAILED counters
+3. **Cleanup Resources:** `trap cleanup_function EXIT` for automatic cleanup
+4. **Rate Limiting:** Source `rate_limit.sh` and use `rate_limit_delay` in loops
+5. **Test Isolation:** Each test creates and cleans up its own resources
+6. **Error Handling:** `set -euo pipefail` for fail-fast behavior
+7. **Test Tracking:** Maintain arrays of created resources for cleanup
+
+**Example Pattern:**
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Test tracking
+TESTS_RUN=0
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+# Resource tracking
+declare -a TEST_ISSUES_CREATED
+
+# Cleanup trap
+cleanup_test_resources() {
+    for issue in "${TEST_ISSUES_CREATED[@]}"; do
+        gh issue close "$issue" --comment "Test cleanup" 2>/dev/null || true
+    done
+}
+trap cleanup_test_resources EXIT
+
+# Rate limiting
+source "$(dirname "$0")/../../scripts/github-projects/rate_limit.sh"
+rate_limit_guard || exit 2
+```
 
 ---
 

@@ -126,11 +126,31 @@ Key behaviors:
 ```
 
 **Implementation:**
-1. Validate closure readiness (warn about open P0 issues)
+
+1. **Validate closure readiness** (runs `validate-milestone-closure.sh`):
+   - All P0 (critical) issues closed
+   - All parent issues 100% complete (sub_issues_summary)
+   - No open blocking dependencies
+   - All PRs merged or deferred
 2. Generate release notes (if --generate-notes)
 3. Close milestone via API
 4. Comment on all milestone issues: "Released in v3.8.0"
 5. Report completion and next steps
+
+**Validation Script:**
+
+```bash
+./scripts/github-projects/validate-milestone-closure.sh v3.8.0
+
+# Exit codes:
+# 0 = Ready for closure
+# 1 = Validation failed (blocking issues)
+# 2 = Critical error (script failure)
+```
+
+**Auto-validation:** The `/gh:milestone close` command automatically runs validation before closure.
+
+**See**: [_gh-reference.md](_gh-reference.md#issue-validation-checklist) for shared validation patterns
 
 **See**: `/gh:projects-sync release-notes` for release notes details
 
@@ -238,6 +258,9 @@ v4.0.0       2025-03-15    0     0       0%
 
 ### Closure Checklist
 - [ ] All critical (P0) issues closed
+- [ ] All parent issues have 100% child completion
+- [ ] No open issues blocked by other open issues
+- [ ] Validation script passes: `./scripts/github-projects/validate-milestone-closure.sh vX.Y.Z`
 - [ ] All PRs merged or explicitly deferred
 - [ ] Release notes generated and reviewed
 - [ ] Milestone issues commented
@@ -252,12 +275,27 @@ Action: Create milestone first:
   /gh:milestone create v3.8.0 --due YYYY-MM-DD
 ```
 
-**Open Critical Issues:**
+**Validation Failures:**
+
+The validation script performs comprehensive checks. Run `validate-milestone-closure.sh --dry-run vX.Y.Z` to preview.
+
 ```
-Warning: 2 critical (P0) issues remain open: #142, #145
-Action: Close critical issues before closure, or
-  use --force to proceed (creates tracking issue for open items)
+Error: Milestone validation failed
+Details:
+  ✗ P0 issues still open: 2 (#142, #145)
+  ✗ Parent #142 only 67% complete (2/3 children)
+  ✗ Issue #145 blocked by 1 open issues (#148)
+
+Action: Fix validation errors before closure:
+  1. Close/defer P0 issues: #142, #145
+  2. Complete parent-child work
+  3. Resolve blocking dependencies
+  4. Re-run: ./scripts/github-projects/validate-milestone-closure.sh v3.8.0
+
+Use --force to bypass validation (NOT RECOMMENDED)
 ```
+
+**See**: [_gh-reference.md](_gh-reference.md#common-error-patterns) for error handling patterns
 
 **Permission Denied:**
 ```
