@@ -239,7 +239,7 @@ test_parent_child_creation() {
         children="$children$CHILD "
 
         # Link via manage-issue-relationships.sh
-        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD" "$PARENT" >/dev/null 2>&1
+        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
         rate_limit_delay
     done
 
@@ -284,9 +284,9 @@ test_parent_completion_tracking() {
     rate_limit_delay
 
     # Link children
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD1" "$PARENT" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD1" >/dev/null 2>&1
     rate_limit_delay
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD2" "$PARENT" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD2" >/dev/null 2>&1
     rate_limit_delay
 
     # Close child 1
@@ -449,7 +449,7 @@ test_batch_parent_child() {
             CHILD=$(basename "$CHILD_URL")
             TEST_ISSUES_CREATED+=("$CHILD")
 
-            "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD" "$PARENT" >/dev/null 2>&1
+            "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
             rate_limit_delay 0.3
         done
 
@@ -550,7 +550,7 @@ test_missing_parent_error() {
     NONEXISTENT_ISSUE=$((HIGHEST_ISSUE + 1000))
 
     # Try to add child to non-existent parent
-    if "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD" "$NONEXISTENT_ISSUE" >/dev/null 2>&1; then
+    if "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$NONEXISTENT_ISSUE" "$CHILD" >/dev/null 2>&1; then
         log_error "Test 7 FAILED: Should have failed with non-existent parent"
         ((TESTS_FAILED++))
         return 1
@@ -578,11 +578,11 @@ test_duplicate_relationship_error() {
     rate_limit_delay
 
     # Add child once
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD" "$PARENT" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
     rate_limit_delay
 
     # Try to add same child again (should handle gracefully)
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$CHILD" "$PARENT" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
     rate_limit_delay
 
     # Verify still only 1 child
