@@ -24,12 +24,12 @@ else
     exit 2
 fi
 
-# Colors for output
-readonly COLOR_RED='\033[0;31m'
-readonly COLOR_YELLOW='\033[1;33m'
-readonly COLOR_GREEN='\033[0;32m'
-readonly COLOR_BLUE='\033[0;34m'
-readonly COLOR_NC='\033[0m'
+# Colors for output (declare only if not already defined to avoid conflicts)
+[[ -z "${COLOR_RED:-}" ]] && readonly COLOR_RED='\033[0;31m'
+[[ -z "${COLOR_YELLOW:-}" ]] && readonly COLOR_YELLOW='\033[1;33m'
+[[ -z "${COLOR_GREEN:-}" ]] && readonly COLOR_GREEN='\033[0;32m'
+[[ -z "${COLOR_BLUE:-}" ]] && readonly COLOR_BLUE='\033[0;34m'
+[[ -z "${COLOR_NC:-}" ]] && readonly COLOR_NC='\033[0m'
 
 # Logging functions
 log_info() { echo -e "${COLOR_BLUE}ℹ️  $*${COLOR_NC}"; }
