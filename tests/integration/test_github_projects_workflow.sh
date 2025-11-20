@@ -167,7 +167,7 @@ cleanup_test_resources() {
     done
 
     # Report cleanup failures
-    if [[ ${#CLEANUP_FAILURES[@]:-0} -gt 0 ]]; then
+    if [[ ${#CLEANUP_FAILURES[@]} -gt 0 ]]; then
         log_warning "Cleanup completed with ${#CLEANUP_FAILURES[@]} failures"
         log_info "Manual cleanup required for: ${CLEANUP_FAILURES[*]}"
         log_info "Use: gh issue list --label test-issue --state all"
@@ -380,9 +380,9 @@ test_milestone_closure_validation() {
     fi
 }
 
-# Test 4: Blocking dependency validation (requires Dependencies API)
+# Test 4: Blocking dependency validation (requires Dependencies API, with retry)
 test_blocking_dependency_validation() {
-    log_info "Test 4: Blocking dependency validation"
+    log_info "Test 4: Blocking dependency validation (with retry logic)"
     ((TESTS_RUN++))
 
     # Check if Dependencies API is available
@@ -405,22 +405,27 @@ test_blocking_dependency_validation() {
     TEST_ISSUES_CREATED+=("$BLOCKED")
     rate_limit_delay
 
-    # Create blocking relationship
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-blocker "$BLOCKED" "$BLOCKER" >/dev/null 2>&1
+    # Create blocking relationship (correct argument order: <blocker> <blocked>)
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-blocker "$BLOCKER" "$BLOCKED" >/dev/null 2>&1
     rate_limit_delay
 
-    # Verify relationship exists
-    BLOCKER_COUNT=$(gh api "repos/:owner/:repo/issues/$BLOCKED/dependencies/blocked_by" --jq '. | length' 2>/dev/null || echo "0")
+    # Verify relationship exists with retry for API propagation
+    check_blocker() {
+        BLOCKER_COUNT=$(gh api "repos/:owner/:repo/issues/$BLOCKED/dependencies/blocked_by" --jq '. | length' 2>/dev/null || echo "0")
+        [[ "$BLOCKER_COUNT" -gt 0 ]]
+    }
 
-    if [[ "$BLOCKER_COUNT" == "1" ]]; then
-        log_success "Test 4 PASSED: Blocking dependency created (#$BLOCKED blocked by #$BLOCKER)"
-        ((TESTS_PASSED++))
-        return 0
-    else
-        log_error "Test 4 FAILED: Expected 1 blocker, found $BLOCKER_COUNT"
-        ((TESTS_FAILED++))
-        return 1
+    if retry_with_backoff 5 2 check_blocker; then
+        if [[ "$BLOCKER_COUNT" == "1" ]]; then
+            log_success "Test 4 PASSED: Blocking dependency created (#$BLOCKED blocked by #$BLOCKER)"
+            ((TESTS_PASSED++))
+            return 0
+        fi
     fi
+
+    log_error "Test 4 FAILED: Expected 1 blocker, found $BLOCKER_COUNT (timeout after retry)"
+    ((TESTS_FAILED++))
+    return 1
 }
 
 # Test 5: Batch parent-child creation
@@ -513,10 +518,12 @@ test_batch_blocking_relationships() {
         TEST_ISSUES_CREATED+=("$BLOCKED")
         rate_limit_delay 0.3
 
-        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-blocker "$BLOCKED" "$BLOCKER" >/dev/null 2>&1
+        # Create blocking relationship (correct argument order: <blocker> <blocked>)
+        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-blocker "$BLOCKER" "$BLOCKED" >/dev/null 2>&1
         rate_limit_delay 0.3
 
-        # Verify relationship
+        # Verify relationship with brief wait for API propagation
+        sleep 2
         BLOCKER_COUNT=$(gh api "repos/:owner/:repo/issues/$BLOCKED/dependencies/blocked_by" --jq '. | length' 2>/dev/null || echo "0")
         if [[ "$BLOCKER_COUNT" == "1" ]]; then
             ((success_count++))
