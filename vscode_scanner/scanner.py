@@ -67,6 +67,7 @@ def run_scan(
     without_vulnerabilities: bool = False,
     quiet: bool = False,
     verbose: bool = False,
+    detailed: bool = False,
     workers: int = 3,
     **_kwargs,  # Reserved for future extensibility
 ) -> int:
@@ -88,6 +89,8 @@ def run_scan(
         exclude_ids: Comma-separated extension IDs to exclude
         min_risk_level: Minimum risk level filter
         quiet: Minimal output (single-line summary only)
+        verbose: Show operational details (cache stats, retry stats, timing)
+        detailed: Show detailed security module breakdown
         workers: Number of concurrent workers (1-5, default: 3)
 
     Returns:
@@ -287,7 +290,9 @@ def run_scan(
         return 2
 
     # Print summary (always show, but minimal in quiet mode)
-    _print_summary(extensions, stats, scan_duration, use_rich, results, quiet, verbose)
+    _print_summary(
+        extensions, stats, scan_duration, use_rich, results, quiet, verbose, detailed
+    )
 
     # Calculate and return exit code
     return _calculate_exit_code(stats["vulnerabilities_found"])
@@ -672,6 +677,7 @@ def _print_summary(
     results: Dict,
     quiet: bool = False,
     verbose: bool = False,
+    detailed: bool = False,
 ):
     """
     Print scan summary statistics.
@@ -686,6 +692,7 @@ def _print_summary(
         results: Full results dict for Rich display
         quiet: Show minimal single-line summary only
         verbose: Show all operational details (cache, retry stats, timing)
+        detailed: Show detailed security module breakdown for each extension
     """
     from .summary_formatter import SummaryFormatter
 
@@ -725,6 +732,32 @@ def _print_summary(
             if table:
                 console.print()
                 console.print(table)
+
+            # Detailed module breakdown (when --detailed flag is set)
+            if detailed and scan_results:
+                from .display import format_security_modules
+
+                console.print()
+                console.print(
+                    "[bold cyan]═══ Detailed Security Module Breakdown ═══[/bold cyan]"
+                )
+                console.print()
+
+                for result in scan_results:
+                    # Show extension header (sanitize user input from filesystem)
+                    ext_name = result.get("display_name") or result.get(
+                        "name", "Unknown"
+                    )
+                    ext_id = result.get("id", "")
+                    ext_name_safe = sanitize_string(ext_name)
+                    ext_id_safe = sanitize_string(ext_id)
+                    console.print(
+                        f"[bold white]Extension:[/bold white] {ext_name_safe} ({ext_id_safe})"
+                    )
+                    console.print()
+
+                    # Show module breakdown
+                    format_security_modules(result, detailed=True, console=console)
 
             # Cache stats table (only in verbose mode)
             if formatter.should_show_cache_stats(results, verbose):

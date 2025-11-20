@@ -95,6 +95,12 @@ def scan(
         help="Show operational details (cache stats, retry stats, timing)",
         rich_help_panel="Options",
     ),
+    detailed: bool = typer.Option(
+        False,
+        "--detailed",
+        help="Show detailed security module breakdown (11 modules with risk levels)",
+        rich_help_panel="Options",
+    ),
     # Filtering options
     publisher: Optional[str] = typer.Option(
         None,
@@ -382,6 +388,7 @@ def scan(
             without_vulnerabilities=without_vulnerabilities,
             quiet=quiet,
             verbose=verbose,
+            detailed=detailed,
             workers=workers,
         )
         raise typer.Exit(code=exit_code)
