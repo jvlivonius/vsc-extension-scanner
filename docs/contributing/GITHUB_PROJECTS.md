@@ -199,6 +199,99 @@ Updates project board from milestone status → Reports summary
 /gh:implement-issue 145 --no-pr                       # No PR creation
 ```
 
+### `/gh:milestone` - Milestone Management
+
+**Track milestone progress and manage release coordination:**
+```bash
+/gh:milestone create v3.8.0 --due 2025-01-15
+/gh:milestone report v3.8.0 --format markdown
+/gh:milestone sync v3.8.0
+/gh:milestone close v3.8.0 --generate-notes
+/gh:milestone list --state open
+```
+
+**What it does:**
+1. **create**: Creates new milestone with due date and description
+2. **report**: Generates comprehensive progress report using `generate-milestone-report.sh`
+   - Shows completion percentage, issue breakdown by type/priority
+   - Outputs markdown (default) or JSON format
+3. **sync**: Synchronizes milestone issues with project board
+4. **close**: Closes milestone and optionally generates release notes
+   - Validates no open P0 issues before closing
+   - Integrates with `/gh:projects generate-release-notes`
+5. **list**: Lists milestones filtered by state
+
+**Example workflow:**
+```bash
+# Create milestone
+/gh:milestone create v3.8.0 --due 2025-01-15 --description "CSV export feature"
+
+# Check progress during development
+/gh:milestone report v3.8.0
+
+# Close when complete
+/gh:milestone close v3.8.0 --generate-notes
+```
+
+### `/gh:triage` - AI-Assisted Issue Triage
+
+**Intelligently classify and prioritize issues:**
+```bash
+/gh:triage 160                                    # Single issue
+/gh:triage --batch --milestone v3.8.0             # Batch processing
+/gh:triage --review 160 --suggest-improvements    # Quality review
+/gh:triage 161 --auto-apply                       # Auto-apply if confident
+```
+
+**What it does:**
+1. **Fetch**: Retrieves issue details (title, body, labels, comments)
+2. **Analyze**: Uses sequential-thinking MCP for:
+   - Type classification (feature, bug, task, hotfix)
+   - Priority assessment (P0-P3 based on impact/urgency)
+   - Complexity estimation (XS, S, M, L, XL)
+   - Required documentation identification
+   - Similar issue detection (duplicate prevention)
+3. **Suggest**: Generates recommendations with confidence scores
+4. **Apply**: Optionally updates issue with labels (requires confirmation unless --auto-apply with >90% confidence)
+
+**Confidence thresholds:**
+- **>0.9**: Auto-apply safe (if --auto-apply flag)
+- **0.7-0.9**: High confidence (suggest with approval)
+- **0.5-0.7**: Medium confidence (manual review)
+- **<0.5**: Low confidence (requires human judgment)
+
+**Batch mode:**
+```bash
+# Triage all untriaged issues in milestone
+/gh:triage --batch --milestone v3.8.0
+
+# High confidence suggestions auto-applied
+# Low confidence issues flagged for manual review
+```
+
+### Command Quick Reference
+
+| Command | Purpose | Common Usage |
+|---------|---------|--------------|
+| `/gh:projects create-from-plan` | Create issues from feature plan | `/gh:projects create-from-plan docs/archive/plans/v3.8-feature.md --milestone v3.8.0` |
+| `/gh:projects sync-milestone` | Sync milestone to project board | `/gh:projects sync-milestone v3.8.0` |
+| `/gh:projects generate-release-notes` | Generate release notes from milestone | `/gh:projects generate-release-notes v3.8.0 --draft` |
+| `/gh:implement-issue` | Agent-driven implementation | `/gh:implement-issue 142` |
+| `/gh:milestone create` | Create new milestone | `/gh:milestone create v3.8.0 --due 2025-01-15` |
+| `/gh:milestone report` | Generate progress report | `/gh:milestone report v3.8.0` |
+| `/gh:milestone close` | Close milestone with notes | `/gh:milestone close v3.8.0 --generate-notes` |
+| `/gh:triage` | AI-assisted issue triage | `/gh:triage 160` or `/gh:triage --batch --milestone v3.8.0` |
+
+**Helper Scripts:**
+
+| Script | Purpose | Common Usage |
+|--------|---------|--------------|
+| `create-issue.sh` | Create GitHub issue with metadata | `./scripts/github-projects/create-issue.sh --type feature --title "..." --milestone v3.8.0` |
+| `manage-issue-relationships.sh` | Manage parent-child & blocking | `./scripts/github-projects/manage-issue-relationships.sh set-parent 142 143 144` |
+| `validate-issue-structure.sh` | Validate issue completeness | `./scripts/github-projects/validate-issue-structure.sh 142 --strict` |
+| `generate-milestone-report.sh` | Generate milestone report | `./scripts/github-projects/generate-milestone-report.sh v3.8.0` |
+| `sync-existing-issues.sh` | Sync labels to project fields | `./scripts/github-projects/sync-existing-issues.sh` |
+
 ---
 
 ## Automatic Field Sync
@@ -610,8 +703,12 @@ gh pr merge 165 --squash
 ./scripts/github-projects/manage-issue-relationships.sh view 160
 
 # Example output shows parent #158
-# Check if all sibling tasks are complete
-gh issue list --milestone v3.8.0 --state open --search "parent:158"
+# Check parent issue and its children status
+gh issue view 158 --json number,title,state
+
+# Verify all child tasks are closed before closing parent
+# (GitHub doesn't support "parent:" search syntax - use relationship script or manual check)
+./scripts/github-projects/manage-issue-relationships.sh view 158
 
 # If all children complete, close parent
 gh issue close 158 --comment "All sub-tasks completed"
@@ -620,9 +717,10 @@ gh issue close 158 --comment "All sub-tasks completed"
 ### Advanced: Batch Implementation
 ```bash
 # Get all ready issues for milestone
+# Note: Filter by priority/complexity labels or custom status labels if used
 gh issue list \
   --milestone v3.8.0 \
-  --label "status:ready" \
+  --label "P1-high" \
   --state open \
   --json number,title \
   --jq '.[] | .number'
@@ -792,28 +890,28 @@ gh issue list \
 
 #### Update Status for Multiple Issues
 ```bash
-# Move all "Backlog" issues to "Todo" (via label proxy)
+# Note: Status is managed via GitHub Projects custom field (Backlog, Todo, In Progress, etc.)
+# This example shows using custom labels if your workflow uses them
+# Replace with your actual label scheme
+
 gh issue list \
   --milestone v3.8.0 \
-  --label "status:backlog" \
+  --label "needs-implementation" \
   --json number \
   --jq '.[].number' | \
   xargs -I {} gh issue edit {} \
-    --remove-label "status:backlog" \
-    --add-label "status:todo"
+    --remove-label "needs-implementation" \
+    --add-label "in-development"
 ```
 
 ### Batch Querying
 
 #### List All Issues with Dependencies
 ```bash
-# Find issues with blockers
+# Find issues with blockers using relationship script
 for issue in $(gh issue list --milestone v3.8.0 --json number --jq '.[].number'); do
-  BLOCKERS=$(gh api repos/:owner/:repo/issues/$issue/dependencies/blocked_by --jq 'length')
-  if [ "$BLOCKERS" -gt 0 ]; then
-    echo "Issue #$issue has $BLOCKERS blocker(s)"
-    ./scripts/github-projects/manage-issue-relationships.sh view $issue
-  fi
+  echo "Checking issue #$issue for blockers..."
+  ./scripts/github-projects/manage-issue-relationships.sh view $issue
 done
 ```
 
