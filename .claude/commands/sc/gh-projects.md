@@ -84,9 +84,9 @@ This cannot be done via the REST API or Projects API.
    }'
    ```
 
-**Automated Script:** Use `scripts/set_issue_parents.sh`:
+**Automated Script:** Use `scripts/manage_issue_relationships.sh`:
 ```bash
-./scripts/set_issue_parents.sh OWNER REPO PARENT_NUM CHILD1 CHILD2 CHILD3...
+./scripts/manage_issue_relationships.sh set-parent PARENT_NUM CHILD1 CHILD2 CHILD3...
 ```
 
 **Verification:**
