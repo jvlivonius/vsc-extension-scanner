@@ -167,8 +167,9 @@ cleanup_test_resources() {
     done
 
     # Report cleanup failures
-    if [[ ${#CLEANUP_FAILURES[@]} -gt 0 ]]; then
-        log_warning "Cleanup completed with ${#CLEANUP_FAILURES[@]} failures"
+    local failure_count="${#CLEANUP_FAILURES[@]}"
+    if [[ "$failure_count" -gt 0 ]]; then
+        log_warning "Cleanup completed with $failure_count failures"
         log_info "Manual cleanup required for: ${CLEANUP_FAILURES[*]}"
         log_info "Use: gh issue list --label test-issue --state all"
     else
