@@ -307,6 +307,605 @@ python3 scripts/bump_version.py 3.8.0 --auto-update --milestone --create-release
 
 ---
 
+## Relationship Types Decision Tree
+
+### When to Use Parent-Child Relationships
+
+**Use Case:** Feature breakdown, hierarchical task organization, epic → story structure
+
+**Characteristics:**
+
+- **Visual hierarchy:** Parent issues show summary of child progress
+- **One parent per child:** Each child can have only one parent
+- **GraphQL API:** Requires `addSubIssue` mutation
+- **Limit:** Up to 100 sub-issues per parent
+
+**Example scenarios:**
+```
+[FEATURE] Add CSV Export (#142)
+  ├─ [TASK] Implement CSV formatter class (#143)
+  ├─ [TASK] Add export command to CLI (#144)
+  └─ [TASK] Add CSV export tests (#145)
+```
+
+**When to use:**
+
+- Feature split into multiple implementation tasks
+- Epic requires multiple sub-features
+- Release tracking with multiple component issues
+- Large refactoring split into smaller PRs
+
+**How to create:**
+```bash
+# Create all issues first
+gh issue create --title "[FEATURE] Add CSV Export" ...
+gh issue create --title "[TASK] Implement CSV formatter" ...
+
+# Set parent-child relationships
+./scripts/manage_issue_relationships.sh set-parent 142 143 144 145
+
+# Verify
+./scripts/manage_issue_relationships.sh view 142
+```
+
+### When to Use Blocking Relationships
+
+**Use Case:** Technical dependencies, sequential implementation order, blocked work
+
+**Characteristics:**
+
+- **Bidirectional:** Issue A blocks Issue B, Issue B is blocked by Issue A
+- **Visual indicator:** "Blocked" badge shows on issues
+- **REST API:** Easy to set via issue dependencies endpoint
+- **Limit:** Up to 50 blockers per issue
+
+**Example scenarios:**
+```
+#146 [TASK] Add database migration (blocks #147, #148)
+  ↓ blocks
+#147 [TASK] Implement new API endpoint (blocked by #146)
+  ↓ blocks
+#148 [TASK] Update UI for new API (blocked by #147)
+```
+
+**When to use:**
+
+- Issue B cannot start until Issue A completes
+- Database migrations must run before code changes
+- API endpoint must exist before UI integration
+- Foundation work required before dependent features
+
+**How to create:**
+```bash
+# Set blocker: 146 blocks 147
+./scripts/manage_issue_relationships.sh set-blocker 147 146
+
+# Set multiple blockers: 146 and 147 both block 148
+./scripts/manage_issue_relationships.sh set-blocker 148 146 147
+
+# Verify
+./scripts/manage_issue_relationships.sh view 148
+```
+
+### When to Use Both
+
+**Use Case:** Complex features with hierarchical breakdown AND technical dependencies
+
+**Example:**
+```
+[FEATURE] Database Refactoring (#150)
+  ├─ [TASK] Design new schema (#151)
+  ├─ [TASK] Create migration scripts (#152) [blocked by #151]
+  ├─ [TASK] Update data access layer (#153) [blocked by #152]
+  └─ [TASK] Add integration tests (#154) [blocked by #153]
+```
+
+**Relationships:**
+
+- **Parent-child:** #150 is parent of #151-154 (shows feature breakdown)
+- **Blocking:** #151 → #152 → #153 → #154 (enforces implementation order)
+
+**When to use:**
+
+- Large features with sequential task dependencies
+- Release planning with cross-feature dependencies
+- Refactoring projects with ordered migrations
+
+**How to create:**
+```bash
+# Create issues
+gh issue create --title "[FEATURE] Database Refactoring" ...
+# ... create task issues ...
+
+# Set parent-child (feature breakdown)
+./scripts/manage_issue_relationships.sh set-parent 150 151 152 153 154
+
+# Set blocking (implementation order)
+./scripts/manage_issue_relationships.sh set-blocker 152 151
+./scripts/manage_issue_relationships.sh set-blocker 153 152
+./scripts/manage_issue_relationships.sh set-blocker 154 153
+
+# Verify all relationships
+./scripts/manage_issue_relationships.sh view 150
+```
+
+### Decision Tree
+
+```
+Does this issue have sub-tasks?
+├─ YES → Use parent-child relationships
+│   │
+│   └─ Do sub-tasks have technical dependencies?
+│       ├─ YES → Also use blocking relationships
+│       └─ NO → Only parent-child
+│
+└─ NO → Is this issue blocked by another issue?
+    ├─ YES → Use blocking relationship
+    └─ NO → No relationships needed
+```
+
+---
+
+## Agent Implementation Workflow
+
+**End-to-end workflow using `/sc:implement-issue` with GitHub Projects integration.**
+
+### Prerequisites
+
+- Issue created via web UI or `scripts/create_issue.sh`
+- Issue added to Project #3 (auto-workflow)
+- Issue has required metadata:
+  - `Required Documentation` field filled in
+  - `Acceptance Criteria` defined
+  - Dependencies resolved (if any)
+  - Priority and complexity labels set
+
+### Step-by-Step Flow
+
+#### 1. Issue Creation
+
+```bash
+# Option A: Web UI (recommended)
+# Navigate to: https://github.com/jvlivonius/vsc-extension-scanner/issues/new/choose
+# Select "Feature" template → Fill in all fields → Create issue
+
+# Option B: CLI with helper script
+./scripts/create_issue.sh \
+  --type feature \
+  --title "Add CSV export" \
+  --body "Export scan results as CSV format" \
+  --milestone v3.8.0 \
+  --priority High \
+  --complexity M
+```
+
+**Result:**
+
+- Issue #160 created
+- Auto-added to Project #3 with Status = "Backlog"
+- Priority = "High", Complexity = "M" (auto-synced)
+
+#### 2. Issue Preparation (Project Board)
+
+```bash
+# Check project board
+gh project item-list 3 --format json | jq '.items[] | select(.content.number==160)'
+
+# Verify dependencies are closed
+./scripts/manage_issue_relationships.sh view 160
+
+# Move to "Todo" status (ready to implement)
+# Via web UI: Drag issue from Backlog → Todo column
+```
+
+#### 3. Agent Implementation
+
+```bash
+# Trigger agent implementation
+/sc:implement-issue 160
+```
+
+**Agent workflow:**
+
+1. **Fetch issue details:**
+
+   ```bash
+   gh issue view 160 --json title,body,labels,milestone
+   ```
+
+2. **Validate dependencies:**
+
+   - Parse "Blocked By:" from issue body
+   - Check all blocker issues are closed
+   - Exit if blockers are still open
+
+3. **Read required documentation:**
+   - Parse "Required Documentation: ARCHITECTURE.md, SECURITY.md" from issue body
+   - Read each document before implementation
+   - Understand context and constraints
+
+4. **Create feature branch:**
+   ```bash
+   git checkout main
+   git pull
+   git checkout -b feature/add-csv-export
+   ```
+
+5. **Implement changes:**
+   - Write code following acceptance criteria
+   - Follow ARCHITECTURE.md layer rules
+   - Apply SECURITY.md validation patterns
+   - Write tests (pytest + hypothesis)
+
+6. **Run quality gates:**
+   ```bash
+   python3 -m pytest tests/                    # All tests pass
+   python3 tests/test_security.py              # 0 vulnerabilities
+   python3 tests/test_architecture.py          # 0 violations
+   ```
+
+7. **Create PR:**
+   ```bash
+   git add . && git commit -m "feat(export): add CSV export functionality"
+   git push origin feature/add-csv-export
+
+   gh pr create \
+     --title "feat(export): Add CSV export functionality" \
+     --body "$(cat <<'EOF'
+   ## Summary
+   Implements CSV export for scan results.
+
+   ## Changes
+   - Added CSVFormatter class
+   - Added --output-csv CLI flag
+   - Added comprehensive tests
+
+   ## Testing
+   - Unit tests: test_csv_formatter.py
+   - Integration tests: test_cli_csv_export.py
+   - Property tests: hypothesis strategies
+
+   Closes #160
+   EOF
+   )" \
+     --milestone v3.8.0
+   ```
+
+8. **Update issue:**
+   ```bash
+   gh issue edit 160 --add-label "agent-implemented"
+   ```
+
+**Result:**
+- PR #165 created with `Closes #160`
+- Issue #160 Status auto-updated to "In Review" (via GitHub automation)
+- PR linked to milestone v3.8.0
+- Project board shows issue in "In Review" column
+
+#### 4. Review & Merge
+```bash
+# Review PR
+gh pr view 165
+
+# Check CI status
+gh pr checks 165
+
+# Review code changes
+gh pr diff 165
+
+# Approve and merge
+gh pr review 165 --approve
+gh pr merge 165 --squash
+```
+
+**Result:**
+- PR #165 merged
+- Issue #160 automatically closed (via `Closes #160`)
+- Issue #160 Status auto-updated to "Done"
+- Branch `feature/add-csv-export` can be deleted
+
+#### 5. Update Parent Issue (if applicable)
+```bash
+# If #160 was a child task, check parent
+./scripts/manage_issue_relationships.sh view 160
+
+# Example output shows parent #158
+# Check if all sibling tasks are complete
+gh issue list --milestone v3.8.0 --state open --search "parent:158"
+
+# If all children complete, close parent
+gh issue close 158 --comment "All sub-tasks completed"
+```
+
+### Advanced: Batch Implementation
+```bash
+# Get all ready issues for milestone
+gh issue list \
+  --milestone v3.8.0 \
+  --label "status:ready" \
+  --state open \
+  --json number,title \
+  --jq '.[] | .number'
+
+# Output: 160, 161, 162
+
+# Implement sequentially
+/sc:implement-issue 160  # Wait for completion
+/sc:implement-issue 161  # Wait for completion
+/sc:implement-issue 162  # Wait for completion
+```
+
+### Monitoring Progress
+```bash
+# Check milestone progress
+gh issue list --milestone v3.8.0 --state all --json state | \
+  jq 'group_by(.state) | map({state: .[0].state, count: length})'
+
+# Example output:
+# [
+#   {"state": "CLOSED", "count": 8},
+#   {"state": "OPEN", "count": 4}
+# ]
+# Progress: 67% (8/12 issues complete)
+
+# Check project board status
+gh project item-list 3 --owner @me --format json | \
+  jq '.items[] | select(.content.milestone=="v3.8.0") | {number: .content.number, status: .status}'
+```
+
+### Error Recovery
+
+**Dependency check fails:**
+```
+Error: Issue #160 is blocked by open issues: #158, #159
+Action: Complete blocker issues first, then retry
+```
+
+**Quality gate fails:**
+```
+Error: Architecture violations detected
+Action: Fix violations, commit changes, re-run /sc:implement-issue
+```
+
+**PR creation fails:**
+```
+Error: Branch already exists
+Action: Delete old branch: git push origin --delete feature/add-csv-export
+```
+
+---
+
+## Bulk Operations
+
+**Efficiently manage multiple issues using helper scripts and parallel operations.**
+
+### Batch Issue Creation
+
+#### Create Multiple Related Issues
+```bash
+# Create parent feature
+PARENT=$(./scripts/create_issue.sh \
+  --type feature \
+  --title "Add CSV export functionality" \
+  --milestone v3.8.0 \
+  --priority High \
+  --complexity L | grep -oP '#\K[0-9]+')
+
+echo "Created parent issue: #$PARENT"
+
+# Create child tasks
+CHILD1=$(./scripts/create_issue.sh \
+  --type task \
+  --title "Implement CSV formatter class" \
+  --milestone v3.8.0 \
+  --priority High \
+  --complexity M | grep -oP '#\K[0-9]+')
+
+CHILD2=$(./scripts/create_issue.sh \
+  --type task \
+  --title "Add export command to CLI" \
+  --milestone v3.8.0 \
+  --priority High \
+  --complexity S | grep -oP '#\K[0-9]+')
+
+CHILD3=$(./scripts/create_issue.sh \
+  --type task \
+  --title "Add CSV export tests" \
+  --milestone v3.8.0 \
+  --priority High \
+  --complexity S | grep -oP '#\K[0-9]+')
+
+# Set parent-child relationships
+./scripts/manage_issue_relationships.sh set-parent $PARENT $CHILD1 $CHILD2 $CHILD3
+
+echo "Created feature with 3 tasks: #$PARENT (parent of #$CHILD1, #$CHILD2, #$CHILD3)"
+```
+
+### Batch Relationship Management
+
+#### Set Multiple Parent-Child Relationships
+```bash
+# Pattern: Parent has many children
+./scripts/manage_issue_relationships.sh set-parent 150 151 152 153 154 155
+
+# Output:
+# Setting parent #150 for 5 issues...
+# ✓ Set #150 as parent of #151
+# ✓ Set #150 as parent of #152
+# ✓ Set #150 as parent of #153
+# ✓ Set #150 as parent of #154
+# ✓ Set #150 as parent of #155
+# Summary: 5 relationships created
+```
+
+#### Set Multiple Blocking Relationships
+```bash
+# Pattern: Sequential pipeline (A → B → C → D)
+./scripts/manage_issue_relationships.sh set-blocker 152 151  # 151 blocks 152
+./scripts/manage_issue_relationships.sh set-blocker 153 152  # 152 blocks 153
+./scripts/manage_issue_relationships.sh set-blocker 154 153  # 153 blocks 154
+
+# Pattern: Multiple blockers (A, B both block C)
+./scripts/manage_issue_relationships.sh set-blocker 160 158 159
+# 158 and 159 both block 160
+```
+
+### Batch Label Updates
+
+#### Update Priority for Multiple Issues
+```bash
+# Get all P2 issues in milestone
+ISSUES=$(gh issue list \
+  --milestone v3.8.0 \
+  --label "P2-medium" \
+  --json number \
+  --jq '.[].number')
+
+# Upgrade to P1
+for issue in $ISSUES; do
+  gh issue edit $issue --remove-label "P2-medium" --add-label "P1-high"
+  echo "✓ Upgraded #$issue to P1-high"
+done
+```
+
+#### Add Label to All Issues in Milestone
+```bash
+# Add "needs-review" label to all open issues
+gh issue list \
+  --milestone v3.8.0 \
+  --state open \
+  --json number \
+  --jq '.[].number' | \
+  xargs -I {} gh issue edit {} --add-label "needs-review"
+```
+
+### Batch Field Sync
+
+#### Sync All Milestone Issues to Project Board
+```bash
+# Use existing sync script
+./scripts/sync_existing_issues.sh
+
+# Or sync specific milestone only (when script supports --milestone flag)
+# ./scripts/sync_existing_issues.sh --milestone v3.8.0
+```
+
+#### Update Status for Multiple Issues
+```bash
+# Move all "Backlog" issues to "Todo" (via label proxy)
+gh issue list \
+  --milestone v3.8.0 \
+  --label "status:backlog" \
+  --json number \
+  --jq '.[].number' | \
+  xargs -I {} gh issue edit {} \
+    --remove-label "status:backlog" \
+    --add-label "status:todo"
+```
+
+### Batch Querying
+
+#### List All Issues with Dependencies
+```bash
+# Find issues with blockers
+for issue in $(gh issue list --milestone v3.8.0 --json number --jq '.[].number'); do
+  BLOCKERS=$(gh api repos/:owner/:repo/issues/$issue/dependencies/blocked_by --jq 'length')
+  if [ "$BLOCKERS" -gt 0 ]; then
+    echo "Issue #$issue has $BLOCKERS blocker(s)"
+    ./scripts/manage_issue_relationships.sh view $issue
+  fi
+done
+```
+
+#### Find Issues Ready for Implementation
+```bash
+# Issues with:
+# - Status = Todo or Backlog
+# - Priority = High or Critical
+# - No open blockers
+# - All required fields filled
+
+gh issue list \
+  --milestone v3.8.0 \
+  --state open \
+  --json number,title,labels \
+  --jq '.[] | select(
+    (.labels[].name | contains("P0-critical") or contains("P1-high")) and
+    (.labels[].name | contains("status:todo") or contains("status:backlog"))
+  ) | "#\(.number): \(.title)"'
+```
+
+### Batch Closure
+
+#### Close All Completed Issues
+```bash
+# Close issues with merged PRs
+gh issue list \
+  --milestone v3.8.0 \
+  --label "agent-implemented" \
+  --state open \
+  --json number \
+  --jq '.[].number' | \
+  xargs -I {} gh issue close {} --comment "Implemented and merged"
+```
+
+#### Close Milestone and All Issues
+```bash
+# Get milestone number
+MILESTONE_NUM=$(gh api repos/:owner/:repo/milestones --jq '.[] | select(.title=="v3.8.0") | .number')
+
+# Close all open issues in milestone
+gh issue list \
+  --milestone v3.8.0 \
+  --state open \
+  --json number \
+  --jq '.[].number' | \
+  xargs -I {} gh issue close {} --comment "Released in v3.8.0"
+
+# Close milestone
+gh api repos/:owner/:repo/milestones/$MILESTONE_NUM \
+  -X PATCH \
+  -f state="closed"
+```
+
+### Performance Optimization
+
+#### Parallel Operations (with rate limiting)
+```bash
+# Process up to 5 issues concurrently
+gh issue list --milestone v3.8.0 --json number --jq '.[].number' | \
+  xargs -P 5 -I {} bash -c '
+    gh issue edit {} --add-label "needs-triage"
+    sleep 0.5  # Rate limit protection
+  '
+```
+
+#### GraphQL Batching (future enhancement)
+```bash
+# Fetch multiple issues in single query (reduces API calls)
+gh api graphql -f query='
+  query {
+    repo: repository(owner: "jvlivonius", name: "vsc-extension-scanner") {
+      issue1: issue(number: 150) { title state }
+      issue2: issue(number: 151) { title state }
+      issue3: issue(number: 152) { title state }
+    }
+  }
+'
+```
+
+### Bulk Operation Best Practices
+
+1. **Always dry-run first:** Test logic on 1-2 issues before bulk execution
+2. **Rate limit protection:** Add `sleep 0.5` between API calls in loops
+3. **Error handling:** Check exit codes, handle partial failures gracefully
+4. **Verification:** Validate results after bulk operations
+5. **Logging:** Record operations for audit trail
+6. **Parallelization:** Use `xargs -P N` for independent operations (limit N=5)
+7. **Reversibility:** Plan rollback strategy before execution
+
+---
+
 ## Common Issues
 
 ### Labels Don't Show as Board Columns
