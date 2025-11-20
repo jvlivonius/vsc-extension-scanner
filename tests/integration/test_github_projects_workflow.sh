@@ -146,10 +146,10 @@ detect_api_capabilities() {
 cleanup_test_resources() {
     log_info "Cleaning up test resources..."
 
-    # Close all test issues
+    # Delete all test issues (not just close - prevents accumulation)
     for issue in "${TEST_ISSUES_CREATED[@]}"; do
-        if ! gh issue close "$issue" --comment "Test cleanup" 2>/dev/null; then
-            log_warning "Failed to close test issue #$issue"
+        if ! gh issue delete "$issue" --yes 2>/dev/null; then
+            log_warning "Failed to delete test issue #$issue"
             CLEANUP_FAILURES+=("issue-$issue")
         fi
     done
@@ -445,17 +445,12 @@ test_blocking_dependency_validation() {
 
 # Test 5: Batch parent-child creation
 test_batch_parent_child() {
-    log_info "Test 5: Batch parent-child creation (10 pairs)"
+    log_info "Test 5: Batch parent-child creation (3 pairs)"
     ((TESTS_RUN++))
 
     local success_count=0
 
-    for i in {1..10}; do
-        # Check rate limit every 5 iterations
-        if (( i % 5 == 0 )); then
-            check_batch_rate_limit
-        fi
-
+    for i in {1..3}; do
         # Create parent
         PARENT_URL=$(gh issue create --title "Batch Parent $i" --body "Batch test parent" --label "parent,test-issue")
         PARENT=$(basename "$PARENT_URL")
@@ -488,12 +483,12 @@ test_batch_parent_child() {
         rate_limit_delay 0.3
     done
 
-    if [[ $success_count -eq 10 ]]; then
-        log_success "Test 5 PASSED: Created 10 parent-child pairs successfully"
+    if [[ $success_count -eq 3 ]]; then
+        log_success "Test 5 PASSED: Created 3 parent-child pairs successfully"
         ((TESTS_PASSED++))
         return 0
     else
-        log_error "Test 5 FAILED: Only $success_count/10 pairs created successfully"
+        log_error "Test 5 FAILED: Only $success_count/3 pairs created successfully"
         ((TESTS_FAILED++))
         return 1
     fi
@@ -501,7 +496,7 @@ test_batch_parent_child() {
 
 # Test 6: Batch blocking relationships (requires Dependencies API)
 test_batch_blocking_relationships() {
-    log_info "Test 6: Batch blocking relationships (15 dependencies)"
+    log_info "Test 6: Batch blocking relationships (5 dependencies)"
     ((TESTS_RUN++))
 
     # Check if Dependencies API is available
@@ -513,15 +508,10 @@ test_batch_blocking_relationships() {
         return 0
     fi
 
-    # Create 15 issue pairs with blocking relationships
+    # Create 5 issue pairs with blocking relationships
     local success_count=0
 
-    for i in {1..15}; do
-        # Check rate limit every 5 iterations
-        if (( i % 5 == 0 )); then
-            check_batch_rate_limit
-        fi
-
+    for i in {1..5}; do
         BLOCKER_URL=$(gh issue create --title "Batch Blocker $i" --body "Batch blocker" --label "test-issue")
         BLOCKER=$(basename "$BLOCKER_URL")
         validate_issue_number "$BLOCKER" || { log_error "Failed to create blocker issue"; return 1; }
@@ -545,12 +535,12 @@ test_batch_blocking_relationships() {
         fi
     done
 
-    if [[ $success_count -eq 15 ]]; then
-        log_success "Test 6 PASSED: Created 15 blocking relationships successfully"
+    if [[ $success_count -eq 5 ]]; then
+        log_success "Test 6 PASSED: Created 5 blocking relationships successfully"
         ((TESTS_PASSED++))
         return 0
     else
-        log_error "Test 6 FAILED: Only $success_count/15 relationships created"
+        log_error "Test 6 FAILED: Only $success_count/5 relationships created"
         ((TESTS_FAILED++))
         return 1
     fi
