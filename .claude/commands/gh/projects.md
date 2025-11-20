@@ -1,5 +1,5 @@
 ---
-name: gh-projects
+name: projects
 description: "GitHub Projects workflow integration with automated issue/PR linking"
 category: workflow
 complexity: standard
@@ -7,7 +7,7 @@ mcp-servers: []
 personas: [python-expert]
 ---
 
-# /sc:gh-projects - GitHub Projects Integration
+# /gh:projects - GitHub Projects Integration
 
 ## Triggers
 - Feature planning requiring breakdown into GitHub issues
@@ -18,10 +18,10 @@ personas: [python-expert]
 
 ## Usage
 ```
-/sc:gh-projects create-from-plan <plan-file> --milestone vX.Y.Z [--project-number N]
-/sc:gh-projects sync-milestone vX.Y.Z [--project-number N]
-/sc:gh-projects generate-release-notes vX.Y.Z [--draft]
-/sc:gh-projects link-pr <pr-number> --issue <issue-number> --milestone vX.Y.Z
+/gh:projects create-from-plan <plan-file> --milestone vX.Y.Z [--project-number N]
+/gh:projects sync-milestone vX.Y.Z [--project-number N]
+/gh:projects generate-release-notes vX.Y.Z [--draft]
+/gh:projects link-pr <pr-number> --issue <issue-number> --milestone vX.Y.Z
 ```
 
 **Parameters:**
@@ -84,9 +84,9 @@ This cannot be done via the REST API or Projects API.
    }'
    ```
 
-**Automated Script:** Use `scripts/manage_issue_relationships.sh`:
+**Automated Script:** Use `scripts/github-projects/manage-issue-relationships.sh`:
 ```bash
-./scripts/manage_issue_relationships.sh set-parent PARENT_NUM CHILD1 CHILD2 CHILD3...
+./scripts/github-projects/manage-issue-relationships.sh set-parent PARENT_NUM CHILD1 CHILD2 CHILD3...
 ```
 
 **Verification:**
@@ -134,7 +134,7 @@ Output: Release notes draft with:
 
 ### Create Issues from Feature Plan
 ```bash
-/sc:gh-projects create-from-plan docs/archive/plans/v3.8-feature.md --milestone v3.8.0
+/gh:projects create-from-plan docs/archive/plans/v3.8-feature.md --milestone v3.8.0
 
 # Analyzes plan structure
 # Creates parent feature issue: #142
@@ -145,7 +145,7 @@ Output: Release notes draft with:
 
 ### Sync Milestone with Project Board
 ```bash
-/sc:gh-projects sync-milestone v3.8.0
+/gh:projects sync-milestone v3.8.0
 
 # Fetches all milestone issues
 # Updates project board status
@@ -155,7 +155,7 @@ Output: Release notes draft with:
 
 ### Generate Release Notes
 ```bash
-/sc:gh-projects generate-release-notes v3.8.0 --draft
+/gh:projects generate-release-notes v3.8.0 --draft
 
 # Fetches closed milestone issues
 # Groups by label (feature, bugfix, docs, etc.)
@@ -166,7 +166,7 @@ Output: Release notes draft with:
 
 ### Link PR to Issue and Milestone
 ```bash
-/sc:gh-projects link-pr 156 --issue 142 --milestone v3.8.0
+/gh:projects link-pr 156 --issue 142 --milestone v3.8.0
 
 # Updates PR description with "Closes #142"
 # Links PR to project board
@@ -253,14 +253,14 @@ Action: Review and fix dependency chain in issue metadata
 ### Phase 1.5: Issue Tracking (After Version Bump)
 ```bash
 # After bump_version.py --milestone v3.8.0
-/sc:gh-projects sync-milestone v3.8.0
+/gh:projects sync-milestone v3.8.0
 # Updates project board with release branch status
 ```
 
 ### Phase 3.5: Milestone Closure (After Tag Push)
 ```bash
 # After git tag -a v3.8.0
-/sc:gh-projects generate-release-notes v3.8.0
+/gh:projects generate-release-notes v3.8.0
 # Creates release notes from milestone issues
 
 # Close milestone issues

@@ -7,7 +7,7 @@ mcp-servers: [serena, sequential-thinking]
 personas: [python-expert, security-engineer, quality-engineer]
 ---
 
-# /sc:implement-issue - Agent-Driven Issue Implementation
+# /gh:implement-issue - Agent-Driven Issue Implementation
 
 ## Triggers
 - GitHub issue marked as `agent-ready` and ready for implementation
@@ -16,7 +16,7 @@ personas: [python-expert, security-engineer, quality-engineer]
 
 ## Usage
 ```
-/sc:implement-issue <issue-number> [--branch <name>] [--no-pr] [--dry-run]
+/gh:implement-issue <issue-number> [--branch <name>] [--no-pr] [--dry-run]
 ```
 
 **Parameters:**
@@ -109,7 +109,7 @@ Before creating PR, verify all checkboxes:
 
 ### Basic Implementation
 ```bash
-/sc:implement-issue 142
+/gh:implement-issue 142
 
 # Workflow:
 1. Fetch issue #142 details
@@ -126,7 +126,7 @@ Before creating PR, verify all checkboxes:
 
 ### Custom Branch Name
 ```bash
-/sc:implement-issue 143 --branch feature/custom-auth
+/gh:implement-issue 143 --branch feature/custom-auth
 
 # Uses custom branch name instead of auto-generated
 # Rest of workflow identical
@@ -134,7 +134,7 @@ Before creating PR, verify all checkboxes:
 
 ### Dry Run Validation
 ```bash
-/sc:implement-issue 144 --dry-run
+/gh:implement-issue 144 --dry-run
 
 # Validates:
 - Issue exists and is open
@@ -148,7 +148,7 @@ Before creating PR, verify all checkboxes:
 
 ### Implementation Without PR
 ```bash
-/sc:implement-issue 145 --no-pr
+/gh:implement-issue 145 --no-pr
 
 # Implements changes and commits to branch
 # Does not create PR (manual PR creation later)
@@ -339,7 +339,7 @@ Review: docs/guides/ARCHITECTURE.md
 ```
 1. User creates issue from feature plan: /sc:gh-projects create-from-plan
 2. Issue created with metadata and acceptance criteria
-3. User triggers implementation: /sc:implement-issue #142
+3. User triggers implementation: /gh:implement-issue #142
 4. Agent implements, creates PR
 5. Human reviews PR, requests changes if needed
 6. Agent updates PR based on feedback

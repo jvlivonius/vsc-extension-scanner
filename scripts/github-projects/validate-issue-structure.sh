@@ -6,20 +6,25 @@ set -euo pipefail
 
 # Script directory for sourcing libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+# Rate limit library in same directory
 
 # Source rate limit library if available
-if [[ -f "$LIB_DIR/rate_limit.sh" ]]; then
-    # shellcheck source=../lib/rate_limit.sh
-    source "$LIB_DIR/rate_limit.sh"
+if [[ -f "$SCRIPT_DIR/rate_limit.sh" ]]; then
+    # shellcheck source=./rate_limit.sh
+    source "$SCRIPT_DIR/rate_limit.sh"
 fi
 
-# Colors
-readonly COLOR_RED='\033[0;31m'
-readonly COLOR_YELLOW='\033[1;33m'
-readonly COLOR_GREEN='\033[0;32m'
-readonly COLOR_BLUE='\033[0;34m'
-readonly COLOR_NC='\033[0m' # No Color
+# Colors (if not already defined by rate_limit.sh)
+if [[ -z "${COLOR_RED:-}" ]]; then
+    readonly COLOR_RED='\033[0;31m'
+    readonly COLOR_YELLOW='\033[1;33m'
+    readonly COLOR_GREEN='\033[0;32m'
+    readonly COLOR_BLUE='\033[0;34m'
+    readonly COLOR_NC='\033[0m' # No Color
+else
+    # Color constants from rate_limit.sh, add BLUE
+    readonly COLOR_BLUE='\033[0;34m'
+fi
 
 # Validation settings
 REQUIRE_DOCUMENTATION=true
