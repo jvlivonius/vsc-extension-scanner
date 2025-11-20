@@ -68,12 +68,36 @@
 #   - Use :owner/:repo placeholders for auto-detection (like gh issue create)
 #
 # Limitations:
-#   - Maximum 100 sub-issues per parent (GraphQL pagination limit)
-#   - Maximum 100 blocking relationships per issue (REST API pagination)
-#   - Script will warn if these limits are reached
+#   - Pagination implemented: Supports >100 relationships automatically
+#   - Rate limiting managed via rate_limit.sh library integration
+#   - See docs/guides/GITHUB_API_RATE_LIMITS.md for API usage patterns
+#
+# Documentation:
+#   - Workflow Guide: docs/contributing/GITHUB_PROJECTS.md#parent-child-relationships
+#   - Rate Limiting: docs/guides/GITHUB_API_RATE_LIMITS.md
+#   - Command Reference: .claude/commands/gh/projects.md
 #
 
 set -euo pipefail
+
+# Script directory for sourcing libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source rate limit library if available
+if [[ -f "$SCRIPT_DIR/rate_limit.sh" ]]; then
+    source "$SCRIPT_DIR/rate_limit.sh"
+else
+    log_warning() {
+        echo "[WARNING] $*" >&2
+    }
+    log_warning "rate_limit.sh not found - rate limiting disabled"
+    log_warning "For better API management, ensure rate_limit.sh exists in $SCRIPT_DIR"
+
+    # Define stub functions if rate limiting not available
+    rate_limit_guard() { return 0; }
+    rate_limit_delay() { return 0; }
+    rate_limit_summary() { return 0; }
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -85,6 +109,7 @@ NC='\033[0m' # No Color
 # Global variables for repository override
 OWNER=""
 REPO=""
+DRY_RUN=false
 
 # Function to print colored messages
 log_info() {
@@ -143,6 +168,7 @@ Subcommands:
 Options:
   --owner OWNER    Repository owner (auto-detected if not provided)
   --repo REPO      Repository name (auto-detected if not provided)
+  --dry-run        Preview changes without applying them
   --help           Show this help message
 
 Repository Detection:
@@ -173,6 +199,174 @@ gh_api_call() {
     else
         gh api "repos/:owner/:repo/$1" "${@:2}"
     fi
+}
+
+# Dry-run wrapper for gh api graphql
+gh_api_graphql_wrapped() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        # Return mock success response
+        echo '{"data":{"node":{"number":1}}}'
+        return 0
+    else
+        gh api graphql "$@"
+    fi
+}
+
+# Dry-run wrapper for gh_api_call with POST
+gh_api_call_post_wrapped() {
+    local endpoint="$1"
+    shift
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        # Return mock success response
+        echo '{"number":1,"title":"Mock Issue"}'
+        return 0
+    else
+        gh_api_call "$endpoint" -X POST "$@"
+    fi
+}
+
+# Dry-run wrapper for gh_api_call with DELETE
+gh_api_call_delete_wrapped() {
+    local endpoint="$1"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        # Return success (no output for DELETE)
+        return 0
+    else
+        gh_api_call "$endpoint" -X DELETE
+    fi
+}
+
+# Fetch all sub-issues for a parent with pagination support (GraphQL cursor-based)
+fetch_all_sub_issues() {
+    local issue_node="$1"
+    local all_sub_issues=""
+    local has_next_page="true"
+    local cursor=""
+
+    while [[ "$has_next_page" == "true" ]]; do
+        local after_clause=""
+        if [[ -n "$cursor" ]]; then
+            after_clause=", after: \"$cursor\""
+        fi
+
+        local page_data
+        page_data=$(gh api graphql -f query="query {
+            node(id: \"$issue_node\") {
+                ... on Issue {
+                    subIssues(first: 100${after_clause}) {
+                        nodes { number title state url }
+                        pageInfo { hasNextPage endCursor }
+                    }
+                }
+            }
+        }" -H "GraphQL-Features: sub_issues" 2>/dev/null) || return 1
+
+        # Extract sub-issues from this page
+        local page_issues
+        page_issues=$(echo "$page_data" | jq -r '.data.node.subIssues.nodes[] | "\(.number)|\(.title)|\(.state)|\(.url)"')
+
+        if [[ -n "$page_issues" ]]; then
+            if [[ -z "$all_sub_issues" ]]; then
+                all_sub_issues="$page_issues"
+            else
+                all_sub_issues="${all_sub_issues}"$'\n'"${page_issues}"
+            fi
+        fi
+
+        # Check pagination
+        has_next_page=$(echo "$page_data" | jq -r '.data.node.subIssues.pageInfo.hasNextPage')
+        cursor=$(echo "$page_data" | jq -r '.data.node.subIssues.pageInfo.endCursor')
+
+        if [[ "$has_next_page" != "true" ]]; then
+            break
+        fi
+    done
+
+    echo "$all_sub_issues"
+}
+
+# Fetch all blocked_by dependencies with pagination support (REST page-based)
+fetch_all_blocked_by() {
+    local issue_number="$1"
+    local all_blockers=""
+    local page=1
+    local per_page=100
+
+    while true; do
+        local page_data
+        page_data=$(gh_api_call "issues/$issue_number/dependencies/blocked_by?page=$page&per_page=$per_page" 2>/dev/null)
+
+        if [[ -z "$page_data" ]] || [[ "$page_data" == "[]" ]]; then
+            break
+        fi
+
+        local page_blockers
+        page_blockers=$(echo "$page_data" | jq -r '.[] | "\(.number)|\(.title)"')
+
+        if [[ -z "$page_blockers" ]]; then
+            break
+        fi
+
+        if [[ -z "$all_blockers" ]]; then
+            all_blockers="$page_blockers"
+        else
+            all_blockers="${all_blockers}"$'\n'"${page_blockers}"
+        fi
+
+        # Check if we got less than per_page results (last page)
+        local page_count
+        page_count=$(echo "$page_data" | jq '. | length')
+        if [[ "$page_count" -lt "$per_page" ]]; then
+            break
+        fi
+
+        page=$((page + 1))
+    done
+
+    echo "$all_blockers"
+}
+
+# Fetch all blocking dependencies with pagination support (REST page-based)
+fetch_all_blocking() {
+    local issue_number="$1"
+    local all_blocking=""
+    local page=1
+    local per_page=100
+
+    while true; do
+        local page_data
+        page_data=$(gh_api_call "issues/$issue_number/dependencies/blocking?page=$page&per_page=$per_page" 2>/dev/null)
+
+        if [[ -z "$page_data" ]] || [[ "$page_data" == "[]" ]]; then
+            break
+        fi
+
+        local page_blocking
+        page_blocking=$(echo "$page_data" | jq -r '.[] | "\(.number)|\(.title)"')
+
+        if [[ -z "$page_blocking" ]]; then
+            break
+        fi
+
+        if [[ -z "$all_blocking" ]]; then
+            all_blocking="$page_blocking"
+        else
+            all_blocking="${all_blocking}"$'\n'"${page_blocking}"
+        fi
+
+        # Check if we got less than per_page results (last page)
+        local page_count
+        page_count=$(echo "$page_data" | jq '. | length')
+        if [[ "$page_count" -lt "$per_page" ]]; then
+            break
+        fi
+
+        page=$((page + 1))
+    done
+
+    echo "$all_blocking"
 }
 
 # Function to get issue node_id (for GraphQL)
@@ -319,14 +513,21 @@ cmd_set_parent() {
 
         # Try to add sub-issue relationship using GraphQL
         local result
-        result=$(gh api graphql -f query="mutation {
+        result=$(gh_api_graphql_wrapped -f query="mutation {
             addSubIssue(input: {issueId: \"$parent_node\", subIssueId: \"$child_node\"}) {
                 issue { number }
             }
         }" -H "GraphQL-Features: sub_issues" 2>&1) || true
 
+        # Rate limit delay between API calls
+        rate_limit_delay
+
         if echo "$result" | grep -q '"number"'; then
-            log_success "  ✅ Successfully set #$child_number as sub-issue of #$parent_number"
+            if [[ "$DRY_RUN" == "true" ]]; then
+                log_success "  ✅ [DRY-RUN] Would set #$child_number as sub-issue of #$parent_number"
+            else
+                log_success "  ✅ Successfully set #$child_number as sub-issue of #$parent_number"
+            fi
             success_count=$((success_count + 1))
         elif echo "$result" | grep -q "duplicate sub-issues"; then
             log_warning "  ⚠️  Relationship already exists"
@@ -350,25 +551,33 @@ cmd_set_parent() {
                 if [[ -n "$old_parent_node" ]]; then
                     # Remove old parent
                     local remove_result
-                    remove_result=$(gh api graphql -f query="mutation {
+                    remove_result=$(gh_api_graphql_wrapped -f query="mutation {
                         removeSubIssue(input: {issueId: \"$old_parent_node\", subIssueId: \"$child_node\"}) {
                             issue { number }
                         }
                     }" -H "GraphQL-Features: sub_issues" 2>&1) || true
 
                     if echo "$remove_result" | grep -q '"number"'; then
-                        log_success "  → Removed old parent #$old_parent_number"
+                        if [[ "$DRY_RUN" == "true" ]]; then
+                            log_success "  → [DRY-RUN] Would remove old parent #$old_parent_number"
+                        else
+                            log_success "  → Removed old parent #$old_parent_number"
+                        fi
 
                         # Now add the new parent
                         local add_result
-                        add_result=$(gh api graphql -f query="mutation {
+                        add_result=$(gh_api_graphql_wrapped -f query="mutation {
                             addSubIssue(input: {issueId: \"$parent_node\", subIssueId: \"$child_node\"}) {
                                 issue { number }
                             }
                         }" -H "GraphQL-Features: sub_issues" 2>&1) || true
 
                         if echo "$add_result" | grep -q '"number"'; then
-                            log_success "  ✅ Successfully set #$child_number as sub-issue of #$parent_number (replaced parent)"
+                            if [[ "$DRY_RUN" == "true" ]]; then
+                                log_success "  ✅ [DRY-RUN] Would set #$child_number as sub-issue of #$parent_number (replaced parent)"
+                            else
+                                log_success "  ✅ Successfully set #$child_number as sub-issue of #$parent_number (replaced parent)"
+                            fi
                             success_count=$((success_count + 1))
                         else
                             log_error "  ❌ Failed to set new parent"
@@ -396,6 +605,9 @@ cmd_set_parent() {
     done
 
     show_summary "$success_count" "$fail_count" "$skip_count"
+
+    # Show rate limit usage
+    rate_limit_summary
 
     echo ""
     echo "=== VERIFICATION ==="
@@ -459,14 +671,21 @@ cmd_remove_parent() {
 
         # Execute GraphQL mutation
         local result
-        result=$(gh api graphql -f query="mutation {
+        result=$(gh_api_graphql_wrapped -f query="mutation {
             removeSubIssue(input: {issueId: \"$parent_node\", subIssueId: \"$issue_node\"}) {
                 issue { number }
             }
         }" -H "GraphQL-Features: sub_issues" 2>&1) || true
 
+        # Rate limit delay between API calls
+        rate_limit_delay
+
         if echo "$result" | grep -q '"number"'; then
-            log_success "  ✅ Successfully removed parent #$parent_number from issue #$issue_number"
+            if [[ "$DRY_RUN" == "true" ]]; then
+                log_success "  ✅ [DRY-RUN] Would remove parent #$parent_number from issue #$issue_number"
+            else
+                log_success "  ✅ Successfully removed parent #$parent_number from issue #$issue_number"
+            fi
             success_count=$((success_count + 1))
         else
             log_error "  ❌ Failed to remove parent relationship"
@@ -476,6 +695,9 @@ cmd_remove_parent() {
     done
 
     show_summary "$success_count" "$fail_count" "$skip_count"
+
+    # Show rate limit usage
+    rate_limit_summary
 
     echo ""
     echo "=== VERIFICATION ==="
@@ -572,14 +794,21 @@ cmd_remove_child() {
             fi
 
             local result
-            result=$(gh api graphql -f query="mutation {
+            result=$(gh_api_graphql_wrapped -f query="mutation {
                 removeSubIssue(input: {issueId: \"$parent_node\", subIssueId: \"$child_node\"}) {
                     issue { number }
                 }
             }" -H "GraphQL-Features: sub_issues" 2>&1) || true
 
+            # Rate limit delay between API calls
+            rate_limit_delay
+
             if echo "$result" | grep -q '"number"'; then
-                log_success "    ✅ Successfully removed sub-issue #$child_number"
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    log_success "    ✅ [DRY-RUN] Would remove sub-issue #$child_number"
+                else
+                    log_success "    ✅ Successfully removed sub-issue #$child_number"
+                fi
                 total_success=$((total_success + 1))
             else
                 log_error "    ❌ Failed to remove sub-issue #$child_number"
@@ -592,6 +821,9 @@ cmd_remove_child() {
     done
 
     show_summary "$total_success" "$total_fail" "$total_skip"
+
+    # Show rate limit usage
+    rate_limit_summary
 
     echo ""
     echo "=== VERIFICATION ==="
@@ -652,11 +884,18 @@ cmd_set_blocker() {
 
         # Add blocked-by dependency
         local result
-        result=$(gh_api_call "issues/$blocked_number/dependencies/blocked_by" \
-            -X POST -F issue_id="$blocker_id" 2>&1) || true
+        result=$(gh_api_call_post_wrapped "issues/$blocked_number/dependencies/blocked_by" \
+            -F issue_id="$blocker_id" 2>&1) || true
+
+        # Rate limit delay between API calls
+        rate_limit_delay
 
         if echo "$result" | grep -q '"number"'; then
-            log_success "  ✅ Issue #$blocked_number now blocked by #$blocker_number"
+            if [[ "$DRY_RUN" == "true" ]]; then
+                log_success "  ✅ [DRY-RUN] Would set issue #$blocked_number blocked by #$blocker_number"
+            else
+                log_success "  ✅ Issue #$blocked_number now blocked by #$blocker_number"
+            fi
             success_count=$((success_count + 1))
         elif echo "$result" | grep -qi "already exists\|duplicate\|already been taken"; then
             log_warning "  ⚠️  Relationship already exists: #$blocked_number is already blocked by #$blocker_number"
@@ -669,6 +908,9 @@ cmd_set_blocker() {
     done
 
     show_summary "$success_count" "$fail_count" "$skip_count"
+
+    # Show rate limit usage
+    rate_limit_summary
 
     echo ""
     echo "=== VERIFICATION ==="
@@ -739,14 +981,20 @@ cmd_remove_blocker() {
 
         # Remove the dependency using DELETE endpoint
         local result
-        result=$(gh_api_call "issues/$blocked_number/dependencies/blocked_by/$blocker_id" \
-            -X DELETE 2>&1) || true
+        result=$(gh_api_call_delete_wrapped "issues/$blocked_number/dependencies/blocked_by/$blocker_id" 2>&1) || true
 
-        # Check if successful (DELETE returns full issue object on success)
-        if echo "$result" | grep -q '"number"'; then
-            local blocked_count
-            blocked_count=$(echo "$result" | jq -r '.issue_dependencies_summary.blocked_by // 0')
-            log_success "  ✅ Successfully removed (now has $blocked_count blocked-by dependencies)"
+        # Rate limit delay between API calls
+        rate_limit_delay
+
+        # Check if successful (DELETE returns full issue object on success, or nothing in dry-run)
+        if [[ "$DRY_RUN" == "true" ]] || echo "$result" | grep -q '"number"'; then
+            if [[ "$DRY_RUN" == "true" ]]; then
+                log_success "  ✅ [DRY-RUN] Would remove blocker #$blocker_number from issue #$blocked_number"
+            else
+                local blocked_count
+                blocked_count=$(echo "$result" | jq -r '.issue_dependencies_summary.blocked_by // 0')
+                log_success "  ✅ Successfully removed (now has $blocked_count blocked-by dependencies)"
+            fi
             success_count=$((success_count + 1))
         else
             log_error "  ❌ ERROR: Failed to remove dependency from #$blocked_number"
@@ -756,6 +1004,9 @@ cmd_remove_blocker() {
     done
 
     show_summary "$success_count" "$fail_count" "$skip_count"
+
+    # Show rate limit usage
+    rate_limit_summary
 
     echo ""
     echo "=== VERIFICATION ==="
@@ -849,52 +1100,69 @@ cmd_view() {
             completed_subs=$(echo "$parent_data" | jq -r '.data.node.subIssuesSummary.completed')
             echo "Sub-Issues ($total_subs total, $completed_subs completed):"
 
-            echo "$parent_data" | jq -r '.data.node.subIssues.nodes[] |
-                "  #\(.number) - \(.title)" + (if .state == "closed" then " ✓" else "" end)'
-
-            # Warn if pagination limit might affect display
+            # Use pagination if total exceeds 100
             if [[ "$total_subs" -gt 100 ]]; then
-                log_warning "  ⚠️  Only showing first 100 sub-issues (pagination limit)"
+                log_info "  ℹ️  Fetching all $total_subs sub-issues with pagination..."
+                local all_subs
+                all_subs=$(fetch_all_sub_issues "$issue_node")
+
+                if [[ -n "$all_subs" ]]; then
+                    echo "$all_subs" | while IFS='|' read -r num title state url; do
+                        if [[ "$state" == "closed" ]]; then
+                            echo "  #$num - $title ✓"
+                        else
+                            echo "  #$num - $title"
+                        fi
+                    done
+                fi
+            else
+                # Use existing single-page query for ≤100 items
+                echo "$parent_data" | jq -r '.data.node.subIssues.nodes[] |
+                    "  #\(.number) - \(.title)" + (if .state == "closed" then " ✓" else "" end)'
             fi
             echo ""
         fi
 
-        # Query blocked-by dependencies via REST API
-        local blocked_by
-        blocked_by=$(gh_api_call "issues/$issue_number/dependencies/blocked_by?per_page=100" 2>/dev/null | jq -r '.[] | "#\(.number) - \(.title)"')
+        # Query blocked-by dependencies via REST API with pagination
+        local blocked_by_raw
+        blocked_by_raw=$(fetch_all_blocked_by "$issue_number")
 
-        if [[ -n "$blocked_by" ]]; then
+        if [[ -n "$blocked_by_raw" ]]; then
             local blocked_count
-            blocked_count=$(echo "$blocked_by" | wc -l | xargs)
+            blocked_count=$(echo "$blocked_by_raw" | grep -c "^" || echo "0")
             echo "Blocked By ($blocked_count):"
-            echo "$blocked_by" | sed 's/^/  /'
 
-            # Warn if pagination limit reached
-            if [[ "$blocked_count" -eq 100 ]]; then
-                log_warning "  ⚠️  Pagination limit reached (100 items). Issue may have more blocked-by relationships."
+            if [[ "$blocked_count" -gt 100 ]]; then
+                log_info "  ℹ️  Fetched all $blocked_count dependencies with pagination"
             fi
+
+            echo "$blocked_by_raw" | while IFS='|' read -r num title; do
+                echo "  #$num - $title"
+            done
             echo ""
         fi
 
-        # Query blocking dependencies via REST API
-        local blocking
-        blocking=$(gh_api_call "issues/$issue_number/dependencies/blocking?per_page=100" 2>/dev/null | jq -r '.[] | "#\(.number) - \(.title)"')
+        # Query blocking dependencies via REST API with pagination
+        local blocking_raw
+        blocking_raw=$(fetch_all_blocking "$issue_number")
 
-        if [[ -n "$blocking" ]]; then
+        if [[ -n "$blocking_raw" ]]; then
             local blocking_count
-            blocking_count=$(echo "$blocking" | wc -l | xargs)
+            blocking_count=$(echo "$blocking_raw" | grep -c "^" || echo "0")
             echo "Blocking ($blocking_count):"
-            echo "$blocking" | sed 's/^/  /'
 
-            # Warn if pagination limit reached
-            if [[ "$blocking_count" -eq 100 ]]; then
-                log_warning "  ⚠️  Pagination limit reached (100 items). Issue may have more blocking relationships."
+            if [[ "$blocking_count" -gt 100 ]]; then
+                log_info "  ℹ️  Fetched all $blocking_count dependencies with pagination"
             fi
+
+            echo "$blocking_raw" | while IFS='|' read -r num title; do
+                echo "  #$num - $title"
+            done
             echo ""
         fi
 
         # Show message if no relationships
-        if [[ -z "$parent_number" && "$total_subs" -eq 0 && -z "$blocked_by" && -z "$blocking" ]]; then
+        if [[ -z "$parent_number" && "$total_subs" -eq 0 && -z "$blocked_by_raw" && -z "$blocking_raw" ]]; then
             echo "No relationships found."
         fi
     done
@@ -914,6 +1182,9 @@ main() {
         log_error "gh CLI is not authenticated. Please run 'gh auth login' first."
         exit 1
     fi
+
+    # Check rate limit before executing operations
+    rate_limit_guard || exit 1
 
     # Parse subcommand
     if [[ $# -eq 0 ]]; then
@@ -942,6 +1213,10 @@ main() {
                 REPO="$2"
                 shift 2
                 ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
             --help)
                 usage
                 exit 0
@@ -952,6 +1227,12 @@ main() {
                 ;;
         esac
     done
+
+    # Show dry-run mode notification
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_warning "🔍 DRY-RUN MODE: No changes will be applied"
+        echo ""
+    fi
 
     # Check permissions for write operations
     case "$subcommand" in

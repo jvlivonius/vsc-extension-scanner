@@ -58,6 +58,7 @@ VS Code Extension Security Scanner - Python CLI tool for manual security audits 
 | **Performance** | [PERFORMANCE.md](docs/guides/PERFORMANCE.md) | HOW TO: measure, test, optimize |
 | **Testing** | [TESTING.md](docs/guides/TESTING.md) | [testing/](docs/guides/testing/) guides |
 | **HTML Reports** | [HTML_REPORTS.md](docs/guides/HTML_REPORTS.md) | Self-contained design, visualizations |
+| **GitHub Projects** | [QUICKSTART](docs/contributing/GITHUB_PROJECTS_QUICKSTART.md), [WORKFLOWS](docs/contributing/GITHUB_WORKFLOWS.md) | [Relationships](docs/contributing/GITHUB_RELATIONSHIPS.md), [Filters](docs/guides/GITHUB_FILTERS.md) |
 | **Releasing** | [RELEASE_PROCESS.md](docs/contributing/RELEASE_PROCESS.md) | [VERSION_MANAGEMENT.md](docs/contributing/VERSION_MANAGEMENT.md) |
 | **Git** | [GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md) | [BRANCH_PROTECTION.md](docs/contributing/BRANCH_PROTECTION.md) |
 | **Documentation** | [DOCUMENTATION_STANDARDS.md](docs/contributing/DOCUMENTATION_STANDARDS.md) | HOW TO focus, standards, checklist |

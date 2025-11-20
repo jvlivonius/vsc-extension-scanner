@@ -110,10 +110,53 @@ trim_string() {
 }
 
 # Helper function to sanitize strings for safe output
+# Enhanced version with context-aware validation
 sanitize_string() {
     local input="$1"
-    # Remove control characters and limit length
-    echo "$input" | tr -d '[:cntrl:]' | cut -c1-200
+    local context="${2:-general}"  # general, path, label, title, body
+
+    # Remove control characters
+    input=$(echo "$input" | tr -d '[:cntrl:]')
+
+    # Context-specific validation
+    case "$context" in
+        path)
+            # Remove any path traversal attempts
+            input=$(echo "$input" | sed 's/\.\.//g')
+            # Remove leading slashes
+            input="${input#/}"
+            # Only allow alphanumeric, dash, underscore, slash, dot
+            input=$(echo "$input" | sed 's/[^a-zA-Z0-9\-_\/\.]//g')
+            ;;
+        label)
+            # Labels: alphanumeric, dash, slash only (GitHub label format)
+            input=$(echo "$input" | sed 's/[^a-zA-Z0-9\-\/]/-/g')
+            ;;
+        title)
+            # Titles: remove dangerous shell characters but keep most punctuation
+            # Remove: $ ` " \ (command substitution and escaping)
+            input=$(echo "$input" | sed 's/[$`"\\]//g')
+            ;;
+        body)
+            # Body: more permissive, just remove control chars and null bytes
+            # Already done above
+            ;;
+        general)
+            # General: conservative, alphanumeric and basic punctuation only
+            input=$(echo "$input" | sed 's/[^a-zA-Z0-9 .,_-]//g')
+            ;;
+    esac
+
+    # Limit length based on context
+    local max_length=200
+    case "$context" in
+        title) max_length=256 ;;
+        body) max_length=65536 ;;  # GitHub issue body limit
+        path) max_length=512 ;;
+        label) max_length=100 ;;
+    esac
+
+    echo "$input" | cut -c1-$max_length
 }
 
 # Function to check repository permissions
@@ -470,6 +513,17 @@ if [[ -z "$BODY" ]]; then
     log_error "Missing required argument: --body"
     usage
     exit 1
+fi
+
+# SECURITY: Sanitize all user inputs before validation
+ISSUE_TYPE=$(sanitize_string "$ISSUE_TYPE" "label")
+TITLE=$(sanitize_string "$TITLE" "title")
+BODY=$(sanitize_string "$BODY" "body")
+if [[ -n "$MILESTONE" ]]; then
+    MILESTONE=$(sanitize_string "$MILESTONE" "general")
+fi
+if [[ -n "$ADDITIONAL_LABELS" ]]; then
+    ADDITIONAL_LABELS=$(sanitize_string "$ADDITIONAL_LABELS" "label")
 fi
 
 # Validate arguments
