@@ -42,6 +42,11 @@ log_warning() { echo -e "${COLOR_YELLOW}⚠️  $*${COLOR_NC}" >&2; }
 TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
+TESTS_SKIPPED=0
+
+# API capability flags
+DEPENDENCIES_API_AVAILABLE=false
+SUBISSUES_API_AVAILABLE=false
 
 # Test resource tracking
 declare -a TEST_ISSUES_CREATED
@@ -66,6 +71,75 @@ check_batch_rate_limit() {
         log_info "Pausing for 60 seconds to preserve rate limit..."
         sleep 60
     fi
+}
+
+# Helper: Retry with exponential backoff
+# Usage: retry_with_backoff MAX_ATTEMPTS INITIAL_DELAY COMMAND [ARGS...]
+retry_with_backoff() {
+    local max_attempts="$1"
+    shift
+    local initial_delay="$1"
+    shift
+    local command=("$@")
+
+    local attempt=1
+    local delay="$initial_delay"
+    local max_delay=30
+
+    while [[ $attempt -le $max_attempts ]]; do
+        if "${command[@]}" 2>/dev/null; then
+            if [[ $attempt -gt 1 ]]; then
+                log_info "Success on attempt $attempt"
+            fi
+            return 0
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            log_warning "Attempt $attempt/$max_attempts failed, retrying in ${delay}s..."
+            sleep "$delay"
+
+            # Exponential backoff with cap
+            delay=$((delay * 2))
+            if [[ $delay -gt $max_delay ]]; then
+                delay=$max_delay
+            fi
+        fi
+
+        ((attempt++))
+    done
+
+    log_error "Failed after $max_attempts attempts"
+    return 1
+}
+
+# Helper: Detect API capabilities
+detect_api_capabilities() {
+    log_info "Detecting GitHub API capabilities..."
+
+    # Test Dependencies API (requires Enterprise/Organization)
+    TEST_ISSUE=$(gh api repos/:owner/:repo/issues --jq '.[0].number' 2>/dev/null)
+    if [[ -n "$TEST_ISSUE" ]]; then
+        if gh api "repos/:owner/:repo/issues/$TEST_ISSUE/dependencies/blocked_by" \
+           --silent 2>/dev/null; then
+            DEPENDENCIES_API_AVAILABLE=true
+            log_success "✓ Dependencies API available"
+        else
+            DEPENDENCIES_API_AVAILABLE=false
+            log_warning "⊘ Dependencies API not available (requires Enterprise/Organization)"
+        fi
+    fi
+
+    # Test Sub-issues API
+    if gh api graphql -f query='{ __type(name: "SubIssuesSummary") { name } }' \
+       -H "GraphQL-Features: sub_issues" --jq '.data.__type.name' &>/dev/null; then
+        SUBISSUES_API_AVAILABLE=true
+        log_success "✓ Sub-issues API available"
+    else
+        SUBISSUES_API_AVAILABLE=false
+        log_warning "⊘ Sub-issues API not available"
+    fi
+
+    echo ""
 }
 
 # Cleanup function
@@ -93,8 +167,9 @@ cleanup_test_resources() {
     done
 
     # Report cleanup failures
-    if [[ ${#CLEANUP_FAILURES[@]} -gt 0 ]]; then
-        log_warning "Cleanup completed with ${#CLEANUP_FAILURES[@]} failures"
+    local failure_count="${#CLEANUP_FAILURES[@]}"
+    if [[ "$failure_count" -gt 0 ]]; then
+        log_warning "Cleanup completed with $failure_count failures"
         log_info "Manual cleanup required for: ${CLEANUP_FAILURES[*]}"
         log_info "Use: gh issue list --label test-issue --state all"
     else
@@ -140,6 +215,9 @@ check_prerequisites() {
 
     log_success "Prerequisites OK (gh CLI $GH_VERSION)"
     echo ""
+
+    # Detect API capabilities
+    detect_api_capabilities
 }
 
 # Test 1: Parent-child relationship creation
@@ -162,7 +240,7 @@ test_parent_child_creation() {
         children="$children$CHILD "
 
         # Link via manage-issue-relationships.sh
-        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$PARENT" "$CHILD" >/dev/null 2>&1
+        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
         rate_limit_delay
     done
 
@@ -171,10 +249,10 @@ test_parent_child_creation() {
     CHILD_COUNT=$(gh api graphql -f query="query {
         node(id: \"$NODE_ID\") {
             ... on Issue {
-                subIssuesSummary { count }
+                subIssuesSummary { total }
             }
         }
-    }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.count' 2>/dev/null || echo "0")
+    }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.total' 2>/dev/null || echo "0")
 
     if [[ "$CHILD_COUNT" == "3" ]]; then
         log_success "Test 1 PASSED: Created parent #$PARENT with 3 children (#$children)"
@@ -187,9 +265,9 @@ test_parent_child_creation() {
     fi
 }
 
-# Test 2: Parent completion tracking
+# Test 2: Parent completion tracking (with retry for API propagation)
 test_parent_completion_tracking() {
-    log_info "Test 2: Parent completion tracking"
+    log_info "Test 2: Parent completion tracking (with retry logic)"
     ((TESTS_RUN++))
 
     # Create parent with 2 children
@@ -207,39 +285,61 @@ test_parent_completion_tracking() {
     rate_limit_delay
 
     # Link children
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$PARENT" "$CHILD1" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD1" >/dev/null 2>&1
     rate_limit_delay
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$PARENT" "$CHILD2" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD2" >/dev/null 2>&1
     rate_limit_delay
 
     # Close child 1
     gh issue close "$CHILD1" --comment "Test completion" >/dev/null 2>&1
     rate_limit_delay
 
-    # Check completion percentage (should be 50%)
+    # Check completion percentage (should be 50%) with retry for API propagation
     NODE_ID=$(gh api "repos/:owner/:repo/issues/$PARENT" --jq '.node_id')
-    COMPLETION=$(gh api graphql -f query="query {
-        node(id: \"$NODE_ID\") {
-            ... on Issue {
-                subIssuesSummary { percentCompleted }
-            }
-        }
-    }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.percentCompleted' 2>/dev/null || echo "0")
 
-    if [[ "$COMPLETION" == "50" ]]; then
-        log_success "Test 2 PASSED: Parent completion tracking working (50% complete)"
-        ((TESTS_PASSED++))
-        return 0
+    check_completion() {
+        SUMMARY=$(gh api graphql -f query="query {
+            node(id: \"$NODE_ID\") {
+                ... on Issue {
+                    subIssuesSummary { total completed }
+                }
+            }
+        }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary' 2>/dev/null || echo '{"total":0,"completed":0}')
+
+        TOTAL=$(echo "$SUMMARY" | jq -r '.total')
+        COMPLETED=$(echo "$SUMMARY" | jq -r '.completed')
+
+        # Check if API has propagated (we need total > 0 and completed > 0)
+        [[ "$TOTAL" -gt 0 ]] && [[ "$COMPLETED" -gt 0 ]]
+    }
+
+    if retry_with_backoff 5 2 check_completion; then
+        # Calculate completion percentage
+        if [[ "$TOTAL" -gt 0 ]]; then
+            COMPLETION=$((COMPLETED * 100 / TOTAL))
+        else
+            COMPLETION=0
+        fi
+
+        if [[ "$COMPLETION" == "50" ]]; then
+            log_success "Test 2 PASSED: Parent completion tracking working (50% complete)"
+            ((TESTS_PASSED++))
+            return 0
+        else
+            log_error "Test 2 FAILED: Expected 50% completion, got $COMPLETION% (total=$TOTAL, completed=$COMPLETED)"
+            ((TESTS_FAILED++))
+            return 1
+        fi
     else
-        log_error "Test 2 FAILED: Expected 50% completion, got $COMPLETION%"
+        log_error "Test 2 FAILED: API propagation timeout after 5 attempts"
         ((TESTS_FAILED++))
         return 1
     fi
 }
 
-# Test 3: Milestone closure validation
+# Test 3: Milestone closure validation (with retry for API propagation)
 test_milestone_closure_validation() {
-    log_info "Test 3: Milestone closure validation"
+    log_info "Test 3: Milestone closure validation (with retry logic)"
     ((TESTS_RUN++))
 
     # Create test milestone
@@ -265,22 +365,35 @@ test_milestone_closure_validation() {
     gh issue close "$ISSUE" --comment "Test closure" >/dev/null 2>&1
     rate_limit_delay
 
-    # Run validation again (should pass)
-    if "$SCRIPT_DIR/../../scripts/github-projects/validate-milestone-closure.sh" "$MILESTONE_TITLE" >/dev/null 2>&1; then
+    # Run validation again (should pass) with retry for API propagation
+    check_validation_passes() {
+        "$SCRIPT_DIR/../../scripts/github-projects/validate-milestone-closure.sh" "$MILESTONE_TITLE" >/dev/null 2>&1
+    }
+
+    if retry_with_backoff 5 2 check_validation_passes; then
         log_success "Test 3 PASSED: Milestone validation working correctly"
         ((TESTS_PASSED++))
         return 0
     else
-        log_error "Test 3 FAILED: Validation should have passed (all P0 closed)"
+        log_error "Test 3 FAILED: Validation should have passed (all P0 closed), timeout after retry"
         ((TESTS_FAILED++))
         return 1
     fi
 }
 
-# Test 4: Blocking dependency validation
+# Test 4: Blocking dependency validation (requires Dependencies API, with retry)
 test_blocking_dependency_validation() {
-    log_info "Test 4: Blocking dependency validation"
+    log_info "Test 4: Blocking dependency validation (with retry logic)"
     ((TESTS_RUN++))
+
+    # Check if Dependencies API is available
+    if [[ "$DEPENDENCIES_API_AVAILABLE" != true ]]; then
+        log_warning "Test 4 SKIPPED: Dependencies API not available (requires Enterprise/Organization)"
+        ((TESTS_SKIPPED++))
+        echo "  Note: This test requires GitHub Enterprise or Organization access"
+        echo "  Use manage-issue-relationships.sh manually to test on Enterprise repos"
+        return 0
+    fi
 
     # Create two issues
     BLOCKER_URL=$(gh issue create --title "Test Blocker Issue" --body "Blocker" --label "test-issue")
@@ -293,22 +406,27 @@ test_blocking_dependency_validation() {
     TEST_ISSUES_CREATED+=("$BLOCKED")
     rate_limit_delay
 
-    # Create blocking relationship
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-blocker "$BLOCKED" "$BLOCKER" >/dev/null 2>&1
+    # Create blocking relationship (correct argument order: <blocker> <blocked>)
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-blocker "$BLOCKER" "$BLOCKED" >/dev/null 2>&1
     rate_limit_delay
 
-    # Verify relationship exists
-    BLOCKER_COUNT=$(gh api "repos/:owner/:repo/issues/$BLOCKED/dependencies/blocked_by" --jq '. | length' 2>/dev/null || echo "0")
+    # Verify relationship exists with retry for API propagation
+    check_blocker() {
+        BLOCKER_COUNT=$(gh api "repos/:owner/:repo/issues/$BLOCKED/dependencies/blocked_by" --jq '. | length' 2>/dev/null || echo "0")
+        [[ "$BLOCKER_COUNT" -gt 0 ]]
+    }
 
-    if [[ "$BLOCKER_COUNT" == "1" ]]; then
-        log_success "Test 4 PASSED: Blocking dependency created (#$BLOCKED blocked by #$BLOCKER)"
-        ((TESTS_PASSED++))
-        return 0
-    else
-        log_error "Test 4 FAILED: Expected 1 blocker, found $BLOCKER_COUNT"
-        ((TESTS_FAILED++))
-        return 1
+    if retry_with_backoff 5 2 check_blocker; then
+        if [[ "$BLOCKER_COUNT" == "1" ]]; then
+            log_success "Test 4 PASSED: Blocking dependency created (#$BLOCKED blocked by #$BLOCKER)"
+            ((TESTS_PASSED++))
+            return 0
+        fi
     fi
+
+    log_error "Test 4 FAILED: Expected 1 blocker, found $BLOCKER_COUNT (timeout after retry)"
+    ((TESTS_FAILED++))
+    return 1
 }
 
 # Test 5: Batch parent-child creation
@@ -337,7 +455,7 @@ test_batch_parent_child() {
             CHILD=$(basename "$CHILD_URL")
             TEST_ISSUES_CREATED+=("$CHILD")
 
-            "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$PARENT" "$CHILD" >/dev/null 2>&1
+            "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
             rate_limit_delay 0.3
         done
 
@@ -345,9 +463,9 @@ test_batch_parent_child() {
         NODE_ID=$(gh api "repos/:owner/:repo/issues/$PARENT" --jq '.node_id')
         CHILD_COUNT=$(gh api graphql -f query="query {
             node(id: \"$NODE_ID\") {
-                ... on Issue { subIssuesSummary { count } }
+                ... on Issue { subIssuesSummary { total } }
             }
-        }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.count' 2>/dev/null || echo "0")
+        }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.total' 2>/dev/null || echo "0")
 
         if [[ "$CHILD_COUNT" == "2" ]]; then
             ((success_count++))
@@ -367,10 +485,19 @@ test_batch_parent_child() {
     fi
 }
 
-# Test 6: Batch blocking relationships
+# Test 6: Batch blocking relationships (requires Dependencies API)
 test_batch_blocking_relationships() {
     log_info "Test 6: Batch blocking relationships (15 dependencies)"
     ((TESTS_RUN++))
+
+    # Check if Dependencies API is available
+    if [[ "$DEPENDENCIES_API_AVAILABLE" != true ]]; then
+        log_warning "Test 6 SKIPPED: Dependencies API not available (requires Enterprise/Organization)"
+        ((TESTS_SKIPPED++))
+        echo "  Note: This test requires GitHub Enterprise or Organization access"
+        echo "  Use manage-issue-relationships.sh manually to test on Enterprise repos"
+        return 0
+    fi
 
     # Create 15 issue pairs with blocking relationships
     local success_count=0
@@ -392,10 +519,12 @@ test_batch_blocking_relationships() {
         TEST_ISSUES_CREATED+=("$BLOCKED")
         rate_limit_delay 0.3
 
-        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-blocker "$BLOCKED" "$BLOCKER" >/dev/null 2>&1
+        # Create blocking relationship (correct argument order: <blocker> <blocked>)
+        "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-blocker "$BLOCKER" "$BLOCKED" >/dev/null 2>&1
         rate_limit_delay 0.3
 
-        # Verify relationship
+        # Verify relationship with brief wait for API propagation
+        sleep 2
         BLOCKER_COUNT=$(gh api "repos/:owner/:repo/issues/$BLOCKED/dependencies/blocked_by" --jq '. | length' 2>/dev/null || echo "0")
         if [[ "$BLOCKER_COUNT" == "1" ]]; then
             ((success_count++))
@@ -429,7 +558,7 @@ test_missing_parent_error() {
     NONEXISTENT_ISSUE=$((HIGHEST_ISSUE + 1000))
 
     # Try to add child to non-existent parent
-    if "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$NONEXISTENT_ISSUE" "$CHILD" >/dev/null 2>&1; then
+    if "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$NONEXISTENT_ISSUE" "$CHILD" >/dev/null 2>&1; then
         log_error "Test 7 FAILED: Should have failed with non-existent parent"
         ((TESTS_FAILED++))
         return 1
@@ -457,20 +586,20 @@ test_duplicate_relationship_error() {
     rate_limit_delay
 
     # Add child once
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$PARENT" "$CHILD" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
     rate_limit_delay
 
     # Try to add same child again (should handle gracefully)
-    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" add-child "$PARENT" "$CHILD" >/dev/null 2>&1
+    "$SCRIPT_DIR/../../scripts/github-projects/manage-issue-relationships.sh" set-parent "$PARENT" "$CHILD" >/dev/null 2>&1
     rate_limit_delay
 
     # Verify still only 1 child
     NODE_ID=$(gh api "repos/:owner/:repo/issues/$PARENT" --jq '.node_id')
     CHILD_COUNT=$(gh api graphql -f query="query {
         node(id: \"$NODE_ID\") {
-            ... on Issue { subIssuesSummary { count } }
+            ... on Issue { subIssuesSummary { total } }
         }
-    }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.count' 2>/dev/null || echo "0")
+    }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.total' 2>/dev/null || echo "0")
 
     if [[ "$CHILD_COUNT" == "1" ]]; then
         log_success "Test 8 PASSED: Duplicate relationship handled correctly"
@@ -608,8 +737,21 @@ main() {
     echo "  Total: $TESTS_RUN"
     echo "  Passed: $TESTS_PASSED"
     echo "  Failed: $TESTS_FAILED"
+    if [[ $TESTS_SKIPPED -gt 0 ]]; then
+        echo "  Skipped: $TESTS_SKIPPED (API limitations)"
+    fi
     echo "========================================="
     echo ""
+
+    # Show pass rate
+    if [[ $TESTS_RUN -gt 0 ]]; then
+        PASS_RATE=$(( (TESTS_PASSED * 100) / TESTS_RUN ))
+        echo "Pass Rate: $PASS_RATE% ($TESTS_PASSED/$TESTS_RUN tests)"
+        if [[ $TESTS_SKIPPED -gt 0 ]]; then
+            echo "Note: $TESTS_SKIPPED tests skipped due to API availability"
+        fi
+        echo ""
+    fi
 
     # Rate limit summary
     rate_limit_summary
