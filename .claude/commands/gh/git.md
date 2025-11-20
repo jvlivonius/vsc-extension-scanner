@@ -7,7 +7,7 @@ mcp-servers: []
 personas: []
 ---
 
-# /sc:git - Git Operations
+# /gh:git - Git Operations
 
 ## Triggers
 - Git repository operations: status, add, commit, push, pull, branch
@@ -17,7 +17,7 @@ personas: []
 
 ## Usage
 ```
-/sc:git [operation] [args] [--smart-commit] [--interactive]
+/gh:git [operation] [args] [--smart-commit] [--interactive]
 ```
 
 ## Behavioral Flow
@@ -49,21 +49,21 @@ Key behaviors:
 
 ### Smart Status Analysis
 ```
-/sc:git status
+/gh:git status
 # Analyzes repository state with change summary
 # Provides next steps and workflow recommendations
 ```
 
 ### Intelligent Commit
 ```
-/sc:git commit --smart-commit
+/gh:git commit --smart-commit
 # Generates conventional commit message from change analysis
 # Applies best practices and consistent formatting
 ```
 
 ### Interactive Operations
 ```
-/sc:git merge feature-branch --interactive
+/gh:git merge feature-branch --interactive
 # Guided merge with conflict resolution assistance
 ```
 

@@ -97,7 +97,7 @@ EOF
 ```bash
 # Dependencies set via issue sidebar → Relationships section (web UI)
 # Or programmatically during issue creation via API
-# Claude Code /sc:implement-issue parses "Blocked By:" from issue body
+# Claude Code /gh:implement-issue parses "Blocked By:" from issue body
 ```
 
 ### Moving Issues Through Workflow
@@ -154,31 +154,31 @@ Result: High-priority backlog items not assigned to you
 
 ## Slash Commands
 
-### `/sc:gh-projects` - Project Workflow Automation
+### `/gh:projects` - Project Workflow Automation
 
 **Create issues from feature plan:**
 ```bash
-/sc:gh-projects create-from-plan docs/archive/plans/v3.8-csv-export.md --milestone v3.8.0
+/gh:projects create-from-plan docs/archive/plans/v3.8-csv-export.md --milestone v3.8.0
 ```
 Parses markdown plan → Creates parent feature + task issues → Links to milestone → Auto-adds to project
 
 **Generate release notes:**
 ```bash
-/sc:gh-projects generate-release-notes v3.8.0 --draft
+/gh:projects generate-release-notes v3.8.0 --draft
 ```
 Fetches milestone issues → Groups by type → Formats as markdown → Saves to `docs/archive/summaries/`
 
 **Sync milestone status:**
 ```bash
-/sc:gh-projects sync-milestone v3.8.0
+/gh:projects sync-milestone v3.8.0
 ```
 Updates project board from milestone status → Reports summary
 
-### `/sc:implement-issue` - Agent-Driven Implementation
+### `/gh:implement-issue` - Agent-Driven Implementation
 
 **Basic implementation:**
 ```bash
-/sc:implement-issue 142
+/gh:implement-issue 142
 ```
 
 **What it does:**
@@ -194,9 +194,9 @@ Updates project board from milestone status → Reports summary
 
 **Options:**
 ```bash
-/sc:implement-issue 143 --branch feature/custom-name  # Custom branch
-/sc:implement-issue 144 --dry-run                     # Validate only
-/sc:implement-issue 145 --no-pr                       # No PR creation
+/gh:implement-issue 143 --branch feature/custom-name  # Custom branch
+/gh:implement-issue 144 --dry-run                     # Validate only
+/gh:implement-issue 145 --no-pr                       # No PR creation
 ```
 
 ---
@@ -248,7 +248,7 @@ gh run view <run-id> --log
 **Input:** Feature plan markdown (e.g., `docs/archive/plans/v3.8-csv-export.md`)
 
 ```bash
-/sc:gh-projects create-from-plan docs/archive/plans/v3.8-csv-export.md --milestone v3.8.0
+/gh:projects create-from-plan docs/archive/plans/v3.8-csv-export.md --milestone v3.8.0
 ```
 
 **Output:**
@@ -267,7 +267,7 @@ gh run view <run-id> --log
 
 **Trigger agent:**
 ```bash
-/sc:implement-issue 142
+/gh:implement-issue 142
 ```
 
 **Result:**
@@ -302,7 +302,7 @@ python3 scripts/bump_version.py 3.8.0 --auto-update --milestone --create-release
 
 **Generate release notes:**
 ```bash
-/sc:gh-projects generate-release-notes v3.8.0
+/gh:projects generate-release-notes v3.8.0
 ```
 
 ---
@@ -342,10 +342,10 @@ gh issue create --title "[FEATURE] Add CSV Export" ...
 gh issue create --title "[TASK] Implement CSV formatter" ...
 
 # Set parent-child relationships
-./scripts/manage_issue_relationships.sh set-parent 142 143 144 145
+./scripts/github-projects/manage-issue-relationships.sh set-parent 142 143 144 145
 
 # Verify
-./scripts/manage_issue_relationships.sh view 142
+./scripts/github-projects/manage-issue-relationships.sh view 142
 ```
 
 ### When to Use Blocking Relationships
@@ -378,13 +378,13 @@ gh issue create --title "[TASK] Implement CSV formatter" ...
 **How to create:**
 ```bash
 # Set blocker: 146 blocks 147
-./scripts/manage_issue_relationships.sh set-blocker 147 146
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 147 146
 
 # Set multiple blockers: 146 and 147 both block 148
-./scripts/manage_issue_relationships.sh set-blocker 148 146 147
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 148 146 147
 
 # Verify
-./scripts/manage_issue_relationships.sh view 148
+./scripts/github-projects/manage-issue-relationships.sh view 148
 ```
 
 ### When to Use Both
@@ -418,15 +418,15 @@ gh issue create --title "[FEATURE] Database Refactoring" ...
 # ... create task issues ...
 
 # Set parent-child (feature breakdown)
-./scripts/manage_issue_relationships.sh set-parent 150 151 152 153 154
+./scripts/github-projects/manage-issue-relationships.sh set-parent 150 151 152 153 154
 
 # Set blocking (implementation order)
-./scripts/manage_issue_relationships.sh set-blocker 152 151
-./scripts/manage_issue_relationships.sh set-blocker 153 152
-./scripts/manage_issue_relationships.sh set-blocker 154 153
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 152 151
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 153 152
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 154 153
 
 # Verify all relationships
-./scripts/manage_issue_relationships.sh view 150
+./scripts/github-projects/manage-issue-relationships.sh view 150
 ```
 
 ### Decision Tree
@@ -448,11 +448,11 @@ Does this issue have sub-tasks?
 
 ## Agent Implementation Workflow
 
-**End-to-end workflow using `/sc:implement-issue` with GitHub Projects integration.**
+**End-to-end workflow using `/gh:implement-issue` with GitHub Projects integration.**
 
 ### Prerequisites
 
-- Issue created via web UI or `scripts/create_issue.sh`
+- Issue created via web UI or `scripts/github-projects/create-issue.sh`
 - Issue added to Project #3 (auto-workflow)
 - Issue has required metadata:
   - `Required Documentation` field filled in
@@ -470,7 +470,7 @@ Does this issue have sub-tasks?
 # Select "Feature" template → Fill in all fields → Create issue
 
 # Option B: CLI with helper script
-./scripts/create_issue.sh \
+./scripts/github-projects/create-issue.sh \
   --type feature \
   --title "Add CSV export" \
   --body "Export scan results as CSV format" \
@@ -492,7 +492,7 @@ Does this issue have sub-tasks?
 gh project item-list 3 --format json | jq '.items[] | select(.content.number==160)'
 
 # Verify dependencies are closed
-./scripts/manage_issue_relationships.sh view 160
+./scripts/github-projects/manage-issue-relationships.sh view 160
 
 # Move to "Todo" status (ready to implement)
 # Via web UI: Drag issue from Backlog → Todo column
@@ -502,7 +502,7 @@ gh project item-list 3 --format json | jq '.items[] | select(.content.number==16
 
 ```bash
 # Trigger agent implementation
-/sc:implement-issue 160
+/gh:implement-issue 160
 ```
 
 **Agent workflow:**
@@ -607,7 +607,7 @@ gh pr merge 165 --squash
 #### 5. Update Parent Issue (if applicable)
 ```bash
 # If #160 was a child task, check parent
-./scripts/manage_issue_relationships.sh view 160
+./scripts/github-projects/manage-issue-relationships.sh view 160
 
 # Example output shows parent #158
 # Check if all sibling tasks are complete
@@ -630,9 +630,9 @@ gh issue list \
 # Output: 160, 161, 162
 
 # Implement sequentially
-/sc:implement-issue 160  # Wait for completion
-/sc:implement-issue 161  # Wait for completion
-/sc:implement-issue 162  # Wait for completion
+/gh:implement-issue 160  # Wait for completion
+/gh:implement-issue 161  # Wait for completion
+/gh:implement-issue 162  # Wait for completion
 ```
 
 ### Monitoring Progress
@@ -664,7 +664,7 @@ Action: Complete blocker issues first, then retry
 **Quality gate fails:**
 ```
 Error: Architecture violations detected
-Action: Fix violations, commit changes, re-run /sc:implement-issue
+Action: Fix violations, commit changes, re-run /gh:implement-issue
 ```
 
 **PR creation fails:**
@@ -684,7 +684,7 @@ Action: Delete old branch: git push origin --delete feature/add-csv-export
 #### Create Multiple Related Issues
 ```bash
 # Create parent feature
-PARENT=$(./scripts/create_issue.sh \
+PARENT=$(./scripts/github-projects/create-issue.sh \
   --type feature \
   --title "Add CSV export functionality" \
   --milestone v3.8.0 \
@@ -694,21 +694,21 @@ PARENT=$(./scripts/create_issue.sh \
 echo "Created parent issue: #$PARENT"
 
 # Create child tasks
-CHILD1=$(./scripts/create_issue.sh \
+CHILD1=$(./scripts/github-projects/create-issue.sh \
   --type task \
   --title "Implement CSV formatter class" \
   --milestone v3.8.0 \
   --priority High \
   --complexity M | grep -oP '#\K[0-9]+')
 
-CHILD2=$(./scripts/create_issue.sh \
+CHILD2=$(./scripts/github-projects/create-issue.sh \
   --type task \
   --title "Add export command to CLI" \
   --milestone v3.8.0 \
   --priority High \
   --complexity S | grep -oP '#\K[0-9]+')
 
-CHILD3=$(./scripts/create_issue.sh \
+CHILD3=$(./scripts/github-projects/create-issue.sh \
   --type task \
   --title "Add CSV export tests" \
   --milestone v3.8.0 \
@@ -716,7 +716,7 @@ CHILD3=$(./scripts/create_issue.sh \
   --complexity S | grep -oP '#\K[0-9]+')
 
 # Set parent-child relationships
-./scripts/manage_issue_relationships.sh set-parent $PARENT $CHILD1 $CHILD2 $CHILD3
+./scripts/github-projects/manage-issue-relationships.sh set-parent $PARENT $CHILD1 $CHILD2 $CHILD3
 
 echo "Created feature with 3 tasks: #$PARENT (parent of #$CHILD1, #$CHILD2, #$CHILD3)"
 ```
@@ -726,7 +726,7 @@ echo "Created feature with 3 tasks: #$PARENT (parent of #$CHILD1, #$CHILD2, #$CH
 #### Set Multiple Parent-Child Relationships
 ```bash
 # Pattern: Parent has many children
-./scripts/manage_issue_relationships.sh set-parent 150 151 152 153 154 155
+./scripts/github-projects/manage-issue-relationships.sh set-parent 150 151 152 153 154 155
 
 # Output:
 # Setting parent #150 for 5 issues...
@@ -741,12 +741,12 @@ echo "Created feature with 3 tasks: #$PARENT (parent of #$CHILD1, #$CHILD2, #$CH
 #### Set Multiple Blocking Relationships
 ```bash
 # Pattern: Sequential pipeline (A → B → C → D)
-./scripts/manage_issue_relationships.sh set-blocker 152 151  # 151 blocks 152
-./scripts/manage_issue_relationships.sh set-blocker 153 152  # 152 blocks 153
-./scripts/manage_issue_relationships.sh set-blocker 154 153  # 153 blocks 154
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 152 151  # 151 blocks 152
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 153 152  # 152 blocks 153
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 154 153  # 153 blocks 154
 
 # Pattern: Multiple blockers (A, B both block C)
-./scripts/manage_issue_relationships.sh set-blocker 160 158 159
+./scripts/github-projects/manage-issue-relationships.sh set-blocker 160 158 159
 # 158 and 159 both block 160
 ```
 
@@ -784,10 +784,10 @@ gh issue list \
 #### Sync All Milestone Issues to Project Board
 ```bash
 # Use existing sync script
-./scripts/sync_existing_issues.sh
+./scripts/github-projects/sync-existing-issues.sh
 
 # Or sync specific milestone only (when script supports --milestone flag)
-# ./scripts/sync_existing_issues.sh --milestone v3.8.0
+# ./scripts/github-projects/sync-existing-issues.sh --milestone v3.8.0
 ```
 
 #### Update Status for Multiple Issues
@@ -812,7 +812,7 @@ for issue in $(gh issue list --milestone v3.8.0 --json number --jq '.[].number')
   BLOCKERS=$(gh api repos/:owner/:repo/issues/$issue/dependencies/blocked_by --jq 'length')
   if [ "$BLOCKERS" -gt 0 ]; then
     echo "Issue #$issue has $BLOCKERS blocker(s)"
-    ./scripts/manage_issue_relationships.sh view $issue
+    ./scripts/github-projects/manage-issue-relationships.sh view $issue
   fi
 done
 ```

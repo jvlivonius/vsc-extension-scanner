@@ -153,7 +153,7 @@ Loaded for implementation tasks:
 **Specialized Tasks**:
 - `/sc:design` - Design system architecture, APIs, component interfaces
 - `/sc:cleanup` - Systematically clean up code, remove dead code, optimize structure
-- `/sc:git` - Git operations with intelligent commit messages and workflow optimization
+- `/gh:git` - Git operations with intelligent commit messages and workflow optimization
 - `/sc:task` - Execute complex tasks with intelligent workflow management
 
 **Usage**: Type command name (e.g., `/sc:test`) to see full prompt expansion
