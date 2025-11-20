@@ -758,3 +758,149 @@ def _display_failed_extensions_rich(failed_extensions: List[Dict]) -> None:
     console.print(
         "\n[dim]Suggestion: Re-run with --delay 3.0 or --max-retries 5[/dim]\n"
     )
+
+
+# Module Display Names (for detailed security breakdown)
+MODULE_DISPLAY_NAMES = {
+    "metadata": "Metadata",
+    "dependencies": "Dependencies",
+    "socket": "Socket (Supply Chain)",
+    "virus_total": "VirusTotal",
+    "permissions": "Permissions",
+    "ossf_scorecard": "OSSF Scorecard",
+    "network_endpoints": "Network Endpoints",
+    "sensitive_info": "Sensitive Info",
+    "obfuscation": "Obfuscation",
+    "consolidated_ast": "AST Analysis",
+    "open_grep": "Pattern Scanning",
+}
+
+
+def _get_risk_style(risk_level: str) -> str:
+    """
+    Return Rich style for risk level.
+
+    Args:
+        risk_level: Risk level (high, medium, low, none)
+
+    Returns:
+        Rich style string
+    """
+    return {
+        "high": "red bold",
+        "medium": "yellow",
+        "low": "green",
+        "none": "dim",
+        "unknown": "dim",
+    }.get(risk_level.lower(), "white")
+
+
+def _get_risk_icon(risk_level: str) -> str:
+    """
+    Return warning icon for risk level.
+
+    Args:
+        risk_level: Risk level (high, medium, low, none)
+
+    Returns:
+        Icon string
+    """
+    return {
+        "high": "⚠️ ",
+        "medium": "⚡",
+        "low": "✓",
+        "none": "",
+        "unknown": "",
+    }.get(risk_level.lower(), "")
+
+
+def format_security_modules(
+    result: Dict,
+    detailed: bool = False,
+    console: Console = None,
+) -> None:
+    """
+    Display security module breakdown for an extension.
+
+    Shows all 11 security analysis modules with their risk levels
+    and score contributions when detailed mode is enabled.
+
+    Args:
+        result: Scan result dict containing security analysis data
+        detailed: If True, show all modules; if False, return immediately
+        console: Rich console for output (None = create new)
+    """
+    if not detailed:
+        return
+
+    # Extract module data from result
+    # Module data can be nested in 'security' dict or at top level
+    security = result.get("security", {})
+    module_risks = security.get("module_risk_levels") or result.get(
+        "module_risk_levels", {}
+    )
+    score_contributions = security.get("score_contributions") or result.get(
+        "score_contributions", {}
+    )
+
+    if not module_risks:
+        # No detailed module data available
+        return
+
+    console = console or Console()
+
+    # Create table
+    table = Table(
+        title="🔍 Security Analysis Breakdown",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("Module", style="cyan", no_wrap=True, width=25)
+    table.add_column("Risk", style="bold", width=12)
+    table.add_column("Score Impact", justify="right", width=14)
+    table.add_column("", style="dim", width=3)  # Icon column
+
+    # Add base score row
+    base_score = score_contributions.get("base", 100)
+    table.add_row("Base Score", "-", f"+{base_score}", "")
+
+    # Add module rows in defined order
+    for module_key, display_name in MODULE_DISPLAY_NAMES.items():
+        risk_level = module_risks.get(module_key, "unknown")
+        score_impact = score_contributions.get(module_key, 0)
+
+        # Get risk style and icon
+        risk_style = _get_risk_style(risk_level)
+        icon = _get_risk_icon(risk_level)
+
+        # Format score impact
+        if score_impact > 0:
+            impact_str = f"+{score_impact}"
+            impact_style = "green"
+        elif score_impact < 0:
+            impact_str = str(score_impact)
+            impact_style = "red bold"
+        else:
+            impact_str = "0"
+            impact_style = "dim"
+
+        # Add row with appropriate styling
+        table.add_row(
+            display_name,
+            Text(risk_level.title(), style=risk_style),
+            Text(impact_str, style=impact_style),
+            icon,
+        )
+
+    # Add final score row
+    final_score = security.get("score") or result.get("security_score", 0)
+    table.add_section()
+    table.add_row(
+        Text("Final Score", style="bold"),
+        "",
+        Text(f"{final_score}/100", style="bold cyan"),
+        "",
+    )
+
+    console.print(table)
+    console.print()  # Add spacing after table
