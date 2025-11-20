@@ -121,27 +121,27 @@ else
         NODE_ID=$(gh api "repos/:owner/:repo/issues/$parent" --jq '.node_id' 2>/dev/null)
 
         # Query sub_issues_summary via GraphQL
-        COMPLETION=$(gh api graphql -f query="query {
+        SUMMARY=$(gh api graphql -f query="query {
             node(id: \"$NODE_ID\") {
                 ... on Issue {
                     subIssuesSummary {
-                        percentCompleted
-                        count
-                        completedCount
+                        total
+                        completed
                     }
                 }
             }
-        }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary.percentCompleted' 2>/dev/null || echo "0")
+        }" -H "GraphQL-Features: sub_issues" --jq '.data.node.subIssuesSummary' 2>/dev/null || echo '{"total":0,"completed":0}')
+
+        TOTAL=$(echo "$SUMMARY" | jq -r '.total')
+        COMPLETED=$(echo "$SUMMARY" | jq -r '.completed')
+
+        if [[ "$TOTAL" -gt 0 ]]; then
+            COMPLETION=$((COMPLETED * 100 / TOTAL))
+        else
+            COMPLETION=100
+        fi
 
         if [[ "$COMPLETION" != "100" ]]; then
-            CHILD_COUNT=$(gh api graphql -f query="query {
-                node(id: \"$NODE_ID\") {
-                    ... on Issue { subIssuesSummary { count completedCount } }
-                }
-            }" -H "GraphQL-Features: sub_issues" 2>/dev/null)
-
-            TOTAL=$(echo "$CHILD_COUNT" | jq -r '.data.node.subIssuesSummary.count')
-            COMPLETED=$(echo "$CHILD_COUNT" | jq -r '.data.node.subIssuesSummary.completedCount')
 
             log_error "Parent #$parent only $COMPLETION% complete ($COMPLETED/$TOTAL children)"
             ((VALIDATION_ERRORS++))
