@@ -1,381 +1,66 @@
 # Archive Documentation Index
 
-This directory contains **archived documentation** from completed project phases. All documents are organized by version and purpose for easy navigation.
+Archived documentation from completed project phases, organized by version for chronological clarity.
+
+---
 
 ## Directory Structure
 
 ```
 docs/archive/
-├── code/       # Archived scripts and proof-of-concepts (version-tagged)
-├── plans/      # Roadmaps, requirements, and planning documents
-├── summaries/  # Release notes and completion summaries
-└── reviews/    # Analysis, research, and retrospective documents
+├── README.md                    # This file - version timeline
+├── plans/                       # Roadmaps, specifications, implementation plans
+├── summaries/                   # Release notes, completion reports
+├── reviews/                     # Analysis, research, retrospectives
+└── code/                        # Archived scripts and proof-of-concepts
 ```
 
 ## Organization Principles
 
-- **Version-based naming** - Files use `vX.Y-description.md` format for chronological clarity
-- **Separation of concerns** - Plans, summaries, and reviews in distinct directories
-- **Git history preservation** - All file moves preserve git history via `git mv`
+- **Version-based naming** - Files use `vX.Y-description.md` format
+- **Separation of concerns** - Plans, summaries, reviews in distinct directories
+- **Git history preserved** - All file moves via `git mv`
 
 ---
 
 ## Version Timeline
 
-### v1.0 - v2.0: Initial Implementation (2025-10)
+| Version | Date | Key Features | Docs |
+|---------|------|--------------|------|
+| **v1.0-v2.0** | 2025-10 | vscan.dev API, extension discovery, JSON output, SQLite cache, publisher verification | [Plans](plans/), [Summaries](summaries/), [Reviews](reviews/) |
+| **v2.1** | 2025-10 | Security hardening: error sanitization, path validation | [Reviews](reviews/v2.1-security-*.md) |
+| **v2.2** | 2025-10 | HTML reports, intelligent retry mechanism with exponential backoff | [Plans](plans/v2.2-*.md), [Reviews](reviews/) |
+| **v2.3** | 2025-10 | Centralized version management (`_version.py`) | - |
+| **v3.0** | 2025-10-24 | CLI UX: Rich formatting, Typer framework, subcommands, +57 tests | [Plan](plans/v3.0-cli-ux-spec.md), [Summary](summaries/v3.0-release-notes.md), [Review](reviews/v3.0-macos-testing-review.md) |
+| **v3.1** | 2025-10-24 | Configuration files (`~/.vscanrc`), CSV export, 87.6% faster DB writes | [Plan](plans/v3.1-roadmap.md), [Summary](summaries/v3.1-release-notes.md) |
+| **v3.2** | 2025-10-25 | Code quality: 4 phases, architecture compliance, zero violations ✅ | [Plan](plans/v3.2-roadmap.md), [Summaries](summaries/v3.2-*.md), [Reviews](reviews/v3.2-*.md) |
+| **v3.3** | 2025-10-25 | UX enhancement: security-focused output, failed extension reporting | [Plan](plans/v3.3-roadmap.md) |
+| **v3.4** | 2025-10-25 | Parallel scanning: 2-5 workers, 4.88x speedup with 3 workers ✅ | [Plan](plans/v3.4-roadmap.md), [Summary](summaries/v3.4.0-release-notes.md), [Reviews](reviews/v3.4-*.md) |
+| **v3.5.0** | 2025-10-26 | 🚨 BREAKING: Parallel by default (3 workers), removed `--parallel` flag | [Summary](summaries/v3.5.0-release-notes.md) |
+| **v3.5.1** | 2025-10-26 | Security hardening: path validation, string sanitization, HMAC cache integrity, 9.5/10 score ✅ | [Plan](plans/v3.5.1-roadmap.md), [Summary](summaries/v3.5.1-release-notes.md), [Review](reviews/v3.5.1-comprehensive-review.md) |
+| **v3.5.2** | 2025-10-29 | Security automation: Dependabot, Coverage.py, Semgrep OSS, Hypothesis (4,000+ tests) ✅ | [Plan](plans/v3.5.2-roadmap.md), [Summary](summaries/v3.5.2-release-notes.md), [Review](reviews/tool-recommendations.md) |
+| **v3.5.3** | 2025-10-30 | Testing excellence: 52.07% → 72.60% coverage (+20.53%), +94 tests, 11 testing guides ✅ | [Plan](plans/v3.5.3-roadmap.md), [Summaries](summaries/v3.5.3-*.md) |
+| **v3.6.0** | 2025-11-04 | Coverage improvement: 77.83% → 78.94%, +52 tests, refactoring roadmap ✅ | [Plans](plans/v3.6-*.md), [Summary](summaries/v3.6.0-release-notes.md) |
+| **v3.7.0** | 2025-11-05 | 🚨 BREAKING: Testability refactoring, 78.94% → 86.25% coverage, +204 tests, 6 modules extracted, removed `--plain` ✅ | [Plan](plans/v3.7-roadmap.md), [Summary](summaries/v3.7.0-release-notes.md) |
+| **v3.7.1** | 2025-11-05 | Coverage excellence: 86.25% → 89.39%, +78 tests, cache_manager & scanner >80% ✅ | [Summary](summaries/v3.7.1-release-notes.md) |
+| **v3.7.2** | 2025-11-08 | Release automation improvements, test quality enhancements | [Summary](summaries/v3.7.2-release-notes.md) |
+| **v4.0.0** | 2025-11-08 | 🚨 BREAKING: Rich security data, 32 DB columns, 9 comprehensive security modules, VirusTotal filtering ✅ | [Plan](plans/v4.0-roadmap.md), [Summary](summaries/v4.0.0-release-notes.md) |
+| **v5.0.0** | 2025-11-08 | 🚨 BREAKING: Schema redesign, 32 → 12 columns (-60%), 60% storage reduction, 30% faster queries ✅ | [Summary](summaries/v5.0.0-release-notes.md) |
+| **v5.0.1** | 2025-11-09 | Stability improvements, bug fixes | [Summary](summaries/v5.0.1-release-notes.md) |
+| **v5.0.2** | 2025-11-09 | Test quality improvements, comprehensive project state analysis ✅ | [Plan](plans/v5.0.2-roadmap.md), [Summary](summaries/v5.0.2-release-notes.md), [Review](reviews/v5.0.2-comprehensive-project-state-analysis.md) |
 
-**Plans:**
-- [v1.0-v2.0-phase1-research.md](plans/v1.0-v2.0-phase1-research.md) - API research and validation
-- [v1.0-v2.0-phase2-implementation.md](plans/v1.0-v2.0-phase2-implementation.md) - Core implementation
-- [v1.0-v2.0-phase3-testing.md](plans/v1.0-v2.0-phase3-testing.md) - Testing and refinement
-- [v1.0-v2.0-phase4-enhanced-data.md](plans/v1.0-v2.0-phase4-enhanced-data.md) - Enhanced data integration
+### GitHub Projects Documentation (2025-11-20) ✅
 
-**Summaries:**
-- [v2.0-phase3-release-notes.md](summaries/v2.0-phase3-release-notes.md) - Phase 3 completion
-- [v2.0-phase4-release-notes.md](summaries/v2.0-phase4-release-notes.md) - Phase 4 completion (Enhanced Data Integration)
-
-**Reviews:**
-- [v1.0-prd-original.md](reviews/v1.0-prd-original.md) - Original product requirements
-- [v2.0-enhanced-data-integration-review.md](reviews/v2.0-enhanced-data-integration-review.md) - Data integration analysis
-
-**Key Features:**
-- vscan.dev API integration
-- Extension discovery
-- JSON output with dual modes (standard/detailed)
-- SQLite caching system
-- Publisher verification
-
----
-
-### v2.1: Security Hardening (2025-10)
-
-**Reviews:**
-- [v2.1-security-analysis.md](reviews/v2.1-security-analysis.md) - Security vulnerability assessment
-- [v2.1-security-fixes.md](reviews/v2.1-security-fixes.md) - Security improvements implemented
-- [v2.1-security-quick-fix.md](reviews/v2.1-security-quick-fix.md) - Quick security patches
-
-**Key Features:**
-- Error message sanitization
-- Path validation improvements
-- Security vulnerability fixes
-
----
-
-### v2.2: HTML Reports & Retry Mechanism (2025-10)
-
-**Plans:**
-- [v2.2-html-reports-spec.md](plans/v2.2-html-reports-spec.md) - HTML report feature specification
-- [v2.2-retry-mechanism-spec.md](plans/v2.2-retry-mechanism-spec.md) - Retry mechanism specification
-
-**Reviews:**
-- [v2.2-retry-mechanism-analysis.md](reviews/v2.2-retry-mechanism-analysis.md) - Retry strategy analysis
-
-**Key Features:**
-- HTML report generation (interactive, self-contained)
-- Intelligent retry mechanism with exponential backoff
-- Retry-After header support
-
----
-
-### v2.3: Version Management (2025-10)
-
-**Key Features:**
-- Centralized version management (`_version.py`)
-- Single source of truth for versions
-- Dynamic versioning in build tools
-
----
-
-### v3.0: CLI UX Enhancement (2025-10-24)
-
-**Plans:**
-- [v3.0-cli-ux-spec.md](plans/v3.0-cli-ux-spec.md) - CLI UX enhancement specification
-
-**Summaries:**
-- [v3.0-release-notes.md](summaries/v3.0-release-notes.md) - CLI UX enhancement completion (formerly "Phase 5")
-
-**Reviews:**
-- [v3.0-macos-testing-review.md](reviews/v3.0-macos-testing-review.md) - macOS testing results
-
-**Key Features:**
-- Rich terminal formatting (progress bars, tables, color-coded output)
-- Typer CLI framework with subcommands
-- Organized help panels
-- Backward compatibility with `--plain` flag
-- 57 new tests
-
----
-
-### v3.1: Configuration & CSV Export (2025-10-24)
-
-**Plans:**
-- [v3.1-roadmap.md](plans/v3.1-roadmap.md) - Implementation roadmap
-
-**Summaries:**
-- [v3.1-release-notes.md](summaries/v3.1-release-notes.md) - Release completion summary
-
-**Key Features:**
-- Configuration file support (`~/.vscanrc` INI format)
-- CSV export for spreadsheet analysis
-- Performance improvements (87.6% faster database writes)
-- Threshold-based VACUUM
-
----
-
-### v3.2: Code Quality & Reliability (2025-10-24 - 2025-10-25) ✅ COMPLETE
-
-**Plans:**
-- [v3.2-roadmap.md](plans/v3.2-roadmap.md) - Comprehensive 4-phase quality improvement roadmap (2,664 lines)
-
-**Summaries:**
-- [v3.2-phase4-completion-summary.md](summaries/v3.2-phase4-completion-summary.md) - Phase 4 final completion (Architecture Layer Compliance)
-- [v3.2-phase4b-test-maintainability-summary.md](summaries/v3.2-phase4b-test-maintainability-summary.md) - Phase 4.0b sub-phase completion
-- [v3.2-roadmap-phase4-update.md](summaries/v3.2-roadmap-phase4-update.md) - Roadmap Phase 4 update summary
-
-**Reviews:**
-- [v3.2-phase1-review.md](reviews/v3.2-phase1-review.md) - Phase 1 high-priority fixes review
-- [v3.2-phase2-review.md](reviews/v3.2-phase2-review.md) - Phase 2 medium-priority improvements review
-- [v3.2-phase3-review.md](reviews/v3.2-phase3-review.md) - Phase 3 code quality review
-- [v3.2-phase4-baseline-violations.md](reviews/v3.2-phase4-baseline-violations.md) - Architecture violation baseline analysis
-- [v3.2-phase4-test-maintainability-review.md](reviews/v3.2-phase4-test-maintainability-review.md) - Test code maintainability review
-- [v3.2-phase4-readiness-report.md](reviews/v3.2-phase4-readiness-report.md) - Phase 4 pre-implementation readiness assessment
-- [v3.2-phase4-test-gap-analysis.md](reviews/v3.2-phase4-test-gap-analysis.md) - Test coverage gap analysis
-
-**Key Achievements:**
-- ✅ **Phase 1:** Critical bug fixes (database connection leak, division by zero)
-- ✅ **Phase 2:** Security (SQL injection prevention), UX (consistent error display), Architecture (fail-fast)
-- ✅ **Phase 3:** Code quality (SimpleNamespace refactoring)
-- ✅ **Phase 4:** Architecture layer compliance (zero violations achieved)
-- ✅ Required dependencies (Rich, Typer)
-- ✅ Comprehensive test suite maintenance
-
-**Status:** Complete (100% - all 4 phases done). v3.2.0 released 2025-10-25.
-
----
-
-### v3.3: UX Enhancement (2025-10-25)
-
-**Plans:**
-- [v3.3-roadmap.md](plans/v3.3-roadmap.md) - UX improvement roadmap
-
-**Key Features:**
-- Security-focused output (hide operational details by default)
-- Failed extension transparency (clear reporting of scan failures)
-- Configuration flexibility (custom extension directory support)
-- Enhanced CLI filtering (verified status, vulnerability presence)
-
-**Status:** v3.3.0 complete, v3.3.1 in progress
-
----
-
-### v3.4: Parallel Scanning (2025-10-25)
-
-**Plans:**
-- [v3.4-roadmap.md](plans/v3.4-roadmap.md) - Parallel scanning implementation roadmap
-
-**Summaries:**
-- [v3.4.0-release-notes.md](summaries/v3.4.0-release-notes.md) - Release completion summary
-
-**Reviews:**
-- [v3.4-architectural-review.md](reviews/v3.4-architectural-review.md) - Comprehensive architectural analysis
-- [v3.4-parallel-scan-poc-guide.md](reviews/v3.4-parallel-scan-poc-guide.md) - Proof of concept guide
-- [v3.4-parallel-scan-poc-results.md](reviews/v3.4-parallel-scan-poc-results.md) - PoC validation results
-- [v3.4-phase1-implementation-plan.md](reviews/v3.4-phase1-implementation-plan.md) - Phase 1 implementation plan
-
-**Key Features:**
-- Parallel scanning with multiple workers (2-5 workers)
-- 4.88x speedup with 3 workers (recommended)
-- Thread-safe implementation (main-thread-only cache writes)
-- Configuration support for parallel settings
-- 100% backward compatibility
-
-**Status:** Complete. v3.4.0 released 2025-10-25.
-
----
-
-### v3.5.0: Parallel by Default (2025-10-26)
-
-**Summaries:**
-- [v3.5.0-release-notes.md](summaries/v3.5.0-release-notes.md) - Breaking change release notes
+| Document | Purpose |
+|----------|---------|
+| [ARCHIVE_INDEX.md](ARCHIVE_INDEX.md) | Complete reorganization summary |
+| [GITHUB_PROJECTS-v1-ARCHIVED.md](GITHUB_PROJECTS-v1-ARCHIVED.md) | Archive notice with migration guide |
+| [GITHUB_PROJECTS-v1.md](GITHUB_PROJECTS-v1.md) | Original comprehensive guide (1,196 lines) |
 
 **Key Changes:**
-- 🚨 **BREAKING:** Parallel processing now default (3 workers automatically)
-- 🚨 **BREAKING:** Removed `--parallel` flag (no longer needed)
-- 🚨 **BREAKING:** Workers range changed from 2-5 to 1-5
-- 🚨 **BREAKING:** Removed `parallel` config setting
-
-**Migration:**
-- Old: `vscan scan` → sequential (slow)
-- New: `vscan scan` → 3 workers (4.88x faster by default!)
-- Sequential mode: Use `vscan scan --workers 1`
-
-**Status:** Production ready. v3.5.0 released 2025-10-26.
-
----
-
-### v3.5.1: Security Hardening & Technical Debt (2025-10-26)
-
-**Plans:**
-- [v3.5.1-roadmap.md](plans/v3.5.1-roadmap.md) - 2-phase roadmap (Security + Technical Debt)
-
-**Summaries:**
-- [v3.5.1-release-notes.md](summaries/v3.5.1-release-notes.md) - Release completion summary
-
-**Reviews:**
-- [v3.5.1-comprehensive-review.md](reviews/v3.5.1-comprehensive-review.md) - Architecture, code quality, and security review
-
-**Phase 1: Security Hardening (COMPLETE ✅):**
-- ✅ Unified path validation (blocks URL encoding, system directories)
-- ✅ Unified string sanitization (context-aware, prevents injection)
-- ✅ Cache integrity checks (HMAC-SHA256 signatures)
-- ✅ Comprehensive regression test suite (35+ new security tests)
-
-**Phase 2: Technical Debt & Reliability (COMPLETE ✅):**
-- ✅ Thread-safe stats collection (ThreadSafeStats class with Lock protection)
-- ✅ Transactional cache writes (Ctrl+C safe with try/finally pattern)
-- ✅ Parallel architecture documentation (~200 lines in ARCHITECTURE.md)
-- ✅ Integration tests with real API (test_integration_real_api.py)
-
-**Key Achievement:** Security score improved from 7/10 → 9.5/10 (0 vulnerabilities remaining)
-
-**Status:** Complete (8/8 tasks - both phases). v3.5.1 released 2025-10-26. Overall grade: A- (93/100).
-
----
-
-### v3.5.2: Phase 2 Security Automation (2025-10-29) ✅ COMPLETE
-
-**Plans:**
-- [v3.5.2-roadmap.md](plans/v3.5.2-roadmap.md) - Phase 2 security automation implementation roadmap
-
-**Summaries:**
-- [v3.5.2-release-notes.md](summaries/v3.5.2-release-notes.md) - Release completion summary
-
-**Reviews:**
-- [tool-recommendations.md](reviews/tool-recommendations.md) - Comprehensive security tool evaluation (16 tools analyzed)
-
-**Phase 2: Security Automation (4/4 Tools COMPLETE ✅):**
-- ✅ **Dependabot** (30m) - Automated weekly dependency updates with grouped PRs
-- ✅ **Coverage.py** (1h) - Branch coverage tracking with 85% CI threshold
-- ✅ **Semgrep OSS** (3h) - 6 custom security rules (free CodeQL alternative for private repos)
-- ✅ **Hypothesis** (4h) - Property-based testing with 4,000+ test cases
-
-**Key Achievements:**
-- 80% reduction in manual dependency management
-- Branch coverage > line coverage (tests error paths)
-- Custom security rules enforcing validate_path() and sanitize_string()
-- Automated edge case discovery via property-based fuzzing
-- $588/year savings (Semgrep OSS vs CodeQL GitHub Enterprise)
-
-**Status:** Complete (4/4 tools implemented). v3.5.2 released 2025-10-29. Total investment: 8.5 hours, $0 cost.
-
----
-
-### v3.5.3: Testing Excellence (2025-10-30) ✅ COMPLETE
-
-**Plans:**
-- [v3.5.3-roadmap.md](plans/v3.5.3-roadmap.md) - Testing Excellence implementation roadmap (6 phases)
-
-**Summaries:**
-- [v3.5.3-release-notes.md](summaries/v3.5.3-release-notes.md) - Release completion summary
-- [v3.5.3-testing-phase-4-summary.md](summaries/v3.5.3-testing-phase-4-summary.md) - Comprehensive Phase 4 summary (400+ lines)
-
-**Phase 4: Testing Excellence (6/6 Phases COMPLETE ✅):**
-- ✅ **Phase 4.1** - Utility function testing (40 tests, utils.py coverage 64.50%)
-- ✅ **Phase 4.2** - Display module testing (+30 tests, display.py coverage 80.58%)
-- ✅ **Phase 4.3** - Integration test analysis (7 tests validated)
-- ✅ **Phase 4.4** - Coverage validation (HTML reports, gap analysis)
-- ✅ **Phase 4.5** - Documentation restructuring (TESTING.md: 2,800 → 486 lines, 11 specialized guides)
-- ✅ **Phase 4.6** - Test infrastructure fix (100% pass rate achieved)
-
-**Key Achievements:**
-- Overall coverage: 52.07% → 72.60% (+20.53 percentage points, **103.7% of 70% target**)
-- Total tests: 534 → 628 (+94 tests, +17.6% increase)
-- Test pass rate: 100% (628 passed, 1 skipped)
-- Security coverage: 95%+ maintained
-- Property-based testing: 20 tests, 1,250+ scenarios
-- Documentation excellence: 11 focused testing guides created
-
-**Status:** Complete (6/6 phases). v3.5.3 released 2025-10-30. Exceeded coverage target by 3.7%.
-
----
-
-### v3.6: Coverage Improvement & Testability Analysis (2025-11-04) ✅ COMPLETE
-
-**Plans:**
-- [v3.6-coverage-improvement-roadmap.md](plans/v3.6-coverage-improvement-roadmap.md) - Strategic coverage improvement roadmap
-- [v3.6-testability-refactoring-plan.md](plans/v3.6-testability-refactoring-plan.md) - Architectural refactoring recommendations
-- [v3.6-implementation-plan.md](plans/v3.6-implementation-plan.md) - Phase-by-phase implementation plan
-- [v3.6-test-case-checklist.md](plans/v3.6-test-case-checklist.md) - Test case inventory and coverage analysis
-
-**Summaries:**
-- [v3.6.0-release-notes.md](summaries/v3.6.0-release-notes.md) - Release completion summary
-
-**Coverage Improvement Initiative (Strategic Completion ✅):**
-- ✅ **Phase 1:** Core business logic testing (scanner.py, cli.py - 52 new tests)
-- ✅ **Phase 2:** API & cache hardening (strategic analysis - integration complexity walls identified)
-- ✅ **Strategic Completion:** Recognized natural unit test coverage limits at framework boundaries
-
-**Key Achievements:**
-- Overall coverage: 77.83% → 78.94% (+1.11%, **exceeds 75% target by 5.3%**)
-- Total tests: 779 → 831 (+52 high-quality tests)
-- Test pass rate: 100% (831 passed, 1 skipped)
-- Security tests: 127 tests, 0 vulnerabilities
-- Integration complexity analysis: Documented natural coverage ceilings
-- Refactoring roadmap: Created comprehensive architectural improvement plan
-
-**Integration Complexity Walls Identified:**
-- ThreadPoolExecutor + Rich Progress integration (scanner.py lines 533-625)
-- Typer decorator system + dynamic imports (cli.py)
-- Legacy v1 → v2 database migration code (cache_manager.py lines 532-646)
-- Framework integration code best tested through refactoring, not forced unit tests
-
-**Strategic Insight:** Unit tests naturally plateau at 70-85% for well-architected code with framework integration. Further improvements should come through architectural refactoring (extracting business logic from framework code), not forcing coverage metrics.
-
-**Status:** Complete (Strategic). v3.6.0 released 2025-11-04. Achieved 105.3% of coverage target with comprehensive refactoring roadmap for future improvements.
-
----
-
-### v3.7.0: Testability & Maintainability Improvements (2025-11-05) ✅ COMPLETE
-
-**Plans:**
-- [v3.7-roadmap.md](plans/v3.7-roadmap.md) - Comprehensive testability & maintainability roadmap (99KB)
-
-**Summaries:**
-- [v3.7.0-release-notes.md](summaries/v3.7.0-release-notes.md) - Complete release documentation with coverage reports
-
-**Testability & Maintainability Initiative (7 Phases Complete ✅):**
-- ✅ **Phase 0:** CLI Simplification (removed `--plain` flag, unified quiet mode)
-- ✅ **Phase 1.1:** Cache schema migration (2.1 → 3.0)
-- ✅ **Phase 1.2:** Test consolidation (merged duplicate scanner tests)
-- ✅ **Phase 1.3:** Shared test fixtures (centralized conftest.py patterns)
-- ✅ **Phase 1.4:** Duplicate test utilities removal (eliminated redundancy)
-- ✅ **Phase 2:** Architecture extraction (6 modules extracted from scanner.py)
-- ✅ **Phase 3:** Test refinement & organization (100% pass rate, improved markers)
-
-**Key Achievements:**
-- Overall coverage: 78.94% → 86.25% (+7.31%, **exceeds 85% target**)
-- Total tests: 831 → 1,035 (+204 tests, +24.5% increase)
-- Code reduction: -1,021 LOC (scanner.py: 1,141 → 538 lines, -52.8%)
-- Modules: 17 → 20 (+3 net, 6 extracted for testability)
-- Test pass rate: 100% (1,035 passed)
-
-**Extracted Modules (Phase 2 - All 96-100% coverage):**
-- parallel_executor.py (153 lines, 96% coverage) - Base parallel execution pattern
-- scan_orchestrator.py (163 lines, 100% coverage) - Specialized scan orchestration
-- scan_helpers.py (154 lines, 97.33% coverage) - Pure worker functions and stats
-- output_writer.py (42 lines, 100% coverage) - Output orchestration
-- summary_formatter.py (74 lines, 100% coverage) - Summary formatting logic
-- filter_help_generator.py (68 lines, 100% coverage) - Filter help generation
-
-**Breaking Changes:**
-- Removed `--plain` flag (use `--quiet` for minimal output)
-- Cache schema upgrade: 2.1 → 3.0 (automatic migration)
-
-**Migration:**
-- Old: `vscan scan --plain` → New: `vscan scan --quiet`
-- Cache automatically migrates from schema 2.1 to 3.0
-
-**Status:** Complete (7/7 phases). v3.7.0 released 2025-11-05. Achieved major testability and maintainability improvements with comprehensive architectural refactoring.
+- Monolithic guide split into focused documents (~50KB token savings)
+- Created shared reference: `_gh-reference.md`
+- New structure: QUICKSTART → WORKFLOWS → specialized guides
 
 ---
 
@@ -383,47 +68,27 @@ docs/archive/
 
 **Location:** [code/](code/)
 
-Historical scripts and proof-of-concepts that are no longer actively used but preserved for development history. See [code/README.md](code/README.md) for details.
-
-**Current Archive:**
-- [v3.4-poc-parallel-scan.py](code/v3.4-poc-parallel-scan.py) - Parallel scanning PoC (feature shipped in v3.5.0)
-- [v3.5.2-migration-add-pytest-markers.py](code/v3.5.2-migration-add-pytest-markers.py) - Pytest marker migration (complete)
-- [v3.5.1-setup-security-tools.sh](code/v3.5.1-setup-security-tools.sh) - Security tools setup (superseded by `pip install -e .[dev]`)
-- [diagnose_performance.py](code/diagnose_performance.py) - Performance diagnostic tool (archived 2025-11-03)
+| File | Purpose | Status |
+|------|---------|--------|
+| [v3.4-poc-parallel-scan.py](code/v3.4-poc-parallel-scan.py) | Parallel scanning PoC | Shipped in v3.5.0 |
+| [v3.5.2-migration-add-pytest-markers.py](code/v3.5.2-migration-add-pytest-markers.py) | Pytest marker migration | Complete |
+| [v3.5.1-setup-security-tools.sh](code/v3.5.1-setup-security-tools.sh) | Security tools setup | Superseded by `pip install -e .[dev]` |
+| [diagnose_performance.py](code/diagnose_performance.py) | Performance diagnostics | Archived 2025-11-03 |
 
 **Archived Documentation:**
-- [PERFORMANCE_DIAGNOSTICS.md](PERFORMANCE_DIAGNOSTICS.md) - Performance diagnostic guide (archived 2025-11-03)
-- [TESTING_PERFORMANCE.md](TESTING_PERFORMANCE.md) - Performance testing guide (merged into PERFORMANCE.md, archived 2025-11-03)
-- [GITHUB_SETTINGS_CHECKLIST.md](GITHUB_SETTINGS_CHECKLIST.md) - GitHub settings verification checklist (archived 2025-11-03)
+- [PERFORMANCE_DIAGNOSTICS.md](PERFORMANCE_DIAGNOSTICS.md) - Merged into PERFORMANCE.md (2025-11-03)
+- [TESTING_PERFORMANCE.md](TESTING_PERFORMANCE.md) - Merged into PERFORMANCE.md (2025-11-03)
+- [GITHUB_SETTINGS_CHECKLIST.md](GITHUB_SETTINGS_CHECKLIST.md) - Archived 2025-11-03
 
 ---
 
-## Document Types Explained
+## Document Types
 
-### Plans (Roadmaps & Requirements)
-Forward-looking documents that describe **what we're going to build** and **how we're going to build it**.
-
-- Roadmaps for version releases
-- Phase requirements and specifications
-- Implementation strategies
-- Architecture decisions
-
-### Summaries (Release Notes & Completion Reports)
-Backward-looking documents that describe **what we built** and **how it performed**.
-
-- Release notes with feature lists
-- Phase completion summaries
-- Performance metrics
-- Lessons learned
-
-### Reviews (Analysis & Research)
-Analysis documents that inform decisions and validate approaches.
-
-- Security analysis
-- Performance reviews
-- Retrospectives
-- Research findings
-- Testing reports
+| Type | Purpose | Examples |
+|------|---------|----------|
+| **Plans** | What we're building and how | Roadmaps, specifications, implementation strategies |
+| **Summaries** | What we built and results | Release notes, completion reports, metrics |
+| **Reviews** | Analysis and research | Security analysis, performance reviews, retrospectives |
 
 ---
 
@@ -431,30 +96,24 @@ Analysis documents that inform decisions and validate approaches.
 
 **Format:**
 - Plans: `vX.Y-roadmap.md` or `vX.Y-phaseN-requirements.md`
-- Summaries: `vX.Y-release-notes.md` or `vX.Y-phaseN-release-notes.md`
+- Summaries: `vX.Y-release-notes.md` or `vX.Y-phaseN-completion-summary.md`
 - Reviews: `vX.Y-{topic}-review.md` or `vX.Y-{topic}-analysis.md`
 
 **Special Cases:**
-- Multi-version scope: `vX.Y-vZ.W-description.md` (e.g., `v1.0-v2.0-phase1-research.md`)
-- Original phases: Prefixed with version range to show they were part of initial implementation
-
-**Benefits:**
-- ✅ Chronological sorting (files sort by version)
-- ✅ Clear version association
-- ✅ No ambiguous "Phase X" references
-- ✅ Easy to find all docs for a specific version
+- Multi-version: `vX.Y-vZ.W-description.md` (e.g., `v1.0-v2.0-phase1-research.md`)
+- Original phases: Prefixed with version range for chronological context
 
 ---
 
 ## Quick Reference
 
-**Find all documents for a specific version:**
+**Find all documents for a version:**
 ```bash
-# All v3.1 documents
-find docs/archive -name "v3.1-*"
+# All v3.7 documents
+find docs/archive -name "v3.7*"
 
-# All v2.x documents
-find docs/archive -name "v2.*-*"
+# All v5.x documents
+find docs/archive -name "v5.*"
 ```
 
 **Find by document type:**
@@ -464,62 +123,28 @@ ls docs/archive/plans/*-roadmap.md
 
 # All release notes
 ls docs/archive/summaries/*-release-notes.md
-
-# All security reviews
-ls docs/archive/reviews/*-security-*.md
 ```
 
 **Find by topic:**
 ```bash
-# Security-related documents
+# Security-related
 find docs/archive -name "*security*"
 
-# Performance-related documents
-find docs/archive -name "*performance*" -o -name "*retry*"
+# Performance-related
+find docs/archive -name "*performance*" -o -name "*parallel*"
 ```
-
----
-
-## Migration Notes
-
-**Archive Reorganization (2025-10-25):**
-
-This structure was introduced to eliminate confusion from duplicate "Phase" terminology and create a version-based organization aligned with git history.
-
-**Old Structure:**
-```
-docs/archive/
-├── phases/       # Original phases 1-4
-└── releases/     # Mixed: phase3-summary.md, v3.1-plan.md, etc.
-```
-
-**New Structure:**
-```
-docs/archive/
-├── plans/        # All planning documents
-├── summaries/    # All completion summaries
-└── reviews/      # All analysis documents
-```
-
-**Key Changes:**
-- Original phases (1-4) renamed to `v1.0-v2.0-phaseN-*.md` to show version scope
-- All documents use version-based naming (`vX.Y-description.md`)
-- Clear separation of planning vs retrospective documents
-- Git history preserved via `git mv`
 
 ---
 
 ## Related Documentation
 
-- **[docs/project/](../project/)** - Active project documentation (current status, roadmap, PRD)
-- **[docs/guides/](../guides/)** - Timeless technical guides (architecture, security, testing, APIs)
-- **[docs/contributing/](../contributing/)** - Contributor guides and checklists
+- **[docs/project/](../project/)** - Active project docs (STATUS.md, PRD.md)
+- **[docs/guides/](../guides/)** - Technical guides (ARCHITECTURE.md, SECURITY.md, TESTING.md)
+- **[docs/contributing/](../contributing/)** - Contributor guides
 - **[docs/README.md](../README.md)** - Complete documentation index
-
-**Note:** Feature specifications are archived in this directory under `plans/` with version-based naming (e.g., `v2.2-html-reports-spec.md`).
 
 ---
 
-**Last Updated:** 2025-11-04
-**Reorganized By:** Claude Code Documentation Restructuring
-**Reason:** Version-based organization for clarity and chronological alignment
+**Last Updated:** 2025-11-20
+**Maintained By:** Claude Code Documentation
+**Organization:** Version-based chronological structure
