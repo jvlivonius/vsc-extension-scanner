@@ -153,10 +153,17 @@ Loaded for implementation tasks:
 **Specialized Tasks**:
 - `/sc:design` - Design system architecture, APIs, component interfaces
 - `/sc:cleanup` - Systematically clean up code, remove dead code, optimize structure
-- `/gh:git` - Git operations with intelligent commit messages and workflow optimization
 - `/sc:task` - Execute complex tasks with intelligent workflow management
 
-**Usage**: Type command name (e.g., `/sc:test`) to see full prompt expansion
+**GitHub Integration** (`/gh:` commands):
+
+- `/gh:projects` - GitHub Projects workflow automation with issue/PR linking
+- `/gh:implement-issue` - Agent-driven issue implementation with automated testing and PR creation
+- `/gh:milestone` - Comprehensive milestone management (create, report, sync, close)
+- `/gh:triage` - AI-assisted issue triage with intelligent label and priority suggestions
+- `/gh:git` - Git operations with intelligent commit messages and workflow optimization
+
+**Usage**: Type command name (e.g., `/sc:test` or `/gh:triage`) to see full prompt expansion
 
 ---
 
