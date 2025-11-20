@@ -65,37 +65,16 @@ Key behaviors:
 
 **Implementation:**
 1. Validate version format (vX.Y.Z)
-2. Parse due date (YYYY-MM-DD format)
-3. Create milestone via GitHub API:
-   ```bash
-   gh api repos/:owner/:repo/milestones \
-     -f title="v3.8.0" \
-     -f description="CSV export feature release" \
-     -f due_on="2025-01-15T23:59:59Z"
-   ```
+2. Parse due date (YYYY-MM-DD)
+3. Create via GitHub API
 4. Report milestone number and URL
-5. Suggest next steps (create issues, link to project)
+5. Suggest next steps
 
 ### Pattern 2: Progress Report Generation
 
 ```bash
 /gh:milestone report v3.8.0 --format markdown --output milestone-report.md
 ```
-
-**Implementation:**
-1. Execute milestone report script:
-   ```bash
-   ./scripts/github-projects/generate-milestone-report.sh v3.8.0 \
-     --format markdown \
-     --output milestone-report.md
-   ```
-2. Script generates:
-   - Progress statistics (completion %, open/closed counts)
-   - Issue breakdown by type and priority
-   - Open issues list with priorities
-   - Recently closed issues with dates
-   - Blocked issues summary
-   - Actionable next steps
 
 **Report Structure:**
 ```markdown
@@ -108,21 +87,17 @@ Key behaviors:
 
 ## Issue Breakdown
 ### By Type
-- Features: 5
-- Bugs: 3
-- Tasks: 4
+- Features: 5, Bugs: 3, Tasks: 4
 
 ### By Priority
-- P0 (Critical): 1
-- P1 (High): 6
-- P2 (Medium): 3
-- P3 (Low): 2
+- P0 (Critical): 1, P1 (High): 6, P2 (Medium): 3, P3 (Low): 2
 
 ## Open Issues
-- #142: Add CSV export (#P1-high)
-- #143: Implement formatter class (#P1-high)
-...
+- #142: Add CSV export (P1-high)
+- #143: Implement formatter class (P1-high)
 ```
+
+**Script**: Uses `./scripts/github-projects/generate-milestone-report.sh`
 
 ### Pattern 3: Milestone Synchronization
 
@@ -131,22 +106,18 @@ Key behaviors:
 ```
 
 **Implementation:**
-1. Fetch all milestone issues:
-   ```bash
-   gh issue list --milestone v3.8.0 --state all --limit 1000
-   ```
-2. Group by state (open/closed)
-3. Update project board items:
-   - Move closed issues to "Done" column
-   - Update Priority/Complexity fields from labels
-   - Verify all issues present on board
-4. Report synchronization summary:
-   ```
-   Synced 12 issues:
-   - 8 moved to Done
-   - 4 remain In Progress/Backlog
-   - 0 missing from project board
-   ```
+1. Fetch all milestone issues
+2. Group by state (open/closed) and PR status
+3. Update project board:
+   - Closed issues → "Done"
+   - Issues with open PRs → "In Review"
+   - Open issues → Keep current status
+4. Sync Priority/Complexity from labels
+5. Report: "Synced 12 issues: 8 Done, 4 In Progress"
+
+**Label Sync**: If labels were recently changed, allow 1-5 minutes for GitHub Actions sync before milestone sync.
+
+**See**: [_gh-reference.md](_gh-reference.md#label-sync-timing) for sync automation
 
 ### Pattern 4: Milestone Closure
 
@@ -155,45 +126,13 @@ Key behaviors:
 ```
 
 **Implementation:**
-1. **Validate closure readiness:**
-   - Check all issues closed or explicitly accepted as open
-   - Warn about open critical (P0) issues
-   - Confirm with user before proceeding
+1. Validate closure readiness (warn about open P0 issues)
+2. Generate release notes (if --generate-notes)
+3. Close milestone via API
+4. Comment on all milestone issues: "Released in v3.8.0"
+5. Report completion and next steps
 
-2. **Generate release notes:**
-   ```bash
-   /sc:gh-projects generate-release-notes v3.8.0
-   ```
-   - Group closed issues by type (features, bugs, security)
-   - Format as markdown with issue links
-   - Save to `docs/archive/summaries/vX.Y.Z-release-notes.md`
-
-3. **Close milestone:**
-   ```bash
-   MILESTONE_NUM=$(gh api repos/:owner/:repo/milestones \
-     --jq '.[] | select(.title=="v3.8.0") | .number')
-
-   gh api repos/:owner/:repo/milestones/$MILESTONE_NUM \
-     -X PATCH \
-     -f state="closed"
-   ```
-
-4. **Post-closure actions:**
-   - Comment on all milestone issues: "Released in v3.8.0"
-   - Archive project board items (optional)
-   - Generate PR for release notes (optional)
-
-5. **Report completion:**
-   ```
-   ✓ Milestone v3.8.0 closed
-   ✓ Release notes generated: docs/archive/summaries/v3.8.0-release-notes.md
-   ✓ Commented on 12 issues
-
-   Next steps:
-   - Review release notes
-   - Create git tag: git tag -a v3.8.0 -m "Release v3.8.0"
-   - Build and publish: python3 -m build && twine upload dist/*
-   ```
+**See**: `/gh:projects-sync release-notes` for release notes details
 
 ### Pattern 5: Milestone Listing
 
@@ -201,21 +140,15 @@ Key behaviors:
 /gh:milestone list --state open
 ```
 
-**Implementation:**
-1. Fetch milestones:
-   ```bash
-   gh api repos/:owner/:repo/milestones \
-     --jq '.[] | select(.state=="open") | {title, due_on, open_issues, closed_issues}'
-   ```
-2. Format as table:
-   ```
-   Open Milestones:
+**Output:**
+```
+Open Milestones:
 
-   Milestone    Due Date      Open  Closed  Progress
-   v3.8.0       2025-01-15    4     8       67%
-   v3.9.0       2025-02-15    12    0       0%
-   v4.0.0       2025-03-15    0     0       0%
-   ```
+Milestone    Due Date      Open  Closed  Progress
+v3.8.0       2025-01-15    4     8       67%
+v3.9.0       2025-02-15    12    0       0%
+v4.0.0       2025-03-15    0     0       0%
+```
 
 ## Examples
 
@@ -224,11 +157,8 @@ Key behaviors:
 ```bash
 /gh:milestone create v3.8.0 --due 2025-01-15 --description "CSV export and performance improvements"
 
-# Agent actions:
-# 1. Validates version format
-# 2. Creates milestone via GitHub API
-# 3. Reports: "Created milestone v3.8.0 (#15) due 2025-01-15"
-# 4. Suggests: "Add issues with: gh issue edit <N> --milestone v3.8.0"
+# Reports: "Created milestone v3.8.0 (#15) due 2025-01-15"
+# Suggests: "Add issues with: gh issue edit <N> --milestone v3.8.0"
 ```
 
 ### Generate Weekly Progress Report
@@ -236,12 +166,10 @@ Key behaviors:
 ```bash
 /gh:milestone report v3.8.0 --format markdown
 
-# Agent generates comprehensive report showing:
-# - 67% complete (8/12 issues)
-# - 4 issues open (2 high priority)
-# - 8 issues closed this week
-# - Blocked issues: #145 (waiting on #142)
-# - Next actions: Review PR #156, close #142
+# Shows: 67% complete (8/12 issues)
+# Lists: 4 open issues (2 high priority)
+# Reports: 8 closed this week
+# Identifies: Blocked issues and next actions
 ```
 
 ### Sync Milestone with Project Board
@@ -249,39 +177,23 @@ Key behaviors:
 ```bash
 /gh:milestone sync v3.8.0
 
-# Agent actions:
-# 1. Fetches all v3.8.0 issues
-# 2. Updates project board status
-# 3. Moves 3 closed issues to "Done"
-# 4. Reports: "Synced 12 issues, 3 status updates"
+# Fetches all v3.8.0 issues
+# Updates project board status
+# Moves 3 closed issues to "Done"
+# Reports: "Synced 12 issues, 3 status updates"
 ```
 
-### Close Milestone and Generate Release Notes
+### Close Milestone
 
 ```bash
 /gh:milestone close v3.8.0 --generate-notes
 
-# Agent workflow:
-# 1. Checks: 4 issues still open
-# 2. Prompts: "4 issues remain open. Proceed with closure? (y/n)"
-# 3. User confirms: y
-# 4. Generates release notes from closed issues
-# 5. Closes milestone
-# 6. Comments on all issues
-# 7. Reports next steps (tagging, publishing)
-```
-
-### List All Milestones
-
-```bash
-/gh:milestone list --state all
-
-# Shows:
-# All Milestones:
-#
-# v3.8.0 (open)     | Due: 2025-01-15 | Progress: 67% (8/12)
-# v3.7.0 (closed)   | Due: 2024-12-15 | Completed: 2024-12-14
-# v3.6.0 (closed)   | Due: 2024-11-15 | Completed: 2024-11-12
+# Validates: Checks for open issues
+# Prompts: "4 issues remain open. Proceed? (y/n)"
+# Generates: Release notes from closed issues
+# Closes: Milestone
+# Comments: On all issues
+# Reports: Next steps (tagging, publishing)
 ```
 
 ## Boundaries
@@ -311,11 +223,7 @@ Key behaviors:
 
 ### Report Generation Logic
 1. Fetch all milestone issues with metadata
-2. Calculate statistics:
-   - Total/open/closed counts
-   - Completion percentage
-   - Type distribution (features/bugs/tasks)
-   - Priority distribution (P0-P3)
+2. Calculate statistics (total/open/closed counts, completion %)
 3. Identify blocked issues via dependencies API
 4. Format based on --format flag (markdown/json)
 5. Output to file or stdout
@@ -340,21 +248,21 @@ Key behaviors:
 **Milestone Not Found:**
 ```
 Error: Milestone 'v3.8.0' not found
-Action: Create milestone first with:
+Action: Create milestone first:
   /gh:milestone create v3.8.0 --due YYYY-MM-DD
 ```
 
 **Open Critical Issues:**
 ```
 Warning: 2 critical (P0) issues remain open: #142, #145
-Action: Close critical issues before milestone closure, or
+Action: Close critical issues before closure, or
   use --force to proceed (creates tracking issue for open items)
 ```
 
 **Permission Denied:**
 ```
 Error: Insufficient permissions to close milestone
-Action: Requires 'repo' scope. Run:
+Action: Requires 'repo' scope:
   gh auth refresh -s repo
 ```
 
@@ -364,24 +272,46 @@ Error: Milestone 'v3.8.0' already exists (#15)
 Action: Use existing milestone or choose different version
 ```
 
+**See**: [_gh-reference.md](_gh-reference.md#common-error-patterns) for full error reference
+
+## Rate Limiting
+
+**API Call Breakdown:**
+
+| Operation | Milestone Size | API Calls |
+|-----------|----------------|-----------|
+| Create milestone | N/A | 1 |
+| Report (with details) | 20 issues | ~25 |
+| Report (with details) | 50 issues | ~60 |
+| Sync to project | 30 issues | ~40 |
+| Close milestone | 20 issues | ~25 |
+
+**Best Practices:**
+1. Check before large operations: `gh api rate_limit`
+2. Break large milestones (>50 issues) into batches
+3. Use `--dry-run` mode to estimate API usage
+
+**See**: [_gh-reference.md](_gh-reference.md#rate-limiting-essentials) for rate limit management
+
 ## Integration with Release Process
 
 ### Pre-Release (Planning Phase)
+
 ```bash
 # 1. Create milestone
 /gh:milestone create v3.8.0 --due 2025-01-15
 
 # 2. Create and link issues
-/sc:gh-projects create-from-plan docs/plans/v3.8.md --milestone v3.8.0
+/gh:issues-create create-from-plan docs/plans/v3.8.md --milestone v3.8.0
 
 # 3. Weekly progress checks
 /gh:milestone report v3.8.0
 ```
 
 ### Release (Execution Phase)
+
 ```bash
-# 4. Implement and track
-# (Issues implemented via /sc:implement-issue)
+# 4. Implement and track (Issues implemented via /gh:issues-implement)
 
 # 5. Sync board status
 /gh:milestone sync v3.8.0
@@ -391,6 +321,7 @@ Action: Use existing milestone or choose different version
 ```
 
 ### Post-Release (Closure Phase)
+
 ```bash
 # 7. Close milestone with notes
 /gh:milestone close v3.8.0 --generate-notes
@@ -401,9 +332,23 @@ git push origin v3.8.0
 python3 -m build && twine upload dist/*
 ```
 
+**See**: [RELEASE_PROCESS.md](../../docs/contributing/RELEASE_PROCESS.md) for complete workflow
+
+## Configuration
+
+### ~/.vscanrc Extension
+
+```ini
+[github_milestones]
+default_format = markdown
+auto_generate_notes = true
+report_include_blocked = true
+```
+
 ## References
 
-- [Milestone Management Guide](../../docs/contributing/GITHUB_PROJECTS.md)
-- [Release Process](../../docs/contributing/RELEASE_PROCESS.md)
-- [Issue Templates](.github/ISSUE_TEMPLATE/)
+- [_gh-reference.md](_gh-reference.md) - Shared GitHub command reference
+- [GITHUB_PROJECTS.md](../../docs/contributing/GITHUB_PROJECTS.md) - Milestone management
+- [RELEASE_PROCESS.md](../../docs/contributing/RELEASE_PROCESS.md) - Release workflow
+- [/gh:projects-sync](./projects-sync.md) - Release notes generation
 - [GitHub Milestones API](https://docs.github.com/en/rest/issues/milestones)

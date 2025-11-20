@@ -199,6 +199,40 @@ if [[ "$REQUIRE_DOCUMENTATION" == "true" ]]; then
         DOCS=$(echo "$BODY" | grep -i "Required Documentation" | head -1)
         if echo "$DOCS" | grep -qE '(ARCHITECTURE|SECURITY|PRD|TESTING|PERFORMANCE)\.md'; then
             log_success "PASS: Required Documentation field present and valid"
+
+            # Extract and validate file existence
+            DOC_FILES=$(echo "$DOCS" | grep -oE '[A-Z_]+\.md' | tr '\n' ' ')
+            MISSING_FILES=""
+            FILES_CHECKED=0
+            FILES_FOUND=0
+
+            for doc in $DOC_FILES; do
+                ((FILES_CHECKED++))
+                # Try common documentation locations
+                FOUND=false
+                for base_path in "docs/guides" "docs/project" "docs/contributing" "docs"; do
+                    if [[ -f "$base_path/$doc" ]]; then
+                        log_success "  ✓ Found: $base_path/$doc"
+                        ((FILES_FOUND++))
+                        FOUND=true
+                        break
+                    fi
+                done
+
+                if [[ "$FOUND" == "false" ]]; then
+                    MISSING_FILES="$MISSING_FILES $doc"
+                    log_error "  ✗ Not found: $doc (checked docs/guides, docs/project, docs/contributing, docs)"
+                    ((VALIDATION_ERRORS++))
+                fi
+            done
+
+            if [[ $FILES_CHECKED -gt 0 ]]; then
+                if [[ -n "$MISSING_FILES" ]]; then
+                    log_error "FAIL: $FILES_CHECKED file(s) checked, $FILES_FOUND found, missing:$MISSING_FILES"
+                else
+                    log_success "PASS: All $FILES_CHECKED required documentation files exist"
+                fi
+            fi
         else
             log_warning "WARN: Required Documentation field found but no valid docs listed"
             ((VALIDATION_WARNINGS++))
@@ -305,6 +339,11 @@ if [[ $VALIDATION_ERRORS -gt 0 ]] || [[ $VALIDATION_WARNINGS -gt 0 ]]; then
     if [[ "$REQUIRE_ACCEPTANCE_CRITERIA" == "true" ]] && echo "$BODY" | grep -qvi "Acceptance Criteria"; then
         echo "  - Add 'Acceptance Criteria' section with checkboxes"
     fi
+    echo ""
+    echo "Documentation:"
+    echo "  - Issue Structure Guide: docs/contributing/GITHUB_PROJECTS.md#issue-structure"
+    echo "  - Workflow Overview: docs/contributing/GITHUB_PROJECTS.md#workflow-overview"
+    echo "  - Rate Limits: docs/guides/GITHUB_API_RATE_LIMITS.md"
     if [[ "$REQUIRE_MILESTONE" == "true" ]] && [[ -z "$MILESTONE" ]]; then
         echo "  - Assign milestone: gh issue edit $ISSUE_NUMBER --milestone vX.Y.Z"
     fi
