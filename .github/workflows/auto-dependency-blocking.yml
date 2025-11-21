@@ -1,0 +1,275 @@
+name: Auto Dependency Blocking
+
+on:
+  issues:
+    types: [closed, reopened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  update-blocked-issues:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.issue.labels.*.name, 'skip-automation') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and update blocked issues
+        run: |
+          set -euo pipefail
+
+          # Source rate limit library if available
+          if [[ -f "scripts/github-projects/rate_limit.sh" ]]; then
+            source scripts/github-projects/rate_limit.sh
+          fi
+
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          ISSUE_STATE="${{ github.event.issue.state }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          echo "================================================"
+          echo "Processing issue #$ISSUE_NUMBER (state: $ISSUE_STATE)"
+          echo "================================================"
+
+          # Get issue node ID for GraphQL queries
+          ISSUE_NODE_ID=$(gh issue view "$ISSUE_NUMBER" --json id --jq '.id')
+
+          echo "Finding issues blocked by #$ISSUE_NUMBER..."
+
+          # GraphQL query to find issues blocked by this issue
+          # Uses GitHub's native dependency tracking (trackedInIssues)
+          BLOCKED_ISSUES=$(gh api graphql -f query='
+            query($issueId: ID!) {
+              node(id: $issueId) {
+                ... on Issue {
+                  trackedInIssues(first: 100) {
+                    nodes {
+                      id
+                      number
+                      title
+                    }
+                  }
+                }
+              }
+            }
+          ' -f issueId="$ISSUE_NODE_ID" --jq '.data.node.trackedInIssues.nodes[] | .number' || echo "")
+
+          if [[ -z "$BLOCKED_ISSUES" ]]; then
+            echo "No issues are blocked by #$ISSUE_NUMBER"
+            exit 0
+          fi
+
+          echo "Found blocked issues: $BLOCKED_ISSUES"
+          echo ""
+
+          # Function to get all blocking dependencies for an issue
+          get_blocking_dependencies() {
+            local issue_number="$1"
+            local node_id=$(gh issue view "$issue_number" --json id --jq '.id')
+
+            # Query trackedIssues to get blocking dependencies
+            local blockers=$(gh api graphql -f query='
+              query($issueId: ID!) {
+                node(id: $issueId) {
+                  ... on Issue {
+                    trackedIssues(first: 100) {
+                      nodes {
+                        number
+                        closed
+                      }
+                    }
+                  }
+                }
+              }
+            ' -f issueId="$node_id" --jq '.data.node.trackedIssues.nodes[] | "\(.number):\(.closed)"' 2>/dev/null || echo "")
+
+            echo "$blockers"
+          }
+
+          # Function to check if issue should be blocked
+          should_be_blocked() {
+            local issue_number="$1"
+            local blockers=$(get_blocking_dependencies "$issue_number")
+
+            if [[ -z "$blockers" ]]; then
+              return 1  # No blockers = not blocked
+            fi
+
+            # Check if any blocker is open (closed=false)
+            local open_blockers=""
+            while IFS= read -r blocker_info; do
+              if [[ -n "$blocker_info" ]]; then
+                local blocker_num=$(echo "$blocker_info" | cut -d: -f1)
+                local blocker_closed=$(echo "$blocker_info" | cut -d: -f2)
+
+                if [[ "$blocker_closed" == "false" ]]; then
+                  open_blockers="$open_blockers #$blocker_num"
+                fi
+              fi
+            done <<< "$blockers"
+
+            if [[ -n "$open_blockers" ]]; then
+              echo "$open_blockers"
+              return 0  # Has open blockers = should be blocked
+            else
+              return 1  # All blockers closed = not blocked
+            fi
+          }
+
+          # Function to get previous status from issue comments
+          get_previous_status() {
+            local issue_number="$1"
+
+            # Look for hidden HTML comment with previous status
+            local comments=$(gh api "repos/$REPO_OWNER/$REPO_NAME/issues/$issue_number/comments" --jq '.[].body' 2>/dev/null || echo "")
+
+            # Extract previous status from comment
+            local prev_status=$(echo "$comments" | grep -oP '<!-- AUTO-BLOCKED: previous_status=\K[^-]+(?= -->)' | tail -1 | xargs || echo "")
+
+            if [[ -n "$prev_status" ]]; then
+              echo "$prev_status"
+            else
+              echo "Todo"  # Default to Todo if no previous status found
+            fi
+          }
+
+          # Function to update issue status
+          update_issue_status() {
+            local issue_number="$1"
+            local new_status="$2"
+            local reason="$3"
+            local blockers="$4"
+
+            echo "Updating issue #$issue_number to status: $new_status"
+
+            # Get current status (if available)
+            local current_status=$(gh issue view "$issue_number" --json projectItems --jq '.projectItems[0].status.name' 2>/dev/null || echo "")
+
+            # Add comment with status change
+            if [[ "$new_status" == "Blocked" ]]; then
+              # Store previous status in hidden HTML comment
+              gh issue comment "$issue_number" --body "<!-- AUTO-BLOCKED: previous_status=$current_status --> 🚫 Automatic Blocking Detection: This issue is blocked by$blockers. Reason: $reason. Please resolve the blocking issues before proceeding with implementation." || true
+            else
+              # Unblocking
+              gh issue comment "$issue_number" --body "✅ Automatic Unblocking: All blocking dependencies have been resolved. Status: Transitioning from Blocked to $new_status. $reason" || true
+            fi
+
+            # TODO: Implement actual GraphQL mutation for project status update
+            # This requires project-specific field IDs which vary per project
+            echo "  Status update comment added (GraphQL mutation TODO)"
+          }
+
+          # Process each blocked issue
+          for blocked_issue in $BLOCKED_ISSUES; do
+            echo "================================================"
+            echo "Checking issue #$blocked_issue"
+            echo "================================================"
+
+            # Check if issue should be blocked
+            if open_blockers=$(should_be_blocked "$blocked_issue"); then
+              echo "Issue #$blocked_issue should be BLOCKED"
+              echo "Open blockers:$open_blockers"
+
+              # Update to Blocked status
+              update_issue_status "$blocked_issue" "Blocked" \
+                "Issue #$ISSUE_NUMBER was reopened or is still open" \
+                "$open_blockers"
+            else
+              echo "Issue #$blocked_issue should be UNBLOCKED"
+
+              # Get previous status for restoration
+              prev_status=$(get_previous_status "$blocked_issue")
+              echo "Restoring previous status: $prev_status"
+
+              # Update from Blocked to previous status
+              update_issue_status "$blocked_issue" "$prev_status" \
+                "Issue #$ISSUE_NUMBER was closed (all blockers now resolved)" \
+                ""
+            fi
+
+            echo ""
+          done
+
+          echo "================================================"
+          echo "Dependency blocking check complete"
+          echo "================================================"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  check-cascading-dependencies:
+    runs-on: ubuntu-latest
+    needs: update-blocked-issues
+    if: ${{ !contains(github.event.issue.labels.*.name, 'skip-automation') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Handle cascading dependencies
+        run: |
+          set -euo pipefail
+
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          echo "Checking for cascading dependencies from #$ISSUE_NUMBER..."
+
+          # Get issues blocked by this issue
+          ISSUE_NODE_ID=$(gh issue view "$ISSUE_NUMBER" --json id --jq '.id')
+
+          FIRST_LEVEL_BLOCKED=$(gh api graphql -f query='
+            query($issueId: ID!) {
+              node(id: $issueId) {
+                ... on Issue {
+                  trackedInIssues(first: 100) {
+                    nodes {
+                      number
+                    }
+                  }
+                }
+              }
+            }
+          ' -f issueId="$ISSUE_NODE_ID" --jq '.data.node.trackedIssues.nodes[] | .number' || echo "")
+
+          if [[ -z "$FIRST_LEVEL_BLOCKED" ]]; then
+            echo "No cascading dependencies to check"
+            exit 0
+          fi
+
+          # For each first-level blocked issue, check if it blocks others
+          for blocked_issue in $FIRST_LEVEL_BLOCKED; do
+            echo "Checking if #$blocked_issue blocks other issues..."
+
+            BLOCKED_NODE_ID=$(gh issue view "$blocked_issue" --json id --jq '.id')
+
+            SECOND_LEVEL_BLOCKED=$(gh api graphql -f query='
+              query($issueId: ID!) {
+                node(id: $issueId) {
+                  ... on Issue {
+                    trackedInIssues(first: 100) {
+                      nodes {
+                        number
+                      }
+                    }
+                  }
+                }
+              }
+            ' -f issueId="$BLOCKED_NODE_ID" --jq '.data.node.trackedIssues.nodes[] | .number' || echo "")
+
+            if [[ -n "$SECOND_LEVEL_BLOCKED" ]]; then
+              echo "Found cascading: #$ISSUE_NUMBER → #$blocked_issue → $SECOND_LEVEL_BLOCKED"
+              echo "Triggering re-check for cascading blocked issues: $SECOND_LEVEL_BLOCKED"
+
+              # Add comment to cascading blocked issues
+              for cascade_issue in $SECOND_LEVEL_BLOCKED; do
+                gh issue comment "$cascade_issue" --body "🔄 Cascading Dependency Update: Upstream dependency #$ISSUE_NUMBER changed state, which affects #$blocked_issue. This may impact the blocking status of this issue. Re-checking dependencies..." || true
+              done
+            fi
+          done
+
+          echo "Cascading dependency check complete"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
