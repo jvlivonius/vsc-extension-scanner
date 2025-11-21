@@ -23,6 +23,34 @@ body:
       required: true
 
   - type: input
+    id: parent-feature
+    attributes:
+      label: Parent Feature (if this is a sub-feature)
+      description: Issue number of parent feature or epic
+      placeholder: "#142 or leave empty if this is a top-level feature"
+    validations:
+      required: false
+
+  - type: textarea
+    id: sub-tasks
+    attributes:
+      label: Sub-Tasks (if this is a parent feature)
+      description: |
+        List child tasks/issues that make up this feature:
+        - Use issue numbers if already created: #143, #144, #145
+        - Use placeholders if not created yet: "TBD: Implement CSV formatter", "TBD: Add CLI integration"
+        - Use `/gh:issues-create` to auto-create and link child issues
+      placeholder: |
+        - #143 - Implement CSV formatter class
+        - #144 - Add CSV export to output_formatter.py
+        - #145 - Update CLI with CSV output option
+        - TBD: Write integration tests for CSV export
+      value: |
+        - TBD: (List sub-tasks or child issues here)
+    validations:
+      required: false
+
+  - type: input
     id: feature-plan
     attributes:
       label: Related Feature Plan
@@ -172,9 +200,19 @@ body:
         - Acceptance criteria clearly defined
         - Implementation guidance provided
 
+        **For Parent Features with Sub-Tasks:**
+        - Use `/gh:issues-create` to auto-create and link child issues from feature plan
+        - Use `/gh:implement-issue #<issue-number>` to implement entire feature with sub-tasks
+        - Child issues will be implemented in dependency order
+        - Use `scripts/github-projects/manage-issue-relationships.sh view <issue>` to see hierarchy
+
         **To trigger agent implementation:**
         ```bash
-        /sc:implement-issue #<issue-number>
+        # For single feature (no sub-tasks):
+        /gh:implement-issue #<issue-number>
+
+        # For parent feature (with sub-tasks):
+        /gh:implement-issue #<issue-number>  # Auto-detects and implements all sub-tasks
         ```
 
   - type: textarea

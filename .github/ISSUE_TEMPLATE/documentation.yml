@@ -1,0 +1,304 @@
+name: Documentation
+description: Documentation improvements, updates, or fixes
+title: "[DOCS] "
+labels: [documentation, P3-low]
+assignees:
+  - jvlivonius
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Documentation Issue
+
+        Use this template for:
+        - Documentation gaps or missing information
+        - Outdated or incorrect documentation
+        - Documentation improvements or clarifications
+        - New documentation needs
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief one-sentence description of the documentation issue
+      placeholder: "Add examples for CSV export usage in PRD.md"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What kind of documentation is this?
+      options:
+        - "Guide (how-to, tutorial)"
+        - "Reference (API, CLI, technical specs)"
+        - "Architecture (system design, patterns)"
+        - "Contributing (workflows, standards)"
+        - "Project (requirements, status, roadmap)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - "Missing (documentation doesn't exist)"
+        - "Outdated (needs updating)"
+        - "Incorrect (has errors)"
+        - "Unclear (needs clarification)"
+        - "Enhancement (could be improved)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-files
+    attributes:
+      label: Affected Documentation Files
+      description: Which documentation files need changes?
+      placeholder: |
+        - docs/guides/API_REFERENCE.md
+        - docs/project/PRD.md
+        - README.md
+      value: |
+        - (List documentation files here)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Documentation Gap/Issue
+      description: What's missing, outdated, or incorrect?
+      placeholder: |
+        The PRD.md file lists CSV export as a v3.8 feature, but doesn't
+        include usage examples or explain the export format. Users need
+        examples showing:
+        - How to export to CSV
+        - What fields are included
+        - How to customize output
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-changes
+    attributes:
+      label: Proposed Changes
+      description: What should be documented or how should it be improved?
+      placeholder: |
+        **Add to PRD.md Section 4.2 (Output Formats):**
+
+        1. CSV Export Examples:
+           - Basic export: `vscan scan --output results.csv`
+           - Custom fields: explain configuration options
+
+        2. CSV Format Specification:
+           - Column headers and their meanings
+           - Data types and encoding
+           - Special character handling
+
+        3. Use Cases:
+           - Importing into Excel/Google Sheets
+           - Integration with other tools
+           - Automated reporting workflows
+    validations:
+      required: true
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: Target version for documentation update
+      placeholder: "v3.8.0"
+    validations:
+      required: false
+
+  - type: input
+    id: required-docs
+    attributes:
+      label: Required Documentation (for research)
+      description: Comma-separated list of existing docs to read before writing
+      placeholder: "DOCUMENTATION_STANDARDS.md, DOCUMENTATION_CONVENTIONS.md"
+      value: "DOCUMENTATION_STANDARDS.md, DOCUMENTATION_CONVENTIONS.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: |
+        List dependencies:
+        - **Blocked By**: Issues that must be completed first (e.g., feature implementation)
+        - **Blocks**: Issues blocked by this documentation
+        - **Related**: Related documentation issues
+      placeholder: |
+        Blocked By: #142 (CSV export feature must be implemented first)
+        Blocks: None
+        Related: #155 (API reference update)
+      value: |
+        Blocked By: None
+        Blocks: None
+        Related: None
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Documentation Standards
+
+  - type: checkboxes
+    id: standards-compliance
+    attributes:
+      label: Documentation Standards to Follow
+      description: Standards from DOCUMENTATION_STANDARDS.md
+      options:
+        - label: "HOW TO focus: Task-oriented, scannable, actionable"
+        - label: "Technical accuracy: Code examples tested and verified"
+        - label: "Clear structure: Proper headings, sections, navigation"
+        - label: "Completeness: All required sections included"
+        - label: "Cross-references: Links to related documentation updated"
+        - label: "Examples: Concrete, realistic, tested examples provided"
+        - label: "Audience-appropriate: Right level of detail for target readers"
+
+  - type: textarea
+    id: target-audience
+    attributes:
+      label: Target Audience
+      description: Who is this documentation for?
+      placeholder: |
+        - Primary: Users wanting to export scan results to CSV
+        - Secondary: Developers integrating vscan into workflows
+        - Technical level: Intermediate (familiar with CLI tools)
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Acceptance Criteria
+
+        Documentation is complete when all items are checked:
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: Completion Checklist
+      options:
+        - label: Documentation written following DOCUMENTATION_STANDARDS.md
+        - label: All code examples tested and verified working
+        - label: Technical accuracy reviewed
+        - label: Cross-references to related docs added/updated
+        - label: Table of contents updated (if applicable)
+        - label: Spelling and grammar checked
+        - label: Markdown formatting validated
+        - label: Links tested (no broken links)
+        - label: Examples use realistic scenarios
+        - label: Document reviewed by someone unfamiliar with topic
+
+  - type: checkboxes
+    id: content-requirements
+    attributes:
+      label: Content Quality Requirements
+      options:
+        - label: "Clear and concise writing (no unnecessary jargon)"
+        - label: "Active voice used (not passive)"
+        - label: "Present tense for current features"
+        - label: "Task-oriented headings (How to... / Creating... / Using...)"
+        - label: "Scannable format (bullets, short paragraphs, code blocks)"
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Implementation Guidance
+
+  - type: textarea
+    id: outline
+    attributes:
+      label: Documentation Outline (optional)
+      description: Suggested structure for the documentation
+      placeholder: |
+        ## CSV Export
+
+        ### Overview
+        - What CSV export provides
+        - When to use it
+
+        ### Basic Usage
+        - Command syntax
+        - Simple example
+
+        ### CSV Format
+        - Column definitions
+        - Data types
+        - Special cases
+
+        ### Advanced Usage
+        - Custom fields
+        - Filtering output
+        - Integration examples
+
+        ### Troubleshooting
+        - Common issues
+        - Solutions
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Content (optional)
+      description: Draft examples or snippets to include
+      placeholder: |
+        ```bash
+        # Export scan results to CSV
+        vscan scan --publisher microsoft --output results.csv
+
+        # View CSV format
+        head -n 5 results.csv
+        ```
+      render: markdown
+    validations:
+      required: false
+
+  - type: textarea
+    id: verification-steps
+    attributes:
+      label: Verification Steps
+      description: How to verify documentation accuracy
+      placeholder: |
+        1. Follow all examples step-by-step
+        2. Verify all commands work as documented
+        3. Test all code snippets
+        4. Check all links resolve correctly
+        5. Have someone unfamiliar with the topic review for clarity
+    validations:
+      required: false
+
+  - type: textarea
+    id: related-issues
+    attributes:
+      label: Related Issues
+      description: Links to feature/bug issues that prompted this documentation need
+      placeholder: |
+        - #142 - CSV export feature (must be implemented first)
+        - #145 - User requested CSV export examples
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        - User feedback about documentation gaps
+        - Questions from support requests
+        - References to similar documentation in other projects
+        - Screenshots or diagrams needed
+    validations:
+      required: false

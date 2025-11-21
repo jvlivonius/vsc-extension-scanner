@@ -1,0 +1,295 @@
+name: Security Enhancement
+description: Suggest security improvements (NOT for reporting vulnerabilities)
+title: "[SECURITY] "
+labels: [security, enhancement, P2-medium]
+assignees:
+  - jvlivonius
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Security Enhancement Suggestion
+
+        **Use this template for:**
+        - Security best practices improvements
+        - Additional security validations
+        - Security tooling enhancements
+        - Hardening existing features
+
+        **NOT for reporting vulnerabilities!** Use [Security Advisories](https://github.com/jvlivonius/vsc-extension-scanner/security/advisories/new) instead.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief one-sentence description of the security enhancement
+      placeholder: "Add Content Security Policy headers to HTML reports"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Enhancement Description
+      description: Detailed description of the proposed security improvement
+      placeholder: |
+        Currently, HTML reports are generated without Content Security Policy (CSP)
+        headers, which could allow XSS attacks if reports are hosted on web servers.
+        Adding CSP headers would provide defense-in-depth protection.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: owasp-category
+    attributes:
+      label: OWASP Category
+      description: Which OWASP Top 10 category does this address?
+      options:
+        - "A01 - Broken Access Control"
+        - "A02 - Cryptographic Failures"
+        - "A03 - Injection"
+        - "A04 - Insecure Design"
+        - "A05 - Security Misconfiguration"
+        - "A06 - Vulnerable and Outdated Components"
+        - "A07 - Identification and Authentication Failures"
+        - "A08 - Software and Data Integrity Failures"
+        - "A09 - Security Logging and Monitoring Failures"
+        - "A10 - Server-Side Request Forgery (SSRF)"
+        - "Not OWASP Top 10 (other security concern)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: security-benefit
+    attributes:
+      label: Security Benefit
+      description: How would this improve security posture?
+      placeholder: |
+        **Current State:**
+        - HTML reports can be hosted on web servers
+        - No CSP protection against XSS
+        - Relies solely on output sanitization
+
+        **Improved State:**
+        - CSP headers enforce allowed content sources
+        - Defense-in-depth against XSS attacks
+        - Reduces attack surface for hosted reports
+
+        **Risk Reduction:**
+        - Mitigates XSS even if sanitization is bypassed
+        - Prevents inline script execution
+        - Blocks unauthorized external resource loading
+    validations:
+      required: true
+
+  - type: dropdown
+    id: threat-level
+    attributes:
+      label: Threat Level (Current State)
+      description: What threat level exists without this enhancement?
+      options:
+        - "Low (minor security gap)"
+        - "Medium (moderate risk)"
+        - "High (significant risk)"
+        - "Informational (proactive hardening)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: threat-model-impact
+    attributes:
+      label: Threat Model Impact
+      description: How does this affect the threat model?
+      placeholder: |
+        **Attack Vectors Addressed:**
+        - XSS via crafted vulnerability descriptions
+        - Malicious external resource injection
+        - Report tampering on web servers
+
+        **Threat Actors:**
+        - Malicious extension publishers
+        - MITM attackers (if reports transferred insecurely)
+        - Compromised web servers hosting reports
+
+        **Impact Classification:**
+        - Confidentiality: Medium (prevents data exfiltration)
+        - Integrity: High (prevents report tampering)
+        - Availability: Low (minimal impact)
+    validations:
+      required: false
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: Target version for this enhancement
+      placeholder: "v3.8.0"
+    validations:
+      required: false
+
+  - type: input
+    id: required-docs
+    attributes:
+      label: Required Documentation
+      description: Comma-separated list of docs to read before implementing
+      placeholder: "SECURITY.md, HTML_REPORTS.md, ARCHITECTURE.md"
+      value: "SECURITY.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: |
+        List dependencies:
+        - **Blocked By**: Issues that must be completed first
+        - **Blocks**: Issues blocked by this enhancement
+        - **Related**: Related security enhancements
+      placeholder: |
+        Blocked By: None
+        Blocks: #160
+        Related: #155 (output sanitization)
+      value: |
+        Blocked By: None
+        Blocks: None
+        Related: None
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation-approach
+    attributes:
+      label: Implementation Approach
+      description: Suggested approach to implement this enhancement
+      placeholder: |
+        **Files to Modify:**
+        - vscode_scanner/html_report_generator.py - Add CSP meta tags
+
+        **Security Patterns to Apply:**
+        - Use nonce-based CSP for inline styles
+        - Restrict script sources to 'self'
+        - Block unsafe-inline and unsafe-eval
+
+        **Example Implementation:**
+        ```python
+        def generate_csp_header() -> str:
+            return (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "  # For embedded CSS
+                "img-src 'self' data:; "
+                "font-src 'self'"
+            )
+        ```
+
+        **Validation:**
+        - Test with CSP validator
+        - Verify reports still render correctly
+        - Test blocking of malicious content
+    validations:
+      required: false
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Architecture Layer Affected
+      description: Which layer does this enhancement affect?
+      options:
+        - Presentation (CLI, HTML reports, display)
+        - Application (Scanner, business logic)
+        - Infrastructure (API, cache, file operations)
+        - Multiple layers
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Acceptance Criteria
+
+        Enhancement is complete when all items are checked:
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: Completion Checklist
+      options:
+        - label: Security enhancement implemented following SECURITY.md patterns
+        - label: validate_path() or sanitize_string() applied appropriately
+        - label: Security tests added to test_security.py
+        - label: No new vulnerabilities introduced (bandit, pip-audit clean)
+        - label: Threat model updated if applicable
+        - label: All existing security tests still pass
+        - label: Manual security testing completed
+        - label: Documentation updated with security guidance
+        - label: Pre-commit hooks pass
+
+  - type: checkboxes
+    id: security-patterns
+    attributes:
+      label: Security Pattern Requirements
+      options:
+        - label: Defense-in-depth principle applied
+        - label: Fail-secure (defaults to most restrictive)
+        - label: No security-sensitive data in logs/errors
+        - label: Input validation at boundaries
+        - label: Output encoding/sanitization applied
+
+  - type: checkboxes
+    id: architecture-requirements
+    attributes:
+      label: Architecture Requirements
+      options:
+        - label: Security enhancement respects layer boundaries
+        - label: No circumvention of existing security controls
+        - label: Follows existing security patterns in codebase
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Verification
+
+  - type: textarea
+    id: verification-steps
+    attributes:
+      label: Manual Verification Steps
+      description: How to verify the security enhancement works
+      placeholder: |
+        **Security Testing:**
+        1. Test with malicious input: vscan scan --publisher "<script>alert(1)</script>"
+        2. Verify attack blocked: Check HTML report doesn't execute script
+        3. Verify CSP header: Inspect report meta tags or HTTP headers
+
+        **Functionality Testing:**
+        1. Normal operation: vscan scan --publisher microsoft
+        2. Verify reports still render correctly
+        3. Check no regression in features
+    validations:
+      required: false
+
+  - type: textarea
+    id: related-standards
+    attributes:
+      label: Related Security Standards
+      description: Relevant security standards or frameworks
+      placeholder: |
+        - OWASP ASVS 4.0 - V14.4.3 (HTTP Security Headers)
+        - NIST SP 800-53 - SI-10 (Information Input Validation)
+        - CWE-79 (Cross-site Scripting)
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        - Links to security research or advisories
+        - Industry best practices references
+        - Comparison with similar tools
+        - Performance impact considerations
+    validations:
+      required: false
