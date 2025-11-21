@@ -106,6 +106,9 @@ vscan scan --workers 5
 # Save results as an interactive HTML report
 vscan scan --output report.html
 
+# Show detailed security module breakdown (11 modules with risk levels)
+vscan scan --detailed
+
 # Minimal output for CI/CD pipelines
 vscan scan --quiet
 

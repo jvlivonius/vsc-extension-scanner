@@ -128,6 +128,7 @@ python3 -m build                       # Build package
 | **Output** | `vscan scan --output FILE` | .json/.html/.csv |
 | **Workers** | `vscan scan --workers N` | 1-5 (3 default) |
 | **Filter** | `vscan scan --publisher X` | Filter extensions |
+| **Detailed** | `vscan scan --detailed` | Show 11 security modules with risk levels |
 | **Cache** | `vscan cache stats/clear` | Manage cache |
 | **Config** | `vscan config show/set` | Manage ~/.vscanrc |
 | **Report** | `vscan report FILE` | From cache (no API) |

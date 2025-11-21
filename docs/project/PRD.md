@@ -524,6 +524,7 @@ vscan report <OUTPUT_FILE>     # Generate report from cache
 - `--quiet` - Minimal output for CI/CD
 - `--verbose` - Detailed operational information
 - `--plain` - Disable Rich UI
+- `--detailed` - Show detailed security module breakdown (11 modules with risk levels)
 
 **Scanning Behavior:**
 - `--extensions-dir <PATH>` - Custom VS Code directory
