@@ -24,6 +24,7 @@
 | Library docs | Context7 MCP | WebSearch |
 | Testing | pytest + hypothesis | Manual test writing |
 | Config files | Read + Edit | Bash commands |
+| HTML report testing | Playwright MCP | Manual browser testing |
 
 ## Resource Management
 

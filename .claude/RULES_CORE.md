@@ -139,11 +139,11 @@
 - **Best Tool Selection**: Always use the most powerful tool for each task (MCP > Native > Basic)
 - **Parallel Everything**: Execute independent operations in parallel, never sequentially
 - **Agent Expertise**: Auto-loaded agents provide specialized guidance for complex operations
-- **MCP Server Usage**: Leverage specialized MCP servers for their strengths (serena for symbols, sequential-thinking for analysis, context7 for docs)
+- **MCP Server Usage**: Leverage specialized MCP servers for their strengths (serena for symbols, sequential-thinking for analysis, context7 for docs, playwright for HTML testing)
 - **Batch Operations**: Use multiple parallel Edit calls, batch Read calls, group operations
 - **Powerful Search**: Use Grep tool over bash grep, Glob over find, specialized search tools
 - **Efficiency First**: Choose speed and power over familiarity - use the fastest method available
-- **Tool Specialization**: Match tools to their designed purpose (e.g., serena for symbols, context7 for docs, sequential for complex reasoning)
+- **Tool Specialization**: Match tools to their designed purpose (e.g., serena for symbols, context7 for docs, sequential for complex reasoning, playwright for HTML/browser testing)
 
 ✅ **Right**: Use multiple parallel Edit calls for 3+ file changes, parallel Read calls
 ❌ **Wrong**: Sequential Edit calls, bash grep instead of Grep tool

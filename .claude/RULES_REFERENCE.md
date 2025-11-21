@@ -30,7 +30,8 @@ Task type → Best tool:
 ├─ Complex analysis → sequential-thinking MCP > native reasoning
 ├─ Code search → Grep > bash grep
 ├─ Library docs → Context7 MCP > web search
-└─ Testing → pytest + hypothesis > manual tests
+├─ Testing → pytest + hypothesis > manual tests
+└─ HTML report testing → Playwright MCP > manual browser testing
 ```
 
 ## Priority-Based Quick Actions
