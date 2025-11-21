@@ -26,11 +26,6 @@ jobs:
             source scripts/github-projects/rate_limit.sh
           fi
 
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          ISSUE_STATE="${{ github.event.issue.state }}"
-          REPO_OWNER="${{ github.repository_owner }}"
-          REPO_NAME="${{ github.event.repository.name }}"
-
           echo "================================================"
           echo "Processing issue #$ISSUE_NUMBER (state: $ISSUE_STATE)"
           echo "================================================"
@@ -199,6 +194,10 @@ jobs:
           echo "================================================"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_STATE: ${{ github.event.issue.state }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
 
   check-cascading-dependencies:
     runs-on: ubuntu-latest
@@ -212,8 +211,6 @@ jobs:
       - name: Handle cascading dependencies
         run: |
           set -euo pipefail
-
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
 
           echo "Checking for cascading dependencies from #$ISSUE_NUMBER..."
 
@@ -273,3 +270,4 @@ jobs:
           echo "Cascading dependency check complete"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}

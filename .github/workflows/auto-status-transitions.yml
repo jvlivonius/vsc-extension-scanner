@@ -30,8 +30,6 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
         run: |
           # Extract issue numbers from PR body and title
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
           # Get PR details
           PR_BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
           PR_TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
@@ -43,6 +41,7 @@ jobs:
           echo "Found linked issues: $ISSUE_NUMBERS"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
 
       - name: Validate dependencies and transition status
         if: steps.get-issues.outputs.issues != ''
@@ -53,11 +52,6 @@ jobs:
           if [[ -f "scripts/github-projects/rate_limit.sh" ]]; then
             source scripts/github-projects/rate_limit.sh
           fi
-
-          ISSUES="${{ steps.get-issues.outputs.issues }}"
-          PR_STATE="${{ github.event.pull_request.state }}"
-          PR_DRAFT="${{ github.event.pull_request.draft }}"
-          PR_MERGED="${{ github.event.pull_request.merged }}"
 
           # Function to check if all dependencies are closed
           validate_dependencies() {
@@ -144,9 +138,7 @@ jobs:
 
             # Get project field ID and option ID (this would need to be configured)
             # For now, we'll add a comment instead of direct status update
-            local pr_number="${{ github.event.pull_request.number }}"
-
-            gh issue comment "$issue_number" --body "🤖 Automatic Status Update: **$new_status** - $reason (PR #${pr_number})" || true
+            gh issue comment "$issue_number" --body "🤖 Automatic Status Update: **$new_status** - $reason (PR #${PR_NUMBER})" || true
 
             # TODO: Implement actual GraphQL mutation for project status update
             # This requires project-specific field IDs which vary per project
@@ -200,14 +192,16 @@ jobs:
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUES: ${{ steps.get-issues.outputs.issues }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
 
       - name: Check for blocking dependencies (on issue events)
         if: github.event_name == 'issues'
         run: |
           set -euo pipefail
-
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          ISSUE_BODY="${{ github.event.issue.body }}"
 
           echo "Checking dependencies for issue #$ISSUE_NUMBER"
 
@@ -235,3 +229,5 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
