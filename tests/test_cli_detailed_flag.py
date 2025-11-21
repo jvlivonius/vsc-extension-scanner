@@ -1,13 +1,14 @@
 """
-Integration tests for --detailed flag behavior with CLI and HTML output.
+Integration tests for --detailed flag behavior with actual output validation.
 
-Tests end-to-end flag behavior, output generation, and module display
-integration across different command combinations.
+Tests functional behavior: does --detailed show module breakdowns?
+Uses mocked scan data to verify console and HTML output integration.
 
-Target: Comprehensive flag combination testing, HTML structure validation
+Target: Functional validation, output verification, HTML integration
 """
 
 import unittest
+from unittest.mock import MagicMock, patch
 import tempfile
 import os
 
@@ -24,128 +25,171 @@ except ImportError:
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.integration
-class TestDetailedFlag(unittest.TestCase):
-    """Test suite for --detailed flag CLI behavior."""
+class TestDetailedFlagBehavior(unittest.TestCase):
+    """Test --detailed flag functional behavior with actual output."""
 
     def setUp(self):
-        """Set up test runner."""
+        """Set up test runner and mock data."""
         self.runner = CliRunner()
 
-    def test_detailed_flag_help_text(self):
-        """Test --detailed flag appears in help text."""
-        result = self.runner.invoke(cli.app, ["scan", "--help"])
+        # Mock scan result with module data
+        self.mock_result = {
+            "id": "test.extension",
+            "display_name": "Test Extension",
+            "security": {
+                "score": 75,
+                "module_risk_levels": {
+                    "metadata": "low",
+                    "dependencies": "medium",
+                    "socket": "high",
+                    "virus_total": "low",
+                    "permissions": "medium",
+                    "ossf_scorecard": "low",
+                    "network_endpoints": "high",
+                    "sensitive_info": "none",
+                    "obfuscation": "low",
+                    "consolidated_ast": "none",
+                    "open_grep": "low",
+                },
+            },
+        }
 
-        # Verify flag is documented
-        self.assertIn("--detailed", result.stdout)
-        self.assertIn("module", result.stdout.lower())
+    @patch("vscode_scanner.cli.run_scan")
+    def test_detailed_flag_passes_parameter_true(self, mock_run_scan):
+        """Test --detailed flag causes detailed=True to be passed to run_scan."""
+        # Configure mock to return success with vulnerability
+        mock_run_scan.return_value = 1  # 1 = vulnerabilities found
+
+        result = self.runner.invoke(
+            cli.app, ["scan", "--detailed"], catch_exceptions=False
+        )
+
+        # Should exit with code 1 (vulnerabilities found)
+        self.assertEqual(result.exit_code, 1)
+
+        # Verify run_scan was called with detailed=True
+        self.assertTrue(mock_run_scan.called)
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertTrue(call_kwargs.get("detailed", False))
+
+    @patch("vscode_scanner.cli.run_scan")
+    def test_without_detailed_flag_passes_parameter_false(self, mock_run_scan):
+        """Test without --detailed, detailed=False is passed to run_scan (default)."""
+        mock_run_scan.return_value = 0  # 0 = no vulnerabilities
+
+        result = self.runner.invoke(cli.app, ["scan"], catch_exceptions=False)
+
         self.assertEqual(result.exit_code, 0)
 
-    def test_detailed_flag_in_command_structure(self):
-        """Test --detailed flag is recognized as valid option."""
-        # This just tests that the flag is accepted, not the full execution
-        result = self.runner.invoke(cli.app, ["scan", "--detailed", "--help"])
+        # Verify run_scan was called with detailed=False (default)
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertFalse(call_kwargs.get("detailed", False))
 
-        # Help should work with --detailed flag present
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("detailed", result.stdout.lower())
+    def test_module_breakdown_displays_table_when_detailed_true(self):
+        """Test module breakdown displays Rich table when detailed=True."""
+        # Test at display level with known data
+        from vscode_scanner.display import format_security_modules
 
-    def test_scan_without_detailed_flag(self):
-        """Test scan command works without --detailed flag."""
-        # Test that command accepts no --detailed flag
-        result = self.runner.invoke(cli.app, ["scan", "--help"])
+        mock_console = MagicMock()
 
-        # Should have scan command help
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("scan", result.stdout.lower())
+        # Call with detailed=True
+        format_security_modules(self.mock_result, detailed=True, console=mock_console)
+
+        # Verify console.print was called (table output)
+        self.assertTrue(mock_console.print.called)
+        call_args = mock_console.print.call_args_list
+
+        # Should be 2 calls: table + spacing
+        self.assertEqual(len(call_args), 2)
+
+        # First call should contain a table object
+        table = call_args[0][0][0]
+        self.assertIsNotNone(table)
+
+    def test_module_breakdown_hidden_when_detailed_false(self):
+        """Test format_security_modules returns early when detailed=False."""
+        from vscode_scanner.display import format_security_modules
+
+        mock_console = MagicMock()
+
+        # Call with detailed=False
+        format_security_modules(self.mock_result, detailed=False, console=mock_console)
+
+        # Should return early without printing
+        self.assertFalse(mock_console.print.called)
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.integration
-class TestDetailedWithOutput(unittest.TestCase):
-    """Test suite for --detailed flag with output file generation."""
+class TestDetailedFlagWithHTMLOutput(unittest.TestCase):
+    """Test --detailed flag with HTML output generation."""
 
     def setUp(self):
         """Set up test runner."""
         self.runner = CliRunner()
 
-    def test_detailed_with_output_flag_combination(self):
-        """Test --detailed and --output flags can be combined."""
-        # Test flag combination is valid
-        result = self.runner.invoke(
-            cli.app, ["scan", "--detailed", "--output", "/tmp/test.html", "--help"]
-        )
+    @patch("vscode_scanner.cli.run_scan")
+    def test_html_generation_accepts_detailed_flag(self, mock_run_scan):
+        """Test HTML output can be generated with --detailed flag."""
+        mock_run_scan.return_value = 0
 
-        # Help should work with both flags
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("detailed", result.stdout.lower())
-        self.assertIn("output", result.stdout.lower())
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "test_detailed.html")
 
-    def test_output_format_options_with_detailed(self):
-        """Test different output formats work with --detailed flag."""
-        for ext in ["html", "json", "csv"]:
-            with self.subTest(format=ext):
-                result = self.runner.invoke(
-                    cli.app,
-                    ["scan", "--detailed", "--output", f"/tmp/test.{ext}", "--help"],
-                )
+            result = self.runner.invoke(
+                cli.app,
+                ["scan", "--detailed", "--output", output_path],
+                catch_exceptions=False,
+            )
 
-                # Should accept different output formats
-                self.assertEqual(result.exit_code, 0)
+            # Should succeed (0 = no vulns, 1 = vulns found)
+            self.assertIn(result.exit_code, [0, 1])
+
+            # Verify detailed=True was passed
+            call_kwargs = mock_run_scan.call_args[1]
+            self.assertTrue(call_kwargs.get("detailed", False))
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.integration
-class TestFlagCombinations(unittest.TestCase):
-    """Test suite for --detailed flag combinations."""
+class TestDetailedFlagCombinations(unittest.TestCase):
+    """Test --detailed flag combinations with other flags."""
 
     def setUp(self):
         """Set up test runner."""
         self.runner = CliRunner()
 
-    def test_detailed_with_quiet_flag(self):
-        """Test --detailed and --quiet flags can be combined."""
+    @patch("vscode_scanner.cli.run_scan")
+    def test_detailed_with_quiet_flag_both_passed(self, mock_run_scan):
+        """Test --detailed and --quiet can coexist (both passed to run_scan)."""
+        mock_run_scan.return_value = 0
+
         result = self.runner.invoke(
-            cli.app, ["scan", "--detailed", "--quiet", "--help"]
+            cli.app, ["scan", "--detailed", "--quiet"], catch_exceptions=False
         )
 
-        # Both flags should be acceptable
         self.assertEqual(result.exit_code, 0)
 
-    def test_detailed_with_no_cache_flag(self):
-        """Test --detailed and --no-cache flags can be combined."""
+        # Both flags should be passed (quiet wins for display logic)
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertTrue(call_kwargs.get("detailed", False))
+        self.assertTrue(call_kwargs.get("quiet", False))
+
+    @patch("vscode_scanner.cli.run_scan")
+    def test_detailed_with_verbose_flag_both_passed(self, mock_run_scan):
+        """Test --detailed and --verbose can coexist."""
+        mock_run_scan.return_value = 0
+
         result = self.runner.invoke(
-            cli.app, ["scan", "--detailed", "--no-cache", "--help"]
+            cli.app, ["scan", "--detailed", "--verbose"], catch_exceptions=False
         )
 
-        # Both flags should be acceptable
         self.assertEqual(result.exit_code, 0)
 
-    def test_detailed_with_publisher_filter(self):
-        """Test --detailed works with --publisher filter."""
-        result = self.runner.invoke(
-            cli.app, ["scan", "--detailed", "--publisher", "microsoft", "--help"]
-        )
-
-        # Flag combination should be valid
-        self.assertEqual(result.exit_code, 0)
-
-    def test_detailed_with_multiple_filters(self):
-        """Test --detailed works with multiple filter flags."""
-        result = self.runner.invoke(
-            cli.app,
-            [
-                "scan",
-                "--detailed",
-                "--publisher",
-                "microsoft",
-                "--min-risk-level",
-                "high",
-                "--help",
-            ],
-        )
-
-        # All flags should be acceptable together
-        self.assertEqual(result.exit_code, 0)
+        # Both flags should be passed
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertTrue(call_kwargs.get("detailed", False))
+        self.assertTrue(call_kwargs.get("verbose", False))
 
 
 if __name__ == "__main__":
