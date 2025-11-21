@@ -2,8 +2,21 @@
 """
 Analysis of retry mechanism behavior.
 
-This test analyzes the retry mechanism to understand why some extensions
-are not being scanned after cache refresh.
+PURPOSE:
+This test file provides diagnostic analysis of retry mechanism edge cases
+that were causing scan failures. It complements test_retry.py by focusing
+on understanding specific failure scenarios rather than comprehensive coverage.
+
+RELATIONSHIP TO test_retry.py:
+- test_retry.py (16 tests): Comprehensive retry mechanism validation
+- test_retry_analysis.py (6 tests): Diagnostic analysis of specific edge cases
+
+RATIONALE FOR SEPARATE FILE:
+These tests serve a documentation purpose - they capture investigation work
+into retry mechanism behavior that helped diagnose production issues. They
+provide additional examples and edge case coverage beyond the main test suite.
+
+NOTE: If these tests become redundant, consider merging with test_retry.py.
 """
 
 import sys

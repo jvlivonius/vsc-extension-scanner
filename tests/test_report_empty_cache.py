@@ -27,22 +27,21 @@ from vscode_scanner.cli import _check_extensions_exist
 class TestReportEmptyCache(unittest.TestCase):
     """Test report command with empty cache."""
 
-    def test_display_warning_import(self):
-        """Test that display_warning is properly imported."""
-        from vscode_scanner.cli import display_warning
-
-        self.assertIsNotNone(display_warning)
-        self.assertTrue(callable(display_warning))
-
     def test_check_extensions_exist_with_extensions(self):
         """Test _check_extensions_exist when extensions are present."""
         # This will check the actual user's VS Code extensions
         exists, count = _check_extensions_exist()
 
-        # We expect the test system to have extensions
-        self.assertTrue(exists or not exists)  # Just check it doesn't crash
+        # Verify the function returns sensible values
+        self.assertIsInstance(exists, bool)
         self.assertIsInstance(count, int)
         self.assertGreaterEqual(count, 0)
+
+        # If extensions exist, count should be > 0; if not, count should be 0
+        if exists:
+            self.assertGreater(count, 0, "If exists=True, count should be positive")
+        else:
+            self.assertEqual(count, 0, "If exists=False, count should be zero")
 
     def test_check_extensions_exist_no_extensions(self):
         """Test _check_extensions_exist when no extensions exist."""
