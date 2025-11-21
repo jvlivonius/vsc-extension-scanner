@@ -1,0 +1,208 @@
+name: Auto Feature Completion
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-feature-completion:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.issue.labels.*.name, 'skip-automation') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check parent feature completion
+        run: |
+          set -euo pipefail
+
+          # Source rate limit library if available
+          if [[ -f "scripts/github-projects/rate_limit.sh" ]]; then
+            source scripts/github-projects/rate_limit.sh
+          fi
+
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          echo "================================================"
+          echo "Checking feature completion for closed issue #$ISSUE_NUMBER"
+          echo "================================================"
+
+          # Get issue node ID for GraphQL queries
+          ISSUE_NODE_ID=$(gh issue view "$ISSUE_NUMBER" --json id --jq '.id')
+
+          echo "Finding parent feature for #$ISSUE_NUMBER..."
+
+          # GraphQL query to find parent feature (issue that tracks this issue)
+          PARENT_INFO=$(gh api graphql -f query='
+            query($issueId: ID!) {
+              node(id: $issueId) {
+                ... on Issue {
+                  trackedInIssues(first: 10) {
+                    nodes {
+                      id
+                      number
+                      title
+                      closed
+                      labels(first: 20) {
+                        nodes {
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ' -f issueId="$ISSUE_NODE_ID" 2>/dev/null || echo "")
+
+          # Extract parent issue number (first tracked issue is typically the parent)
+          PARENT_NUMBER=$(echo "$PARENT_INFO" | jq -r '.data.node.trackedInIssues.nodes[0].number // empty' || echo "")
+
+          if [[ -z "$PARENT_NUMBER" ]]; then
+            echo "No parent feature found for #$ISSUE_NUMBER (this may be a standalone issue)"
+            exit 0
+          fi
+
+          echo "Found parent feature: #$PARENT_NUMBER"
+
+          # Check if parent is a feature issue (has "feature" label)
+          PARENT_LABELS=$(echo "$PARENT_INFO" | jq -r '.data.node.trackedInIssues.nodes[0].labels.nodes[].name' || echo "")
+          if ! echo "$PARENT_LABELS" | grep -qi "feature"; then
+            echo "Parent #$PARENT_NUMBER is not a feature issue, skipping auto-completion"
+            exit 0
+          fi
+
+          # Check if parent is already closed
+          PARENT_CLOSED=$(echo "$PARENT_INFO" | jq -r '.data.node.trackedInIssues.nodes[0].closed' || echo "false")
+          if [[ "$PARENT_CLOSED" == "true" ]]; then
+            echo "Parent #$PARENT_NUMBER is already closed, nothing to do"
+            exit 0
+          fi
+
+          echo "Parent #$PARENT_NUMBER is an open feature issue"
+          echo ""
+
+          # Get parent node ID and fetch all sub-issues
+          PARENT_NODE_ID=$(echo "$PARENT_INFO" | jq -r '.data.node.trackedInIssues.nodes[0].id')
+
+          echo "Fetching all sub-tasks of parent #$PARENT_NUMBER..."
+
+          SUB_ISSUES=$(gh api graphql -f query='
+            query($parentId: ID!) {
+              node(id: $parentId) {
+                ... on Issue {
+                  trackedIssues(first: 100) {
+                    nodes {
+                      number
+                      title
+                      closed
+                    }
+                  }
+                }
+              }
+            }
+          ' -f parentId="$PARENT_NODE_ID" --jq '.data.node.trackedIssues.nodes[]' 2>/dev/null || echo "")
+
+          if [[ -z "$SUB_ISSUES" ]]; then
+            echo "No sub-issues found for parent #$PARENT_NUMBER"
+            exit 0
+          fi
+
+          # Count total and closed sub-issues
+          TOTAL_COUNT=0
+          CLOSED_COUNT=0
+          SUB_ISSUE_LIST=""
+
+          while IFS= read -r sub_issue; do
+            if [[ -n "$sub_issue" ]]; then
+              TOTAL_COUNT=$((TOTAL_COUNT + 1))
+
+              SUB_NUM=$(echo "$sub_issue" | jq -r '.number')
+              SUB_TITLE=$(echo "$sub_issue" | jq -r '.title')
+              SUB_CLOSED=$(echo "$sub_issue" | jq -r '.closed')
+
+              if [[ "$SUB_CLOSED" == "true" ]]; then
+                CLOSED_COUNT=$((CLOSED_COUNT + 1))
+                SUB_ISSUE_LIST="$SUB_ISSUE_LIST- [x] #$SUB_NUM $SUB_TITLE\n"
+              else
+                SUB_ISSUE_LIST="$SUB_ISSUE_LIST- [ ] #$SUB_NUM $SUB_TITLE\n"
+              fi
+            fi
+          done <<< "$SUB_ISSUES"
+
+          echo "Progress: $CLOSED_COUNT/$TOTAL_COUNT sub-tasks completed"
+          echo ""
+
+          # Check if all sub-tasks are complete
+          if [[ $CLOSED_COUNT -lt $TOTAL_COUNT ]]; then
+            REMAINING=$((TOTAL_COUNT - CLOSED_COUNT))
+            echo "Not all sub-tasks complete ($REMAINING remaining), skipping auto-completion"
+            exit 0
+          fi
+
+          echo "✓ All sub-tasks are complete!"
+          echo ""
+
+          # Validate parent acceptance criteria before closing
+          echo "Validating parent acceptance criteria..."
+
+          PARENT_BODY=$(gh issue view "$PARENT_NUMBER" --json body --jq '.body')
+
+          # Extract acceptance criteria section
+          CRITERIA=$(echo "$PARENT_BODY" | sed -n '/## Acceptance Criteria/,/^##/p' | tail -n +2 || echo "")
+
+          if [[ -z "$CRITERIA" ]]; then
+            echo "⚠ Warning: No acceptance criteria found in parent issue"
+          else
+            # Check for unchecked boxes
+            UNCHECKED=$(echo "$CRITERIA" | grep -E '^\s*-\s*\[\s*\]' || echo "")
+
+            if [[ -n "$UNCHECKED" ]]; then
+              echo "✗ Parent has unchecked acceptance criteria, cannot auto-complete"
+              echo ""
+
+              # Add comment explaining why auto-completion is blocked
+              gh issue comment "$PARENT_NUMBER" --body "⚠️ Auto-Completion Blocked: All sub-tasks (#$ISSUE_NUMBER was the last one) have been completed, but this feature cannot be automatically closed because there are unchecked acceptance criteria. Please review and check all criteria, then manually close this issue." || true
+
+              exit 0
+            else
+              echo "✓ All acceptance criteria are checked"
+            fi
+          fi
+
+          # Get parent status to verify it's in a valid state
+          PARENT_STATUS=$(gh issue view "$PARENT_NUMBER" --json projectItems --jq '.projectItems[0].status.name' 2>/dev/null || echo "")
+
+          if [[ -n "$PARENT_STATUS" ]]; then
+            echo "Parent status: $PARENT_STATUS"
+
+            # Only auto-complete if parent is in progress or review
+            if [[ "$PARENT_STATUS" != "In Progress" ]] && [[ "$PARENT_STATUS" != "In Review" ]]; then
+              echo "⚠ Parent is in '$PARENT_STATUS' state, not auto-completing"
+              exit 0
+            fi
+          fi
+
+          echo ""
+          echo "================================================"
+          echo "AUTO-COMPLETING FEATURE #$PARENT_NUMBER"
+          echo "================================================"
+
+          # Close the parent feature
+          gh issue close "$PARENT_NUMBER" --reason completed || true
+
+          # Add completion comment with sub-task list
+          echo -e "✅ All sub-tasks completed! Auto-closing feature.\n\nCompleted sub-tasks:\n$SUB_ISSUE_LIST\nFeature automatically transitioned to Done. Last completed: #$ISSUE_NUMBER" | gh issue comment "$PARENT_NUMBER" --body-file - || true
+
+          echo ""
+          echo "✓ Feature #$PARENT_NUMBER auto-completed successfully"
+          echo "================================================"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
