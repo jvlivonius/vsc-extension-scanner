@@ -99,16 +99,39 @@ log_info "Updating issue #$ISSUE_NUMBER status to '$TARGET_STATUS'"
 # Check rate limit
 rate_limit_guard || exit 1
 
-# Get project item data
-PROJECT_DATA=$(gh issue view "$ISSUE_NUMBER" --json projectItems --jq '.projectItems[0]')
+# Get issue node ID for GraphQL query
+ISSUE_NODE_ID=$(gh issue view "$ISSUE_NUMBER" --json id --jq '.id')
 
-if [ -z "$PROJECT_DATA" ] || [ "$PROJECT_DATA" = "null" ]; then
-    log_error "Issue #$ISSUE_NUMBER is not in any project"
+if [ -z "$ISSUE_NODE_ID" ]; then
+    log_error "Could not get issue node ID for #$ISSUE_NUMBER"
     exit 1
 fi
 
-PROJECT_ITEM_ID=$(echo "$PROJECT_DATA" | jq -r '.id')
-PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r '.project.id')
+# Query project items via GraphQL to get project item ID and project ID
+PROJECT_QUERY_RESULT=$(gh api graphql -f query='
+  query($issueId: ID!) {
+    node(id: $issueId) {
+      ... on Issue {
+        projectItems(first: 1) {
+          nodes {
+            id
+            project {
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+' -f issueId="$ISSUE_NODE_ID")
+
+PROJECT_ITEM_ID=$(echo "$PROJECT_QUERY_RESULT" | jq -r '.data.node.projectItems.nodes[0].id // empty')
+PROJECT_ID=$(echo "$PROJECT_QUERY_RESULT" | jq -r '.data.node.projectItems.nodes[0].project.id // empty')
+
+if [ -z "$PROJECT_ITEM_ID" ] || [ -z "$PROJECT_ID" ]; then
+    log_error "Issue #$ISSUE_NUMBER is not in any project"
+    exit 1
+fi
 
 # Get Status field ID
 STATUS_FIELD_ID=$(gh api graphql -f query='
@@ -200,7 +223,7 @@ sleep 2
 log_info "Verifying status transition..."
 
 CURRENT_STATUS=$(gh issue view "$ISSUE_NUMBER" --json projectItems \
-  --jq '.projectItems[0].fieldValues[] | select(.field.name=="Status") | .name')
+  --jq '.projectItems[0].status.name // empty')
 
 if [ "$CURRENT_STATUS" = "$TARGET_STATUS" ]; then
     log_success "Status updated successfully: #$ISSUE_NUMBER → '$TARGET_STATUS'"
