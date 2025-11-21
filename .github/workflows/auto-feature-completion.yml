@@ -26,10 +26,6 @@ jobs:
             source scripts/github-projects/rate_limit.sh
           fi
 
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          REPO_OWNER="${{ github.repository_owner }}"
-          REPO_NAME="${{ github.event.repository.name }}"
-
           echo "================================================"
           echo "Checking feature completion for closed issue #$ISSUE_NUMBER"
           echo "================================================"
@@ -206,3 +202,6 @@ jobs:
           echo "================================================"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
