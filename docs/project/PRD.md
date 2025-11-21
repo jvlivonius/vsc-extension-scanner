@@ -85,12 +85,14 @@ vscan scan --output results.csv --quiet
 - Ensure dependencies are vulnerability-free
 - Maintain high security standards
 
-**Usage Pattern:** Pre-release scanning with verbose output
+**Usage Pattern:** Pre-release scanning with detailed security module analysis
 
 **Typical Workflow:**
 ```bash
-vscan scan --verbose --extensions-dir ~/my-extension-dev
-# Review and fix vulnerabilities before release
+# Comprehensive security analysis with module breakdown
+vscan scan --detailed --verbose --extensions-dir ~/my-extension-dev
+
+# Review all 11 security modules and fix vulnerabilities before release
 ```
 
 ### 3.2 Core Use Cases
@@ -130,13 +132,13 @@ vscan scan --verbose --extensions-dir ~/my-extension-dev
 
 **Flow:**
 1. Update extension dependencies
-2. Run verbose scan: `vscan scan --verbose`
-3. Review detailed security analysis
+2. Run detailed scan: `vscan scan --detailed --verbose`
+3. Review all 11 security modules with risk levels
 4. Address identified vulnerabilities
 5. Re-scan to verify fixes
 6. Publish with confidence
 
-**Success:** Extension verified secure before release
+**Success:** Extension verified secure before release with comprehensive module-by-module analysis
 
 ---
 
@@ -242,13 +244,15 @@ vscan scan --verbose --extensions-dir ~/my-extension-dev
 - Color-coded risk levels (high/medium/low)
 - Formatted tables for results
 - Graceful fallback to plain mode
-- Multiple output modes: quiet, standard, verbose
+- Multiple output modes: quiet, standard, verbose, detailed
+- Detailed mode (`--detailed` flag) shows all 11 security modules with risk levels and score contributions
 
 **Acceptance:**
 - Visual progress feedback during scans
 - Results are easy to read and understand
 - Works with and without Rich library
 - Plain mode suitable for CI/CD
+- Detailed mode displays comprehensive security module breakdown
 
 ### FR-7: Error Handling
 **Priority:** MUST HAVE
