@@ -11,6 +11,7 @@ from .footer import FooterComponent
 from .charts import ChartComponents
 from .detail_view import DetailViewComponent
 from .overview_table import OverviewTableComponent
+from .module_breakdown import ModuleBreakdownComponent
 
 __all__ = [
     "BaseComponent",
@@ -20,4 +21,5 @@ __all__ = [
     "ChartComponents",
     "DetailViewComponent",
     "OverviewTableComponent",
+    "ModuleBreakdownComponent",
 ]
