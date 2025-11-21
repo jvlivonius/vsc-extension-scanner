@@ -2,8 +2,8 @@
 
 **Purpose:** Branching strategy and git workflow for development
 **Document Type:** Process Guide
-**Last Updated:** 2025-11-01
-**Version:** 1.0.0
+**Last Updated:** 2025-11-21
+**Version:** 1.1.0
 
 ---
 
@@ -110,7 +110,7 @@ main (protected, production-ready)
 
 **Lifetime:** Days to 2 weeks maximum
 
-**Merge Strategy:** Squash or merge commit (project preference)
+**Merge Strategy:** Merge commit (preserves history), squash (linear history), or rebase (all enabled)
 
 ### `bugfix/*` Branches
 
@@ -123,7 +123,7 @@ main (protected, production-ready)
 
 **Lifetime:** Hours to days
 
-**Merge Strategy:** Merge commit (preserve bug fix history)
+**Merge Strategy:** Merge commit (preserves bug fix history)
 
 ### `hotfix/*` Branches
 
@@ -361,25 +361,35 @@ git pull origin main
 git branch -d feature/your-feature-name
 # Note: Use -D if branch was squash-merged (commits differ from main)
 
-# Remote branch is auto-deleted by GitHub
-# (deleteBranchOnMerge is enabled for this repository)
+# Remote branch cleanup (manual, see Branch Cleanup section)
 ```
 
-**Important:** GitHub automatically deletes remote branches after PR merge, but **local branches must be manually deleted**. See [Branch Cleanup](#branch-cleanup) section for automated cleanup options.
+**Important:** Both local and remote branches must be manually deleted after PR merge. Remote branches are preserved to allow `git branch --merged` to work correctly. See [Branch Cleanup](#branch-cleanup) section for automated cleanup options.
 
 ---
 
 ## Branch Cleanup
 
-GitHub auto-deletes remote branches after PR merge, but **local branches must be manually deleted**. Git keeps them for safety to prevent accidental loss of work.
+Both local and remote branches must be manually deleted after PR merge. This project preserves remote branches after merge to enable `git branch --merged` detection. Git keeps local branches for safety to prevent accidental loss of work.
+
+### Repository Settings
+
+**Current Configuration:**
+- ✅ Merge commits enabled (preserves branch relationships)
+- ✅ Squash/rebase merge also available (for linear history preference)
+- ❌ Auto-delete branches disabled (remote branches preserved)
+
+This configuration allows `git branch --merged main` to correctly detect merged branches when using merge commits.
 
 ### Manual Cleanup Commands
 
 | Operation | Command |
 |-----------|---------|
-| **Check stale branches** | `git branch -vv` (look for `[origin/branch: gone]`) |
-| **Delete specific branch** | `git branch -d feature/name` (safe) or `-D` (force, for squash-merge) |
-| **Delete all merged** | `git fetch --prune && git branch --merged main \| grep -v 'main' \| xargs git branch -d` |
+| **Check merged branches (local)** | `git branch --merged main` (excludes main branch) |
+| **Check merged branches (remote)** | `git branch -r --merged main` (shows remote merged branches) |
+| **Delete specific local branch** | `git branch -d feature/name` (safe) or `-D` (force, for squash-merge) |
+| **Delete specific remote branch** | `git push origin --delete feature/name` |
+| **Delete all local merged** | `git branch --merged main \| grep -v 'main' \| xargs git branch -d` |
 
 **Why -D after squash-merge?** Squash creates new commits, so git sees the branch as "unmerged" even though the PR merged.
 
@@ -389,33 +399,74 @@ Add to `.git/config` (project-level) or `~/.gitconfig` (global):
 
 ```ini
 [alias]
+    # GitHub CLI-based merge detection (works with all merge strategies)
+    is-merged = !gh pr view --json state,mergedAt --jq "if .state == \"MERGED\" then \"✅ Merged at \" + .mergedAt else \"❌ Not merged\" end" 2>/dev/null || echo "❌ No PR found"
+    merged-prs = !gh pr list --state merged --limit 20
+    check-merge = !f() { gh pr list --state merged --search "head:$1" --json number,title,mergedAt --jq "if length > 0 then \"✅ Merged: \" + .[0].title else \"❌ Not merged\" end"; }; f
+    clean-merged = !git branch | grep -v "^*" | xargs -I {} sh -c "gh pr list --state merged --search \"head:{}\" --json number -q \".[0].number\" > /dev/null 2>&1 && git branch -D {}" || true
+
+    # Traditional git-based merge detection (works only with merge commits)
     cleanup = !git fetch --prune && git branch --merged main | grep -v 'main' | xargs git branch -d 2>/dev/null || true && echo '✅ Cleanup complete'
-    cleanup-gone = !git fetch --prune && git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true && echo '✅ Cleanup complete'
+    cleanup-remote = !git fetch --prune && git branch -r --merged main | grep -v 'main' | sed 's/origin\\///' | xargs -I {} git push origin --delete {} 2>/dev/null || true && echo '✅ Remote cleanup complete'
 ```
 
 **Usage:**
 ```bash
-git cleanup && git cleanup-gone  # Clean up all stale branches
+# Check if current branch has merged PR
+git is-merged
+
+# Check specific branch merge status
+git check-merge feature/my-branch
+
+# Delete all local branches with merged PRs (works with any merge strategy)
+git clean-merged
+
+# Delete local branches merged to main (works only with merge commits)
+git cleanup
+
+# Delete remote branches merged to main (use with caution)
+git cleanup-remote
 ```
+
+**Recommended Cleanup Workflow:**
+1. Use `git clean-merged` for comprehensive cleanup (checks GitHub PR status)
+2. Use `git cleanup` for git-based cleanup (faster, but only detects merge commits)
+3. Use `git cleanup-remote` periodically to clean up remote branches (optional)
 
 ### Workflow Integration
 
-**After PR merge:**
+**After PR merge (using merge commit):**
 ```bash
-gh pr merge --squash
+gh pr merge --merge  # or --squash / --rebase
 git checkout main && git pull
-git branch -D feature/branch-name
+git branch -d feature/branch-name  # Use -d (safe) if merge commit
 ```
 
-**Weekly cleanup:**
+**After PR merge (using squash/rebase):**
+```bash
+gh pr merge --squash  # or --rebase
+git checkout main && git pull
+git branch -D feature/branch-name  # Use -D (force) if squashed/rebased
+```
+
+**Weekly cleanup (local branches):**
 ```bash
 git checkout main && git pull
-git cleanup && git cleanup-gone
+git clean-merged  # Comprehensive GitHub-based cleanup
+# Or: git cleanup  # Fast git-based cleanup (merge commits only)
+```
+
+**Monthly cleanup (remote branches, optional):**
+```bash
+git checkout main && git pull
+git cleanup-remote  # Clean up remote merged branches
 ```
 
 **Troubleshooting:**
-- Branch won't delete with `-d`: Use `-D` if PR was already merged (safe after squash-merge)
-- Keep branch for reference: `git tag archive/name feature/name` → then delete branch → restore later from tag
+- Branch won't delete with `-d`: Use `-D` if PR was squash-merged or rebased
+- Check if branch was merged: `git check-merge feature/branch-name` or `git is-merged`
+- Keep branch for reference: `git tag archive/name feature/name` → delete branch → restore from tag later
+- Remote branch not deleted: This is intentional; use `git cleanup-remote` if needed
 
 ---
 
@@ -1172,5 +1223,5 @@ git revert HEAD
 
 ---
 
-**Last Updated:** 2025-11-01
-**Version:** 1.0.0
+**Last Updated:** 2025-11-21
+**Version:** 1.1.0
