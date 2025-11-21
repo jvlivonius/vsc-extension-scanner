@@ -109,6 +109,44 @@ Before creating PR, verify all checkboxes:
   - [ ] Pre-commit hooks pass → run pre-commit
 ```
 
+### Pattern 5: Acceptance Criteria Tracking (IMPORTANT)
+
+**During implementation, update AC checkboxes as work completes:**
+
+```bash
+# After implementing a specific criterion, check its box
+./scripts/github-projects/update-acceptance-criteria.sh <issue-number> "<criterion-text>"
+
+# Example workflow:
+# 1. Implement feature code
+./scripts/github-projects/update-acceptance-criteria.sh 142 "Code implements feature as specified"
+
+# 2. Apply security patterns
+./scripts/github-projects/update-acceptance-criteria.sh 142 "Security validation applied"
+
+# 3. Write tests
+./scripts/github-projects/update-acceptance-criteria.sh 142 "Tests written with ≥80% coverage"
+
+# 4. Run architecture tests
+./scripts/github-projects/update-acceptance-criteria.sh 142 "Architecture tests pass"
+
+# 5. Run pre-commit
+./scripts/github-projects/update-acceptance-criteria.sh 142 "Pre-commit hooks pass"
+```
+
+**Why this matters:**
+
+- Provides real-time progress visibility on issue page
+- Automated workflows check AC completion before status transitions
+- Prevents issues getting "stuck" due to unchecked boxes
+- Creates clear audit trail of implementation progress
+
+**Current Limitation:**
+
+- AC updates are **manual** during implementation
+- Status field updates currently **comment-only** (GraphQL mutation marked TODO)
+- See [GITHUB_WORKFLOWS.md](../../docs/contributing/GITHUB_WORKFLOWS.md#status-transitions-limitations) for details
+
 ## Examples
 
 ### Basic Implementation

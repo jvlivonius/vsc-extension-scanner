@@ -133,15 +133,99 @@ jobs:
             echo "Updating issue #$issue_number to status: $new_status"
             echo "Reason: $reason"
 
-            # Get issue node ID
-            local issue_node_id=$(gh issue view "$issue_number" --json id --jq '.id')
-
-            # Get project field ID and option ID (this would need to be configured)
-            # For now, we'll add a comment instead of direct status update
+            # Add comment for visibility (always works)
             gh issue comment "$issue_number" --body "🤖 Automatic Status Update: **$new_status** - $reason (PR #${PR_NUMBER})" || true
 
-            # TODO: Implement actual GraphQL mutation for project status update
-            # This requires project-specific field IDs which vary per project
+            # Attempt GraphQL status field update (requires read:project, write:project scopes)
+            if attempt_status_field_update "$issue_number" "$new_status"; then
+              echo "✓ Status field updated via GraphQL"
+            else
+              echo "⚠ Status field update failed (see comment above for tracking)"
+              echo "Note: Requires PROJECT_TOKEN with read:project and write:project scopes"
+            fi
+          }
+
+          # Function to attempt status field update via GraphQL Projects V2 API
+          attempt_status_field_update() {
+            local issue_number="$1"
+            local new_status="$2"
+
+            # Get issue node ID
+            local issue_node_id=$(gh issue view "$issue_number" --json id --jq '.id' 2>/dev/null) || return 1
+
+            # Query for project item and field IDs
+            local project_query='
+              query($nodeId: ID!) {
+                node(id: $nodeId) {
+                  ... on Issue {
+                    projectItems(first: 5) {
+                      nodes {
+                        id
+                        project {
+                          id
+                          fields(first: 20) {
+                            nodes {
+                              ... on ProjectV2SingleSelectField {
+                                id
+                                name
+                                options {
+                                  id
+                                  name
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            '
+
+            # Execute query (will fail if token lacks read:project scope)
+            local project_data=$(gh api graphql -f query="$project_query" -f nodeId="$issue_node_id" 2>/dev/null) || return 1
+
+            # Extract project item ID and status field information
+            local item_id=$(echo "$project_data" | jq -r '.data.node.projectItems.nodes[0].id' 2>/dev/null) || return 1
+            local project_id=$(echo "$project_data" | jq -r '.data.node.projectItems.nodes[0].project.id' 2>/dev/null) || return 1
+            local status_field_id=$(echo "$project_data" | jq -r '.data.node.projectItems.nodes[0].project.fields.nodes[] | select(.name=="Status").id' 2>/dev/null) || return 1
+            local status_option_id=$(echo "$project_data" | jq -r ".data.node.projectItems.nodes[0].project.fields.nodes[] | select(.name==\"Status\").options[] | select(.name==\"$new_status\").id" 2>/dev/null) || return 1
+
+            # Validate all required IDs obtained
+            if [[ -z "$item_id" ]] || [[ -z "$project_id" ]] || [[ -z "$status_field_id" ]] || [[ -z "$status_option_id" ]]; then
+              echo "⚠ Could not resolve all required IDs for status update"
+              return 1
+            fi
+
+            # GraphQL mutation to update status field
+            local update_mutation='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $valueId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId
+                  itemId: $itemId
+                  fieldId: $fieldId
+                  value: {singleSelectOptionId: $valueId}
+                }) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+            '
+
+            # Execute mutation (will fail if token lacks write:project scope)
+            if gh api graphql \
+              -f query="$update_mutation" \
+              -f projectId="$project_id" \
+              -f itemId="$item_id" \
+              -f fieldId="$status_field_id" \
+              -f valueId="$status_option_id" \
+              2>/dev/null; then
+              return 0
+            else
+              return 1
+            fi
           }
 
           # Process each linked issue
