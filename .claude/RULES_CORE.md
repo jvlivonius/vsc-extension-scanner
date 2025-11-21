@@ -33,146 +33,78 @@
 ❌ **Wrong**: Skip validation after implementation
 ❌ **Wrong**: Continue implementing after errors detected
 
-### Orchestration/Implementation Separation Pattern
+## Task-Based Orchestration
+**Priority**: 🔴 **Triggers**: GitHub Projects workflows, multi-step implementation
 
-**Purpose**: Separate project management (orchestration) from code execution (implementation) to guarantee workflow steps are never skipped.
+**Purpose**: Separate GitHub workflow management (orchestration) from code execution (implementation) using Task tool subprocess isolation.
 
-**Pattern**: Main agent orchestrates, sub-agents implement
+**Pattern**: Orchestrator (slash command) → Task tool → Subagent (implementation subprocess)
 
-**Use When**:
-- GitHub Projects status transitions must be enforced
-- Multi-step workflows with state management requirements
-- Need audit trail for debugging and accountability
-- Context separation improves focus and reduces errors
+**Architecture**:
+- **Orchestrator** (slash command markdown): GitHub Projects status, metadata, PR creation
+  - NO MCP servers (lightweight context)
+  - NO agent personas (pure workflow management)
+  - Enforces status transitions via bash checkpoints
+- **Subagent** (Task tool subprocess): Pure implementation with clean context
+  - Full MCP server access (serena, sequential-thinking)
+  - Appropriate agent persona auto-selected
+  - Returns structured JSON result
 
-**Implementation** (see `/gh:implement-issue` for reference):
+**Implementation Example** (`/gh:implement-issue`):
 
-```python
-# Main Agent (Orchestrator)
-def orchestrate_issue_implementation(issue_number):
-    # 1. Fetch metadata and validate
-    issue_data = fetch_issue_metadata(issue_number)
-    validate_dependencies(issue_data)
+```markdown
+### Step 4: Update Status → "In Progress"
 
-    # 2. ENFORCE status transition BEFORE delegation
-    update_github_projects_status(issue_number, "In Progress")
-    verify_status_transition(issue_number, "In Progress")  # CRITICAL
+if ! ./scripts/github-projects/update-status.sh "$ISSUE_NUMBER" "In Progress"; then
+    echo "❌ Status transition failed"
+    exit 1
+fi
 
-    # 3. Store orchestration state in Serena memory
-    write_memory(f"orchestration_issue_{issue_number}", {
-        "status": "In Progress",
-        "step": "delegating_to_subagent",
-        "timestamp": now()
-    })
+### Step 7: Spawn Implementation Subagent
 
-    # 4. Delegate to sub-agent (pure implementation context)
-    result = invoke_slash_command(
-        "/gh:__implement-code",
-        f"--issue {issue_number} --payload '{json.dumps(payload)}'"
-    )
+Use Task tool:
+- subagent_type: automatically selected (security-engineer, quality-engineer, python-expert, general-purpose)
+- prompt: Full issue payload with acceptance criteria, required docs, branch name
+- Returns: JSON with {status, commit_sha, files_changed, test_results, error_message}
 
-    # 5. Collect results and handle failures
-    if result.status == "success":
-        pr_number = create_pull_request(issue_data, result)
+### Step 10: Update Status → "In Review"
 
-        # 6. ENFORCE status transition AFTER PR creation
-        update_github_projects_status(issue_number, "In Review")
-        verify_status_transition(issue_number, "In Review")  # CRITICAL
-    else:
-        add_label(issue_number, "needs-human-help")
-        # Keep status as "In Progress" for human investigation
+if ! ./scripts/github-projects/update-status.sh "$ISSUE_NUMBER" "In Review"; then
+    echo "⚠️ WARNING: Manual status update needed"
+fi
+```
 
-    # 7. Store final state in Serena memory
-    write_memory(f"orchestration_issue_{issue_number}", {
-        "status": "In Review" if success else "In Progress",
-        "pr_number": pr_number if success else None,
-        "result": result,
-        "timestamp": now()
-    })
+**Status Transition Script** (`scripts/github-projects/update-status.sh`):
+- GraphQL mutations for status field updates
+- 2-second API settle time
+- Verification query (fail if mismatch)
+- Exit code 1 on failure
 
-# Sub-Agent (Implementer)
-def implement_code(issue_number, payload):
-    # Pure implementation - NEVER touches GitHub Projects
-    read_documentation(payload.required_docs)
-    create_branch(payload.branch_name)
-    implement_changes(payload.acceptance_criteria)
-    run_quality_gates()
-    commit_and_push()
-
-    # Return structured result
-    return {
-        "status": "success",
-        "branch_name": "...",
-        "commit_sha": "...",
-        "files_changed": [...],
-        "tests_passed": True
-    }
+**Subagent Type Selection**:
+```
+security label OR SECURITY.md required → security-engineer
+test/quality label OR "coverage" in AC → quality-engineer
+feature/enhancement label → python-expert
+default → general-purpose
 ```
 
 **Key Guarantees**:
-- ✅ Status transitions are FIRST-CLASS operations (orchestrator's primary job)
-- ✅ Transitions are verified before proceeding
-- ✅ Implementation failures don't corrupt orchestration state
-- ✅ Audit trail in Serena memory for debugging
-- ✅ Sub-agent context stays clean (code-only, no GitHub Projects)
-
-**Status Transition Enforcement**:
-```bash
-# Helper function (see .claude/helpers/gh-status-transition.md)
-update_github_projects_status() {
-    local issue_number="$1"
-    local new_status="$2"
-
-    # 1. Update status
-    gh project item-edit --field-id "Status" --text "$new_status"
-
-    # 2. Wait for API to settle
-    sleep 2
-
-    # 3. VERIFY transition completed
-    actual_status=$(verify_status "$issue_number")
-
-    # 4. Fail loudly if mismatch
-    if [ "$actual_status" != "$new_status" ]; then
-        echo "CRITICAL: Status transition failed"
-        return 1
-    fi
-
-    # 5. Store in Serena memory for audit
-    write_memory("status_transitions_issue_${issue_number}", "...")
-
-    return 0
-}
-```
-
-**Boundaries**:
-- **Orchestrator**: GitHub Projects, issue metadata, status transitions, PR creation, Serena memory
-- **Sub-Agent**: Documentation reading, code implementation, tests, commits, quality gates
-- **NEVER Mix**: Sub-agent NEVER touches GitHub Projects, orchestrator NEVER writes code
+- ✅ Status transitions enforced via bash (cannot be skipped)
+- ✅ True subprocess isolation (Task tool)
+- ✅ Automatic persona selection (no manual config)
+- ✅ Graceful failure handling (preserve "In Progress" state)
+- ✅ Verification after each status change
 
 **Error Handling**:
-- Status transition failure → Halt workflow, exit with error
-- Sub-agent implementation failure → Keep "In Progress" status, add needs-human-help label
-- PR creation failure → Keep "In Progress" status, preserve branch for debugging
-
-**Audit Trail**:
-```bash
-# Query orchestration state
-mcp__serena__read_memory "orchestration_issue_142"
-
-# Query status transition history
-mcp__serena__read_memory "status_transitions_issue_142"
-
-# List all orchestration states
-mcp__serena__list_memories | grep "orchestration_issue_"
-```
+- Subagent fails → Keep "In Progress", add "needs-human-help" label
+- Status transition fails (before) → Halt workflow, exit 1
+- Status transition fails (after PR) → Log warning, continue (non-blocking)
 
 **Commands Using This Pattern**:
-- `/gh:implement-issue` - Issue implementation with status enforcement
-- (Future: `/gh:triage`, `/gh:milestone` - other orchestration workflows)
+- `/gh:implement-issue` - Issue implementation with Task-based subprocess
 
-✅ **Right**: Orchestrator manages status, delegates code to sub-agent, verifies transitions
-❌ **Wrong**: Single agent doing both orchestration and implementation (context pollution)
+✅ **Right**: Orchestrator manages status → Task tool spawns subagent → Verify transitions
+❌ **Wrong**: Single context doing both orchestration and implementation (POC pattern)
 
 ## Workflow Rules
 **Priority**: 🟡 **Triggers**: All development tasks
