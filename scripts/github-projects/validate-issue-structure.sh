@@ -195,51 +195,79 @@ fi
 
 # Validate Required Documentation field
 if [[ "$REQUIRE_DOCUMENTATION" == "true" ]]; then
-    if echo "$BODY" | grep -qi "Required Documentation"; then
-        DOCS=$(echo "$BODY" | grep -i "Required Documentation" | head -1)
-        if echo "$DOCS" | grep -qE '(ARCHITECTURE|SECURITY|PRD|TESTING|PERFORMANCE)\.md'; then
-            log_success "PASS: Required Documentation field present and valid"
+    if echo "$BODY" | grep -qi "^## Required Documentation"; then
+        # Extract content AFTER "## Required Documentation" header (not the header itself)
+        # Match exact section header, then get first non-empty line
+        DOCS=$(echo "$BODY" | awk '/^## Required Documentation$/{getline; while(NF==0) getline; print; exit}' | xargs)
 
-            # Extract and validate file existence
-            DOC_FILES=$(echo "$DOCS" | grep -oE '[A-Z_]+\.md' | tr '\n' ' ')
-            MISSING_FILES=""
-            FILES_CHECKED=0
-            FILES_FOUND=0
+        # Check if documentation is explicitly marked as "None" (valid for bug fixes, etc.)
+        if [[ -n "$DOCS" ]] && echo "$DOCS" | grep -qiE '^(None|N/A)(\s|\(|$)'; then
+            log_success "PASS: Required Documentation explicitly marked as None (acceptable for bug fixes)"
+        elif [[ -n "$DOCS" ]]; then
+            # Extract documentation file names (both .md files and capitalized words without extension)
+            # This handles: "ARCHITECTURE.md, SECURITY.md" and "GITHUB_WORKFLOWS.md, PRD.md"
+            DOC_FILES_RAW=$(echo "$DOCS" | grep -oE '[A-Z][A-Za-z_0-9]*\.md|[A-Z][A-Z_]+')
 
-            for doc in $DOC_FILES; do
-                ((FILES_CHECKED++))
-                # Try common documentation locations
-                FOUND=false
-                for base_path in "docs/guides" "docs/project" "docs/contributing" "docs"; do
-                    if [[ -f "$base_path/$doc" ]]; then
-                        log_success "  ✓ Found: $base_path/$doc"
-                        ((FILES_FOUND++))
-                        FOUND=true
-                        break
+            if [[ -n "$DOC_FILES_RAW" ]]; then
+                log_success "PASS: Required Documentation field present and valid"
+
+                # Convert newlines to spaces and clean up
+                DOC_FILES=$(echo "$DOC_FILES_RAW" | tr '\n' ' ' | xargs)
+
+                # Validate file existence
+                MISSING_FILES=""
+                FILES_CHECKED=0
+                FILES_FOUND=0
+
+                for doc in $DOC_FILES; do
+                    FILES_CHECKED=$((FILES_CHECKED + 1))
+                    FOUND=false
+
+                    # Try common documentation locations
+                    for base_path in "docs/guides" "docs/project" "docs/contributing" "docs"; do
+                        # Try exact match first
+                        if [[ -f "$base_path/$doc" ]]; then
+                            log_success "  ✓ Found: $base_path/$doc"
+                            FILES_FOUND=$((FILES_FOUND + 1))
+                            FOUND=true
+                            break
+                        fi
+
+                        # If doc doesn't end in .md, try adding .md extension
+                        if [[ ! "$doc" =~ \.md$ ]] && [[ -f "$base_path/$doc.md" ]]; then
+                            log_success "  ✓ Found: $base_path/$doc.md"
+                            FILES_FOUND=$((FILES_FOUND + 1))
+                            FOUND=true
+                            break
+                        fi
+                    done
+
+                    if [[ "$FOUND" == "false" ]]; then
+                        MISSING_FILES="$MISSING_FILES $doc"
+                        log_error "  ✗ Not found: $doc (checked docs/guides, docs/project, docs/contributing, docs)"
+                        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
                     fi
                 done
 
-                if [[ "$FOUND" == "false" ]]; then
-                    MISSING_FILES="$MISSING_FILES $doc"
-                    log_error "  ✗ Not found: $doc (checked docs/guides, docs/project, docs/contributing, docs)"
-                    ((VALIDATION_ERRORS++))
+                # Summary of file validation
+                if [[ $FILES_CHECKED -gt 0 ]]; then
+                    if [[ -n "$MISSING_FILES" ]]; then
+                        log_error "FAIL: $FILES_CHECKED file(s) checked, $FILES_FOUND found, missing:$MISSING_FILES"
+                    else
+                        log_success "PASS: All $FILES_CHECKED required documentation files exist"
+                    fi
                 fi
-            done
-
-            if [[ $FILES_CHECKED -gt 0 ]]; then
-                if [[ -n "$MISSING_FILES" ]]; then
-                    log_error "FAIL: $FILES_CHECKED file(s) checked, $FILES_FOUND found, missing:$MISSING_FILES"
-                else
-                    log_success "PASS: All $FILES_CHECKED required documentation files exist"
-                fi
+            else
+                log_warning "WARN: Required Documentation field found but no valid docs listed (expected: ARCHITECTURE.md, SECURITY.md, etc.)"
+                VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
             fi
         else
-            log_warning "WARN: Required Documentation field found but no valid docs listed"
-            ((VALIDATION_WARNINGS++))
+            log_warning "WARN: Required Documentation field found but no documentation listed on following line"
+            VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
         fi
     else
         log_error "FAIL: Required Documentation field missing"
-        ((VALIDATION_ERRORS++))
+        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
     fi
 fi
 

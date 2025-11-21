@@ -163,15 +163,17 @@ if [[ "$SKIP_STRUCTURE" == "false" ]]; then
     log_info "[1/6] Checking issue structure..."
 
     if [[ -x "$SCRIPT_DIR/validate-issue-structure.sh" ]]; then
-        if "$SCRIPT_DIR/validate-issue-structure.sh" "$ISSUE_NUMBER" --require-milestone --require-priority --require-complexity 2>&1 | grep -q "VALID"; then
+        # Capture output to variable to avoid pipefail issues with grep -q
+        STRUCTURE_OUTPUT=$("$SCRIPT_DIR/validate-issue-structure.sh" "$ISSUE_NUMBER" --require-milestone --require-priority --require-complexity 2>&1)
+        if echo "$STRUCTURE_OUTPUT" | grep -q "VALID"; then
             log_success "Issue structure validation passed"
         else
             log_error "Issue structure validation failed"
-            ((VALIDATION_ERRORS++))
+            VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
         fi
     else
         log_warning "validate-issue-structure.sh not found, skipping structure check"
-        ((VALIDATION_WARNINGS++))
+        VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
     fi
 else
     log_info "[1/6] Skipping structure validation (--skip-structure)"
@@ -207,12 +209,12 @@ if [[ "$SKIP_DEPS" == "false" ]]; then
             if DEP_STATE=$(gh issue view "$dep" --json state 2>/dev/null | jq -r '.state'); then
                 if [[ "$DEP_STATE" != "CLOSED" ]]; then
                     log_error "Dependency #$dep is $DEP_STATE (must be CLOSED)"
-                    ((VALIDATION_ERRORS++))
+                    VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
                     deps_ok=false
                 fi
             else
                 log_error "Dependency issue #$dep does not exist"
-                ((VALIDATION_ERRORS++))
+                VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
                 deps_ok=false
             fi
         done
@@ -245,7 +247,7 @@ if [[ -n "$BLOCKED_BY" ]]; then
     if [[ -n "$missing_in_api" ]]; then
         log_warning "Dependencies documented but not set in GitHub API:$missing_in_api"
         log_info "To fix, run: ./scripts/github-projects/manage-issue-relationships.sh set-blocker <blocker> $ISSUE_NUMBER"
-        ((VALIDATION_WARNINGS++))
+        VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
     else
         log_success "GitHub dependency API matches issue body"
     fi
@@ -264,11 +266,11 @@ if echo "$BODY" | grep -qi "Acceptance Criteria"; then
         log_success "Acceptance criteria present"
     else
         log_warning "Acceptance Criteria section exists but appears empty"
-        ((VALIDATION_WARNINGS++))
+        VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
     fi
 else
     log_error "Acceptance Criteria section missing"
-    ((VALIDATION_ERRORS++))
+    VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
 fi
 echo ""
 
@@ -276,7 +278,7 @@ echo ""
 if [[ "$SKIP_LABELS" == "false" ]]; then
     log_info "[6/6] Checking required labels..."
 
-    local labels_ok=true
+    labels_ok=true
 
     # Check priority label
     if echo "$LABELS" | grep -qE 'P[0-3]-(critical|high|medium|low)'; then
@@ -284,7 +286,7 @@ if [[ "$SKIP_LABELS" == "false" ]]; then
         log_success "Priority label present: $PRIORITY"
     else
         log_error "Priority label (P0-P3) missing"
-        ((VALIDATION_ERRORS++))
+        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
         labels_ok=false
     fi
 
@@ -294,7 +296,7 @@ if [[ "$SKIP_LABELS" == "false" ]]; then
         log_success "Complexity label present: $COMPLEXITY"
     else
         log_error "Complexity label missing"
-        ((VALIDATION_ERRORS++))
+        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
         labels_ok=false
     fi
 
@@ -304,7 +306,7 @@ if [[ "$SKIP_LABELS" == "false" ]]; then
         log_success "Type label present: $TYPE"
     else
         log_error "Type label (feature/task/bugfix/hotfix) missing"
-        ((VALIDATION_ERRORS++))
+        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
         labels_ok=false
     fi
 else
