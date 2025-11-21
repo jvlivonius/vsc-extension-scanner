@@ -84,7 +84,11 @@ class TestSanitizeStringProperties:
 
         # Should preserve safe characters (accounting for possible truncation)
         if len(safe_text) <= 10000:
-            assert len(result) == len(safe_text) or result == safe_text.strip()
+            # Whitespace-only input is normalized to single space (utils.py:372-376)
+            if safe_text and not safe_text.strip():
+                assert result == " "
+            else:
+                assert len(result) == len(safe_text) or result == safe_text.strip()
 
     @given(st.none() | st.text())
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
