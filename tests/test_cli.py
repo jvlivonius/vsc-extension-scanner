@@ -41,34 +41,49 @@ class TestCLICommands(unittest.TestCase):
         self.assertIn("version", result.stdout.lower())
         self.assertEqual(result.exit_code, 0)
 
-    def test_help_flag(self):
-        """Test --help flag."""
-        result = self.runner.invoke(cli.app, ["--help"])
-        self.assertIn("scan", result.stdout.lower())
-        self.assertIn("cache", result.stdout.lower())
-        self.assertIn("config", result.stdout.lower())
-        self.assertEqual(result.exit_code, 0)
 
-    def test_scan_help(self):
-        """Test scan command help."""
-        result = self.runner.invoke(cli.app, ["scan", "--help"])
-        self.assertIn("output", result.stdout.lower())
-        self.assertIn("publisher", result.stdout.lower())
-        self.assertIn("cache", result.stdout.lower())
-        self.assertEqual(result.exit_code, 0)
+# Consolidated help tests using pytest.mark.parametrize
+# Replaces: test_help_flag, test_scan_help, test_cache_stats_help, test_cache_clear_help
+# Pattern: Following test_string_sanitization.py consolidation approach (task #1020)
+@pytest.mark.skipif(not TYPER_AVAILABLE, reason="Typer not available")
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "command_args,expected_keywords",
+    [
+        (["--help"], ["scan", "cache", "config"]),
+        (["scan", "--help"], ["output", "publisher", "cache"]),
+        (["cache", "stats", "--help"], ["cache"]),
+        (["cache", "clear", "--help"], ["clear", "force"]),
+    ],
+    ids=["root_help", "scan_help", "cache_stats_help", "cache_clear_help"],
+)
+def test_help_commands(command_args, expected_keywords):
+    """
+    Test help output for various commands.
 
-    def test_cache_stats_help(self):
-        """Test cache stats subcommand help."""
-        result = self.runner.invoke(cli.app, ["cache", "stats", "--help"])
-        self.assertIn("cache", result.stdout.lower())
-        self.assertEqual(result.exit_code, 0)
+    Consolidated parameterized test for all help commands to reduce duplication.
+    Pattern: PR #1013 functional validation, task #1020 (consolidate help tests).
 
-    def test_cache_clear_help(self):
-        """Test cache clear subcommand help."""
-        result = self.runner.invoke(cli.app, ["cache", "clear", "--help"])
-        self.assertIn("clear", result.stdout.lower())
-        self.assertIn("force", result.stdout.lower())
-        self.assertEqual(result.exit_code, 0)
+    Replaces 4 separate unittest methods with a single parameterized test:
+    - test_help_flag
+    - test_scan_help
+    - test_cache_stats_help
+    - test_cache_clear_help
+    """
+    # ARRANGE
+    runner = CliRunner()
+
+    # ACT
+    result = runner.invoke(cli.app, command_args)
+
+    # ASSERT
+    assert result.exit_code == 0, f"Help command failed: {' '.join(command_args)}"
+
+    output_lower = result.stdout.lower()
+    for keyword in expected_keywords:
+        assert (
+            keyword in output_lower
+        ), f"Expected keyword '{keyword}' not found in help output for: {' '.join(command_args)}"
 
 
 @unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
