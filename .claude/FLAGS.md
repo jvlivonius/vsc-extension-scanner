@@ -20,6 +20,7 @@ Behavioral flags for Claude Code to enable specific execution modes and tool sel
 - **--c7 / --context7**: Prefer Context7 for library docs (pytest, typer, rich, hypothesis)
 - **--seq / --sequential**: Prefer sequential-thinking for complex analysis, architecture, debugging
 - **--serena**: Prefer Serena tools for symbol operations, project memory, session persistence
+- **--playwright / --pw**: Prefer Playwright for HTML report testing, visual validation, accessibility
 
 **Note**: These flags may influence Claude's tool selection if you've implemented custom logic in slash commands. They do NOT enable/disable MCP servers.
 

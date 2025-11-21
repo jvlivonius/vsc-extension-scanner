@@ -41,6 +41,7 @@ Recommended agents and tools for common development tasks:
 | Performance issue | performance-engineer agent | PERFORMANCE.md |
 | Multi-file changes | Serena MCP tools (symbol operations) | mcp/Serena.md |
 | Library questions | Context7 MCP tools (official docs) | mcp/Context7.md |
+| HTML report testing | Playwright MCP tools (E2E, visual, accessibility) | mcp/MCP_Playwright.md |
 
 **Note**: MCP servers (if configured) are always loaded. See MCP_LOADER.md for details.
 
@@ -176,6 +177,7 @@ Loaded for implementation tasks:
 - **mcp/Serena.md**: When to use Serena tools (symbol operations, project memory, session persistence)
 - **mcp/Context7.md**: When to use Context7 tools (library docs: pytest, typer, rich, hypothesis)
 - **mcp/Sequential.md**: When to use sequential-thinking (complex analysis, multi-step reasoning)
+- **mcp/MCP_Playwright.md**: When to use Playwright (HTML report testing, visual validation, accessibility)
 
 See **MCP_LOADER.md** for how MCP loading actually works.
 
