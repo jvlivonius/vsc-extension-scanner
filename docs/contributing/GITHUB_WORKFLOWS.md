@@ -11,9 +11,10 @@
 1. [Issue Creation Workflows](#issue-creation-workflows)
 2. [Issue Triage Workflows](#issue-triage-workflows)
 3. [Implementation Workflows](#implementation-workflows)
-4. [Project Board Management](#project-board-management)
-5. [Milestone Management](#milestone-management)
-6. [Release Workflows](#release-workflows)
+4. [Automatic Status Transitions](#automatic-status-transitions)
+5. [Project Board Management](#project-board-management)
+6. [Milestone Management](#milestone-management)
+7. [Release Workflows](#release-workflows)
 
 ---
 
@@ -216,6 +217,387 @@ Apply suggestions? (y/n)
    git push -u origin feature/my-feature
    gh pr create --title "feat(module): description" --body "Closes #142"
    ```
+
+---
+
+## Automatic Status Transitions
+
+**Overview**: GitHub Actions workflows automatically transition issues through statuses based on PR events, dependency resolution, and completion criteria. This reduces manual status management and ensures consistent workflow enforcement.
+
+### Status Flow Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Backlog: Issue created
+    Backlog --> Todo: Ready to work
+    Todo --> InProgress: PR opened + deps closed
+    InProgress --> InReview: PR ready + CI passes
+    InReview --> Done: PR merged + criteria checked
+
+    Todo --> Blocked: Open dependencies
+    InProgress --> Blocked: Open dependencies
+    InReview --> Blocked: Open dependencies
+
+    Blocked --> Todo: Dependencies resolved
+    Blocked --> InProgress: Dependencies resolved
+    Blocked --> InReview: Dependencies resolved
+```
+
+### Validation Requirements
+
+| Transition | Required Conditions | Validation Checks |
+|------------|---------------------|-------------------|
+| **Backlog → Todo** | Manual | None |
+| **Todo → In Progress** | ✅ PR opened<br>✅ All blocking dependencies closed | - Check issue body for "Blocked By: #N"<br>- Query GitHub API for dependency state<br>- Verify all blockers are CLOSED |
+| **In Progress → In Review** | ✅ PR marked ready for review<br>✅ All CI checks pass | - Check PR draft status<br>- Query check runs for PR<br>- Verify all checks are SUCCESS |
+| **In Review → Done** | ✅ PR merged<br>✅ All acceptance criteria checked<br>✅ All tests pass | - Check PR merged status<br>- Parse acceptance criteria section<br>- Verify no unchecked boxes `- [ ]` |
+| **Any → Blocked** | ❌ Has open blocking dependencies | - Query GitHub dependency API<br>- Find dependencies via GraphQL<br>- Check if any blocker is OPEN |
+| **Blocked → Previous** | ✅ All dependencies closed | - Check all blockers are CLOSED<br>- Restore previous status from comment<br>- Default to "Todo" if unknown |
+
+### Workflow 1: PR-Based Status Transitions
+
+**File**: `.github/workflows/auto-status-transitions.yml`
+
+**Triggers**:
+- `pull_request`: opened, ready_for_review, closed, reopened
+- `pull_request_review`: submitted
+- `check_suite`: completed
+
+**Process**:
+1. Extract linked issues from PR body/title (Closes #N, Fixes #N, Resolves #N)
+2. For each linked issue, determine transition based on PR event
+3. Validate transition requirements
+4. Update status and add comment explaining reason
+
+**Example scenarios**:
+
+**Scenario A: PR Opened (Not Draft)**
+```bash
+# User creates PR with "Closes #142"
+# Workflow checks:
+✓ PR is not draft
+✓ Issue #142 has no open blocking dependencies
+# Result: Issue #142 → "In Progress"
+# Comment: "🤖 PR #150 opened with all dependencies resolved"
+```
+
+**Scenario B: PR Ready for Review**
+```bash
+# User marks draft PR as ready
+# Workflow checks:
+✓ All CI checks pass
+# Result: Issue #142 → "In Review"
+# Comment: "🤖 PR #150 ready for review with passing CI"
+```
+
+**Scenario C: PR Merged**
+```bash
+# PR merges to main
+# Workflow checks:
+✓ All acceptance criteria checked in issue body
+# Result: Issue #142 → "Done"
+# Comment: "🤖 PR #150 merged with all acceptance criteria met"
+```
+
+**Scenario D: Blocked by Dependencies**
+```bash
+# PR opened but dependency #140 is still open
+# Workflow checks:
+✗ Dependency #140 is OPEN (must be CLOSED)
+# Result: Issue #142 → "Blocked"
+# Comment: "🤖 PR opened but dependencies not resolved"
+```
+
+### Workflow 2: Dependency-Based Blocking
+
+**File**: `.github/workflows/auto-dependency-blocking.yml`
+
+**Triggers**:
+- `issues`: closed, reopened, edited
+
+**Process**:
+1. When issue is closed/reopened, find all issues blocked by it
+2. For each blocked issue, check if ALL dependencies are closed
+3. Update status to "Blocked" if any dependency is open
+4. Restore previous status if all dependencies are now closed
+
+**GraphQL Queries Used**:
+```graphql
+# Find issues blocked by this issue
+query FindBlockedIssues($issueId: ID!) {
+  node(id: $issueId) {
+    ... on Issue {
+      trackedInIssues(first: 100) {
+        nodes {
+          id
+          number
+          title
+        }
+      }
+    }
+  }
+}
+
+# Get all blocking dependencies for an issue
+query GetBlockingDependencies($issueId: ID!) {
+  node(id: $issueId) {
+    ... on Issue {
+      trackedIssues(first: 100) {
+        nodes {
+          number
+          closed
+        }
+      }
+    }
+  }
+}
+```
+
+**Example scenarios**:
+
+**Scenario E: Dependency Resolved**
+```bash
+# Issue #140 (blocker) is closed
+# Workflow finds issues blocked by #140: #141, #142
+# For #141:
+✓ All dependencies now closed
+# Result: #141 transitions from "Blocked" → "In Progress" (previous status)
+# Comment: "✅ All blocking dependencies resolved"
+```
+
+**Scenario F: Dependency Reopened**
+```bash
+# Issue #140 is reopened
+# Workflow finds issues blocked by #140: #141, #142
+# For #141:
+✗ Dependency #140 is now OPEN
+# Result: #141 → "Blocked"
+# Comment: "🚫 This issue is blocked by: #140. Reason: Issue #140 was reopened"
+```
+
+**Scenario G: Cascading Dependencies**
+```bash
+# Chain: #140 blocks #141 blocks #142
+# Issue #140 is closed
+# First job: #141 unblocks (Blocked → In Progress)
+# Second job (cascading check): Finds #142 is blocked by #141
+# Result: #142 remains Blocked (dependency #141 still exists)
+# When #141 closes: #142 unblocks automatically
+```
+
+### Workflow 3: Feature Auto-Completion
+
+**File**: `.github/workflows/auto-feature-completion.yml`
+
+**Triggers**:
+- `issues`: closed
+
+**Process**:
+1. When sub-task closes, find parent feature issue
+2. Check if ALL sibling sub-tasks are now closed
+3. Validate parent acceptance criteria are checked
+4. Close parent feature and add completion comment
+
+**Example scenarios**:
+
+**Scenario H: Last Sub-Task Completes**
+```bash
+# Feature #140 has 3 sub-tasks: #141, #142, #143
+# Sub-tasks #141 and #142 already closed
+# User closes #143 (last sub-task)
+# Workflow checks:
+✓ All sub-tasks (3/3) are closed
+✓ Parent #140 is in "In Progress" status
+✓ All acceptance criteria in #140 are checked
+# Result: Feature #140 → "Done" (closed with "completed" reason)
+# Comment: "✅ All sub-tasks completed! Auto-closing feature."
+```
+
+**Scenario I: Parent Criteria Not Checked**
+```bash
+# All sub-tasks complete but parent has unchecked criteria
+# Workflow checks:
+✓ All sub-tasks (3/3) are closed
+✓ Parent #140 is in "In Progress"
+✗ Parent has unchecked acceptance criteria
+# Result: NO auto-close
+# Comment: "⚠️ Auto-Completion Blocked: All sub-tasks completed, but unchecked acceptance criteria remain"
+```
+
+**Scenario J: Mixed Sub-Issue Types**
+```bash
+# Feature #140 has: 2 tasks (#141, #142) and 1 bug (#143)
+# All close successfully
+# Workflow: Treats all sub-issues equally
+# Result: Feature #140 auto-completes when all close
+```
+
+### Status Tracking with HTML Comments
+
+**Previous Status Storage**:
+When marking an issue as "Blocked", the workflow stores the previous status in a hidden HTML comment:
+
+```html
+<!-- AUTO-BLOCKED: previous_status=In Progress -->
+🚫 Automatic Blocking Detection: This issue is blocked by #140.
+```
+
+**Status Restoration**:
+When unblocking, the workflow parses comments to find the most recent previous status and restores it. Defaults to "Todo" if no previous status is found.
+
+### Manual Override: skip-automation Label
+
+**Purpose**: Bypass automatic status transitions for manual control
+
+**Usage**:
+```bash
+# Add label to disable automation for this issue
+gh issue edit 142 --add-label "skip-automation"
+
+# Manually manage status as needed
+# (Use project board or manual status commands)
+
+# Remove label to re-enable automation
+gh issue edit 142 --remove-label "skip-automation"
+```
+
+**Effect**: All three automation workflows check for this label and skip processing if present.
+
+### Troubleshooting Automatic Transitions
+
+**Q: Why didn't my issue transition to "In Progress" when I opened a PR?**
+
+**Common causes**:
+1. **PR doesn't reference issue**: Add "Closes #N", "Fixes #N", or "Resolves #N" to PR title or body
+2. **Blocking dependencies open**: Check if issue has "Blocked By: #X" and dependency #X is still open
+3. **PR is draft**: Mark PR as ready for review to trigger transition
+4. **Workflow delay**: Wait 1-2 minutes for GitHub Actions to process
+
+**Verification**:
+```bash
+# Check if PR correctly links to issue
+gh pr view 150 --json body | jq -r '.body' | grep -i "closes\|fixes\|resolves"
+
+# Check dependency status
+./scripts/github-projects/validate-agent-ready.sh 142
+
+# Check workflow runs
+gh run list --workflow=auto-status-transitions.yml --limit 5
+```
+
+**Q: Why didn't my issue transition to "In Review" when PR is ready?**
+
+**Common causes**:
+1. **CI checks failing**: All checks must pass (status: SUCCESS)
+2. **PR still draft**: Must be marked as ready for review
+3. **Workflow timing**: Wait for check_suite to complete
+
+**Verification**:
+```bash
+# Check CI status
+gh pr checks 150
+
+# Manually trigger if needed
+gh workflow run auto-status-transitions.yml
+```
+
+**Q: Why didn't my feature auto-complete when all sub-tasks closed?**
+
+**Common causes**:
+1. **Parent has unchecked criteria**: All `- [ ]` must be `- [x]` in acceptance criteria
+2. **Parent wrong status**: Must be "In Progress" or "In Review"
+3. **Parent not a feature**: Must have "feature" label
+4. **Sub-tasks not linked**: Must use GitHub's native sub-issue relationships
+
+**Verification**:
+```bash
+# Check parent acceptance criteria
+gh issue view 140 --json body | jq -r '.body' | grep -A 10 "Acceptance Criteria"
+
+# Check sub-task linkage
+./scripts/github-projects/manage-issue-relationships.sh view 140
+
+# Check parent status
+gh issue view 140 --json projectItems | jq -r '.projectItems[0].status.name'
+```
+
+**Q: How do I manually override automation?**
+
+**Solution 1: skip-automation label**
+```bash
+gh issue edit 142 --add-label "skip-automation"
+# Manually manage status, then remove label
+gh issue edit 142 --remove-label "skip-automation"
+```
+
+**Solution 2: Manual status update**
+```bash
+# Update via project board UI: Click Status cell → Select value
+# Or force close/reopen:
+gh issue close 142 --reason "not planned"
+gh issue reopen 142
+```
+
+**Q: Rate limit errors in workflows**
+
+**Solution**:
+- Workflows include exponential backoff for rate limiting
+- GitHub Actions has higher rate limits than personal tokens
+- Check: `gh api rate_limit --jq '.resources.core'`
+- If persistent, stagger issue/PR operations
+
+**Q: Workflows not triggering**
+
+**Verification**:
+```bash
+# Check if workflows are enabled
+gh workflow list
+
+# View recent runs
+gh run list --limit 10
+
+# Check specific workflow
+gh workflow view auto-status-transitions.yml
+
+# Manually trigger if needed
+gh workflow run auto-status-transitions.yml
+```
+
+### Best Practices for Automation
+
+**Issue Creation**:
+- ✅ Always use "Blocked By: #N" format in issue body (not just text description)
+- ✅ Set up GitHub native dependencies via `manage-issue-relationships.sh`
+- ✅ Write clear acceptance criteria with checkboxes `- [ ]`
+
+**PR Creation**:
+- ✅ Use "Closes #N" in PR description (not just comments)
+- ✅ Mark draft PRs when not ready for review
+- ✅ Ensure CI checks are configured and passing
+
+**Feature Management**:
+- ✅ Use GitHub native sub-issue relationships (not just text mentions)
+- ✅ Check all acceptance criteria before closing last sub-task
+- ✅ Keep parent in "In Progress" or "In Review" for auto-completion
+
+**Debugging**:
+- ✅ Wait 1-2 minutes for workflows to process
+- ✅ Check workflow run logs for validation failures
+- ✅ Use `validate-agent-ready.sh` to pre-check requirements
+- ✅ Add `skip-automation` label for manual control
+
+### Workflow Files Reference
+
+| Workflow | File | Purpose |
+|----------|------|---------|
+| Status Transitions | `.github/workflows/auto-status-transitions.yml` | PR-based status transitions with validation |
+| Dependency Blocking | `.github/workflows/auto-dependency-blocking.yml` | Auto-block/unblock based on dependencies |
+| Feature Completion | `.github/workflows/auto-feature-completion.yml` | Auto-close features when all sub-tasks done |
+| Test Workflows | `.github/workflows/test-automation-workflows.yml` | Manual test scenarios for validation |
+
+**See also**:
+- [GITHUB_RELATIONSHIPS.md](GITHUB_RELATIONSHIPS.md) - Dependency and parent-child setup
+- [validate-agent-ready.sh](../../scripts/github-projects/validate-agent-ready.sh) - Pre-implementation validation
 
 ---
 
@@ -574,6 +956,6 @@ gh issue create --title "[BUG] Memory leak in scanner" --label "bug,P0-critical"
 
 ---
 
-**Last Updated**: 2025-11-20
+**Last Updated**: 2025-11-21
 **Status**: Active
 **Maintainer**: Update workflows as team practices evolve
