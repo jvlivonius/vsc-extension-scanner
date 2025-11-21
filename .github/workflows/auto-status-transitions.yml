@@ -1,0 +1,237 @@
+name: Auto Status Transitions
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, closed, reopened]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+  issues:
+    types: [opened, edited, reopened, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  checks: read
+
+jobs:
+  auto-transition:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.issue.labels.*.name, 'skip-automation') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get linked issues from PR
+        id: get-issues
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+        run: |
+          # Extract issue numbers from PR body and title
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Get PR details
+          PR_BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
+          PR_TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+
+          # Extract issue numbers from "Closes #N", "Fixes #N", "Resolves #N"
+          ISSUE_NUMBERS=$(echo "$PR_BODY $PR_TITLE" | grep -oE "(Closes|Fixes|Resolves) #[0-9]+" | grep -oE "[0-9]+" | sort -u | tr '\n' ' ')
+
+          echo "issues=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
+          echo "Found linked issues: $ISSUE_NUMBERS"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate dependencies and transition status
+        if: steps.get-issues.outputs.issues != ''
+        run: |
+          set -euo pipefail
+
+          # Source rate limit library if available
+          if [[ -f "scripts/github-projects/rate_limit.sh" ]]; then
+            source scripts/github-projects/rate_limit.sh
+          fi
+
+          ISSUES="${{ steps.get-issues.outputs.issues }}"
+          PR_STATE="${{ github.event.pull_request.state }}"
+          PR_DRAFT="${{ github.event.pull_request.draft }}"
+          PR_MERGED="${{ github.event.pull_request.merged }}"
+
+          # Function to check if all dependencies are closed
+          validate_dependencies() {
+            local issue_number="$1"
+            local issue_body=$(gh issue view "$issue_number" --json body --jq '.body')
+
+            # Extract blocking dependencies
+            local blocked_by=$(echo "$issue_body" | awk '/### Dependencies/,/^###/ {print}' | grep "Blocked By:" | grep -oE '#[0-9]+' | grep -oE '[0-9]+' || echo "")
+
+            if [[ -z "$blocked_by" ]]; then
+              echo "✓ No blocking dependencies"
+              return 0
+            fi
+
+            local all_closed=true
+            for dep in $blocked_by; do
+              local dep_state=$(gh issue view "$dep" --json state --jq '.state')
+              if [[ "$dep_state" != "CLOSED" ]]; then
+                echo "✗ Dependency #$dep is $dep_state (must be CLOSED)"
+                all_closed=false
+              fi
+            done
+
+            if [[ "$all_closed" == "true" ]]; then
+              echo "✓ All dependencies are closed"
+              return 0
+            else
+              return 1
+            fi
+          }
+
+          # Function to check CI status
+          validate_ci_checks() {
+            local pr_number="$1"
+
+            # Get check runs for the PR
+            local check_status=$(gh pr checks "$pr_number" --json state --jq '.[] | select(.state != "SUCCESS") | .state' || echo "")
+
+            if [[ -z "$check_status" ]]; then
+              echo "✓ All CI checks passed"
+              return 0
+            else
+              echo "✗ CI checks not passing: $check_status"
+              return 1
+            fi
+          }
+
+          # Function to check acceptance criteria
+          validate_acceptance_criteria() {
+            local issue_number="$1"
+            local issue_body=$(gh issue view "$issue_number" --json body --jq '.body')
+
+            # Extract acceptance criteria section
+            local criteria=$(echo "$issue_body" | sed -n '/## Acceptance Criteria/,/^##/p' | tail -n +2)
+
+            if [[ -z "$criteria" ]]; then
+              echo "✓ No acceptance criteria defined"
+              return 0
+            fi
+
+            # Check for unchecked boxes
+            local unchecked=$(echo "$criteria" | grep -E '^\s*-\s*\[\s*\]' || echo "")
+
+            if [[ -n "$unchecked" ]]; then
+              echo "✗ Acceptance criteria not all checked"
+              return 1
+            else
+              echo "✓ All acceptance criteria checked"
+              return 0
+            fi
+          }
+
+          # Function to update issue status via GraphQL
+          update_status() {
+            local issue_number="$1"
+            local new_status="$2"
+            local reason="$3"
+
+            echo "Updating issue #$issue_number to status: $new_status"
+            echo "Reason: $reason"
+
+            # Get issue node ID
+            local issue_node_id=$(gh issue view "$issue_number" --json id --jq '.id')
+
+            # Get project field ID and option ID (this would need to be configured)
+            # For now, we'll add a comment instead of direct status update
+            local pr_number="${{ github.event.pull_request.number }}"
+
+            gh issue comment "$issue_number" --body "🤖 Automatic Status Update: **$new_status** - $reason (PR #${pr_number})" || true
+
+            # TODO: Implement actual GraphQL mutation for project status update
+            # This requires project-specific field IDs which vary per project
+          }
+
+          # Process each linked issue
+          for issue in $ISSUES; do
+            echo "================================================"
+            echo "Processing issue #$issue"
+            echo "================================================"
+
+            # Get current status
+            CURRENT_STATUS=$(gh issue view "$issue" --json projectItems --jq '.projectItems[0].status.name' || echo "")
+            echo "Current status: $CURRENT_STATUS"
+
+            # Determine transition based on PR state
+            case "${{ github.event.action }}" in
+              opened)
+                if [[ "$PR_DRAFT" == "false" ]]; then
+                  echo "PR opened (not draft)"
+                  if validate_dependencies "$issue"; then
+                    update_status "$issue" "In Progress" "PR #${{ github.event.pull_request.number }} opened with all dependencies resolved"
+                  else
+                    update_status "$issue" "Blocked" "PR opened but dependencies not resolved"
+                  fi
+                fi
+                ;;
+
+              ready_for_review)
+                echo "PR marked ready for review"
+                if validate_ci_checks "${{ github.event.pull_request.number }}"; then
+                  update_status "$issue" "In Review" "PR #${{ github.event.pull_request.number }} ready for review with passing CI"
+                else
+                  echo "Skipping transition: CI checks not passing"
+                fi
+                ;;
+
+              closed)
+                if [[ "$PR_MERGED" == "true" ]]; then
+                  echo "PR merged"
+                  if validate_acceptance_criteria "$issue"; then
+                    update_status "$issue" "Done" "PR #${{ github.event.pull_request.number }} merged with all acceptance criteria met"
+                  else
+                    echo "Skipping transition: Acceptance criteria not all checked"
+                  fi
+                fi
+                ;;
+            esac
+
+            echo ""
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for blocking dependencies (on issue events)
+        if: github.event_name == 'issues'
+        run: |
+          set -euo pipefail
+
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          ISSUE_BODY="${{ github.event.issue.body }}"
+
+          echo "Checking dependencies for issue #$ISSUE_NUMBER"
+
+          # Extract blocking dependencies
+          BLOCKED_BY=$(echo "$ISSUE_BODY" | awk '/### Dependencies/,/^###/ {print}' | grep "Blocked By:" | grep -oE '#[0-9]+' | grep -oE '[0-9]+' || echo "")
+
+          if [[ -z "$BLOCKED_BY" ]]; then
+            echo "No blocking dependencies found"
+            exit 0
+          fi
+
+          # Check if any dependencies are still open
+          HAS_OPEN_DEPS=false
+          for dep in $BLOCKED_BY; do
+            DEP_STATE=$(gh issue view "$dep" --json state --jq '.state')
+            if [[ "$DEP_STATE" == "OPEN" ]]; then
+              echo "Found open dependency: #$dep"
+              HAS_OPEN_DEPS=true
+            fi
+          done
+
+          if [[ "$HAS_OPEN_DEPS" == "true" ]]; then
+            echo "Issue has open dependencies - should be marked as Blocked"
+            gh issue comment "$ISSUE_NUMBER" --body "🚫 Automatic Blocking Detection: This issue has open blocking dependencies. Status should be set to Blocked." || true
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
