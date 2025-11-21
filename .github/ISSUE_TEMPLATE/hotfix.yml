@@ -1,0 +1,333 @@
+name: Hotfix
+description: Critical security fix or data loss prevention (P0 severity only)
+title: "[HOTFIX] "
+labels: [hotfix, P0-critical, security]
+assignees:
+  - jvlivonius
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ CRITICAL HOTFIX
+
+        **Use this template ONLY for:**
+        - Security vulnerabilities (CVEs)
+        - Data loss or corruption risks
+        - Production-breaking bugs
+
+        **For regular bugs:** Use the Bug Report template instead.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief one-sentence description of the critical issue
+      placeholder: "Path traversal vulnerability in cache_manager.py allows arbitrary file read"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hotfix-type
+    attributes:
+      label: Hotfix Type
+      description: What kind of critical issue is this?
+      options:
+        - "Security CVE"
+        - "Data Loss Risk"
+        - "Production Down"
+        - "Other Critical Issue"
+    validations:
+      required: true
+
+  - type: input
+    id: cve-id
+    attributes:
+      label: CVE ID (if applicable)
+      description: Official CVE identifier if assigned
+      placeholder: "CVE-2024-12345"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Critical severity assessment
+      options:
+        - "P0-critical (immediate action required)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: vulnerability-description
+    attributes:
+      label: Vulnerability/Issue Description
+      description: Detailed description of the critical issue
+      placeholder: |
+        The cache_manager.py module does not properly validate file paths
+        when reading cached data. An attacker can use path traversal
+        sequences (../) to read arbitrary files on the system.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact-assessment
+    attributes:
+      label: Impact Assessment
+      description: Severity of the issue (CVSS score, affected users, data at risk)
+      placeholder: |
+        **CVSS Score:** 7.5 (High)
+        **Affected Versions:** v3.5.0 - v3.7.2
+        **Users Affected:** All users who have run vscan with --cache enabled
+        **Data at Risk:** Local file system read access
+        **Attack Vector:** Local or remote (if cache files shared)
+        **Exploitability:** Medium (requires crafted extension data)
+    validations:
+      required: true
+
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root Cause Analysis
+      description: Why does this vulnerability exist?
+      placeholder: |
+        **Root Cause:**
+        The cache_manager.py:get_cached_result() method calls validate_path()
+        AFTER constructing the file path, not before. This allows path traversal
+        sequences in extension IDs to bypass validation.
+
+        **Affected Code:**
+        - vscode_scanner/cache_manager.py:145-150
+        - Missing validate_path() call before os.path.join()
+
+        **How It Was Missed:**
+        - Code review focused on API input validation
+        - Cache path construction not flagged as user-controlled input
+    validations:
+      required: true
+
+  - type: textarea
+    id: proof-of-concept
+    attributes:
+      label: Proof of Concept (if safe to share)
+      description: How to reproduce the vulnerability (safely)
+      placeholder: |
+        **Safe PoC:**
+        1. Create malicious cache entry: `~/.vscanrc/cache/../../etc/passwd.json`
+        2. Run: `vscan scan --use-cache`
+        3. Observe: Application attempts to read /etc/passwd
+
+        **Note:** Do NOT include exploits that enable real attacks
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: target-version
+    attributes:
+      label: Target Fix Version
+      description: Version number for hotfix release
+      placeholder: "v3.7.3"
+    validations:
+      required: true
+
+  - type: input
+    id: required-docs
+    attributes:
+      label: Required Documentation
+      description: Comma-separated list of critical docs to read before fixing
+      placeholder: "SECURITY.md, ERROR_HANDLING.md, ARCHITECTURE.md"
+      value: "SECURITY.md, ERROR_HANDLING.md, ARCHITECTURE.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: |
+        List dependencies (should be minimal for hotfixes):
+        - **Blocked By**: Critical blockers only
+        - **Blocks**: Other security issues
+      placeholder: |
+        Blocked By: None
+        Blocks: #160 (disclosure)
+      value: |
+        Blocked By: None
+        Blocks: None
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Fix Requirements
+
+  - type: textarea
+    id: proposed-fix
+    attributes:
+      label: Proposed Fix
+      description: How to fix this vulnerability
+      placeholder: |
+        **Files to Modify:**
+        - vscode_scanner/cache_manager.py - Move validate_path() before path construction
+        - vscode_scanner/utils.py - Enhance validate_path() with traversal detection
+
+        **Changes:**
+        1. Line 145: Add validate_path(extension_id) BEFORE os.path.join()
+        2. Add test for path traversal in validate_path()
+        3. Add regression test in test_security.py
+
+        **Security Pattern:**
+        ```python
+        # BEFORE (vulnerable):
+        cache_path = os.path.join(cache_dir, extension_id + ".json")
+        validate_path(cache_path)
+
+        # AFTER (secure):
+        validate_path(extension_id)  # Validate BEFORE join
+        cache_path = os.path.join(cache_dir, extension_id + ".json")
+        validate_path(cache_path)  # Defense in depth
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: rollback-plan
+    attributes:
+      label: Rollback Plan
+      description: How to rollback if fix causes issues (REQUIRED for hotfixes)
+      placeholder: |
+        **Rollback Command:**
+        ```bash
+        pip install vscode-scanner==3.7.2
+        ```
+
+        **Rollback Testing:**
+        - Test rollback in isolated environment
+        - Verify previous version installs correctly
+        - Document known vulnerabilities in rolled-back version
+
+        **Communication:**
+        - Notify users of rollback via GitHub release notes
+        - Provide mitigation guidance if rollback needed
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Acceptance Criteria
+
+        Hotfix is complete when all items are checked:
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: Hotfix Completion Checklist
+      options:
+        - label: Vulnerability reproduced with proof-of-concept test
+        - label: Root cause identified and documented
+        - label: Fix implemented following SECURITY.md patterns
+        - label: Regression test added to test_security_regression.py
+        - label: All security tests pass (0 vulnerabilities)
+        - label: No new vulnerabilities introduced (bandit, pip-audit clean)
+        - label: All existing tests still pass
+        - label: Manual verification with original PoC (attack blocked)
+        - label: Rollback plan tested and documented
+        - label: Security advisory drafted (if CVE)
+
+  - type: checkboxes
+    id: security-requirements
+    attributes:
+      label: Security Requirements (CRITICAL)
+      options:
+        - label: validate_path() used BEFORE all path operations
+        - label: sanitize_string() used for all external input
+        - label: No path disclosure in error messages
+        - label: Defense-in-depth applied (multiple validation layers)
+        - label: Security patterns from SECURITY.md followed
+        - label: Threat model updated if needed
+
+  - type: checkboxes
+    id: architecture-requirements
+    attributes:
+      label: Architecture Requirements
+      options:
+        - label: Fix respects layer boundaries (P → A → I)
+        - label: No shortcuts that compromise security
+        - label: Error handling prevents information leakage
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Hotfix Workflow
+
+        **Emergency Process:**
+        1. Create `hotfix/CVE-YYYY-NNNNN` or `hotfix/critical-issue-name` branch from main
+        2. Implement fix with comprehensive security testing
+        3. Run full test suite + security scans
+        4. Create PR with `[HOTFIX]` prefix (requires 1 approval + passing CI)
+        5. Merge to main after approval
+        6. Tag hotfix release: `vX.Y.Z` (patch bump)
+        7. Publish security advisory (if CVE)
+        8. Monitor for issues post-release
+
+        **Disclosure Timeline:**
+        - **Private Fix Development:** 0-7 days (this issue private)
+        - **Release:** Immediately after fix verified
+        - **Public Disclosure:** 7-14 days after release (or coordinated disclosure date)
+
+  - type: textarea
+    id: verification-steps
+    attributes:
+      label: Manual Verification Steps
+      description: How to verify the hotfix works
+      placeholder: |
+        **Attack Verification (blocked):**
+        1. Attempt path traversal with PoC: `vscan scan --use-cache` (with malicious cache)
+        2. Verify attack blocked with appropriate error message
+        3. Check logs show validation failure, not file read error
+
+        **Functionality Verification (works):**
+        1. Test normal cache operations: `vscan scan --use-cache`
+        2. Verify legitimate cache reads/writes work correctly
+        3. Confirm no regression in performance or features
+    validations:
+      required: true
+
+  - type: textarea
+    id: disclosure-plan
+    attributes:
+      label: Disclosure Plan (for CVEs)
+      description: How and when to disclose this vulnerability
+      placeholder: |
+        **Private Development:**
+        - Keep this issue private until fix released
+        - Coordinate with security@vscan.dev (if applicable)
+
+        **Release Communication:**
+        - Tag release with security advisory
+        - Update SECURITY.md with fixed version
+        - Notify users via GitHub release notes
+
+        **Public Disclosure:**
+        - Wait 14 days after release for users to update
+        - Publish CVE details to security mailing lists
+        - Update documentation with mitigation guidance
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other critical information
+      placeholder: |
+        - Reporter information (if externally reported)
+        - Related CVEs or vulnerabilities
+        - Mitigation guidance for users who can't upgrade immediately
+        - Performance impact of fix
+    validations:
+      required: false
