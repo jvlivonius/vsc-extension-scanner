@@ -1,10 +1,10 @@
 ---
 name: test
-description: "Execute tests with coverage analysis (Python CLI - pytest/hypothesis)"
+description: "Execute tests with coverage analysis (Python CLI - pytest/hypothesis/playwright)"
 category: utility
 complexity: enhanced
-# PYTHON CLI OPTIMIZATION: Removed playwright (browser tool, use pytest for Python testing)
-mcp-servers: []
+# PYTHON CLI OPTIMIZATION: Added playwright for HTML report E2E testing
+mcp-servers: [playwright]
 personas: [qa-specialist]
 ---
 
@@ -37,8 +37,9 @@ Key behaviors:
 
 ## MCP Integration
 - **Context7**: Auto-activated for test framework documentation (pytest, hypothesis patterns)
+- **Playwright**: Available for HTML report E2E testing, visual validation, accessibility testing
 - **quality-engineer agent**: Activated for test analysis and quality assessment
-- **Enhanced Capabilities**: Property-based testing, hypothesis strategies, coverage analysis
+- **Enhanced Capabilities**: Property-based testing, hypothesis strategies, coverage analysis, HTML report validation
 
 ## Tool Coordination
 - **Bash**: Test runner execution and environment management
@@ -80,6 +81,20 @@ Key behaviors:
 # Continuous testing with automatic simple failure fixes
 # Real-time feedback during development
 ```
+
+### HTML Report E2E Testing (with Playwright)
+```
+/sc:test --type html
+# Browser-based testing of generated HTML reports
+# Visual regression, accessibility validation, interactive feature testing
+# Use --playwright flag to prefer Playwright MCP tools
+```
+
+**Python Unit/Integration Tests vs HTML Report Testing:**
+- **pytest**: Use for Python code testing (scanner logic, API client, cache manager)
+- **Playwright**: Use for HTML report testing (rendering, accessibility, interactive features)
+- **When to use Playwright**: "test HTML report", "validate accessibility", "visual regression"
+- **When to use pytest**: "test scanner", "test API client", "integration tests"
 
 ## Boundaries
 
