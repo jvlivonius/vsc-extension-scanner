@@ -1,154 +1,206 @@
-#!/usr/bin/env python3
 """
-Test suite for enhanced verbose mode (v3.3 Feature 2).
+Integration tests for --verbose flag behavior with functional validation.
 
-Tests:
-- Standard mode hides operational details (cache stats, retry stats, timing)
-- Verbose mode shows all operational details
-- Quiet mode shows minimal summary (unchanged)
-- Both Rich and Plain modes work correctly
+Tests functional behavior: does --verbose show operational details?
+Uses parameter propagation and structural validation patterns.
+
+Pattern: Test behavior (parameter passing), not formatting (emoji/string matching).
+Reference: PR #1013 (test_cli_detailed_flag.py) for functional validation approach.
+
+Target: Functional validation, parameter propagation, display logic behavior
 """
 
 import unittest
-import io
-import sys
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    from typer.testing import CliRunner
+    from vscode_scanner import cli
 
-from vscode_scanner.scanner import _print_summary
-from vscode_scanner.display import display_summary
+    TYPER_AVAILABLE = True
+except ImportError:
+    TYPER_AVAILABLE = False
 
 
+@unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.integration
-class TestVerboseModeStandard(unittest.TestCase):
-    """Test standard mode (security-focused, hides operational details)."""
+class TestVerboseFlagParameter(unittest.TestCase):
+    """Test --verbose flag parameter propagation through CLI."""
 
-    def test_standard_mode_hides_cache_stats_rich(self):
-        """Test that standard mode hides cache statistics in Rich mode."""
-        extensions = [{"id": "test.ext", "name": "Test"}]
-        stats = {
-            "successful_scans": 1,
-            "failed_scans": 0,
-            "vulnerabilities_found": 0,
-            "cached_results": 1,
-            "fresh_scans": 0,
-            "api_client": None,
-        }
+    def setUp(self):
+        """Set up test runner."""
+        self.runner = CliRunner()
+
+    @patch("vscode_scanner.cli.run_scan")
+    def test_verbose_flag_passes_parameter_true(self, mock_run_scan):
+        """Test --verbose flag causes verbose=True to be passed to run_scan."""
+        # ARRANGE
+        mock_run_scan.return_value = 0
+
+        # ACT
+        result = self.runner.invoke(
+            cli.app, ["scan", "--verbose"], catch_exceptions=False
+        )
+
+        # ASSERT
+        self.assertEqual(result.exit_code, 0)
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertTrue(call_kwargs.get("verbose", False))
+
+    @patch("vscode_scanner.cli.run_scan")
+    def test_without_verbose_flag_passes_parameter_false(self, mock_run_scan):
+        """Test without --verbose, verbose=False is passed to run_scan (default)."""
+        # ARRANGE
+        mock_run_scan.return_value = 0
+
+        # ACT
+        result = self.runner.invoke(cli.app, ["scan"], catch_exceptions=False)
+
+        # ASSERT
+        self.assertEqual(result.exit_code, 0)
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertFalse(call_kwargs.get("verbose", False))
+
+    @patch("vscode_scanner.cli.run_scan")
+    def test_verbose_with_quiet_flag_both_passed(self, mock_run_scan):
+        """Test --verbose and --quiet can coexist (both passed to run_scan)."""
+        # ARRANGE
+        mock_run_scan.return_value = 0
+
+        # ACT
+        result = self.runner.invoke(
+            cli.app, ["scan", "--verbose", "--quiet"], catch_exceptions=False
+        )
+
+        # ASSERT
+        self.assertEqual(result.exit_code, 0)
+        call_kwargs = mock_run_scan.call_args[1]
+        self.assertTrue(call_kwargs.get("verbose", False))
+        self.assertTrue(call_kwargs.get("quiet", False))
+
+    @patch("vscode_scanner.cli.run_scan")
+    def test_verbose_with_output_flag_both_passed(self, mock_run_scan):
+        """Test --verbose works with --output flag."""
+        # ARRANGE
+        mock_run_scan.return_value = 0
+        import tempfile
+        import os
+
+        # ACT
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "test_verbose.json")
+            result = self.runner.invoke(
+                cli.app,
+                ["scan", "--verbose", "--output", output_path],
+                catch_exceptions=False,
+            )
+
+            # ASSERT
+            self.assertIn(result.exit_code, [0, 1])
+            call_kwargs = mock_run_scan.call_args[1]
+            self.assertTrue(call_kwargs.get("verbose", False))
+
+
+@unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
+@pytest.mark.integration
+class TestVerboseDisplayBehavior(unittest.TestCase):
+    """Test verbose mode display function behavior."""
+
+    def test_should_show_cache_stats_when_verbose_true(self):
+        """Test SummaryFormatter.should_show_cache_stats returns True when verbose=True."""
+        # ARRANGE
+        from vscode_scanner.summary_formatter import SummaryFormatter
+
         results = {
             "summary": {
-                "total_extensions_scanned": 1,
+                "total_extensions_scanned": 5,
                 "vulnerabilities_found": 0,
                 "cache_statistics": {
-                    "from_cache": 1,
-                    "fresh_scans": 0,
-                    "cache_hit_rate": 100.0,
+                    "from_cache": 3,
+                    "fresh_scans": 2,
+                    "cache_hit_rate": 60.0,
                 },
-            },
-            "extensions": [
-                {
-                    "id": "test.ext",
-                    "name": "Test",
-                    "scan_status": "success",
-                    "security": {"score": 85, "risk_level": "low"},
-                }
-            ],
+            }
         }
 
-        # Capture output
-        with patch("sys.stdout", new=io.StringIO()) as mock_stdout:
-            with patch("vscode_scanner.scanner.display_summary") as mock_display:
-                with patch("vscode_scanner.scanner.create_results_table"):
-                    with patch(
-                        "vscode_scanner.scanner.create_cache_stats_table"
-                    ) as mock_cache_table:
-                        # Standard mode (verbose=False)
-                        _print_summary(
-                            extensions,
-                            stats,
-                            10.0,
-                            use_rich=True,
-                            results=results,
-                            quiet=False,
-                            verbose=False,
-                        )
+        # ACT
+        should_show = SummaryFormatter.should_show_cache_stats(results, verbose=True)
 
-                        # Cache stats table should NOT be called in standard mode
-                        mock_cache_table.assert_not_called()
+        # ASSERT
+        self.assertTrue(should_show)
 
+    def test_should_show_cache_stats_when_verbose_false(self):
+        """Test SummaryFormatter.should_show_cache_stats returns False when verbose=False."""
+        # ARRANGE
+        from vscode_scanner.summary_formatter import SummaryFormatter
 
-@pytest.mark.integration
-class TestVerboseModeVerbose(unittest.TestCase):
-    """Test verbose mode (shows all operational details)."""
-
-    def test_verbose_mode_shows_cache_stats_rich(self):
-        """Test that verbose mode shows cache statistics in Rich mode."""
-        extensions = [{"id": "test.ext", "name": "Test"}]
-        stats = {
-            "successful_scans": 1,
-            "failed_scans": 0,
-            "vulnerabilities_found": 0,
-            "cached_results": 1,
-            "fresh_scans": 0,
-        }
         results = {
             "summary": {
-                "total_extensions_scanned": 1,
+                "total_extensions_scanned": 5,
                 "vulnerabilities_found": 0,
-                "cache_statistics": {
-                    "from_cache": 1,
-                    "fresh_scans": 0,
-                    "cache_hit_rate": 100.0,
-                },
-            },
-            "extensions": [
-                {
-                    "id": "test.ext",
-                    "name": "Test",
-                    "scan_status": "success",
-                    "security": {"score": 85, "risk_level": "low"},
-                }
-            ],
+            }
         }
 
-        # Capture output
-        with patch("sys.stdout", new=io.StringIO()):
-            with patch("vscode_scanner.scanner.display_summary") as mock_display:
-                with patch("vscode_scanner.scanner.create_results_table"):
-                    with patch(
-                        "vscode_scanner.scanner.create_cache_stats_table"
-                    ) as mock_cache_table:
-                        from rich.console import Console
+        # ACT
+        should_show = SummaryFormatter.should_show_cache_stats(results, verbose=False)
 
-                        with patch.object(Console, "print"):
-                            # Configure mock to return something
-                            mock_cache_table.return_value = MagicMock()
+        # ASSERT
+        self.assertFalse(should_show)
 
-                            # Verbose mode (verbose=True)
-                            _print_summary(
-                                extensions,
-                                stats,
-                                10.0,
-                                use_rich=True,
-                                results=results,
-                                quiet=False,
-                                verbose=True,
-                            )
+    def test_should_show_retry_stats_when_verbose_true(self):
+        """Test SummaryFormatter.should_show_retry_stats returns True when verbose=True."""
+        # ARRANGE
+        from vscode_scanner.summary_formatter import SummaryFormatter
 
-                            # Cache stats table SHOULD be called in verbose mode
-                            mock_cache_table.assert_called_once()
+        retry_stats = {
+            "total_retries": 3,
+            "successful_retries": 3,
+            "failed_after_retries": 0,
+            "total_workflow_retries": 0,
+            "successful_workflow_retries": 0,
+            "failed_after_workflow_retries": 0,
+        }
+
+        # ACT
+        should_show = SummaryFormatter.should_show_retry_stats(
+            retry_stats, verbose=True
+        )
+
+        # ASSERT
+        self.assertTrue(should_show)
+
+    def test_should_show_retry_stats_when_verbose_false(self):
+        """Test SummaryFormatter.should_show_retry_stats returns False when verbose=False."""
+        # ARRANGE
+        from vscode_scanner.summary_formatter import SummaryFormatter
+
+        retry_stats = {
+            "total_retries": 3,
+            "successful_retries": 3,
+            "failed_after_retries": 0,
+        }
+
+        # ACT
+        should_show = SummaryFormatter.should_show_retry_stats(
+            retry_stats, verbose=False
+        )
+
+        # ASSERT
+        self.assertFalse(should_show)
 
 
+@unittest.skipIf(not TYPER_AVAILABLE, "Typer not available")
 @pytest.mark.integration
-class TestVerboseModeQuiet(unittest.TestCase):
-    """Test quiet mode (unchanged behavior)."""
+class TestVerboseQuietInteraction(unittest.TestCase):
+    """Test verbose and quiet flag interaction behavior."""
 
-    def test_quiet_mode_minimal_output(self):
-        """Test that quiet mode shows minimal single-line summary."""
+    def test_quiet_mode_minimal_output_single_line(self):
+        """Test quiet mode shows minimal single-line summary."""
+        # ARRANGE
+        from vscode_scanner.scanner import _print_summary
+
         extensions = [
             {"id": "test1.ext", "name": "Test1"},
             {"id": "test2.ext", "name": "Test2"},
@@ -156,12 +208,14 @@ class TestVerboseModeQuiet(unittest.TestCase):
         stats = {"vulnerabilities_found": 1}
         results = {}
 
-        # Capture output
+        # ACT & ASSERT
+        import io
+        import sys
+
         captured_output = io.StringIO()
         sys.stdout = captured_output
 
         try:
-            # Quiet mode (quiet=True, verbose doesn't matter)
             _print_summary(
                 extensions,
                 stats,
@@ -174,56 +228,23 @@ class TestVerboseModeQuiet(unittest.TestCase):
 
             output = captured_output.getvalue()
 
-            # Should be a single line
+            # Verify single line output
             self.assertEqual(output.count("\n"), 1)
 
-            # Should contain minimal info
+            # Verify minimal content (no cache/retry/timing)
             self.assertIn("Scanned 2 extensions", output)
             self.assertIn("Found 1 vulnerabilities", output)
-
-            # Should NOT contain detailed stats
             self.assertNotIn("Cache", output)
             self.assertNotIn("Retry", output)
             self.assertNotIn("Duration", output)
         finally:
             sys.stdout = sys.__stdout__
 
+    def test_verbose_stats_shown_in_display_summary(self):
+        """Test that display_summary shows retry/timing info inline when verbose=True."""
+        # ARRANGE
+        from vscode_scanner.display import display_summary
 
-@pytest.mark.integration
-class TestDisplaySummaryVerboseParameter(unittest.TestCase):
-    """Test display_summary function verbose parameter."""
-
-    def test_display_summary_hides_retry_stats_standard(self):
-        """Test display_summary hides retry stats in standard mode."""
-        results = {
-            "summary": {"total_extensions_scanned": 5, "vulnerabilities_found": 0}
-        }
-
-        retry_stats = {
-            "total_retries": 3,
-            "successful_retries": 3,
-            "failed_after_retries": 0,
-            "total_workflow_retries": 0,
-        }
-
-        # Capture Rich output
-        with patch("vscode_scanner.display.Console") as mock_console:
-            with patch("vscode_scanner.display.Panel") as mock_panel:
-                # Standard mode (verbose=False)
-                display_summary(
-                    results, 10.0, retry_stats=retry_stats, use_rich=True, verbose=False
-                )
-
-                # Get the content passed to Panel
-                call_args = mock_panel.call_args
-                content_text = str(call_args[0][0])
-
-                # Should NOT contain retry information
-                self.assertNotIn("Retries", content_text)
-                self.assertNotIn("🔄", content_text)
-
-    def test_display_summary_shows_retry_stats_verbose(self):
-        """Test display_summary shows retry stats in verbose mode."""
         results = {
             "summary": {"total_extensions_scanned": 5, "vulnerabilities_found": 0}
         }
@@ -237,65 +258,24 @@ class TestDisplaySummaryVerboseParameter(unittest.TestCase):
             "failed_after_workflow_retries": 0,
         }
 
-        # Capture Rich output
-        with patch("vscode_scanner.display.Console") as mock_console:
-            with patch("vscode_scanner.display.Panel") as mock_panel:
-                # Verbose mode (verbose=True)
+        # ACT & ASSERT
+        with patch("vscode_scanner.display.Panel") as mock_panel:
+            with patch("vscode_scanner.display.Console"):
                 display_summary(
-                    results, 10.0, retry_stats=retry_stats, use_rich=True, verbose=True
+                    results, 65.3, retry_stats=retry_stats, use_rich=True, verbose=True
                 )
+
+                # Verify Panel was called (summary panel created)
+                mock_panel.assert_called_once()
 
                 # Get the content passed to Panel
                 call_args = mock_panel.call_args
                 content_text = str(call_args[0][0])
 
-                # Should contain retry information
+                # Should contain retry and timing information
                 self.assertIn("Retries", content_text)
-
-    def test_display_summary_hides_timing_standard(self):
-        """Test display_summary hides timing in standard mode."""
-        results = {
-            "summary": {"total_extensions_scanned": 5, "vulnerabilities_found": 0}
-        }
-
-        # Capture Rich output
-        with patch("vscode_scanner.display.Console") as mock_console:
-            with patch("vscode_scanner.display.Panel") as mock_panel:
-                # Standard mode (verbose=False)
-                display_summary(
-                    results, 65.3, retry_stats=None, use_rich=True, verbose=False
-                )
-
-                # Get the content passed to Panel
-                call_args = mock_panel.call_args
-                content_text = str(call_args[0][0])
-
-                # Should NOT contain timing information
-                self.assertNotIn("Duration", content_text)
-                self.assertNotIn("⏱", content_text)
-
-    def test_display_summary_shows_timing_verbose(self):
-        """Test display_summary shows timing in verbose mode."""
-        results = {
-            "summary": {"total_extensions_scanned": 5, "vulnerabilities_found": 0}
-        }
-
-        # Capture Rich output
-        with patch("vscode_scanner.display.Console") as mock_console:
-            with patch("vscode_scanner.display.Panel") as mock_panel:
-                # Verbose mode (verbose=True)
-                display_summary(
-                    results, 65.3, retry_stats=None, use_rich=True, verbose=True
-                )
-
-                # Get the content passed to Panel
-                call_args = mock_panel.call_args
-                content_text = str(call_args[0][0])
-
-                # Should contain timing information
                 self.assertIn("Duration", content_text)
 
 
 if __name__ == "__main__":
-    # Run tests
-    unittest.main(verbosity=2)
+    unittest.main()
