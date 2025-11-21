@@ -728,6 +728,357 @@ def test_extension_id_validation(extension_id, expected_valid):
 
 ---
 
+## Test Quality Patterns (Learnings from #1016, #1019, #1020)
+
+**Context:** Following comprehensive quality analysis in issue #1016, we identified and fixed brittleness patterns across integration tests through PRs #1022 (#1019) and #1023 (#1020).
+
+**Reference PRs:**
+- PR #1013 - Original pattern: Functional validation for `test_cli_detailed_flag.py`
+- PR #1022 - Rewrite `test_verbose_mode.py` using functional validation
+- PR #1023 - Consolidate help tests in `test_cli.py` using parameterization
+
+### Core Learning: Test Behavior, Not Formatting
+
+**Principle:** Tests should validate functional behavior (what the code does), not output formatting (how it looks).
+
+#### ❌ BAD: String Matching on Rich/Typer Output
+
+```python
+# BRITTLE: Breaks with formatting changes, emoji updates, or ANSI code changes
+def test_verbose_mode_shows_stats(self):
+    """Test verbose mode shows retry stats."""
+    with patch("vscode_scanner.display.Panel") as mock_panel:
+        display_summary(results, verbose=True)
+
+        # Inspecting mock internal structure
+        call_args = mock_panel.call_args
+        content_text = str(call_args[0][0])
+
+        # String matching on formatted output
+        self.assertIn("Retries", content_text)  # Brittle!
+        self.assertNotIn("🔄", content_text)    # Emoji assertion - very brittle!
+```
+
+**Why This Fails:**
+- Breaks when Rich library updates emoji/formatting
+- Breaks when output wording changes
+- Tests implementation details, not behavior
+- Over-mocking: Knows too much about Panel internals
+
+#### ✅ GOOD: Functional Validation
+
+```python
+# ROBUST: Tests actual behavior, not formatting
+def test_verbose_mode_enables_retry_stats_display(self):
+    """Test verbose=True enables retry stats table creation."""
+    from vscode_scanner.summary_formatter import SummaryFormatter
+
+    retry_stats = {"total_retries": 3, "successful_retries": 3}
+
+    # Test the decision logic, not the output format
+    should_show = SummaryFormatter.should_show_retry_stats(
+        retry_stats, verbose=True
+    )
+
+    assert should_show is True  # Structural validation
+```
+
+**Why This Works:**
+- Tests behavior (should retry stats be shown?)
+- No dependency on Rich library internals
+- No string matching or emoji assertions
+- Survives formatting changes
+
+### Pattern 1: Test Parameter Propagation (Not Output)
+
+**Scenario:** Testing that CLI flags correctly pass parameters through the system.
+
+#### ❌ BAD: Help Text Checking
+
+```python
+def test_verbose_flag(self):
+    """Test --verbose flag."""
+    result = self.runner.invoke(cli.app, ["scan", "--verbose", "--help"])
+
+    # Only tests that help text exists, not that verbose actually works
+    self.assertIn("verbose", result.stdout.lower())
+```
+
+#### ✅ GOOD: Parameter Propagation Validation
+
+```python
+@patch("vscode_scanner.cli.run_scan")
+def test_verbose_flag_passes_parameter_true(self, mock_run_scan):
+    """Test --verbose flag causes verbose=True to be passed to run_scan."""
+    # ARRANGE
+    mock_run_scan.return_value = 0
+
+    # ACT
+    result = self.runner.invoke(cli.app, ["scan", "--verbose"])
+
+    # ASSERT
+    self.assertEqual(result.exit_code, 0)
+    call_kwargs = mock_run_scan.call_args[1]
+    self.assertTrue(call_kwargs.get("verbose", False))
+```
+
+**Pattern Benefits:**
+- Tests actual behavior: Does `--verbose` set `verbose=True`?
+- Survives help text changes
+- Validates end-to-end parameter flow
+- Clear failure messages when propagation breaks
+
+### Pattern 2: Structural Validation (Not String Content)
+
+**Scenario:** Verifying that display functions show/hide content based on flags.
+
+#### ❌ BAD: Mock Call Args String Matching
+
+```python
+def test_cache_table_shown_when_verbose(self):
+    """Test cache table shown in verbose mode."""
+    with patch("vscode_scanner.display.create_cache_stats_table") as mock_table:
+        with patch("vscode_scanner.display.Panel") as mock_panel:
+            display_summary(results, verbose=True)
+
+            # Inspecting Panel mock internals
+            content = str(mock_panel.call_args[0][0])
+            self.assertIn("Cache", content)  # String matching!
+```
+
+#### ✅ GOOD: Function Call Validation
+
+```python
+def test_cache_table_created_when_verbose_true(self):
+    """Test create_cache_stats_table is called when verbose=True."""
+    with patch("vscode_scanner.display.create_cache_stats_table") as mock_table:
+        with patch("vscode_scanner.display.Console"):
+            display_summary(results, verbose=True)
+
+            # Verify table creation function was called
+            mock_table.assert_called_once()
+```
+
+**Pattern Benefits:**
+- Tests structural behavior: Was the table function called?
+- No string matching or emoji dependencies
+- Clear intent: verbose=True should create cache stats table
+- Survives Rich library updates
+
+### Pattern 3: Parameterized Test Consolidation (DRY Principle)
+
+**Scenario:** Multiple similar tests with only test data varying.
+
+#### ❌ BAD: Repetitive Test Methods
+
+```python
+def test_help_flag(self):
+    """Test --help flag."""
+    result = self.runner.invoke(cli.app, ["--help"])
+    self.assertIn("scan", result.stdout.lower())
+    self.assertEqual(result.exit_code, 0)
+
+def test_scan_help(self):
+    """Test scan command help."""
+    result = self.runner.invoke(cli.app, ["scan", "--help"])
+    self.assertIn("output", result.stdout.lower())
+    self.assertEqual(result.exit_code, 0)
+
+def test_cache_stats_help(self):
+    """Test cache stats subcommand help."""
+    result = self.runner.invoke(cli.app, ["cache", "stats", "--help"])
+    self.assertIn("cache", result.stdout.lower())
+    self.assertEqual(result.exit_code, 0)
+
+# ... 2 more similar tests
+```
+
+**Problems:**
+- 5 methods with identical logic
+- High maintenance burden (fix logic 5 times)
+- Code duplication violates DRY principle
+
+#### ✅ GOOD: Parameterized Test Function
+
+```python
+@pytest.mark.parametrize(
+    "command_args,expected_keywords",
+    [
+        (["--help"], ["scan", "cache", "config"]),
+        (["scan", "--help"], ["output", "publisher", "cache"]),
+        (["cache", "stats", "--help"], ["cache"]),
+        (["cache", "clear", "--help"], ["clear", "force"]),
+    ],
+    ids=["root_help", "scan_help", "cache_stats_help", "cache_clear_help"],
+)
+def test_help_commands(command_args, expected_keywords):
+    """Test help output for various commands."""
+    # ARRANGE
+    runner = CliRunner()
+
+    # ACT
+    result = runner.invoke(cli.app, command_args)
+
+    # ASSERT
+    assert result.exit_code == 0
+    output_lower = result.stdout.lower()
+    for keyword in expected_keywords:
+        assert keyword in output_lower
+```
+
+**Pattern Benefits:**
+- Single implementation for all test cases
+- Add new test case = add one line of data
+- Fix logic once, applies to all cases
+- Clear test IDs in pytest output
+- Reduces test code by 75%
+
+### Pattern 4: Avoid Emoji/ANSI Assertions
+
+**Principle:** Never assert on emoji or ANSI escape codes in test output.
+
+#### ❌ BAD: Emoji Assertions
+
+```python
+def test_retry_stats_hidden_in_standard_mode(self):
+    """Test retry stats not shown in standard mode."""
+    result = display_summary(results, verbose=False)
+
+    # Emoji assertions - extremely brittle!
+    self.assertNotIn("🔄", content_text)  # Retry emoji
+    self.assertNotIn("⏱", content_text)   # Timer emoji
+    self.assertNotIn("✓", content_text)   # Checkmark emoji
+```
+
+**Why This Fails:**
+- Rich library updates change emoji
+- Terminal encoding affects emoji display
+- ANSI escape code changes break tests
+- Not testing actual functionality
+
+#### ✅ GOOD: Behavioral Testing
+
+```python
+def test_retry_stats_hidden_when_verbose_false(self):
+    """Test retry stats table not created when verbose=False."""
+    from vscode_scanner.summary_formatter import SummaryFormatter
+
+    retry_stats = {"total_retries": 3}
+
+    # Test the decision logic
+    should_show = SummaryFormatter.should_show_retry_stats(
+        retry_stats, verbose=False
+    )
+
+    assert should_show is False
+```
+
+**Rule:** If your test asserts on 🔄, ⏱, ✓, ✅, ❌, ⚠️, or any emoji → **Rewrite it!**
+
+### Pattern 5: Property-Based Edge Case Discovery
+
+**Learning from PR #1022:** Property-based tests (Hypothesis) can discover edge cases that manual tests miss.
+
+**Example: Whitespace-Only Input Edge Case**
+
+```python
+# Property test discovered this edge case
+@given(st.text(min_size=1))
+def test_preserves_safe_characters(self, text):
+    """Property: safe characters are preserved."""
+    safe_text = "".join(c for c in text if c.isprintable() or c in ["\n", "\t"])
+    result = sanitize_string(safe_text, max_length=10000)
+
+    if len(safe_text) <= 10000:
+        # Hypothesis generated '\n\n' which exposed normalization behavior
+        if safe_text and not safe_text.strip():
+            assert result == " "  # Whitespace-only → single space
+        else:
+            assert len(result) == len(safe_text) or result == safe_text.strip()
+```
+
+**Failure Example:**
+```
+Falsifying example: test_preserves_safe_characters(text='\n\n')
+AssertionError: assert (1 == 2 or ' ' == ''
+  where 1 = len(' ')
+  and   2 = len('\n\n')
+```
+
+**Learnings:**
+- Hypothesis generates edge cases humans miss
+- Property tests find implementation assumptions
+- Update tests to document actual behavior
+- Don't fight the tool - learn from failures
+
+### Quick Reference: Test Quality Checklist
+
+Before committing integration tests, verify:
+
+- [ ] **No emoji assertions** (🔄, ⏱, ✓, ❌, etc.)
+- [ ] **No string matching on Rich/Typer output**
+- [ ] **No inspecting mock call args for content**
+- [ ] **Test parameter propagation, not help text**
+- [ ] **Test structural behavior, not formatting**
+- [ ] **Use parameterization for similar tests**
+- [ ] **Apply AAA pattern (Arrange-Act-Assert)**
+- [ ] **Tests survive library/framework updates**
+- [ ] **Clear test IDs for parameterized tests**
+- [ ] **Property tests document edge cases**
+
+### When to Refactor Tests
+
+**Red Flags** - Immediate refactoring needed:
+
+1. **Emoji in assertions**: `self.assertIn("🔄", output)`
+2. **Mock internal inspection**: `str(mock_panel.call_args[0][0])`
+3. **Repetitive test methods**: 5+ methods with same structure
+4. **Help-only tests**: Tests that only verify `--help` works
+5. **String matching on formatted output**: `self.assertIn("Duration", content)`
+
+**Migration Path:**
+
+```
+1. Identify brittle pattern (emoji, string matching, duplication)
+2. Write functional validation equivalent
+3. Run both old and new tests
+4. Verify new tests catch same issues
+5. Remove old brittle tests
+6. Document pattern in commit message
+```
+
+**Example Migration:**
+
+```python
+# Before: Brittle emoji assertion
+def test_verbose_shows_timing(self):
+    self.assertIn("⏱", output)  # Brittle!
+
+# After: Functional validation
+def test_verbose_enables_timing_display(self):
+    should_show = should_show_timing(verbose=True)
+    assert should_show is True  # Robust!
+```
+
+### Lessons Applied Project-Wide
+
+These patterns now apply to:
+
+- ✅ `test_cli_detailed_flag.py` (PR #1013) - Functional validation
+- ✅ `test_verbose_mode.py` (PR #1022) - Removed emoji/string matching
+- ✅ `test_cli.py` (PR #1023) - Consolidated help tests
+- 🔄 Future integration tests - Apply patterns from day one
+
+**References:**
+- Issue #1016 - Integration test quality analysis
+- Issue #1019 - Rewrite test_verbose_mode.py
+- Issue #1020 - Consolidate help tests
+- PR #1013 - Original functional validation pattern
+- PR #1022 - test_verbose_mode.py rewrite
+- PR #1023 - Help test consolidation
+
+---
+
 ## Specialized Testing Documentation
 
 The following specialized guides provide comprehensive coverage of specific testing domains:
