@@ -43,6 +43,80 @@ Key behaviors:
 - Create PR with comprehensive description and issue linkage
 - Update issue with implementation status label
 
+## Orchestration Pattern (NEW)
+
+**⚠️ CRITICAL CHANGE**: This command now uses **orchestration/implementation separation** to guarantee status transitions are never skipped.
+
+### Two-Agent Architecture
+
+**Main Agent (Orchestrator)**:
+- Fetches issue metadata and validates dependencies
+- **Updates GitHub Projects status (CRITICAL RESPONSIBILITY)**
+- Spawns sub-agent for code implementation
+- Collects implementation results
+- Creates PR and updates status
+- Stores audit trail in Serena memory
+
+**Sub-Agent (Implementer)** `/gh:__implement-code`:
+- Pure implementation context (code, tests, commits)
+- Never touches GitHub Projects or issue metadata
+- Returns structured result (success/failure)
+
+### Status Transition Enforcement
+
+**GUARANTEE**: Status transitions are FIRST-CLASS operations that CANNOT be skipped.
+
+```bash
+# Orchestrator workflow ensures status transitions happen at correct points:
+
+# 1. BEFORE implementation starts
+update_github_projects_status <issue-number> "In Progress"  # ENFORCED
+verify_status_transition <issue-number> "In Progress"        # VERIFIED
+
+# 2. Delegate to sub-agent (pure implementation)
+result=$(/gh:__implement-code --issue <issue-number> --payload '{...}')
+
+# 3. AFTER PR creation
+if [ "$result.status" == "success" ]; then
+    gh pr create ...
+    update_github_projects_status <issue-number> "In Review"  # ENFORCED
+    verify_status_transition <issue-number> "In Review"        # VERIFIED
+fi
+```
+
+**See**: [Status Transition Helper](../../helpers/gh-status-transition.md) for implementation details
+
+### Orchestration State Management
+
+All orchestration state is stored in Serena memory for audit trail and crash recovery:
+
+```bash
+# Before spawning sub-agent
+mcp__serena__write_memory "orchestration_issue_<number>" '{
+  "issue_number": 142,
+  "current_step": "delegating_to_subagent",
+  "status_before": "In Progress",
+  "payload": {...},
+  "timestamp": "2025-11-21T22:45:00Z"
+}'
+
+# After sub-agent returns
+mcp__serena__write_memory "orchestration_issue_<number>" '{
+  "issue_number": 142,
+  "current_step": "pr_created",
+  "status_after": "In Review",
+  "result": {...},
+  "pr_number": 156,
+  "timestamp": "2025-11-21T22:50:00Z"
+}'
+```
+
+**Benefits**:
+- Status transitions never skipped (orchestrator's primary job)
+- Implementation context stays clean (sub-agent focuses on code)
+- Audit trail for debugging (Serena memory)
+- Crash recovery (can resume from orchestration state)
+
 ## Tool Coordination
 
 - **gh CLI**: Issue fetching, PR creation (`gh issue view`, `gh pr create`)
@@ -338,46 +412,266 @@ for doc_name in "${DOC_ARRAY[@]}"; do
 done
 ```
 
-### Step 4: Create Branch and Implement
+### Step 3.5: Update Status to "In Progress" (ORCHESTRATOR)
+
+**⚠️ CRITICAL**: Status transition happens BEFORE implementation starts.
+
+```bash
+# Load status transition helper
+source .claude/helpers/gh-status-transition.md
+
+# ENFORCE status transition with verification
+if ! update_github_projects_status "$ISSUE_NUMBER" "In Progress"; then
+    echo "🚨 CRITICAL: Failed to update status to 'In Progress'"
+    echo "   Cannot proceed with implementation"
+    exit 1
+fi
+
+# Store orchestration state in Serena memory
+mcp__serena__write_memory "orchestration_issue_${ISSUE_NUMBER}" "$(cat <<EOF
+{
+  "issue_number": ${ISSUE_NUMBER},
+  "current_step": "status_updated_to_in_progress",
+  "status": "In Progress",
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+)"
+
+echo "✅ Status transition verified: #${ISSUE_NUMBER} → In Progress"
+echo "📝 Orchestration state stored in Serena memory"
+```
+
+**Guarantee**: Orchestrator CANNOT proceed to Step 4 without successful status verification.
+
+### Step 4: Delegate to Sub-Agent for Implementation (ORCHESTRATOR)
+
+**⚠️ NEW**: Orchestrator delegates code implementation to `/gh:__implement-code` sub-agent.
 
 ```bash
 # Generate branch name from issue
 ISSUE_TYPE=$(echo "$LABELS" | grep -oE 'feature|bugfix|hotfix' | head -1)
 BRANCH_NAME="${ISSUE_TYPE}/$(echo $TITLE | sed 's/\[.*\] //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
 
-# Create branch
-git checkout main && git pull
-git checkout -b "$BRANCH_NAME"
+# Build payload for sub-agent
+PAYLOAD=$(cat <<EOF
+{
+  "issue_number": ${ISSUE_NUMBER},
+  "issue_title": "${TITLE}",
+  "issue_type": "${ISSUE_TYPE}",
+  "branch_name": "${BRANCH_NAME}",
+  "required_docs": $(echo "$REQUIRED_DOCS_RAW" | jq -R 'split(",") | map(. | gsub("^\\s+|\\s+$";""))'),
+  "acceptance_criteria": $(echo "$BODY" | awk '/### Acceptance Criteria/,/^###/ {print}' | grep "^- \[" | sed 's/^- \[ \] //' | jq -R . | jq -s .),
+  "milestone": "${MILESTONE}",
+  "parent_feature": null
+}
+EOF
+)
 
-# Implement changes:
-# - Follow acceptance criteria from issue body
-# - Apply security patterns (validate_path, sanitize_string)
-# - Follow 3-layer architecture rules
-# - Write tests alongside implementation
+echo "📦 Payload prepared for sub-agent"
+echo "$PAYLOAD" | jq '.'
+
+# Store payload in orchestration state
+mcp__serena__write_memory "orchestration_issue_${ISSUE_NUMBER}" "$(cat <<EOF
+{
+  "issue_number": ${ISSUE_NUMBER},
+  "current_step": "delegating_to_subagent",
+  "status": "In Progress",
+  "payload": ${PAYLOAD},
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+)"
+
+# DELEGATE to sub-agent (pure implementation context)
+echo "🚀 Delegating implementation to sub-agent..."
+echo "   Command: /gh:__implement-code --issue ${ISSUE_NUMBER}"
+
+RESULT=$(/gh:__implement-code --issue "$ISSUE_NUMBER" --payload "$PAYLOAD")
+
+# Parse result
+RESULT_STATUS=$(echo "$RESULT" | jq -r '.status')
+echo "📊 Sub-agent result: $RESULT_STATUS"
+
+# Store result in orchestration state
+mcp__serena__write_memory "orchestration_issue_${ISSUE_NUMBER}" "$(cat <<EOF
+{
+  "issue_number": ${ISSUE_NUMBER},
+  "current_step": "subagent_completed",
+  "status": "In Progress",
+  "subagent_result": ${RESULT},
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+)"
+
+# Handle sub-agent result
+if [ "$RESULT_STATUS" != "success" ]; then
+    echo "❌ Sub-agent implementation failed"
+    echo "$RESULT" | jq '.error_message'
+
+    # Add needs-human-help label (keep status as "In Progress")
+    gh issue edit "$ISSUE_NUMBER" --add-label "needs-human-help"
+
+    # Add comment with failure details
+    gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF
+❌ **Implementation Failed (Sub-Agent)**
+
+**Error Type**: $(echo "$RESULT" | jq -r '.error_type')
+**Error Message**: $(echo "$RESULT" | jq -r '.error_message')
+
+**Partial Completion**:
+$(echo "$RESULT" | jq -r '.partial_completion | to_entries | map("- " + .key + ": " + (.value | tostring)) | .[]')
+
+**Branch**: \`${BRANCH_NAME}\` (preserved for debugging)
+
+**Action Required**: Human intervention needed to resolve issue and complete implementation.
+EOF
+)"
+
+    echo "⚠️ Issue marked with 'needs-human-help' label"
+    echo "⚠️ Status remains 'In Progress' for human to investigate"
+    exit 1
+fi
+
+echo "✅ Sub-agent implementation successful"
+echo "   Branch: ${BRANCH_NAME}"
+echo "   Commit: $(echo "$RESULT" | jq -r '.commit_sha')"
 ```
 
-### Step 5: Verify and Create PR
+**What Sub-Agent Does** (see `/gh:__implement-code`):
+- Reads required documentation
+- Creates/checkouts branch
+- Implements code changes
+- Runs quality gates (tests, security, architecture)
+- Commits and pushes changes
+- Returns structured result (success/failure)
+
+**What Sub-Agent Does NOT Do**:
+- ❌ Update GitHub Projects status (orchestrator's job)
+- ❌ Fetch issue metadata (provided via payload)
+- ❌ Create PRs (orchestrator's job)
+
+**Orchestrator Responsibility**: Collect result, handle failures, proceed to PR creation
+
+### Step 5: Create PR and Update Status to "In Review" (ORCHESTRATOR)
+
+**⚠️ NEW**: Orchestrator creates PR and enforces status transition to "In Review".
 
 ```bash
-# Run quality gates
-python3 -m pytest tests/  # All tests must pass
-python3 tests/test_security.py  # 0 vulnerabilities
-python3 tests/test_architecture.py  # 0 violations
-pre-commit run --all-files  # Linting, formatting
+# Sub-agent already ran quality gates - we trust the result
+# Extract implementation details from sub-agent result
+BRANCH_NAME=$(echo "$RESULT" | jq -r '.branch_name')
+COMMIT_SHA=$(echo "$RESULT" | jq -r '.commit_sha')
+FILES_CHANGED=$(echo "$RESULT" | jq -r '.files_changed | join(", ")')
+COVERAGE_PERCENT=$(echo "$RESULT" | jq -r '.coverage_percent')
+IMPL_NOTES=$(echo "$RESULT" | jq -r '.implementation_notes')
 
-# Create PR with issue linkage
-gh pr create \
-  --title "$(format_pr_title "$TITLE")" \
-  --body "Closes #<issue-number>\n\n[Generated PR description]" \
-  --milestone "$MILESTONE"
+# Generate PR title and body
+PR_TITLE=$(format_pr_title "$TITLE")
+PR_BODY=$(cat <<EOF
+## Summary
+
+Closes #${ISSUE_NUMBER}
+
+$(echo "$RESULT" | jq -r '.implementation_notes')
+
+## Implementation Details
+
+**Files Changed**: ${FILES_CHANGED}
+**Coverage**: ${COVERAGE_PERCENT}%
+**Tests Passed**: ✅ All quality gates passed
+**Security**: ✅ 0 vulnerabilities
+**Architecture**: ✅ 0 violations
+
+**Commit**: ${COMMIT_SHA}
+
+## Test Plan
+
+- [x] Unit tests pass
+- [x] Integration tests pass
+- [x] Security scan pass
+- [x] Architecture validation pass
+- [x] Pre-commit hooks pass
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)
+
+# Create PR
+echo "📝 Creating pull request..."
+PR_NUMBER=$(gh pr create \
+  --title "$PR_TITLE" \
+  --body "$PR_BODY" \
+  --head "$BRANCH_NAME" \
+  --base "main" \
+  --milestone "$MILESTONE" \
+  | grep -oE "[0-9]+$")
+
+if [ -z "$PR_NUMBER" ]; then
+    echo "❌ ERROR: PR creation failed"
+    echo "   Branch: ${BRANCH_NAME} exists but PR could not be created"
+    echo "   Manual PR creation required"
+    exit 1
+fi
+
+echo "✅ PR created: #${PR_NUMBER}"
+
+# CRITICAL: Update status AFTER PR creation
+if ! update_github_projects_status "$ISSUE_NUMBER" "In Review"; then
+    echo "⚠️ WARNING: PR created but status transition failed"
+    echo "   PR #${PR_NUMBER}: https://github.com/owner/repo/pull/${PR_NUMBER}"
+    echo "   Manually update issue #${ISSUE_NUMBER} to 'In Review' status"
+    exit 1
+fi
+
+echo "✅ Status transition verified: #${ISSUE_NUMBER} → In Review"
 
 # Update issue label
-gh issue edit <number> --add-label "agent-implemented"
+gh issue edit "$ISSUE_NUMBER" --add-label "agent-implemented"
+echo "✅ Label added: agent-implemented"
+
+# Store final orchestration state
+mcp__serena__write_memory "orchestration_issue_${ISSUE_NUMBER}" "$(cat <<EOF
+{
+  "issue_number": ${ISSUE_NUMBER},
+  "current_step": "completed",
+  "status": "In Review",
+  "pr_number": ${PR_NUMBER},
+  "branch_name": "${BRANCH_NAME}",
+  "commit_sha": "${COMMIT_SHA}",
+  "subagent_result": ${RESULT},
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+)"
+
+echo "✅ Orchestration complete"
+echo "   Issue: #${ISSUE_NUMBER}"
+echo "   PR: #${PR_NUMBER}"
+echo "   Status: In Review"
+echo "   Audit trail: mcp__serena__read_memory orchestration_issue_${ISSUE_NUMBER}"
 ```
+
+**Guarantee**: Orchestrator CANNOT complete without verifying status transition to "In Review".
 
 **Label Sync**: After adding `agent-implemented` label, GitHub Actions will sync to project fields within 1-5 minutes.
 
 **See**: [_gh-reference.md](_gh-reference.md#label-sync-timing) for sync automation details
+
+### Status Transition Summary
+
+| Step | Status Transition | Agent Responsible | Enforced By |
+|------|-------------------|-------------------|-------------|
+| **Step 0-2** | None (still in Backlog/Todo) | - | - |
+| **Step 3.5** | → "In Progress" | Orchestrator | `update_github_projects_status()` with verification |
+| **Step 4** | No change (stays "In Progress") | Sub-Agent (implementation only) | - |
+| **Step 5** | → "In Review" | Orchestrator | `update_github_projects_status()` with verification |
+| **Post-Merge** | → "Done" | GitHub Actions (automatic) | Workflow automation |
+
+**Critical Guarantee**: All MANUAL transitions are ENFORCED by orchestrator with VERIFICATION.
 
 ## Error Handling
 
