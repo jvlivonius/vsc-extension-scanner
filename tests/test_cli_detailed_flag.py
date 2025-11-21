@@ -36,7 +36,7 @@ class TestDetailedFlag(unittest.TestCase):
         result = self.runner.invoke(cli.app, ["scan", "--help"])
 
         # Verify flag is documented
-        self.assertIn("--detailed", result.stdout.lower())
+        self.assertIn("--detailed", result.stdout)
         self.assertIn("module", result.stdout.lower())
         self.assertEqual(result.exit_code, 0)
 
