@@ -100,6 +100,9 @@ pip install -e .
 # Scan all your extensions (beautiful terminal output)
 vscan scan
 
+# Show detailed security module breakdown (11 modules with risk levels)
+vscan scan --detailed
+
 # Maximum performance with 5 workers (~5x faster)
 vscan scan --workers 5
 
@@ -123,6 +126,15 @@ vscan scan --publisher microsoft
 **Personal Audit:**
 ```bash
 vscan scan --output security-audit.html
+```
+
+**Detailed Security Analysis:**
+```bash
+# View all 11 security modules with risk levels
+vscan scan --detailed
+
+# Combine detailed view with HTML report
+vscan scan --detailed --output detailed-report.html
 ```
 
 **Team Review:**
