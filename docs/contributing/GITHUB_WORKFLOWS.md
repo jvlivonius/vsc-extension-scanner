@@ -308,6 +308,61 @@ stateDiagram-v2
 # Comment: "🤖 PR opened but dependencies not resolved"
 ```
 
+### Status Transitions Limitations
+
+**Current Implementation Status:**
+
+#### ✅ Fully Functional
+
+- **Comment-based tracking**: All status transitions add GitHub issue comments for visibility
+- **Validation**: Dependencies, CI checks, and acceptance criteria validation working
+- **Label sync**: Priority/Complexity labels automatically sync to project fields
+
+#### ⚠️ Partial Implementation
+
+- **Status field updates**: GraphQL mutation implemented but requires additional permissions
+  - **Current**: Adds comment indicating new status
+  - **Needed**: `read:project` and `write:project` token scopes
+  - **Impact**: Status field must be manually updated or synced via labels
+  - **Workaround**: Use comments for tracking, manual field updates via web UI
+
+#### ❌ Not Automated
+
+- **Acceptance Criteria updates**: Checkboxes are NOT automatically checked during implementation
+  - **Current**: Manual updates required using `update-acceptance-criteria.sh` script
+  - **Reason**: No automated code-to-criteria mapping system
+  - **Impact**: Issues can get "stuck" with unchecked ACs, blocking status transitions
+  - **Workaround**: Use script after completing each criterion (see `/gh:implement-issue` Pattern 5)
+
+**To Enable Full Status Field Updates:**
+
+1. **Generate new token** with additional scopes:
+   ```bash
+   # Go to: https://github.com/settings/tokens
+   # Scopes needed:
+   - repo (existing)
+   - workflow (existing)
+   - read:project (NEW - required)
+   - write:project (NEW - required)
+   ```
+
+2. **Update repository secret**:
+   ```bash
+   # Settings → Secrets and variables → Actions
+   # Update GITHUB_TOKEN or create new PROJECT_TOKEN
+   ```
+
+3. **Update workflow** (if using separate token):
+   ```yaml
+   env:
+     GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}  # Use token with project scopes
+   ```
+
+**See also**:
+
+- [update-acceptance-criteria.sh](../../scripts/github-projects/update-acceptance-criteria.sh) - Helper script for AC updates
+- [/gh:implement-issue Pattern 5](../../.claude/commands/gh/implement-issue.md#pattern-5-acceptance-criteria-tracking-important) - AC tracking workflow
+
 ### Workflow 2: Dependency-Based Blocking
 
 **File**: `.github/workflows/auto-dependency-blocking.yml`

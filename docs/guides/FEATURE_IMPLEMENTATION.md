@@ -577,6 +577,95 @@ Fix validation issues:
 
 ---
 
+## Acceptance Criteria Tracking (CRITICAL)
+
+**During implementation, you MUST update acceptance criteria checkboxes as work completes.**
+
+### Why This Matters
+
+- ✅ **Visibility**: Real-time progress tracking on issue page
+- ✅ **Automation**: Workflows validate AC completion before status transitions
+- ✅ **Prevents Blocking**: Unchecked ACs block "Done" status transition
+- ✅ **Audit Trail**: Clear record of implementation progress
+
+### How to Update
+
+After completing each acceptance criterion:
+
+```bash
+# Update checkbox in issue body
+./scripts/github-projects/update-acceptance-criteria.sh <issue-number> "<criterion-text>"
+
+# Example during implementation:
+./scripts/github-projects/update-acceptance-criteria.sh 75 "Module display renders correctly"
+./scripts/github-projects/update-acceptance-criteria.sh 75 "Unit tests achieve ≥90% coverage"
+./scripts/github-projects/update-acceptance-criteria.sh 75 "Security validation passes"
+```
+
+### Common Workflow Pattern
+
+```bash
+# 1. Implement feature code
+<write code>
+./scripts/github-projects/update-acceptance-criteria.sh $ISSUE "Code implements feature as specified"
+
+# 2. Write tests
+<write tests>
+./scripts/github-projects/update-acceptance-criteria.sh $ISSUE "Tests written with ≥80% coverage"
+
+# 3. Apply security patterns
+<apply patterns>
+./scripts/github-projects/update-acceptance-criteria.sh $ISSUE "Security validation applied"
+
+# 4. Run quality gates
+<run checks>
+./scripts/github-projects/update-acceptance-criteria.sh $ISSUE "Pre-commit hooks pass"
+./scripts/github-projects/update-acceptance-criteria.sh $ISSUE "Architecture tests pass"
+```
+
+### Current Limitations
+
+**What's Automated:**
+
+- ✅ Validation: Workflows check if ACs are complete
+- ✅ Blocking: Prevents status transitions if ACs unchecked
+- ✅ Comments: Status transition comments explain requirements
+
+**What's Manual:**
+
+- ⚠️ **Checking boxes**: Must use `update-acceptance-criteria.sh` script
+- ⚠️ **Status field updates**: Currently comment-only (GraphQL requires additional permissions)
+
+**Why Manual:**
+
+- No automated mapping from code changes to specific criteria
+- Requires human judgment to confirm criterion completion
+- Ensures quality verification before marking complete
+
+### Troubleshooting
+
+**Issue stuck in "In Review" despite merged PR:**
+```bash
+# Check which ACs are unchecked
+gh issue view $ISSUE_NUMBER
+
+# Update any unchecked criteria
+./scripts/github-projects/update-acceptance-criteria.sh $ISSUE_NUMBER "<unchecked criterion>"
+```
+
+**Script reports "Criterion not found":**
+
+- Check exact text matches (including special characters)
+- Verify criterion exists in issue body
+- Text may have been manually edited - update via web UI
+
+**See Also:**
+
+- [/gh:implement-issue Pattern 5](../../.claude/commands/gh/implement-issue.md#pattern-5-acceptance-criteria-tracking-important) - AC tracking workflow
+- [GITHUB_WORKFLOWS.md Status Limitations](../../docs/contributing/GITHUB_WORKFLOWS.md#status-transitions-limitations) - Current automation limitations
+
+---
+
 ## Best Practices
 
 ### 1. Feature Scope Planning
