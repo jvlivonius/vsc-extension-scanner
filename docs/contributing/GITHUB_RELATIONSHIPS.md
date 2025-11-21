@@ -289,6 +289,34 @@ Does this issue have sub-tasks or need hierarchical organization?
 
 ---
 
+## Feature Implementation with Sub-Tasks
+
+Parent-child relationships enable orchestrated feature implementation through `/gh:implement-issue`. When the command detects sub-issues (children) via the relationship API, it automatically switches to feature mode: validates all sub-tasks upfront, builds a dependency graph from blocking relationships, implements in topological order, and creates a single PR closing all completed sub-tasks.
+
+**Key Workflow**:
+1. Automatic detection via `manage-issue-relationships.sh view <issue>`
+2. Validate all sub-tasks are agent-ready (fail-fast)
+3. Build dependency graph and topological sort
+4. Implement tasks in order with intelligent recovery for failures
+5. Single branch/PR strategy with one commit per sub-task
+6. Post-merge integration tests before closing parent feature
+
+**See**: [FEATURE_IMPLEMENTATION.md](../guides/FEATURE_IMPLEMENTATION.md) for complete 7-phase workflow, error recovery patterns, and examples.
+
+### Relationship API Usage for Features
+
+```bash
+# Query sub-tasks using parent-child API (used by /gh:implement-issue)
+./scripts/github-projects/manage-issue-relationships.sh view 1004
+
+# Output shows:
+# - Parent issue (if any)
+# - Sub-issues with completion status
+# - Blocking dependencies
+# - Implementation readiness
+```
+
+---
 ## manage-issue-relationships.sh Reference
 
 **Script Location**: `scripts/github-projects/manage-issue-relationships.sh`
@@ -522,7 +550,7 @@ Relationship operations consume GitHub API quota:
 - [GitHub REST API - Issue Dependencies](https://docs.github.com/en/rest/issues/dependencies)
 - [manage-issue-relationships.sh](../../scripts/github-projects/manage-issue-relationships.sh)
 - [GitHub Projects Workflow](GITHUB_PROJECTS.md)
-- [/gh:projects Command](.claude/commands/gh/projects.md)
+- [/gh:projects Command](../../.claude/commands/gh/projects.md)
 
 ---
 

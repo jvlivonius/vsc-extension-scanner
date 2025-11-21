@@ -121,6 +121,18 @@
 
 → **Full workflow:** See [docs/contributing/GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md)
 
+## Feature Implementation Orchestration
+**Priority**: 🔴 **Triggers**: Implementing issues with sub-tasks, parent-child relationships
+
+- **Always Use Relationships API**: Query parent-child via `manage-issue-relationships.sh view <issue>` (never text search)
+- **Validate Upfront**: Check ALL sub-tasks are agent-ready before starting (fail-fast)
+- **Respect Dependencies**: Build dependency graph, implement in topological order
+- **Single Branch Strategy**: One feature branch, one commit per sub-task, one PR closes all sub-tasks
+- **Intelligent Recovery**: Skip failed tasks, continue with independent work, mark failed as needs-human-help
+- **Integration Tests**: Run feature-level tests AFTER PR merge before closing parent feature
+
+**Full workflow**: See [FEATURE_IMPLEMENTATION.md](docs/guides/FEATURE_IMPLEMENTATION.md) and [/gh:implement-issue](commands/gh/implement-issue.md#step--1-issue-type-detection-feature-vs-single-task)
+
 ## Tool Optimization
 **Priority**: 🟢 **Triggers**: Multi-step operations, performance needs, complex tasks
 

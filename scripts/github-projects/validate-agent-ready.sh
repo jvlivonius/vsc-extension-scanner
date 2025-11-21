@@ -46,6 +46,7 @@ readonly COLOR_NC='\033[0m' # No Color
 SKIP_STRUCTURE=false
 SKIP_DEPS=false
 SKIP_LABELS=false
+FEATURE_MODE=false  # Set to true when validating a feature (epic with sub-tasks)
 
 # Logging functions
 log_info() {
@@ -79,11 +80,15 @@ Options:
   --skip-structure         Skip basic structure validation
   --skip-deps              Skip dependency validation
   --skip-labels            Skip label validation
+  --feature-mode           Validate as feature (epic with sub-tasks)
   -h, --help               Show this help message
 
 Examples:
-  # Full validation
+  # Full validation (single task)
   $(basename "$0") 142
+
+  # Validate feature (epic with sub-tasks)
+  $(basename "$0") 1004 --feature-mode
 
   # Skip structure check
   $(basename "$0") 142 --skip-structure
@@ -131,6 +136,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-labels)
             SKIP_LABELS=true
+            shift
+            ;;
+        --feature-mode)
+            FEATURE_MODE=true
             shift
             ;;
         *)
@@ -197,6 +206,38 @@ MILESTONE=$(echo "$ISSUE_JSON" | jq -r '.milestone.title // ""')
 log_success "Issue fetched successfully (state: $STATE)"
 echo ""
 
+# 2.5. Feature mode: Fetch and validate sub-tasks
+if [[ "$FEATURE_MODE" == "true" ]]; then
+    log_info "[2.5/6] Validating feature with sub-tasks..."
+
+    # Query parent-child relationships
+    if [[ -x "$SCRIPT_DIR/manage-issue-relationships.sh" ]]; then
+        RELATIONSHIP_DATA=$("$SCRIPT_DIR/manage-issue-relationships.sh" view "$ISSUE_NUMBER" 2>&1)
+
+        # Extract sub-issue count
+        SUB_ISSUES_COUNT=$(echo "$RELATIONSHIP_DATA" | grep -A1 "Sub-Issues" | grep "total" | grep -oE "[0-9]+" | head -1 || echo "0")
+
+        if [[ "$SUB_ISSUES_COUNT" -eq 0 ]]; then
+            log_error "Feature mode enabled but issue #$ISSUE_NUMBER has no sub-tasks"
+            log_info "Either this is not a feature, or sub-tasks haven't been created yet"
+            ((VALIDATION_ERRORS++))
+        else
+            log_success "Feature has $SUB_ISSUES_COUNT sub-task(s)"
+
+            # Extract sub-issue numbers
+            SUB_ISSUES=$(echo "$RELATIONSHIP_DATA" | grep -A100 "Sub-Issues" | grep -oE "#[0-9]+" | grep -oE "[0-9]+" || echo "")
+
+            if [[ -n "$SUB_ISSUES" ]]; then
+                log_info "Sub-tasks: $(echo $SUB_ISSUES | tr ' ' ',')"
+            fi
+        fi
+    else
+        log_error "manage-issue-relationships.sh not found, cannot validate feature relationships"
+        ((VALIDATION_ERRORS++))
+    fi
+    echo ""
+fi
+
 # 3. Validate all dependencies are closed (if not skipped)
 if [[ "$SKIP_DEPS" == "false" ]]; then
     log_info "[3/6] Checking dependencies..."
@@ -204,7 +245,7 @@ if [[ "$SKIP_DEPS" == "false" ]]; then
     BLOCKED_BY=$(parse_blocked_by "$BODY")
 
     if [[ -n "$BLOCKED_BY" ]]; then
-        local deps_ok=true
+        deps_ok=true
         for dep in $BLOCKED_BY; do
             if DEP_STATE=$(gh issue view "$dep" --json state 2>/dev/null | jq -r '.state'); then
                 if [[ "$DEP_STATE" != "CLOSED" ]]; then
@@ -237,7 +278,7 @@ if [[ -n "$BLOCKED_BY" ]]; then
     # Get dependencies from GitHub API
     BLOCKED_BY_API=$(gh api "repos/:owner/:repo/issues/$ISSUE_NUMBER/dependencies/blocked_by" 2>/dev/null | jq -r '.[].number' | tr '\n' ' ' || echo "")
 
-    local missing_in_api=""
+    missing_in_api=""
     for dep in $BLOCKED_BY; do
         if ! echo "$BLOCKED_BY_API" | grep -qw "$dep"; then
             missing_in_api="$missing_in_api #$dep"
@@ -319,6 +360,14 @@ echo "========================================="
 echo "Agent-Ready Validation Summary"
 echo "========================================="
 echo "Issue: #$ISSUE_NUMBER"
+if [[ "$FEATURE_MODE" == "true" ]] && [[ -n "$SUB_ISSUES_COUNT" ]] && [[ "$SUB_ISSUES_COUNT" -gt 0 ]]; then
+    echo "Type: FEATURE (Epic with $SUB_ISSUES_COUNT sub-task(s))"
+    if [[ -n "$SUB_ISSUES" ]]; then
+        echo "Sub-tasks: $(echo $SUB_ISSUES | tr ' ' ',')"
+    fi
+else
+    echo "Type: SINGLE TASK"
+fi
 echo "State: $STATE"
 if [[ -n "$MILESTONE" ]]; then
     echo "Milestone: $MILESTONE"
