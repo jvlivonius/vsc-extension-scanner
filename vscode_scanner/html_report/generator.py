@@ -18,6 +18,7 @@ from .components import (
     FooterComponent,
     OverviewTableComponent,
     ChartComponents,
+    ModuleBreakdownComponent,
 )
 
 
@@ -36,6 +37,7 @@ class HTMLReportGenerator:
         self.footer = FooterComponent()
         self.table = OverviewTableComponent()
         self.charts = ChartComponents()
+        self.module_breakdown = ModuleBreakdownComponent()
 
     def generate_report(self, data: Dict[str, Any]) -> str:
         """
@@ -73,6 +75,7 @@ class HTMLReportGenerator:
 <body>
     <div class="container">
         {self.header.render(summary, pie_chart_html)}
+        {self.module_breakdown.render(extensions)}
         {self.controls.render()}
         {self.table.render(extensions)}
         {self.footer.render(summary)}
