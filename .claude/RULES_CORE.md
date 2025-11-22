@@ -34,11 +34,33 @@
 ❌ **Wrong**: Continue implementing after errors detected
 
 ## Task-Based Orchestration
-**Priority**: 🔴 **Triggers**: GitHub Projects workflows, multi-step implementation
+**Priority**: 🔴 **Triggers**: GitHub Projects workflows, multi-step implementation, `/gh:implement-issue` command
 
 **Purpose**: Separate GitHub workflow management (orchestration) from code execution (implementation) using Task tool subprocess isolation.
 
 **Pattern**: Orchestrator (slash command) → Task tool → Subagent (implementation subprocess)
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║ 🚨 CRITICAL: ORCHESTRATOR VS IMPLEMENTER SEPARATION 🚨        ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                 ║
+║ WHEN EXECUTING /gh:implement-issue:                           ║
+║                                                                 ║
+║ ⛔ DO NOT implement code yourself                              ║
+║ ⛔ DO NOT read implementation files directly                   ║
+║ ⛔ DO NOT use Edit/Write tools                                 ║
+║ ⛔ DO NOT use MCP tools (serena, sequential-thinking)          ║
+║                                                                 ║
+║ ✅ DO use Task tool to spawn subagents                        ║
+║ ✅ DO use Bash for gh CLI and validation scripts              ║
+║ ✅ DO manage GitHub Projects status transitions               ║
+║ ✅ DO create PRs from subagent results                        ║
+║                                                                 ║
+║ VIOLATION = ARCHITECTURAL FAILURE                              ║
+║                                                                 ║
+╚════════════════════════════════════════════════════════════════╝
+```
 
 **Architecture**:
 - **Orchestrator** (slash command markdown): GitHub Projects status, metadata, PR creation
