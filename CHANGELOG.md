@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.3] - 2025-11-22
+
+### Added
+
+- **Module-by-Module Risk Display**: Added `--detailed` flag to CLI showing breakdown of all 11 security analysis modules with risk levels and score contributions (#80)
+  - Rich formatted tables in terminal showing risk levels (high/medium/low) with visual indicators (⚠️ ⚡ ✓)
+  - Displays how each security module contributed to the final security score
+  - Shows all 11 modules: Metadata, Dependencies, Socket (Supply Chain), VirusTotal, Permissions, OSSF Scorecard, Network Endpoints, Sensitive Info, Obfuscation, AST Analysis, Pattern Scanning
+- HTML reports now include Security Analysis Breakdown section with color-coded module details
+  - Self-contained styling with risk-based color coding (red/yellow/green)
+  - Table format showing module name, risk level, and score impact
+  - Responsive design for mobile and desktop viewing
+
+### Changed
+
+- Enhanced `display.py` with `format_security_modules()` function for rich module display
+- Updated `html_report_generator.py` with module breakdown section in templates
+- Improved transparency into security score calculations with detailed breakdowns
+
+### Testing
+
+- Added comprehensive unit tests for module display functionality
+- Added integration tests for `--detailed` flag behavior
+- Maintained 87%+ test coverage (current: 87.29%)
+- All 1,224+ tests passing
+
+### Benefits
+
+- **Transparency**: Users now understand how security scores are calculated
+- **Actionable Insights**: Users can identify specific security concerns by module
+- **Power User Support**: Detailed mode provides comprehensive analysis for security audits
+- **Professional Output**: Rich terminal formatting and polished HTML reports
+
+---
+
 ## [5.0.2] - 2025-11-09
 
 ### Changed
