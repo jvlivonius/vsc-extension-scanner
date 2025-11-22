@@ -1,9 +1,72 @@
 # Project Status
 
-**Last Updated:** 2025-11-09
-**Status:** v5.0.2 Released ✅ (Test Quality Improvements)
+**Last Updated:** 2025-11-22
+**Status:** v5.0.3 Released ✅ (Module Risk Display Feature)
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
+
+---
+
+## Release: v5.0.3 ✅ (Module Risk Display Feature)
+
+**Released:** 2025-11-22
+**Type:** Patch Release - Feature Enhancement
+**Schema Version:** 5.0 (unchanged from v5.0.0)
+**Total Tests:** 1,224+ (all passing, 87.29% coverage maintained)
+
+### Key Achievements
+
+**Module-by-Module Risk Display - Enhanced Transparency:**
+- **CLI `--detailed` Flag**: New command-line option shows comprehensive security module breakdown
+  - Displays all 11 security analysis modules with individual risk levels
+  - Shows score contributions (+/-) for each module
+  - Rich terminal formatting with color-coded risk levels (red/yellow/green)
+  - Visual indicators: ⚠️ (high risk), ⚡ (medium risk), ✓ (low risk)
+- **HTML Report Enhancement**: Added Security Analysis Breakdown section
+  - Professional table layout with responsive design
+  - Self-contained CSS styling (no external dependencies)
+  - Color-coded risk levels matching CLI output
+  - Clear presentation of how each module affects overall security score
+
+**11 Security Modules Displayed:**
+1. **Metadata** - Extension metadata analysis
+2. **Dependencies** - Dependency vulnerability checking
+3. **Socket (Supply Chain)** - Socket.dev supply chain analysis
+4. **VirusTotal** - Malware scanning results
+5. **Permissions** - VS Code permission analysis
+6. **OSSF Scorecard** - OpenSSF security metrics
+7. **Network Endpoints** - Network call detection
+8. **Sensitive Info** - Credential/secret scanning
+9. **Obfuscation** - Code obfuscation detection
+10. **AST Analysis** - AST-based code analysis
+11. **Pattern Scanning** - Pattern-based security checks
+
+**Implementation Quality:**
+- Comprehensive unit tests for module display functionality
+- Integration tests for `--detailed` flag behavior
+- Maintained 87.29% test coverage (no regression)
+- 0 security vulnerabilities
+- 0 architecture violations
+
+### Benefits
+
+**User Experience:**
+- **Transparency**: Users now see exactly how security scores are calculated
+- **Actionable Insights**: Specific security concerns identified by module
+- **Power User Support**: Detailed mode ideal for comprehensive security audits
+- **Professional Presentation**: Rich formatting in both CLI and HTML outputs
+
+**Technical Excellence:**
+- Data retrieval from existing database schema (v4.0.0) - no schema changes needed
+- Graceful degradation when module data unavailable
+- Consistent presentation layer across CLI and HTML
+- Self-contained HTML reports (no external dependencies)
+
+### Roadmap Reference
+
+- Implemented following [v5.0.3-module-risk-display-roadmap.md](v5.0.3-module-risk-display-roadmap.md)
+- Addresses Priority 3 from [v5.x-enhancement-opportunities.md](v5.x-enhancement-opportunities.md)
+- Foundation for future enhancements (score charts, security notes display)
 
 ---
 
