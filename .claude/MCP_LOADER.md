@@ -5,23 +5,24 @@ Quick reference for MCP server availability and usage patterns.
 ## Available Servers (If Configured)
 
 **serena** - Semantic code understanding, symbol operations, project memory
-**context7** - Official library documentation (pytest, typer, hypothesis, rich)
+**context7** - Official library documentation lookup
 **sequential-thinking** - Multi-step reasoning, complex analysis, systematic problem-solving
-**playwright** - Browser automation for HTML report testing and accessibility validation
+**playwright** - Browser automation, visual validation, accessibility testing
 
 ## Usage Guidelines
 
-The `.claude/mcp/` directory contains **usage guidelines** (not configuration files) that help Claude decide WHEN to use each MCP server's tools:
+**IMPORTANT**: The `.claude/mcp/` files describe WHEN to use each MCP server's tools, not how to load the servers. MCP servers configured via `claude mcp add` are always loaded at startup.
 
-- @mcp/Serena.md - When to use Serena tools (symbol operations, large projects)
-- @mcp/Context7.md - When to use Context7 (library docs, official patterns)
-- @mcp/Sequential.md - When to use sequential-thinking (complex analysis, debugging)
-- @mcp/MCP_Playwright.md - When to use Playwright (HTML report testing, accessibility)
+**Available Guidelines**:
+- @mcp/Serena.md - Symbol operations, project memory, session persistence
+- @mcp/Context7.md - Official library documentation lookup
+- @mcp/Sequential.md - Complex analysis, multi-step reasoning
+- @mcp/MCP_Playwright.md - Browser automation, visual validation, accessibility
 
-These files contain:
+**Each file contains**:
 - **Triggers**: Scenarios where the MCP's tools are most useful
 - **Choose When**: Decision guidelines for tool selection
-- **Examples**: Common use cases and patterns
+- **Works Best With**: Tool combination recommendations
 
 ## User Flags (Optional Semantic Hints)
 

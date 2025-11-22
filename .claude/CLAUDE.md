@@ -4,46 +4,30 @@ Tiered context system with selective agent auto-activation and MCP tool usage gu
 
 ---
 
-## Project: VS Code Extension Security Scanner
+## Project Context
 
-**Purpose**: Python CLI tool for manual security audits of VS Code extensions via vscan.dev API
-
-**Tech Stack**:
-- **Language**: Python 3.8+
-- **Testing**: pytest, hypothesis (property-based)
-- **CLI**: typer, rich
-- **Data**: SQLite3 with HMAC-SHA256 integrity
-- **HTTP**: urllib.request (stdlib only)
-
-**Architecture**: 3-layer (Presentation → Application → Infrastructure), strict one-way dependencies
-
-**Critical Docs Before Code Changes**:
-- `CLAUDE.md` (root) - Project overview, commands, structure, workflows
-- `docs/guides/ARCHITECTURE.md` - 3-layer rules, design principles, anti-patterns
-- `docs/guides/SECURITY.md` - validate_path(), sanitize_string() patterns
-- `docs/project/PRD.md` - Feature scope, requirements, constraints
-
-**Current Status**: `docs/project/STATUS.md` - Version, test metrics, active roadmap
+**See root CLAUDE.md for**:
+- Project purpose and tech stack
+- Critical documentation requirements
+- Current project status
+- Development commands and workflows
 
 ---
 
-## Quick Task Router
+## Agent Selection Guide
 
-Recommended agents and tools for common development tasks:
+| Task Category | Recommended Agent(s) |
+|---------------|---------------------|
+| New features | python-expert + security-engineer |
+| Security issues | security-engineer |
+| Refactoring | python-expert + quality-engineer |
+| Complex debugging | root-cause-analyst + sequential-thinking MCP |
+| Testing | quality-engineer |
+| Performance | performance-engineer |
+| Symbol operations | Serena MCP |
+| Library documentation | Context7 MCP |
 
-| Development Task | Recommended Approach | Read First |
-|-----------------|----------|------------|
-| Add new feature | python-expert + security-engineer agents | PRD.md, ARCHITECTURE.md |
-| Fix security bug | security-engineer agent (auto-active) | SECURITY.md |
-| Refactor/cleanup | python-expert + quality-engineer agents | ARCHITECTURE.md |
-| Debug complex issue | root-cause-analyst agent + sequential-thinking MCP | Error logs, STATUS.md |
-| Write/improve tests | quality-engineer agent | TESTING.md |
-| Performance issue | performance-engineer agent | PERFORMANCE.md |
-| Multi-file changes | Serena MCP tools (symbol operations) | mcp/Serena.md |
-| Library questions | Context7 MCP tools (official docs) | mcp/Context7.md |
-| HTML report testing | Playwright MCP tools (E2E, visual, accessibility) | mcp/MCP_Playwright.md |
-
-**Note**: MCP servers (if configured) are always loaded. See MCP_LOADER.md for details.
+**Note**: MCP servers are always loaded if configured. See MCP_LOADER.md for details.
 
 ---
 
@@ -59,48 +43,25 @@ Recommended agents and tools for common development tasks:
 ## Auto-Active Agents
 These agents provide specialized expertise for all relevant tasks:
 
-**python-expert**
-- @agents/python-expert.md
-- Production-quality Python, SOLID principles, TDD approach
-- Clean architecture, dependency injection, separation of concerns
+**python-expert** (@agents/python-expert.md)
+- Production-quality code, SOLID principles, TDD approach
+- Clean architecture, dependency injection
 
-**security-engineer**
-- @agents/security-engineer.md
+**security-engineer** (@agents/security-engineer.md)
 - OWASP compliance, vulnerability assessment
-- Critical patterns: validate_path(), sanitize_string()
+- Security validation required before approval
 
-**quality-engineer**
-- @agents/quality-engineer.md
-- pytest + hypothesis (property-based testing)
+**quality-engineer** (@agents/quality-engineer.md)
 - Test strategy, edge case detection, coverage analysis
+- Property-based testing patterns
 
-**performance-engineer**
-- @agents/performance-engineer.md
-- ThreadPoolExecutor optimization (3 workers, configurable 1-5)
+**performance-engineer** (@agents/performance-engineer.md)
 - Profiling-based optimization, memory efficiency
+- Parallel execution strategies
 
-**root-cause-analyst**
-- @agents/root-cause-analyst.md
+**root-cause-analyst** (@agents/root-cause-analyst.md)
 - Systematic debugging, evidence-based analysis
 - Hypothesis testing, pattern recognition
-
-### Project-Specific Agent Triggers
-
-**Security Changes** (security-engineer):
-- MUST read SECURITY.md first
-- Use validate_path() for all file operations
-- Use sanitize_string() for all user input
-- Verify: `python tests/test_security.py` (0 vulnerabilities required)
-
-**Architecture Changes** (python-expert):
-- Follow 3-layer rules: P → A → I (one-way only)
-- NO Infrastructure imports of Presentation
-- Verify: `python tests/test_architecture.py` (0 violations required)
-
-**Testing Requirements** (quality-engineer):
-- pytest + hypothesis patterns
-- Maintain 87%+ overall, 80%+ critical, 95%+ security coverage
-- AAA pattern (Arrange-Act-Assert)
 
 ---
 
@@ -111,23 +72,18 @@ These activate dynamically via keyword detection or manual flags:
 
 **modes/Brainstorming.md (--brainstorm)**
 - Vague requests, exploration, uncertainty
-- Example: "explore better caching strategies", "thinking about API retry logic"
 
 **modes/Introspection.md (--introspect)**
 - Error recovery, meta-analysis, unexpected results
-- Example: test failures, CI breaks, "why did this fail?"
 
 **modes/Token_Efficiency.md (--uc)**
 - Context >75%, efficiency mode
-- Example: large refactoring, multi-file operations
 
 **modes/Orchestration.md (--orchestrate)**
 - Multi-tool coordination, parallel opportunities
-- Example: batch file operations, complex workflows
 
 **modes/Task_Management.md (--task-manage)**
 - >3 steps, complex scope, multiple directories
-- Example: security enhancement, feature implementation, major refactoring
 
 ## Workflow Rules
 Loaded for implementation tasks:
@@ -140,44 +96,55 @@ Loaded for implementation tasks:
 
 ## Available Slash Commands
 
-**Session Management**:
-- `/sc:load` - Resume session context from Serena memory
-- `/sc:save` - Save session context to Serena memory
+**See root CLAUDE.md for**:
+- Session management commands (/sc:load, /sc:save)
+- Development workflow commands (/sc:implement, /sc:test, /sc:build)
+- Specialized task commands (/sc:design, /sc:cleanup, /sc:task)
+- GitHub integration commands (/gh:projects, /gh:implement-issue, /gh:milestone)
 
-**Development Workflows**:
-- `/sc:implement` - Code implementation with intelligent persona activation
-- `/sc:test` - Execute tests with coverage analysis (pytest/hypothesis)
-- `/sc:build` - Build, compile, and package projects
-- `/sc:analyze` - Comprehensive code analysis (quality, security, performance, architecture)
-- `/sc:improve` - Apply systematic improvements to code quality, performance, maintainability
-
-**Specialized Tasks**:
-- `/sc:design` - Design system architecture, APIs, component interfaces
-- `/sc:cleanup` - Systematically clean up code, remove dead code, optimize structure
-- `/sc:task` - Execute complex tasks with intelligent workflow management
-
-**GitHub Integration** (`/gh:` commands):
-
-- `/gh:projects` - GitHub Projects workflow automation with issue/PR linking
-- `/gh:implement-issue` - Agent-driven issue implementation with automated testing and PR creation
-- `/gh:milestone` - Comprehensive milestone management (create, report, sync, close)
-- `/gh:triage` - AI-assisted issue triage with intelligent label and priority suggestions
-- `/gh:git` - Git operations with intelligent commit messages and workflow optimization
-
-**Usage**: Type command name (e.g., `/sc:test` or `/gh:triage`) to see full prompt expansion
+**Usage**: Type command name to see full prompt expansion
 
 ---
 
-# Tier 3: Usage Guidelines & Reference
+# Tier 3: Project Configuration & Reference
+
+## Project Configuration System
+
+**PROJECT_CONFIG.yaml** - Technology-specific configuration (NEW!)
+- Separates project details from generic command framework
+- Single source of truth for tools, frameworks, MCPs, agents
+- Enables framework reusability across Python/JS/Go/Rust projects
+- Commands reference config variables: {TEST_FRAMEWORK}, {BUILD_TOOL}, etc.
+
+**Key sections:**
+- `frameworks.*` - Technology stack (cli, testing, http, database)
+- `tools.*` - Tool commands (test_runner, build, lint, type_check)
+- `mcp_preferences.*` - MCP server preferences
+- `agent_preferences.*` - Agent activation mappings
+- `quality_gates.*` - Quality thresholds and validation rules
+
+**Usage:** Commands use `{CONFIG_VAR}` placeholders, PROJECT_CONFIG provides values
+
+## Command Development
+
+**COMMAND_TEMPLATE.md** - Canonical template for all slash commands
+- Agent-first design principles
+- Required sections and format guidelines
+- Token efficiency rules and consistency checklist
+- Migration guide from old format
+
+**Reference files:**
+- **commands/sc/_sc-reference.md**: Shared patterns for /sc:* commands
+- **commands/gh/_gh-reference.md**: Shared patterns for /gh:* commands
 
 ## MCP Server Usage Guidelines (in mcp/ directory)
 
 **IMPORTANT**: These are **usage guidelines**, not configuration files. MCP servers configured via `claude mcp add` are **always loaded** at startup. These docs help Claude decide WHEN to use each server's tools.
 
-- **mcp/Serena.md**: When to use Serena tools (symbol operations, project memory, session persistence)
-- **mcp/Context7.md**: When to use Context7 tools (library docs: pytest, typer, rich, hypothesis)
-- **mcp/Sequential.md**: When to use sequential-thinking (complex analysis, multi-step reasoning)
-- **mcp/MCP_Playwright.md**: When to use Playwright (HTML report testing, visual validation, accessibility)
+- **mcp/Serena.md**: Symbol operations, project memory, session persistence
+- **mcp/Context7.md**: Official library documentation lookup
+- **mcp/Sequential.md**: Complex analysis, multi-step reasoning
+- **mcp/MCP_Playwright.md**: Browser automation, visual validation, accessibility
 
 See **MCP_LOADER.md** for how MCP loading actually works.
 

@@ -1,20 +1,15 @@
 # Orchestration Mode
 
-**Purpose**: Intelligent tool selection mindset for optimal task routing and resource efficiency
+## Triggers
+Multi-tool operations (>3 files), performance constraints (>75% resource usage), parallel execution opportunities, --orchestrate flag
 
-## Activation Triggers
-- Multi-tool operations requiring coordination
-- Performance constraints (>75% resource usage)
-- Parallel execution opportunities (>3 files)
-- Complex routing decisions with multiple valid approaches
+## Directives
+- Choose most powerful tool for each task type
+- Adapt approach based on system resource constraints
+- Identify independent operations for concurrent execution
+- Optimize tool usage for speed and effectiveness
 
-## Behavioral Changes
-- **Smart Tool Selection**: Choose most powerful tool for each task type
-- **Resource Awareness**: Adapt approach based on system constraints
-- **Parallel Thinking**: Identify independent operations for concurrent execution
-- **Efficiency Focus**: Optimize tool usage for speed and effectiveness
-
-## Tool Selection Matrix (Python CLI)
+## Tool Selection Matrix
 
 | Task Type | Best Tool | Alternative |
 |-----------|-----------|-------------|
@@ -22,23 +17,23 @@
 | Deep analysis | sequential-thinking | Native reasoning |
 | Multi-file edits | Multiple parallel Edits | Sequential Edits |
 | Library docs | Context7 MCP | WebSearch |
-| Testing | pytest + hypothesis | Manual test writing |
+| Testing | Project test framework | Manual test writing |
 | Config files | Read + Edit | Bash commands |
-| HTML report testing | Playwright MCP | Manual browser testing |
+| Browser testing | Playwright MCP | Manual testing |
 
 ## Resource Management
 
-**🟢 Green Zone (0-75%)**
+**[GREEN] Zone (0-75%)**
 - Full capabilities available
 - Use all tools and features
 - Normal verbosity
 
-**🟡 Yellow Zone (75-85%)**
+**[YELLOW] Zone (75-85%)**
 - Activate efficiency mode
 - Reduce verbosity
 - Defer non-critical operations
 
-**🔴 Red Zone (85%+)**
+**[RED] Zone (85%+)**
 - Essential operations only
 - Minimal output
 - Fail fast on complex requests

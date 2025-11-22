@@ -1,8 +1,6 @@
-# Playwright MCP Server - Usage Guidelines
+# Playwright MCP Server
 
-> **IMPORTANT**: This document describes WHEN to use Playwright tools, not how to load the server. MCP servers configured via `claude mcp add` are always loaded at startup. See `MCP_LOADER.md` for configuration details.
-
-**Purpose**: Browser automation for HTML report testing and accessibility validation
+Browser automation for HTML report testing and accessibility validation
 
 ## Triggers
 

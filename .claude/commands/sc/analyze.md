@@ -1,89 +1,79 @@
 ---
 name: analyze
-description: "Comprehensive code analysis across quality, security, performance, and architecture domains"
+description: "Code analysis across quality, security, performance, and architecture"
 category: utility
 complexity: basic
-mcp-servers: []
-personas: []
+requires-config: true
 ---
 
-# /sc:analyze - Code Analysis and Quality Assessment
+# /sc:analyze
+
+## Purpose
+Perform comprehensive code analysis across quality, security, performance, and architecture domains.
 
 ## Triggers
-- Code quality assessment requests for projects or specific components
-- Security vulnerability scanning and compliance validation needs
-- Performance bottleneck identification and optimization planning
-- Architecture review and technical debt assessment requirements
+- Code quality assessment requests
+- Security vulnerability scanning and compliance validation
+- Performance bottleneck identification
+- Architecture review and technical debt assessment
 
-## Usage
-```
-/sc:analyze [target] [--focus quality|security|performance|architecture] [--depth quick|deep] [--format text|json|report]
-```
+## Directives
 
-## Behavioral Flow
-1. **Discover**: Categorize source files using language detection and project analysis
-2. **Scan**: Apply domain-specific analysis techniques and pattern matching
-3. **Evaluate**: Generate prioritized findings with severity ratings and impact assessment
-4. **Recommend**: Create actionable recommendations with implementation guidance
-5. **Report**: Present comprehensive analysis with metrics and improvement roadmap
+[REQUIRED]
+- Discover and categorize source files using language detection
+- Apply domain-specific analysis techniques based on focus area
+- Generate prioritized findings with severity ratings
+- Create actionable recommendations with implementation guidance
+- Validate against {QUALITY_GATES} thresholds
 
-Key behaviors:
-- Multi-domain analysis combining static analysis and heuristic evaluation
-- Intelligent file discovery and language-specific pattern recognition
-- Severity-based prioritization of findings and recommendations
-- Comprehensive reporting with metrics, trends, and actionable insights
+[OPTIONAL]
+- Use {ANALYSIS_TOOL} for complex multi-domain analysis
+- Generate HTML reports for detailed visualization
+- Provide trend analysis if historical data available
+- Include technical debt quantification
+- Run external analysis tools via {SECURITY_SCAN}, {COMPLEXITY_CHECK}
 
-## Tool Coordination
-- **Glob**: File discovery and project structure analysis
-- **Grep**: Pattern analysis and code search operations
-- **Read**: Source code inspection and configuration analysis
-- **Bash**: External analysis tool execution and validation
-- **Write**: Report generation and metrics documentation
-
-## Key Patterns
-- **Domain Analysis**: Quality/Security/Performance/Architecture → specialized assessment
-- **Pattern Recognition**: Language detection → appropriate analysis techniques
-- **Severity Assessment**: Issue classification → prioritized recommendations
-- **Report Generation**: Analysis results → structured documentation
-
-## Examples
-
-### Comprehensive Project Analysis
-```
-/sc:analyze
-# Multi-domain analysis of entire project
-# Generates comprehensive report with key findings and roadmap
-```
-
-### Focused Security Assessment
-```
-/sc:analyze src/auth --focus security --depth deep
-# Deep security analysis of authentication components
-# Vulnerability assessment with detailed remediation guidance
-```
-
-### Performance Optimization Analysis
-```
-/sc:analyze --focus performance --format report
-# Performance bottleneck identification
-# Generates HTML report with optimization recommendations
-```
-
-### Quick Quality Check
-```
-/sc:analyze src/components --focus quality --depth quick
-# Rapid quality assessment of component directory
-# Identifies code smells and maintainability issues
-```
-
-## Boundaries
-
-**Will:**
-- Perform comprehensive static code analysis across multiple domains
-- Generate severity-rated findings with actionable recommendations
-- Provide detailed reports with metrics and improvement guidance
-
-**Will Not:**
+[FORBIDDEN]
 - Execute dynamic analysis requiring code compilation or runtime
 - Modify source code or apply fixes without explicit user consent
 - Analyze external dependencies beyond import and usage patterns
+- Skip security or architecture validation
+
+## Workflow
+1. Discover: Categorize files → determine analysis scope and techniques
+2. Analyze: Run domain-specific tools → collect findings → assess severity
+3. Report: Generate metrics → validate quality gates → provide recommendations
+
+## Configuration
+
+Required from PROJECT_CONFIG.yaml:
+- tools.security_scan: Security analysis tool command
+- tools.complexity_check: Complexity analysis tool
+- tools.lint: Code quality tool
+- quality_gates.*: Analysis thresholds
+
+Analysis domains:
+- Quality: Code smells, maintainability, complexity
+- Security: Vulnerabilities, OWASP compliance, secret scanning
+- Performance: Bottlenecks, inefficiencies, resource usage
+- Architecture: Layer violations, dependency issues, pattern compliance
+
+## Examples
+
+PATTERN: /sc:analyze
+RESULT: Multi-domain analysis of entire project with comprehensive report
+
+PATTERN: /sc:analyze src/auth --focus security --depth deep
+RESULT: Deep security analysis with vulnerability assessment and remediation
+
+PATTERN: /sc:analyze --focus performance --format report
+RESULT: HTML report with performance bottleneck identification
+
+PATTERN: /sc:analyze src/components --focus quality --depth quick
+RESULT: Rapid quality assessment with code smell detection
+
+## Reference
+See .claude/commands/sc/_sc-reference.md for:
+- Quality gate patterns
+- Domain analysis techniques
+- Error handling patterns

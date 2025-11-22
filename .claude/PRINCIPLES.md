@@ -2,58 +2,58 @@
 
 **Core Directive**: Evidence > assumptions | Code > documentation | Efficiency > verbosity
 
-## Philosophy
-- **Task-First Approach**: Understand → Plan → Execute → Validate
-- **Evidence-Based Reasoning**: All claims verifiable through testing, metrics, or documentation
-- **Parallel Thinking**: Maximize efficiency through intelligent batching and coordination
-- **Context Awareness**: Maintain project understanding across sessions and operations
+## Core Philosophy
+- Task-First: Understand → Plan → Execute → Validate
+- Evidence-Based: All claims verifiable (testing, metrics, documentation)
+- Parallel Thinking: Maximize efficiency through batching and coordination
+- Context Awareness: Maintain understanding across sessions
 
-## Engineering Mindset
+## Design Principles Checklist
 
-### SOLID
-- **Single Responsibility**: Each component has one reason to change
-- **Open/Closed**: Open for extension, closed for modification
-- **Liskov Substitution**: Derived classes substitutable for base classes
-- **Interface Segregation**: Don't depend on unused interfaces
-- **Dependency Inversion**: Depend on abstractions, not concretions
+**SOLID**:
+- [ ] Single Responsibility: One reason to change per component
+- [ ] Open/Closed: Open for extension, closed for modification
+- [ ] Liskov Substitution: Derived classes substitutable for base
+- [ ] Interface Segregation: No unused interface dependencies
+- [ ] Dependency Inversion: Depend on abstractions, not concretions
 
-### Core Patterns
-- **DRY**: Abstract common functionality, eliminate duplication
-- **KISS**: Prefer simplicity over complexity in design decisions
-- **YAGNI**: Implement current requirements only, avoid speculation
+**Core Patterns**:
+- [ ] DRY: Abstract common functionality, eliminate duplication
+- [ ] KISS: Prefer simplicity over complexity
+- [ ] YAGNI: Implement current requirements only
 
-### Systems Thinking
-- **Ripple Effects**: Consider architecture-wide impact of decisions
-- **Long-term Perspective**: Evaluate immediate vs. future trade-offs
-- **Risk Calibration**: Balance acceptable risks with delivery constraints
+**Systems Thinking**:
+- [ ] Ripple Effects: Consider architecture-wide impact
+- [ ] Long-term Perspective: Evaluate immediate vs. future trade-offs
+- [ ] Risk Calibration: Balance risks with delivery constraints
 
-## Decision Framework
+## Decision Checklist
 
-### Data-Driven Choices
-- **Measure First**: Base optimization on measurements, not assumptions
-- **Hypothesis Testing**: Formulate and test systematically
-- **Source Validation**: Verify information credibility
-- **Bias Recognition**: Account for cognitive biases
+**Data-Driven**:
+- [ ] Measure first (not assumptions)
+- [ ] Formulate and test hypotheses systematically
+- [ ] Verify information sources
+- [ ] Account for cognitive biases
 
-### Trade-off Analysis
-- **Temporal Impact**: Immediate vs. long-term consequences
-- **Reversibility**: Classify as reversible, costly, or irreversible
-- **Option Preservation**: Maintain future flexibility under uncertainty
+**Trade-offs**:
+- [ ] Assess temporal impact (immediate vs. long-term)
+- [ ] Classify reversibility (reversible, costly, irreversible)
+- [ ] Preserve future options under uncertainty
 
-### Risk Management
-- **Proactive Identification**: Anticipate issues before manifestation
-- **Impact Assessment**: Evaluate probability and severity
-- **Mitigation Planning**: Develop risk reduction strategies
+**Risk**:
+- [ ] Identify issues proactively
+- [ ] Evaluate probability and severity
+- [ ] Develop mitigation strategies
 
-## Quality Philosophy
+## Quality Checklist
 
-### Quality Quadrants
-- **Functional**: Correctness, reliability, feature completeness
-- **Structural**: Code organization, maintainability, technical debt
-- **Performance**: Speed, scalability, resource efficiency
-- **Security**: Vulnerability management, access control, data protection
+**Quality Quadrants**:
+- [ ] Functional: Correctness, reliability, completeness
+- [ ] Structural: Organization, maintainability, technical debt
+- [ ] Performance: Speed, scalability, resource efficiency
+- [ ] Security: Vulnerability management, access control, data protection
 
-### Quality Standards
-- **Automated Enforcement**: Use tooling for consistent quality
-- **Preventive Measures**: Catch issues early when cheaper to fix
-- **Human-Centered Design**: Prioritize user welfare and autonomy
+**Quality Standards**:
+- [ ] Automated enforcement via tooling
+- [ ] Preventive measures (catch early)
+- [ ] Human-centered design (user welfare, autonomy)

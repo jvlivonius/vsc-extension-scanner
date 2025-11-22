@@ -1,8 +1,6 @@
-# Serena MCP Server - Usage Guidelines
+# Serena MCP Server
 
-> **IMPORTANT**: This document describes WHEN to use Serena tools, not how to load the server. MCP servers configured via `claude mcp add` are always loaded at startup. See `MCP_LOADER.md` for configuration details.
-
-**Purpose**: Semantic code understanding with project memory and session persistence
+Semantic code understanding with project memory and session persistence
 
 ## Triggers
 - Symbol operations: rename, extract, move functions/classes

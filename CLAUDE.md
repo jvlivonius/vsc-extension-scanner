@@ -147,31 +147,13 @@ python3 -m build                       # Build package
 
 ## Project Structure
 
-**Single Source** - All code in `vscode_scanner/` package:
+**Single Source** - All code in `vscode_scanner/` package
 
-- **Core Package:** `vscode_scanner/`
-  - `cli.py` (Presentation) - Typer CLI
-  - `scanner.py` (Application) - Core scan logic
-  - `display.py` (Presentation) - Rich formatting
-  - `vscan_api.py` (Infrastructure) - API client
-  - `cache_manager.py` (Infrastructure) - HMAC caching
-  - `extension_discovery.py` (Infrastructure) - Extension detection
-  - `output_formatter.py` (Infrastructure) - JSON/CSV export
-  - `html_report_generator.py` (Presentation) - HTML reports
-  - `config_manager.py` (Infrastructure) - Config support
-  - `types.py` (Application) - Result dataclasses
-  - `utils.py` (Infrastructure) - `validate_path()`, `sanitize_string()`
-  - `_version.py`, `constants.py`
+**3-Layer Architecture**:
+- Presentation → Application → Infrastructure (one-way only)
+- See [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md) for rules and patterns
 
-- **Support:**
-  - `scripts/` - bump_version.py, check_doc_freshness.sh, run_tests.py
-  - `tests/` - Test suite (→ [STATUS.md](docs/project/STATUS.md) for metrics)
-  - `docs/` - Documentation (→ [docs/README.md](docs/README.md))
-  - `vscan` - Dev wrapper
-
-**Workflow:** Edit `vscode_scanner/` → Run `./vscan` → Build `python -m build`
-
-→ [ARCHITECTURE.md](docs/guides/ARCHITECTURE.md) for layer rules
+**Workflow:** Edit code → Run `./vscan` → Build `python -m build`
 
 ---
 
@@ -230,6 +212,24 @@ git branch -D feature/branch-name
 - `docs/archive/` - Historical documentation (version-based)
 
 → [docs/README.md](docs/README.md) for complete navigation
+
+---
+
+## Configuration Separation Rules
+
+**Root CLAUDE.md** (this file):
+- Project-specific content ONLY
+- Tech stack, structure, commands, workflows
+- Documentation paths and organization
+- Development checklists
+
+**.claude/** (framework):
+- Generic, reusable content ONLY
+- Agent personas, modes, MCP guidelines
+- Core rules and principles
+- Must work for ANY Python CLI project
+
+**Validation**: NO overlap permitted between root and .claude/*
 
 ---
 
