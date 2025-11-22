@@ -1,8 +1,6 @@
-# sequential-thinking MCP Server - Usage Guidelines
+# sequential-thinking MCP Server
 
-> **IMPORTANT**: This document describes WHEN to use sequential-thinking, not how to load the server. MCP servers configured via `claude mcp add` are always loaded at startup. See `MCP_LOADER.md` for configuration details.
-
-**Purpose**: Multi-step reasoning engine for complex analysis and systematic problem solving
+Multi-step reasoning engine for complex analysis and systematic problem solving
 
 ## Triggers
 - Complex debugging scenarios with multiple layers

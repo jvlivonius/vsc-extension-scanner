@@ -1,44 +1,32 @@
 # Task Management Mode
 
-**Purpose**: Hierarchical task organization with persistent memory for complex multi-step operations
-
-## Activation Triggers
-- Operations with >3 steps requiring coordination
-- Multiple file/directory scope (>2 directories OR >3 files)
-- Complex dependencies requiring phases
-- Manual flags: `--task-manage`, `--delegate`
-- Quality improvement requests: polish, refine, enhance
+## Triggers
+Operations with >3 steps, multiple file/directory scope (>2 directories OR >3 files), complex dependencies, --task-manage or --delegate flag
 
 ## Task Hierarchy with Memory
 
-📋 **Plan** → write_memory("plan", goal_statement)
-→ 🎯 **Phase** → write_memory("phase_X", milestone)
-  → 📦 **Task** → write_memory("task_X.Y", deliverable)
-    → ✓ **Todo** → Track tasks + write_memory("todo_X.Y.Z", status)
+[PLAN] **Plan** → write_memory("plan", goal_statement)
+→ [PHASE] **Phase** → write_memory("phase_X", milestone)
+  → [TASK] **Task** → write_memory("task_X.Y", deliverable)
+    → [TODO] **Todo** → Track tasks + write_memory("todo_X.Y.Z", status)
 
 ## Memory Operations
 
-### Session Start
-```
+**Session Start**:
 1. list_memories() → Show existing task state
 2. read_memory("current_plan") → Resume context
 3. think_about_collected_information() → Understand where we left off
-```
 
-### During Execution
-```
+**During Execution**:
 1. write_memory("task_2.1", "completed: auth middleware")
 2. think_about_task_adherence() → Verify on track
 3. Update task status in parallel
 4. write_memory("checkpoint", current_state) every 30min
-```
 
-### Session End
-```
+**Session End**:
 1. think_about_whether_you_are_done() → Assess completion
 2. write_memory("session_summary", outcomes)
 3. delete_memory() for completed temporary items
-```
 
 ## Execution Pattern
 
@@ -49,51 +37,25 @@
 5. **Checkpoint**: Periodic write_memory() for state preservation
 6. **Complete**: Final memory update with outcomes
 
-## Tool Selection (Python CLI)
+## Tool Selection
 
 | Task Type | Primary Tool | Memory Key |
 |-----------|-------------|------------|
 | Analysis | sequential-thinking | "analysis_results" |
 | Symbol Operations | Serena MCP | "refactoring_state" |
-| Testing | pytest + property tests | "test_results" |
+| Testing | Project test framework | "test_results" |
 | Documentation | Context7 MCP | "doc_patterns" |
 
 ## Memory Schema
 
-```
-plan_[timestamp]: Overall goal statement
-phase_[1-5]: Major milestone descriptions
-task_[phase].[number]: Specific deliverable status
-todo_[task].[number]: Atomic action completion
-checkpoint_[timestamp]: Current state snapshot
-blockers: Active impediments requiring attention
-decisions: Key architectural/design choices made
-```
+**State** (current progress):
+- `state_plan`: Overall goal
+- `state_phase_N`: Current phase (1-5)
+- `state_task_N.M`: Task status
 
-## Example: v3.6 Testability Refactoring
+**Checkpoints** (recovery points):
+- `checkpoint_[timestamp]`: State snapshots
 
-### Session 1: Start Refactoring
-```
-list_memories() → Check existing state
-write_memory("plan_v3.6", "Extract ProgressCallback pattern for testability")
-write_memory("phase_1", "Analysis - identify hard-to-test components")
-Track tasks: Create specific refactoring todos
-Execute analysis → write_memory("task_1.1", "completed: Found 3 tightly-coupled modules")
-```
-
-### Session 2: Resume Implementation
-```
-list_memories() → Shows plan_v3.6, phase_1, task_1.1
-read_memory("plan_v3.6") → Resume refactoring context
-think_about_collected_information() → "Analysis complete, start extraction"
-write_memory("phase_2", "Implementation - extract callback patterns")
-Continue with symbol operations via Serena...
-```
-
-### Session 3: Testing & Validation
-```
-think_about_whether_you_are_done() → "Test coverage validation needed"
-Run test suite with new patterns
-write_memory("outcome_v3.6", "Refactoring complete, coverage 78.94%")
-delete_memory("checkpoint_*") → Clean temporary states
-```
+**Metadata** (context):
+- `meta_blockers`: Active impediments
+- `meta_decisions`: Key choices

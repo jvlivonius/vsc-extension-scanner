@@ -4,9 +4,9 @@
 
 ## Rule Priority System
 
-**🔴 CRITICAL**: Security, data safety, production breaks - Never compromise
-**🟡 IMPORTANT**: Quality, maintainability, professionalism - Strong preference
-**🟢 RECOMMENDED**: Optimization, style, best practices - Apply when practical
+**[CRITICAL]**: Security, data safety, production breaks - Never compromise
+**[IMPORTANT]**: Quality, maintainability, professionalism - Strong preference
+**[RECOMMENDED]**: Optimization, style, best practices - Apply when practical
 
 ### Conflict Resolution Hierarchy
 1. **Safety First**: Security/data rules always win
@@ -14,27 +14,29 @@
 3. **Quality > Speed**: Except in genuine emergencies
 4. **Context Matters**: Prototype vs Production requirements differ
 
-## Agent Orchestration
-**Priority**: 🔴 **Triggers**: Task execution and post-implementation
+## Orchestration Rules
+**Priority**: [CRITICAL]
 
-**Agent Usage** (Selected agents auto-loaded via @import):
-- **Auto-Loaded Agents**: python-expert, security-engineer, quality-engineer, performance-engineer, root-cause-analyst
-- **Conditional Agents**: deep-research-agent (with --think-hard, --ultrathink)
-- **Agent Expertise**: Agents provide specialized instruction sets for their domains
-- **Always Active**: Auto-loaded agents apply their expertise to all relevant tasks
+**Decision Tree**:
+- **GitHub Projects workflows** (`/gh:implement-issue`) → Use Task-Based Orchestration (subprocess isolation)
+- **All other development tasks** → Use Agent Orchestration (agent expertise applies directly)
 
-**Orchestration Flow**:
-1. **Task Execution**: User request → Relevant agent expertise applies → Implementation
-2. **Validation**: Implementation complete → Verify quality and correctness
-3. **Documentation**: Update relevant documentation as needed
+### Agent Orchestration
+**Triggers**: Standard development tasks (features, refactoring, debugging, testing)
 
-✅ **Right**: User request → python-expert expertise applies → Validate → Document
-✅ **Right**: Use --think-hard to load deep-research-agent for complex analysis
-❌ **Wrong**: Skip validation after implementation
-❌ **Wrong**: Continue implementing after errors detected
+**Auto-Loaded Agents**: python-expert, security-engineer, quality-engineer, performance-engineer, root-cause-analyst
+**Conditional Agents**: deep-research-agent (with --think-hard, --ultrathink)
 
-## Task-Based Orchestration
-**Priority**: 🔴 **Triggers**: GitHub Projects workflows, multi-step implementation, `/gh:implement-issue` command
+**Flow**:
+1. User request → Relevant agent expertise applies → Implementation
+2. Implementation complete → Verify quality and correctness
+3. Update relevant documentation
+
+CORRECT: User request → python-expert expertise applies → Validate → Document
+INCORRECT: Skip validation after implementation
+
+### Task-Based Orchestration
+**Triggers**: GitHub Projects workflows, `/gh:implement-issue` command
 
 **Purpose**: Separate GitHub workflow management (orchestration) from code execution (implementation) using Task tool subprocess isolation.
 
@@ -42,20 +44,20 @@
 
 ```
 ╔════════════════════════════════════════════════════════════════╗
-║ 🚨 CRITICAL: ORCHESTRATOR VS IMPLEMENTER SEPARATION 🚨        ║
+║ [CRITICAL]: ORCHESTRATOR VS IMPLEMENTER SEPARATION            ║
 ╠════════════════════════════════════════════════════════════════╣
 ║                                                                 ║
 ║ WHEN EXECUTING /gh:implement-issue:                           ║
 ║                                                                 ║
-║ ⛔ DO NOT implement code yourself                              ║
-║ ⛔ DO NOT read implementation files directly                   ║
-║ ⛔ DO NOT use Edit/Write tools                                 ║
-║ ⛔ DO NOT use MCP tools (serena, sequential-thinking)          ║
+║ [FORBIDDEN] DO NOT implement code yourself                     ║
+║ [FORBIDDEN] DO NOT read implementation files directly          ║
+║ [FORBIDDEN] DO NOT use Edit/Write tools                        ║
+║ [FORBIDDEN] DO NOT use MCP tools (serena, sequential-thinking) ║
 ║                                                                 ║
-║ ✅ DO use Task tool to spawn subagents                        ║
-║ ✅ DO use Bash for gh CLI and validation scripts              ║
-║ ✅ DO manage GitHub Projects status transitions               ║
-║ ✅ DO create PRs from subagent results                        ║
+║ [REQUIRED] DO use Task tool to spawn subagents                 ║
+║ [REQUIRED] DO use Bash for gh CLI and validation scripts       ║
+║ [REQUIRED] DO manage GitHub Projects status transitions        ║
+║ [REQUIRED] DO create PRs from subagent results                 ║
 ║                                                                 ║
 ║ VIOLATION = ARCHITECTURAL FAILURE                              ║
 ║                                                                 ║
@@ -78,7 +80,7 @@
 ### Step 4: Update Status → "In Progress"
 
 if ! ./scripts/github-projects/update-status.sh "$ISSUE_NUMBER" "In Progress"; then
-    echo "❌ Status transition failed"
+    echo "[FAILED] Status transition failed"
     exit 1
 fi
 
@@ -92,7 +94,7 @@ Use Task tool:
 ### Step 10: Update Status → "In Review"
 
 if ! ./scripts/github-projects/update-status.sh "$ISSUE_NUMBER" "In Review"; then
-    echo "⚠️ WARNING: Manual status update needed"
+    echo "[WARNING] Manual status update needed"
 fi
 ```
 
@@ -111,11 +113,11 @@ default → general-purpose
 ```
 
 **Key Guarantees**:
-- ✅ Status transitions enforced via bash (cannot be skipped)
-- ✅ True subprocess isolation (Task tool)
-- ✅ Automatic persona selection (no manual config)
-- ✅ Graceful failure handling (preserve "In Progress" state)
-- ✅ Verification after each status change
+- Status transitions enforced via bash (cannot be skipped)
+- True subprocess isolation (Task tool)
+- Automatic persona selection (no manual config)
+- Graceful failure handling (preserve "In Progress" state)
+- Verification after each status change
 
 **Error Handling**:
 - Subagent fails → Keep "In Progress", add "needs-human-help" label
@@ -125,11 +127,11 @@ default → general-purpose
 **Commands Using This Pattern**:
 - `/gh:implement-issue` - Issue implementation with Task-based subprocess
 
-✅ **Right**: Orchestrator manages status → Task tool spawns subagent → Verify transitions
-❌ **Wrong**: Single context doing both orchestration and implementation (POC pattern)
+CORRECT: Orchestrator manages status → Task tool spawns subagent → Verify transitions
+INCORRECT: Single context doing both orchestration and implementation (POC pattern)
 
 ## Workflow Rules
-**Priority**: 🟡 **Triggers**: All development tasks
+**Priority**: [IMPORTANT] **Triggers**: All development tasks
 
 - **Task Pattern**: Understand → Plan (with parallelization analysis) → Track tasks (3+ steps) → Execute → Validate
 - **Batch Operations**: ALWAYS parallel tool calls by default, sequential ONLY for dependencies
@@ -142,11 +144,11 @@ default → general-purpose
 - **Session Pattern**: /sc:load → Work → Checkpoint (30min) → /sc:save
 - **Checkpoint Triggers**: Task completion, 30-min intervals, risky operations
 
-✅ **Right**: Plan → Track tasks → Execute → Validate
-❌ **Wrong**: Jump directly to implementation without planning
+CORRECT: Plan → Track tasks → Execute → Validate
+INCORRECT: Jump directly to implementation without planning
 
 ## Planning Efficiency
-**Priority**: 🔴 **Triggers**: All planning phases, task tracking, multi-step tasks
+**Priority**: [CRITICAL] **Triggers**: All planning phases, task tracking, multi-step tasks
 
 - **Parallelization Analysis**: During planning, explicitly identify operations that can run concurrently
 - **Tool Optimization Planning**: Plan for optimal MCP server combinations and batch operations
@@ -154,11 +156,11 @@ default → general-purpose
 - **Resource Estimation**: Consider token usage and execution time during planning phase
 - **Efficiency Metrics**: Plan should specify expected parallelization gains (e.g., "3 parallel ops = 60% time saving")
 
-✅ **Right**: "Plan: 1) Parallel: [Read 5 files] 2) Sequential: analyze → 3) Parallel: [Edit all files]"
-❌ **Wrong**: "Plan: Read file1 → Read file2 → Read file3 → analyze → edit file1 → edit file2"
+CORRECT: "Plan: 1) Parallel: [Read 5 files] 2) Sequential: analyze → 3) Parallel: [Edit all files]"
+INCORRECT: "Plan: Read file1 → Read file2 → Read file3 → analyze → edit file1 → edit file2"
 
 ## Failure Investigation
-**Priority**: 🔴 **Triggers**: Errors, test failures, unexpected behavior, tool failures
+**Priority**: [CRITICAL] **Triggers**: Errors, test failures, unexpected behavior, tool failures
 
 - **Root Cause Analysis**: Always investigate WHY failures occur, not just that they failed
 - **Never Skip Tests**: Never disable, comment out, or skip tests to achieve results
@@ -169,12 +171,12 @@ default → general-purpose
 - **Quality Integrity**: Never compromise system integrity to achieve short-term results
 - **Methodical Problem-Solving**: Understand → Diagnose → Fix → Verify, don't rush to solutions
 
-✅ **Right**: Analyze stack trace → identify root cause → fix properly
-❌ **Wrong**: Comment out failing test to make build pass
+CORRECT: Analyze stack trace → identify root cause → fix properly
+INCORRECT: Comment out failing test to make build pass
 **Detection**: `grep -r "skip\|disable\|TODO" tests/`
 
 ## Git Workflow
-**Priority**: 🔴 **Triggers**: Session start, before changes, risky operations
+**Priority**: [CRITICAL] **Triggers**: Session start, before changes, risky operations
 
 - **Always Check Status First**: Start every session with `git status` and `git branch`
 - **Feature Branches Only**: Create feature branches for ALL work, never work on main/master
@@ -207,17 +209,17 @@ default → general-purpose
 - `test` - Testing updates
 - `chore` - Maintenance (deps, build)
 
-✅ **Right**: `git checkout main && git pull && git checkout -b feature/auth` → work → commit → push → PR
-❌ **Wrong**: Work directly on main/master branch
-❌ **Wrong**: Branch names like `fix-bug`, `temp`, `john-work`
-✅ **Right**: `git commit -m "feat(auth): add JWT token validation"`
-❌ **Wrong**: `git commit -m "update code"`
+CORRECT: `git checkout main && git pull && git checkout -b feature/auth` → work → commit → push → PR
+INCORRECT: Work directly on main/master branch
+INCORRECT: Branch names like `fix-bug`, `temp`, `john-work`
+CORRECT: `git commit -m "feat(auth): add JWT token validation"`
+INCORRECT: `git commit -m "update code"`
 **Detection**: `git branch` should show feature/*, bugfix/*, or hotfix/* branch
 
 → **Full workflow:** See [docs/contributing/GIT_WORKFLOW.md](docs/contributing/GIT_WORKFLOW.md)
 
 ## Feature Implementation Orchestration
-**Priority**: 🔴 **Triggers**: Implementing issues with sub-tasks, parent-child relationships
+**Priority**: [CRITICAL] **Triggers**: Implementing issues with sub-tasks, parent-child relationships
 
 - **Always Use Relationships API**: Query parent-child via `manage-issue-relationships.sh view <issue>` (never text search)
 - **Validate Upfront**: Check ALL sub-tasks are agent-ready before starting (fail-fast)
@@ -229,7 +231,7 @@ default → general-purpose
 **Full workflow**: See [FEATURE_IMPLEMENTATION.md](docs/guides/FEATURE_IMPLEMENTATION.md) and [/gh:implement-issue](commands/gh/implement-issue.md#step--1-issue-type-detection-feature-vs-single-task)
 
 ## Tool Optimization
-**Priority**: 🟢 **Triggers**: Multi-step operations, performance needs, complex tasks
+**Priority**: [RECOMMENDED] **Triggers**: Multi-step operations, performance needs, complex tasks
 
 - **Best Tool Selection**: Always use the most powerful tool for each task (MCP > Native > Basic)
 - **Parallel Everything**: Execute independent operations in parallel, never sequentially
@@ -240,22 +242,22 @@ default → general-purpose
 - **Efficiency First**: Choose speed and power over familiarity - use the fastest method available
 - **Tool Specialization**: Match tools to their designed purpose (e.g., serena for symbols, context7 for docs, sequential for complex reasoning, playwright for HTML/browser testing)
 
-✅ **Right**: Use multiple parallel Edit calls for 3+ file changes, parallel Read calls
-❌ **Wrong**: Sequential Edit calls, bash grep instead of Grep tool
+CORRECT: Use multiple parallel Edit calls for 3+ file changes, parallel Read calls
+INCORRECT: Sequential Edit calls, bash grep instead of Grep tool
 
 ## Safety Rules
-**Priority**: 🔴 **Triggers**: File operations, library usage, codebase changes
+**Priority**: [CRITICAL] **Triggers**: File operations, library usage, codebase changes
 
 - **Framework Respect**: Check package.json/deps before using libraries
 - **Pattern Adherence**: Follow existing project conventions and import styles
 - **Transaction-Safe**: Prefer batch operations with rollback capability
 - **Systematic Changes**: Plan → Execute → Verify for codebase modifications
 
-✅ **Right**: Check dependencies → follow patterns → execute safely
-❌ **Wrong**: Ignore existing conventions, make unplanned changes
+CORRECT: Check dependencies → follow patterns → execute safely
+INCORRECT: Ignore existing conventions, make unplanned changes
 
 ## Temporal Awareness
-**Priority**: 🔴 **Triggers**: Date/time references, version checks, deadline calculations, "latest" keywords
+**Priority**: [CRITICAL] **Triggers**: Date/time references, version checks, deadline calculations, "latest" keywords
 
 - **Always Verify Current Date**: Check <env> context for "Today's date" before ANY temporal assessment
 - **Never Assume From Knowledge Cutoff**: Don't default to January 2025 or knowledge cutoff dates
@@ -263,6 +265,6 @@ default → general-purpose
 - **Version Context**: When discussing "latest" versions, always verify against current date
 - **Temporal Calculations**: Base all time math on verified current date, not assumptions
 
-✅ **Right**: "Checking env: Today is 2025-08-15, so the Q3 deadline is..."
-❌ **Wrong**: "Since it's January 2025..." (without checking)
+CORRECT: "Checking env: Today is 2025-08-15, so the Q3 deadline is..."
+INCORRECT: "Since it's January 2025..." (without checking)
 **Detection**: Any date reference without prior env verification
