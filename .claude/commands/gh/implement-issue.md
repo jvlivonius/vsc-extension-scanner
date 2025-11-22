@@ -11,12 +11,42 @@ personas: []     # Orchestrator has NO personas (subagent gets them)
 
 Agent-driven issue implementation with Task-based subprocess orchestration for guaranteed status transitions.
 
+## 🚨 CRITICAL ORCHESTRATION RULE 🚨
+
+**YOU ARE AN ORCHESTRATOR - NOT AN IMPLEMENTER**
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║ ⛔ DO NOT IMPLEMENT CODE DIRECTLY                              ║
+║ ⛔ DO NOT READ FILES AND MAKE CHANGES YOURSELF                 ║
+║ ⛔ DO NOT EDIT/WRITE FILES IN THIS CONTEXT                     ║
+║                                                                 ║
+║ ✅ YOU MUST USE THE TASK TOOL TO SPAWN SUBAGENTS              ║
+║ ✅ SUBAGENTS DO THE IMPLEMENTATION                            ║
+║ ✅ YOU ONLY MANAGE WORKFLOW AND CREATE PRs                    ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+**If you find yourself about to:**
+- Call `Read` tool on implementation files → STOP, use Task tool instead
+- Call `Edit` or `Write` tool → STOP, use Task tool instead
+- Implement acceptance criteria → STOP, use Task tool instead
+- Write any code → STOP, use Task tool instead
+
+**The ONLY tools you should use:**
+- ✅ `Bash` - For gh CLI, git status, validation scripts
+- ✅ `Task` - To spawn implementation subagents
+- ✅ `Read` - ONLY for reading this command file's instructions
+- ❌ `Read` - NOT for reading implementation files
+- ❌ `Edit` / `Write` - NEVER in this context
+- ❌ Any MCP tools - Not available in orchestrator context
+
 ## Overview
 
 **Orchestrator Role** (this command): GitHub Projects workflow management
 - Fetch issue metadata and validate prerequisites
 - **Update status transitions** (Backlog → Todo → In Progress → In Review)
-- Spawn implementation subagent via Task tool
+- **Spawn implementation subagent via Task tool** ← YOUR PRIMARY JOB
 - Create pull request from subagent results
 - Handle failures gracefully
 
@@ -38,6 +68,40 @@ Agent-driven issue implementation with Task-based subprocess orchestration for g
 ```bash
 /gh:implement-issue 71
 ```
+
+## ⚠️ Pre-Execution Checklist
+
+Before starting, ask yourself:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ QUESTION: What is my role in this workflow?                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ [ ] I am an ORCHESTRATOR                                    │
+│     → I manage GitHub workflow                              │
+│     → I spawn Task tool subagents for implementation        │
+│     → I create PRs from subagent results                    │
+│                                                              │
+│ [ ] I am an IMPLEMENTER                                     │
+│     → WRONG! You cannot be this when running this command   │
+│     → The Task tool subagent is the implementer             │
+│     → If you checked this, RE-READ the instructions above   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**If you are about to:**
+- ❌ Read CHANGELOG.md, STATUS.md, or any code files → STOP
+- ❌ Use Edit or Write tools → STOP
+- ❌ Implement acceptance criteria yourself → STOP
+- ❌ Use MCP tools like serena or sequential-thinking → STOP
+
+**You should instead:**
+- ✅ Use Task tool to spawn a subagent
+- ✅ Let the subagent do ALL implementation
+- ✅ Focus on GitHub Projects status management
+- ✅ Create PR after subagent returns results
 
 ## Workflow Steps
 
@@ -255,7 +319,38 @@ echo "Implementation payload prepared"
 
 ### Step 7: Spawn Implementation Subagent
 
+```
+╔══════════════════════════════════════════════════════════════════╗
+║                    🛑 CHECKPOINT: READ THIS 🛑                    ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  Are you about to implement the issue yourself?                  ║
+║  Are you about to read implementation files?                     ║
+║  Are you about to edit code files?                               ║
+║                                                                   ║
+║  ⛔ STOP IMMEDIATELY ⛔                                           ║
+║                                                                   ║
+║  YOU MUST USE THE TASK TOOL TO SPAWN A SUBAGENT                  ║
+║                                                                   ║
+║  The subagent will:                                              ║
+║  - Read all required documentation                               ║
+║  - Create the feature branch                                     ║
+║  - Implement all changes                                         ║
+║  - Run all tests                                                 ║
+║  - Commit and push changes                                       ║
+║  - Return structured results to you                              ║
+║                                                                   ║
+║  You (orchestrator) will:                                        ║
+║  - Receive the subagent's results                                ║
+║  - Create the PR from those results                              ║
+║  - Update GitHub Projects status                                 ║
+║                                                                   ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
 **⚠️ CRITICAL**: Use Task tool to spawn subagent with clean context.
+
+**REPEAT: You MUST NOT implement directly. Use Task tool below.**
 
 Now I'll use the **Task tool** to spawn the implementation subagent:
 
