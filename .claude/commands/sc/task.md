@@ -1,93 +1,79 @@
 ---
 name: task
-description: "Execute complex tasks with intelligent workflow management (Python CLI optimized)"
+description: "Execute complex tasks with intelligent workflow management"
 category: special
 complexity: advanced
-# PYTHON CLI OPTIMIZATION: Removed magic, playwright, morphllm (frontend/browser/pattern tools)
-mcp-servers: [sequential, context7, serena]
-personas: [architect, analyzer, backend, security, devops]
+requires-config: true
 ---
 
-# /sc:task - Enhanced Task Management
+# /sc:task
+
+## Purpose
+Execute complex tasks with multi-agent coordination, hierarchical breakdown, and cross-session persistence.
 
 ## Triggers
-- Complex tasks requiring multi-agent coordination and delegation
-- Projects needing structured workflow management and cross-session persistence
-- Operations requiring intelligent MCP server routing and domain expertise
+- Complex tasks requiring multi-agent coordination
+- Projects needing structured workflow management
+- Operations requiring intelligent MCP server routing
 - Tasks benefiting from systematic execution and progressive enhancement
+- Cross-session task persistence needs
 
-## Usage
-```
-/sc:task [action] [target] [--strategy systematic|agile|enterprise] [--parallel] [--delegate]
-```
+## Directives
 
-## Behavioral Flow
-1. **Analyze**: Parse task requirements and determine optimal execution strategy
-2. **Delegate**: Route to appropriate MCP servers and activate relevant personas
-3. **Coordinate**: Execute tasks with intelligent workflow management and parallel processing
-4. **Validate**: Apply quality gates and comprehensive task completion verification
-5. **Optimize**: Analyze performance and provide enhancement recommendations
+[REQUIRED]
+- Parse task requirements and determine optimal execution strategy
+- Route to appropriate MCP servers based on task type
+- Activate relevant agents from PROJECT_CONFIG agent_preferences
+- Execute tasks with intelligent workflow management
+- Apply quality gates and comprehensive task completion verification
+- Persist task state using {SYMBOL_TOOL} memory operations
 
-Key behaviors:
-- Multi-agent coordination across python-expert, security-engineer, quality-engineer, performance-engineer
-- Intelligent MCP server routing (sequential-thinking, Context7, Serena)
-- Systematic execution with progressive task enhancement and cross-session persistence
-- Advanced task delegation with hierarchical breakdown and dependency management
+[OPTIONAL]
+- Use {ANALYSIS_TOOL} for complex multi-step task analysis
+- Use {CODE_DOCS_TOOL} for framework-specific patterns
+- Enable parallel execution for independent sub-tasks
+- Generate comprehensive task completion reports
+- Create hierarchical task breakdown (Epic → Story → Task → Subtask)
 
-## MCP Integration (Python CLI Optimized)
-- **sequential-thinking**: Complex multi-step task analysis and systematic execution planning ✅
-- **Context7**: Python patterns, pytest/typer/hypothesis best practices ✅
-- **Serena**: Cross-session task persistence and project memory management ✅
+[FORBIDDEN]
+- Execute simple tasks that don't require advanced orchestration
+- Compromise quality standards for speed
+- Operate without proper validation and quality gates
+- Skip task persistence for complex multi-session operations
 
-<!-- ARCHIVED MCP INTEGRATION (Frontend/Browser/Pattern Tools):
-- Magic MCP: UI/UX coordination (archived - frontend tool, not applicable to Python CLI)
-- Playwright MCP: Browser testing (archived - E2E web tool, use pytest instead)
-- Morphllm MCP: Pattern-based editing (archived - use Serena for symbol operations)
--->
+## Workflow
+1. Plan: Break down task → identify dependencies → allocate resources
+2. Coordinate: Activate agents → route to MCPs → execute in parallel where possible
+3. Integrate: Collect results → validate completion → persist state via {SYMBOL_TOOL}
 
-## Tool Coordination
-- **Task Tracking**: Hierarchical task breakdown and progress tracking across Epic → Story → Task levels
-- **Delegation**: Advanced delegation for complex multi-agent coordination and sub-task management
-- **Read/Write/Edit**: Task documentation and implementation coordination
-- **sequentialthinking**: Structured reasoning for complex task dependency analysis
+## Configuration
 
-## Key Patterns
-- **Task Hierarchy**: Epic-level objectives → Story coordination → Task execution → Subtask granularity
-- **Strategy Selection**: Systematic (comprehensive) → Agile (iterative) → Enterprise (governance)
-- **Multi-Agent Coordination**: Persona activation → MCP routing → parallel execution → result integration
-- **Cross-Session Management**: Task persistence → context continuity → progressive enhancement
+Required from PROJECT_CONFIG.yaml:
+- mcp_preferences.*: MCP server routing preferences
+- agent_preferences.*: Agent activation based on task type
+- quality_gates.*: Quality thresholds for validation
+- tools.*: Tool commands for execution
+
+Task hierarchy levels:
+- Epic: Large multi-session objectives
+- Story: Coordinated feature work
+- Task: Individual deliverables
+- Subtask: Atomic operations
 
 ## Examples
 
-### Complex Feature Development
-```
-/sc:task create "enterprise authentication system" --strategy systematic --parallel
-# Comprehensive task breakdown with multi-domain coordination
-# Activates architect, security, backend, frontend personas
-```
+PATTERN: /sc:task create "authentication system" --strategy systematic
+RESULT: Comprehensive task breakdown with multi-domain coordination
 
-### Agile Sprint Coordination
-```
-/sc:task execute "feature backlog" --strategy agile --delegate
-# Iterative task execution with intelligent delegation
-# Cross-session persistence for sprint continuity
-```
+PATTERN: /sc:task execute "feature backlog" --strategy agile --delegate
+RESULT: Iterative task execution with cross-session persistence
 
-### Multi-Domain Integration
-```
-/sc:task execute "microservices platform" --strategy enterprise --parallel
-# Enterprise-scale coordination with compliance validation
-# Parallel execution across multiple technical domains
-```
+PATTERN: /sc:task execute "platform migration" --parallel
+RESULT: Parallel execution across multiple technical domains
 
-## Boundaries
-
-**Will:**
-- Execute complex tasks with multi-agent coordination and intelligent delegation
-- Provide hierarchical task breakdown with cross-session persistence
-- Coordinate multiple MCP servers and personas for optimal task outcomes
-
-**Will Not:**
-- Execute simple tasks that don't require advanced orchestration
-- Compromise quality standards for speed or convenience
-- Operate without proper validation and quality gates
+## Reference
+See .claude/commands/sc/_sc-reference.md for:
+- Task workflow patterns
+- Agent selection matrix
+- MCP server usage patterns
+- Session persistence patterns

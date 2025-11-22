@@ -1,93 +1,80 @@
 ---
 name: cleanup
-description: "Systematically clean up code, remove dead code, and optimize project structure"
+description: "Systematically clean up code and optimize project structure"
 category: workflow
 complexity: standard
-mcp-servers: [sequential, context7]
-personas: [architect, quality, security]
+requires-config: true
 ---
 
-# /sc:cleanup - Code and Project Cleanup
+# /sc:cleanup
+
+## Purpose
+Systematically clean code, remove dead code, and optimize project structure with safety validation.
 
 ## Triggers
-- Code maintenance and technical debt reduction requests
-- Dead code removal and import optimization needs
-- Project structure improvement and organization requirements
-- Codebase hygiene and quality improvement initiatives
+- Code maintenance and technical debt reduction
+- Dead code removal and import optimization
+- Project structure improvement and organization
+- Codebase hygiene and quality improvement
 
-## Usage
-```
-/sc:cleanup [target] [--type code|imports|files|all] [--safe|--aggressive] [--interactive]
-```
+## Directives
 
-## Behavioral Flow
-1. **Analyze**: Assess cleanup opportunities and safety considerations across target scope
-2. **Plan**: Choose cleanup approach and activate relevant personas for domain expertise
-3. **Execute**: Apply systematic cleanup with intelligent dead code detection and removal
-4. **Validate**: Ensure no functionality loss through testing and safety verification
-5. **Report**: Generate cleanup summary with recommendations for ongoing maintenance
+[REQUIRED]
+- Analyze cleanup opportunities and safety considerations
+- Activate appropriate agents based on cleanup type
+- Apply systematic cleanup with dead code detection
+- Validate no functionality loss through testing
+- Generate cleanup summary with recommendations
 
-Key behaviors:
-- Multi-agent coordination (quality-engineer, security-engineer) based on cleanup type
-- Framework-specific cleanup patterns via Context7 integration
-- Systematic analysis via sequential-thinking for complex cleanup operations
-- Safety-first approach with backup and rollback capabilities
+[OPTIONAL]
+- Use {ANALYSIS_TOOL} for complex multi-step cleanup analysis
+- Use {CODE_DOCS_TOOL} for framework-specific cleanup patterns
+- Enable interactive mode for complex decisions
+- Create backup before aggressive cleanup
+- Run {TEST_RUNNER} for validation after cleanup
 
-## MCP Integration
-- **sequential-thinking**: Auto-activated for complex multi-step cleanup analysis and planning
-- **Context7**: Framework-specific cleanup patterns and best practices
-- **Agent Coordination**: quality-engineer (debt), security-engineer (credentials)
+[FORBIDDEN]
+- Remove code without thorough safety analysis
+- Override project-specific cleanup exclusions
+- Apply cleanup that compromises functionality
+- Skip testing validation after cleanup
+- Remove code with external dependencies unchecked
 
-## Tool Coordination
-- **Read/Grep/Glob**: Code analysis and pattern detection for cleanup opportunities
-- **Edit**: Safe code modification and structure optimization (use multiple parallel Edits for multi-file)
-- **Task Tracking**: Progress tracking for complex multi-file cleanup operations
-- **Delegation**: For large-scale cleanup workflows requiring systematic coordination
+## Workflow
+1. Analyze: Assess cleanup opportunities → evaluate safety → plan approach
+2. Execute: Apply cleanup with validation → use parallel Edits for multi-file
+3. Validate: Run {TEST_RUNNER} → verify functionality → generate report
 
-## Key Patterns
-- **Dead Code Detection**: Usage analysis → safe removal with dependency validation
-- **Import Optimization**: Dependency analysis → unused import removal and organization
-- **Structure Cleanup**: Architectural analysis → file organization and modular improvements
-- **Safety Validation**: Pre/during/post checks → preserve functionality throughout cleanup
+## Configuration
+
+Required from PROJECT_CONFIG.yaml:
+- tools.test_runner: Testing for validation
+- tools.lint: Code quality tool
+- agent_preferences.refactoring: Agents to activate
+- mcp_preferences.analysis: Analysis tool
+
+Cleanup types:
+- code: Dead code removal
+- imports: Unused import cleanup
+- files: File organization and structure
+- all: Comprehensive cleanup
 
 ## Examples
 
-### Safe Code Cleanup
-```
-/sc:cleanup src/ --type code --safe
-# Conservative cleanup with automatic safety validation
-# Removes dead code while preserving all functionality
-```
+PATTERN: /sc:cleanup src/ --type code --safe
+RESULT: Conservative cleanup with automatic safety validation
 
-### Import Optimization
-```
-/sc:cleanup --type imports --preview
-# Analyzes and shows unused import cleanup without execution
-# Framework-aware optimization via Context7 patterns
-```
+PATTERN: /sc:cleanup --type imports
+RESULT: Unused import removal with framework awareness
 
-### Comprehensive Project Cleanup
-```
-/sc:cleanup --type all --interactive
-# Multi-domain cleanup with user guidance for complex decisions
-# Activates all personas for comprehensive analysis
-```
+PATTERN: /sc:cleanup --type all --interactive
+RESULT: Multi-domain cleanup with user guidance for complex decisions
 
-### Framework-Specific Cleanup
-```
-/sc:cleanup components/ --aggressive
-# Thorough cleanup with Context7 framework patterns
-# Sequential analysis for complex dependency management
-```
+PATTERN: /sc:cleanup components/ --aggressive
+RESULT: Thorough cleanup with comprehensive analysis
 
-## Boundaries
-
-**Will:**
-- Systematically clean code, remove dead code, and optimize project structure
-- Provide comprehensive safety validation with backup and rollback capabilities
-- Apply intelligent cleanup algorithms with framework-specific pattern recognition
-
-**Will Not:**
-- Remove code without thorough safety analysis and validation
-- Override project-specific cleanup exclusions or architectural constraints
-- Apply cleanup operations that compromise functionality or introduce bugs
+## Reference
+See .claude/commands/sc/_sc-reference.md for:
+- Agent selection matrix
+- Safety validation patterns
+- Testing workflow patterns

@@ -1,0 +1,110 @@
+# Project Configuration
+# Separates technology-specific details from generic command framework
+# This file makes .claude/commands/ reusable across different project types
+
+# Project Metadata
+project:
+  name: vsc-extension-scanner
+  type: python-cli
+  language: python
+  version: "3.8+"
+  description: "VS Code Extension Security Scanner"
+
+# Framework Mappings
+frameworks:
+  cli: typer
+  testing: pytest
+  property_testing: hypothesis
+  formatting: rich
+  http: urllib.request
+  database: sqlite3
+  build_system: setuptools
+
+# Tool Commands
+tools:
+  # Testing
+  test_runner: "pytest tests/"
+  test_coverage: "pytest --cov=vscode_scanner --cov-report=term-missing tests/"
+  test_watch: "pytest-watch"
+  test_property: "pytest -m hypothesis tests/"
+  test_security: "pytest tests/test_security_regression.py"
+  test_architecture: "pytest tests/test_architecture.py"
+
+  # Building
+  build: "python -m build"
+  build_clean: "rm -rf dist/ build/ *.egg-info"
+
+  # Quality
+  lint: "pre-commit run --all-files"
+  type_check: "mypy vscode_scanner"
+  format: "black vscode_scanner tests"
+
+  # Analysis
+  security_scan: "bandit -r vscode_scanner"
+  dependency_check: "safety check"
+  complexity_check: "radon cc vscode_scanner -a"
+
+  # Development
+  dev_server: "./vscan"
+  install_dev: "pip install -e ."
+  install_deps: "pip install -r requirements.txt"
+
+# MCP Server Preferences
+mcp_preferences:
+  code_docs: context7
+  analysis: sequential
+  symbols: serena
+  browser_testing: playwright
+
+# Agent Persona Preferences
+agent_preferences:
+  implementation: [python-expert, security-engineer]
+  testing: [quality-engineer]
+  performance: [performance-engineer]
+  debugging: [root-cause-analyst]
+  refactoring: [python-expert, quality-engineer]
+  security_review: [security-engineer]
+
+# Documentation Requirements
+required_docs:
+  architecture: "docs/guides/ARCHITECTURE.md"
+  security: "docs/guides/SECURITY.md"
+  testing: "docs/guides/TESTING.md"
+  requirements: "docs/project/PRD.md"
+  api_reference: "docs/guides/API_REFERENCE.md"
+  error_handling: "docs/guides/ERROR_HANDLING.md"
+
+# Project-Specific Paths
+paths:
+  source: "vscode_scanner"
+  tests: "tests"
+  docs: "docs"
+  scripts: "scripts"
+  build_output: "dist"
+
+# Quality Gates
+quality_gates:
+  min_coverage: 87
+  min_security_coverage: 95
+  max_complexity: 10
+  architecture_violations: 0
+  security_vulnerabilities: 0
+
+# GitHub Projects Configuration
+github:
+  owner: jvlivonius
+  repo: vsc-extension-scanner
+  project_number: 3
+  default_branch: main
+
+# Testing Configuration
+testing:
+  parallel_workers: auto
+  timeout: 300
+  property_test_examples: 1000
+
+# Build Configuration
+build:
+  package_name: vscode-scanner
+  entry_point: vscan
+  python_requires: ">=3.8"

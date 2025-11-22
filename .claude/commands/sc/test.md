@@ -1,109 +1,83 @@
 ---
 name: test
-description: "Execute tests with coverage analysis (Python CLI - pytest/hypothesis/playwright)"
+description: "Execute tests with coverage analysis and quality reporting"
 category: utility
-complexity: enhanced
-# PYTHON CLI OPTIMIZATION: Added playwright for HTML report E2E testing
-mcp-servers: [playwright]
-personas: [qa-specialist]
+complexity: standard
+requires-config: true
 ---
 
-# /sc:test - Testing and Quality Assurance
+# /sc:test
+
+## Purpose
+Execute tests with coverage analysis, quality gates, and actionable reporting.
 
 ## Triggers
-- Test execution requests for unit, integration, or e2e tests
-- Coverage analysis and quality gate validation needs
-- Continuous testing and watch mode scenarios
-- Test failure analysis and debugging requirements
+- Test execution requests (unit, integration, property-based, E2E)
+- Coverage analysis and quality gate validation
+- Test failure analysis and debugging
+- Continuous testing during development
 
-## Usage
-```
-/sc:test [target] [--type unit|integration|e2e|all] [--coverage] [--watch] [--fix]
-```
+## Directives
 
-## Behavioral Flow
-1. **Discover**: Categorize available tests using runner patterns and conventions
-2. **Configure**: Set up appropriate test environment and execution parameters
-3. **Execute**: Run tests with monitoring and real-time progress tracking
-4. **Analyze**: Generate coverage reports and failure diagnostics
-5. **Report**: Provide actionable recommendations and quality metrics
+[REQUIRED]
+- Discover tests using {TEST_FRAMEWORK} conventions
+- Execute tests with monitoring and progress tracking
+- Generate coverage reports with quality metrics
+- Validate against {MIN_COVERAGE}% threshold
+- Report failures with actionable diagnostics
+- Verify zero security vulnerabilities
 
-Key behaviors:
-- Auto-detect test framework and configuration (pytest, hypothesis)
-- Generate comprehensive coverage reports with metrics
-- Execute unit, integration, and property-based tests
-- Provide intelligent test failure analysis
-- Support continuous watch mode for development
+[OPTIONAL]
+- Use {BROWSER_TEST_TOOL} for HTML report E2E testing and accessibility validation
+- Enable watch mode for continuous testing on file changes
+- Run property-based tests for systematic edge case discovery
+- Generate HTML coverage reports for detailed analysis
+- Execute parallel test runs for faster feedback
 
-## MCP Integration
-- **Context7**: Auto-activated for test framework documentation (pytest, hypothesis patterns)
-- **Playwright**: Available for HTML report E2E testing, visual validation, accessibility testing
-- **quality-engineer agent**: Activated for test analysis and quality assessment
-- **Enhanced Capabilities**: Property-based testing, hypothesis strategies, coverage analysis, HTML report validation
+[FORBIDDEN]
+- Execute tests without proper environment setup
+- Ignore test failures or quality gate violations
+- Modify test framework configuration without permission
+- Skip security or architecture tests
+- Proceed with failing quality gates
 
-## Tool Coordination
-- **Bash**: Test runner execution and environment management
-- **Glob**: Test discovery and file pattern matching
-- **Grep**: Result parsing and failure analysis
-- **Write**: Coverage reports and test summaries
+## Workflow
+1. Discover: Categorize tests → determine runner from PROJECT_CONFIG
+2. Execute: Run {TEST_RUNNER} → monitor progress → collect results
+3. Report: Generate coverage → validate quality gates → provide recommendations
 
-## Key Patterns
-- **Test Discovery**: Pattern-based categorization → appropriate runner selection (pytest)
-- **Coverage Analysis**: Execution metrics → comprehensive coverage reporting
-- **Property Testing**: Hypothesis strategies → systematic edge case discovery
-- **Watch Mode**: File monitoring → continuous test execution
+## Configuration
+
+Required from PROJECT_CONFIG.yaml:
+- tools.test_runner: Testing tool command
+- tools.test_coverage: Coverage analysis command
+- quality_gates.min_coverage: Minimum coverage threshold
+- mcp_preferences.browser_testing: E2E testing tool for HTML reports
+- testing.parallel_workers: Parallel execution setting
 
 ## Examples
 
-### Basic Test Execution
-```
-/sc:test
-# Discovers and runs all tests with standard configuration
-# Generates pass/fail summary and basic coverage
-```
+PATTERN: /sc:test
+RESULT: Full test suite with coverage report, quality gate validation
 
-### Targeted Coverage Analysis
-```
-/sc:test src/components --type unit --coverage
-# Unit tests for specific directory with detailed coverage metrics
-```
+PATTERN: /sc:test --coverage
+RESULT: Tests with detailed coverage metrics and threshold validation
 
-### Property-Based Testing
-```
-/sc:test --type property
-# Executes hypothesis property-based tests for edge case discovery
-# Systematic testing with 1,000+ generated scenarios
-```
+PATTERN: /sc:test src/auth --type unit
+RESULT: Unit tests for auth module only
 
-### Development Watch Mode
-```
-/sc:test --watch --fix
-# Continuous testing with automatic simple failure fixes
-# Real-time feedback during development
-```
+PATTERN: /sc:test --watch
+RESULT: Continuous testing on file changes, real-time feedback
 
-### HTML Report E2E Testing (with Playwright)
-```
-/sc:test --type html
-# Browser-based testing of generated HTML reports
-# Visual regression, accessibility validation, interactive feature testing
-# Use --playwright flag to prefer Playwright MCP tools
-```
+PATTERN: /sc:test --type html
+RESULT: Browser-based HTML report testing (rendering, accessibility, interactions)
 
-**Python Unit/Integration Tests vs HTML Report Testing:**
-- **pytest**: Use for Python code testing (scanner logic, API client, cache manager)
-- **Playwright**: Use for HTML report testing (rendering, accessibility, interactive features)
-- **When to use Playwright**: "test HTML report", "validate accessibility", "visual regression"
-- **When to use pytest**: "test scanner", "test API client", "integration tests"
+PATTERN: /sc:test --type property
+RESULT: Property-based tests with {PROPERTY_TEST_EXAMPLES} scenarios
 
-## Boundaries
-
-**Will:**
-- Execute existing test suites using project's configured test runner
-- Generate coverage reports and quality metrics
-- Provide intelligent test failure analysis with actionable recommendations
-
-**Will Not:**
-- Generate test cases or modify test framework configuration
-- Execute tests requiring external services without proper setup
-- Make destructive changes to test files without explicit permission
+## Reference
+See .claude/commands/sc/_sc-reference.md for:
+- Testing workflow patterns
+- Quality gate validation
+- MCP tool selection (pytest vs playwright)
+- Parallel execution patterns

@@ -1,95 +1,78 @@
 ---
 name: build
-description: "Build, compile, and package projects (Python CLI optimized)"
+description: "Build, compile, and package projects"
 category: utility
-complexity: enhanced
-# PYTHON CLI OPTIMIZATION: Removed playwright (browser tool, use pytest for Python testing)
-mcp-servers: []
-personas: [devops-engineer]
+complexity: standard
+requires-config: true
 ---
 
-# /sc:build - Project Building and Packaging
+# /sc:build
+
+## Purpose
+Execute project build systems, generate artifacts, and prepare for deployment.
 
 ## Triggers
-- Project compilation and packaging requests for different environments
-- Build optimization and artifact generation needs
+- Project compilation and packaging requests
+- Build optimization and artifact generation
 - Error debugging during build processes
-- Deployment preparation and artifact packaging requirements
+- Deployment preparation and artifact packaging
 
-## Usage
-```
-/sc:build [target] [--type dev|prod|test] [--clean] [--optimize] [--verbose]
-```
+## Directives
 
-## Behavioral Flow
-1. **Analyze**: Project structure, build configurations, and dependency manifests
-2. **Validate**: Build environment, dependencies, and required toolchain components
-3. **Execute**: Build process with real-time monitoring and error detection
-4. **Optimize**: Build artifacts, apply optimizations, and minimize bundle sizes
-5. **Package**: Generate deployment artifacts and comprehensive build reports
+[REQUIRED]
+- Validate build environment and dependencies from PROJECT_CONFIG
+- Execute {BUILD_TOOL} with monitoring and error detection
+- Generate deployment artifacts
+- Provide comprehensive build reports with timing metrics
+- Clean build artifacts if requested
 
-Key behaviors:
-- Configuration-driven build orchestration with dependency validation
-- Intelligent error analysis with actionable resolution guidance
-- Environment-specific optimization (dev/prod/test configurations)
-- Comprehensive build reporting with timing metrics and artifact analysis
+[OPTIONAL]
+- Use {CODE_DOCS_TOOL} for build tool documentation and patterns
+- Apply environment-specific optimizations (dev/prod/test)
+- Run {TEST_RUNNER} for build validation
+- Generate artifact analysis and size reports
+- Optimize build artifacts for deployment
 
-## MCP Integration
-- **Context7**: Auto-activated for build tool documentation (setuptools, build, wheel patterns)
-- **performance-engineer agent**: Activated for build optimization and artifact analysis
-- **Enhanced Capabilities**: Build pipeline integration, performance monitoring, artifact validation
+[FORBIDDEN]
+- Modify build system configuration without permission
+- Install missing build dependencies automatically
+- Execute deployment operations beyond artifact preparation
+- Skip validation or quality gates
 
-## Tool Coordination
-- **Bash**: Build system execution and process management
-- **Read**: Configuration analysis and manifest inspection
-- **Grep**: Error parsing and build log analysis
-- **Glob**: Artifact discovery and validation
-- **Write**: Build reports and deployment documentation
+## Workflow
+1. Validate: Check environment → verify dependencies → confirm configuration
+2. Execute: Run {BUILD_TOOL} → monitor progress → collect metrics
+3. Package: Generate artifacts → validate outputs → create build report
 
-## Key Patterns
-- **Environment Builds**: dev/prod/test → appropriate configuration and optimization
-- **Error Analysis**: Build failures → diagnostic analysis and resolution guidance
-- **Optimization**: Artifact analysis → size reduction and performance improvements
-- **Validation**: Build verification → quality gates and deployment readiness
+## Configuration
+
+Required from PROJECT_CONFIG.yaml:
+- tools.build: Build command
+- tools.build_clean: Clean command
+- paths.build_output: Artifact output directory
+- build.*: Build configuration settings
+
+Build types:
+- dev: Development build with debugging
+- prod: Production build with optimizations
+- test: Test build with coverage instrumentation
 
 ## Examples
 
-### Standard Project Build
-```
-/sc:build
-# Builds entire project using default configuration
-# Generates artifacts and comprehensive build report
-```
+PATTERN: /sc:build
+RESULT: Standard build with artifact generation and comprehensive report
 
-### Production Optimization Build
-```
-/sc:build --type prod --clean --optimize
-# Clean production build with advanced optimizations
-# Minification, tree-shaking, and deployment preparation
-```
+PATTERN: /sc:build --type prod --clean --optimize
+RESULT: Clean production build with advanced optimizations
 
-### Targeted Package Build
-```
-/sc:build --verbose
-# Builds Python package with detailed output
-# Real-time progress monitoring and diagnostic information
-```
+PATTERN: /sc:build --verbose
+RESULT: Detailed build output with progress monitoring
 
-### Development Build with Validation
-```
-/sc:build --type dev --validate
-# Development build with pytest validation
-# Test execution and build verification integration
-```
+PATTERN: /sc:build --type dev --validate
+RESULT: Development build with test validation
 
-## Boundaries
-
-**Will:**
-- Execute project build systems using existing configurations
-- Provide comprehensive error analysis and optimization recommendations
-- Generate deployment-ready artifacts with detailed reporting
-
-**Will Not:**
-- Modify build system configuration or create new build scripts
-- Install missing build dependencies or development tools
-- Execute deployment operations beyond artifact preparation
+## Reference
+See .claude/commands/sc/_sc-reference.md for:
+- Tool command patterns
+- Error handling patterns
+- Quality gate validation

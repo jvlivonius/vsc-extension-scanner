@@ -106,7 +106,36 @@ Loaded for implementation tasks:
 
 ---
 
-# Tier 3: Usage Guidelines & Reference
+# Tier 3: Project Configuration & Reference
+
+## Project Configuration System
+
+**PROJECT_CONFIG.yaml** - Technology-specific configuration (NEW!)
+- Separates project details from generic command framework
+- Single source of truth for tools, frameworks, MCPs, agents
+- Enables framework reusability across Python/JS/Go/Rust projects
+- Commands reference config variables: {TEST_FRAMEWORK}, {BUILD_TOOL}, etc.
+
+**Key sections:**
+- `frameworks.*` - Technology stack (cli, testing, http, database)
+- `tools.*` - Tool commands (test_runner, build, lint, type_check)
+- `mcp_preferences.*` - MCP server preferences
+- `agent_preferences.*` - Agent activation mappings
+- `quality_gates.*` - Quality thresholds and validation rules
+
+**Usage:** Commands use `{CONFIG_VAR}` placeholders, PROJECT_CONFIG provides values
+
+## Command Development
+
+**COMMAND_TEMPLATE.md** - Canonical template for all slash commands
+- Agent-first design principles
+- Required sections and format guidelines
+- Token efficiency rules and consistency checklist
+- Migration guide from old format
+
+**Reference files:**
+- **commands/sc/_sc-reference.md**: Shared patterns for /sc:* commands
+- **commands/gh/_gh-reference.md**: Shared patterns for /gh:* commands
 
 ## MCP Server Usage Guidelines (in mcp/ directory)
 
