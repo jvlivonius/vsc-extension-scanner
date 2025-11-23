@@ -19,6 +19,7 @@ from .components import (
     OverviewTableComponent,
     ChartComponents,
     ModuleBreakdownComponent,
+    SecurityNotesComponent,
 )
 
 
@@ -38,6 +39,7 @@ class HTMLReportGenerator:
         self.table = OverviewTableComponent()
         self.charts = ChartComponents()
         self.module_breakdown = ModuleBreakdownComponent()
+        self.security_notes = SecurityNotesComponent()
 
     def generate_report(self, data: Dict[str, Any]) -> str:
         """
@@ -76,6 +78,7 @@ class HTMLReportGenerator:
     <div class="container">
         {self.header.render(summary, pie_chart_html)}
         {self.module_breakdown.render(extensions)}
+        {self.security_notes.render(extensions)}
         {self.controls.render()}
         {self.table.render(extensions)}
         {self.footer.render(summary)}

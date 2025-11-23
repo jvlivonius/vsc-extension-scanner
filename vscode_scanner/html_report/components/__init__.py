@@ -12,6 +12,7 @@ from .charts import ChartComponents
 from .detail_view import DetailViewComponent
 from .overview_table import OverviewTableComponent
 from .module_breakdown import ModuleBreakdownComponent
+from .security_notes import SecurityNotesComponent
 
 __all__ = [
     "BaseComponent",
@@ -22,4 +23,5 @@ __all__ = [
     "DetailViewComponent",
     "OverviewTableComponent",
     "ModuleBreakdownComponent",
+    "SecurityNotesComponent",
 ]
