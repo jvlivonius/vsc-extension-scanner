@@ -1,0 +1,330 @@
+"""
+Tests for ScoreContributionsComponent - Score Breakdown Chart.
+
+Covers chart data preparation, color coding, Chart.js integration, and edge cases.
+Target: 100% coverage of score_contributions.py
+"""
+
+import unittest
+import pytest
+import json
+
+from vscode_scanner.html_report.components.score_contributions import (
+    ScoreContributionsComponent,
+    MODULE_ORDER,
+)
+
+
+@pytest.mark.unit
+class TestScoreContributionsComponent(unittest.TestCase):
+    """Test suite for ScoreContributionsComponent."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.component = ScoreContributionsComponent()
+
+        # Extension with full score contributions data
+        self.extension_with_scores = {
+            "id": "test.extension",
+            "security": {
+                "score_contributions": {
+                    "base": 100,
+                    "metadata": 0,
+                    "dependencies": -5,
+                    "socket": -15,
+                    "virus_total": 0,
+                    "permissions": -3,
+                    "ossf_scorecard": 0,
+                    "network_endpoints": -10,
+                    "sensitive_info": 0,
+                    "obfuscation": -2,
+                    "consolidated_ast": 0,
+                    "open_grep": 0,
+                }
+            },
+        }
+
+        # Extension with sparse score contributions
+        self.extension_sparse_scores = {
+            "id": "test.sparse",
+            "security": {
+                "score_contributions": {
+                    "base": 100,
+                    "socket": -8,
+                    "permissions": -2,
+                }
+            },
+        }
+
+        # Extension without score contributions
+        self.extension_no_scores = {"id": "test.no-scores", "security": {}}
+
+    # === Chart Rendering Tests ===
+
+    def test_render_with_valid_data(self):
+        """Test chart rendering with complete score contributions."""
+        extensions = [self.extension_with_scores]
+        result = self.component.render(extensions)
+
+        # Verify section structure
+        self.assertIn('<section class="score-contributions">', result)
+        self.assertIn("<h2>📊 Score Breakdown Visualization</h2>", result)
+
+        # Verify description
+        self.assertIn(
+            "This chart shows how each security module affects the overall security score",
+            result,
+        )
+
+        # Verify canvas element
+        self.assertIn('<canvas id="scoreContributionsChart"', result)
+        self.assertIn('aria-label="Score contributions horizontal bar chart"', result)
+
+        # Verify Chart.js configuration
+        self.assertIn("new Chart(ctx, config)", result)
+        self.assertIn("type: 'bar'", result)
+        self.assertIn("indexAxis: 'y'", result)  # Horizontal bars
+
+    def test_render_with_empty_extensions(self):
+        """Test rendering with no extensions returns empty string."""
+        result = self.component.render([])
+        self.assertEqual(result, "")
+
+    def test_render_without_score_contributions(self):
+        """Test rendering when extension lacks score_contributions field."""
+        extensions = [self.extension_no_scores]
+        result = self.component.render(extensions)
+        self.assertEqual(result, "")
+
+    # === Chart Data Preparation Tests ===
+
+    def test_chart_data_preparation_full(self):
+        """Test chart data preparation with all modules having contributions."""
+        extensions = [self.extension_with_scores]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Verify data structure
+        self.assertIn("labels", chart_data)
+        self.assertIn("values", chart_data)
+        self.assertIn("colors", chart_data)
+
+        # Verify base score is always included
+        self.assertIn("Base Score", chart_data["labels"])
+        self.assertIn(100, chart_data["values"])
+
+        # Verify non-zero contributions are included
+        self.assertIn("Socket (Supply Chain)", chart_data["labels"])
+        self.assertIn(-15, chart_data["values"])
+        self.assertIn("Dependencies", chart_data["labels"])
+        self.assertIn(-5, chart_data["values"])
+
+        # Verify zero contributions are excluded (except base)
+        # Count: base (100) + dependencies (-5) + socket (-15) + permissions (-3) +
+        #        network_endpoints (-10) + obfuscation (-2) = 6 total
+        self.assertEqual(len(chart_data["labels"]), 6)
+        self.assertEqual(len(chart_data["values"]), 6)
+        self.assertEqual(len(chart_data["colors"]), 6)
+
+    def test_chart_data_preparation_sparse(self):
+        """Test chart data preparation with sparse score contributions."""
+        extensions = [self.extension_sparse_scores]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Verify only non-zero + base are included
+        expected_labels = ["Base Score", "Socket (Supply Chain)", "Permissions"]
+        self.assertEqual(chart_data["labels"], expected_labels)
+
+        expected_values = [100, -8, -2]
+        self.assertEqual(chart_data["values"], expected_values)
+
+        # Verify correct color count
+        self.assertEqual(len(chart_data["colors"]), len(chart_data["labels"]))
+
+    def test_chart_data_preparation_missing(self):
+        """Test chart data preparation when score_contributions is missing."""
+        extensions = [self.extension_no_scores]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Verify empty data structure
+        self.assertEqual(chart_data["labels"], [])
+        self.assertEqual(chart_data["values"], [])
+        self.assertEqual(chart_data["colors"], [])
+
+    def test_chart_data_empty_extensions_list(self):
+        """Test chart data preparation with empty extensions list."""
+        chart_data = self.component._prepare_chart_data([])
+
+        # Verify empty data structure
+        self.assertEqual(chart_data["labels"], [])
+        self.assertEqual(chart_data["values"], [])
+        self.assertEqual(chart_data["colors"], [])
+
+    # === Color Coding Tests ===
+
+    def test_chart_color_coding_positive(self):
+        """Test color coding for positive score contributions."""
+        color = self.component._get_color_for_value(10)
+        self.assertEqual(color, "#28a745")  # Green
+
+        color = self.component._get_color_for_value(100)
+        self.assertEqual(color, "#28a745")  # Green
+
+    def test_chart_color_coding_minor_negative(self):
+        """Test color coding for minor negative contributions (-5 to 0)."""
+        color = self.component._get_color_for_value(-5)
+        self.assertEqual(color, "#ffc107")  # Yellow
+
+        color = self.component._get_color_for_value(-3)
+        self.assertEqual(color, "#ffc107")  # Yellow
+
+        color = self.component._get_color_for_value(-1)
+        self.assertEqual(color, "#ffc107")  # Yellow
+
+    def test_chart_color_coding_significant_negative(self):
+        """Test color coding for significant negative contributions (< -5)."""
+        color = self.component._get_color_for_value(-6)
+        self.assertEqual(color, "#dc3545")  # Red
+
+        color = self.component._get_color_for_value(-15)
+        self.assertEqual(color, "#dc3545")  # Red
+
+        color = self.component._get_color_for_value(-100)
+        self.assertEqual(color, "#dc3545")  # Red
+
+    def test_color_coding_in_chart_data(self):
+        """Test that colors are correctly applied in chart data preparation."""
+        extensions = [self.extension_with_scores]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Find indices of specific contributions
+        socket_idx = chart_data["labels"].index("Socket (Supply Chain)")
+        permissions_idx = chart_data["labels"].index("Permissions")
+        base_idx = chart_data["labels"].index("Base Score")
+
+        # Verify color assignments
+        self.assertEqual(
+            chart_data["colors"][socket_idx], "#dc3545"
+        )  # -15 = Red (significant)
+        self.assertEqual(
+            chart_data["colors"][permissions_idx], "#ffc107"
+        )  # -3 = Yellow (minor)
+        self.assertEqual(
+            chart_data["colors"][base_idx], "#28a745"
+        )  # +100 = Green (positive)
+
+    # === Chart.js Integration Tests ===
+
+    def test_chartjs_inclusion(self):
+        """Test that Chart.js configuration is properly included in output."""
+        extensions = [self.extension_with_scores]
+        result = self.component.render(extensions)
+
+        # Verify Chart.js initialization
+        self.assertIn("new Chart(ctx, config)", result)
+
+        # Verify chart configuration
+        self.assertIn("type: 'bar'", result)
+        self.assertIn("indexAxis: 'y'", result)  # Horizontal
+        self.assertIn("responsive: true", result)
+        self.assertIn("maintainAspectRatio: false", result)
+
+        # Verify title
+        self.assertIn("Security Score Contributions by Module", result)
+
+        # Verify legend is hidden (using bar colors instead)
+        self.assertIn("legend: {", result)
+        self.assertIn("display: false", result)
+
+        # Verify axes configuration
+        self.assertIn("scales: {", result)
+        self.assertIn("x: {", result)
+        self.assertIn("y: {", result)
+
+    def test_json_data_embedding(self):
+        """Test that Python data is correctly converted to JSON for JavaScript."""
+        extensions = [self.extension_sparse_scores]
+        result = self.component.render(extensions)
+
+        # Verify labels are JSON-encoded
+        self.assertIn("labels: [", result)
+        self.assertIn('"Base Score"', result)
+        self.assertIn('"Socket (Supply Chain)"', result)
+
+        # Verify values are JSON-encoded
+        self.assertIn("data: [", result)
+        self.assertIn("100", result)
+        self.assertIn("-8", result)
+
+        # Verify colors are JSON-encoded
+        self.assertIn("backgroundColor: [", result)
+        self.assertIn('"#28a745"', result)  # Green for base
+        self.assertIn('"#ffc107"', result)  # Yellow for -8 and -2
+
+    def test_to_json_string_list(self):
+        """Test _to_json method with string list."""
+        labels = ["Base Score", "Dependencies", "Socket (Supply Chain)"]
+        result = self.component._to_json(labels)
+
+        # Parse back to verify correctness
+        parsed = json.loads(result)
+        self.assertEqual(parsed, labels)
+
+    def test_to_json_number_list(self):
+        """Test _to_json method with number list."""
+        values = [100, -5, -15, -3]
+        result = self.component._to_json(values)
+
+        # Parse back to verify correctness
+        parsed = json.loads(result)
+        self.assertEqual(parsed, values)
+
+    def test_to_json_empty_list(self):
+        """Test _to_json method with empty list."""
+        result = self.component._to_json([])
+        self.assertEqual(result, "[]")
+
+    # === Module Order Tests ===
+
+    def test_module_order_matches_breakdown(self):
+        """Test that MODULE_ORDER matches module_breakdown.py order."""
+        # Verify base score is first
+        self.assertEqual(MODULE_ORDER[0][0], "base")
+        self.assertEqual(MODULE_ORDER[0][1], "Base Score")
+
+        # Verify all 12 modules are present (base + 11 security modules)
+        self.assertEqual(len(MODULE_ORDER), 12)
+
+        # Verify socket module is present
+        socket_modules = [m for m in MODULE_ORDER if m[0] == "socket"]
+        self.assertEqual(len(socket_modules), 1)
+        self.assertEqual(socket_modules[0][1], "Socket (Supply Chain)")
+
+    # === Graceful Degradation Tests ===
+
+    def test_graceful_degradation_no_security_field(self):
+        """Test graceful handling when security field is missing."""
+        extensions = [{"id": "test.missing-security"}]
+        result = self.component.render(extensions)
+        self.assertEqual(result, "")
+
+    def test_graceful_degradation_empty_score_contributions(self):
+        """Test graceful handling when score_contributions is empty dict."""
+        extensions = [{"id": "test.empty", "security": {"score_contributions": {}}}]
+        result = self.component.render(extensions)
+        self.assertEqual(result, "")
+
+    def test_uses_first_extension_data(self):
+        """Test that component uses first extension's data when multiple exist."""
+        extensions = [
+            self.extension_with_scores,
+            self.extension_sparse_scores,
+        ]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Verify it uses first extension (full scores)
+        self.assertIn("Dependencies", chart_data["labels"])
+        self.assertIn(-5, chart_data["values"])
+
+
+if __name__ == "__main__":
+    unittest.main()

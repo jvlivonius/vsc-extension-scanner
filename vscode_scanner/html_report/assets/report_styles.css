@@ -1322,3 +1322,50 @@ td.col-verified {
         gap: 8px;
     }
 }
+
+/* Score Contributions Chart Section */
+.score-contributions {
+    margin: 30px 0;
+    padding: 20px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.score-contributions h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #212529;
+}
+
+.score-contributions-description {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.score-chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+#scoreContributionsChart {
+    max-width: 100%;
+    max-height: 400px;
+}
+
+/* Print optimization for score chart */
+@media print {
+    .score-contributions {
+        page-break-inside: avoid;
+        border: 1px solid #000;
+    }
+
+    .score-chart-container {
+        height: 300px;
+    }
+}

@@ -13,6 +13,7 @@ from .detail_view import DetailViewComponent
 from .overview_table import OverviewTableComponent
 from .module_breakdown import ModuleBreakdownComponent
 from .security_notes import SecurityNotesComponent
+from .score_contributions import ScoreContributionsComponent
 
 __all__ = [
     "BaseComponent",
@@ -24,4 +25,5 @@ __all__ = [
     "OverviewTableComponent",
     "ModuleBreakdownComponent",
     "SecurityNotesComponent",
+    "ScoreContributionsComponent",
 ]

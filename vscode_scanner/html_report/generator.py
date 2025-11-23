@@ -20,6 +20,7 @@ from .components import (
     ChartComponents,
     ModuleBreakdownComponent,
     SecurityNotesComponent,
+    ScoreContributionsComponent,
 )
 
 
@@ -40,6 +41,7 @@ class HTMLReportGenerator:
         self.charts = ChartComponents()
         self.module_breakdown = ModuleBreakdownComponent()
         self.security_notes = SecurityNotesComponent()
+        self.score_contributions = ScoreContributionsComponent()
 
     def generate_report(self, data: Dict[str, Any]) -> str:
         """
@@ -79,10 +81,12 @@ class HTMLReportGenerator:
         {self.header.render(summary, pie_chart_html)}
         {self.module_breakdown.render(extensions)}
         {self.security_notes.render(extensions)}
+        {self.score_contributions.render(extensions)}
         {self.controls.render()}
         {self.table.render(extensions)}
         {self.footer.render(summary)}
     </div>
+    {self._load_chartjs()}
     {self._load_scripts()}
 </body>
 </html>"""
@@ -95,6 +99,13 @@ class HTMLReportGenerator:
         with open(css_path, "r", encoding="utf-8") as f:
             css_content = f.read()
         return f"<style>\n{css_content}\n</style>"
+
+    def _load_chartjs(self) -> str:
+        """Load and embed Chart.js library from assets."""
+        chartjs_path = Path(__file__).parent / "assets" / "chart.min.js"
+        with open(chartjs_path, "r", encoding="utf-8") as f:
+            chartjs_content = f.read()
+        return f"<script>\n/* Chart.js 4.4.0 - Inlined for self-contained reports */\n{chartjs_content}\n</script>"
 
     def _load_scripts(self) -> str:
         """Load and embed JavaScript from assets."""
