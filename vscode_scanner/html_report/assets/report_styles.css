@@ -1135,6 +1135,10 @@ td.col-verified {
 }
 
 /* Risk segment colors */
+.risk-bar-segment.risk-critical {
+    background-color: #8b0000;
+}
+
 .risk-bar-segment.risk-high {
     background-color: #dc3545;
 }

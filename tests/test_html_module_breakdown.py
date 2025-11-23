@@ -432,6 +432,124 @@ class TestModuleBreakdownComponent(unittest.TestCase):
         self.assertIn("Medium Risk:", result)
         self.assertIn("Low Risk:", result)
 
+    def test_critical_risk_level_handled(self):
+        """Test that critical risk level is properly counted and visualized."""
+        # Extension with critical risk level
+        extension_with_critical = {
+            "id": "critical.extension",
+            "security": {
+                "module_risk_levels": {
+                    "network_endpoints": "critical",
+                    "socket": "high",
+                    "dependencies": "medium",
+                    "permissions": "low",
+                },
+                "score_contributions": {
+                    "network_endpoints": -20,
+                    "socket": -15,
+                    "dependencies": -5,
+                    "permissions": -2,
+                },
+            },
+        }
+
+        extensions = [extension_with_critical]
+        html = self.component.render(extensions)
+
+        # Verify critical count is tracked
+        self.assertIn("Critical Risk", html)
+
+        # Verify critical bar segment is rendered with correct CSS class
+        self.assertIn('class="risk-bar-segment risk-critical"', html)
+
+        # Verify critical appears in tooltip
+        self.assertIn("Critical Risk: 1", html)
+
+        # Verify critical CSS color is applied (dark red)
+        # The CSS should be in report_styles.css
+        # Here we just verify the class is present
+        self.assertIn("risk-critical", html)
+
+    def test_critical_risk_percentage_calculation(self):
+        """Test that critical risk percentage is calculated correctly."""
+        # Multiple extensions with mixed risk levels including critical
+        extensions = [
+            {
+                "id": "ext1",
+                "security": {
+                    "module_risk_levels": {"network_endpoints": "critical"},
+                    "score_contributions": {"network_endpoints": -20},
+                },
+            },
+            {
+                "id": "ext2",
+                "security": {
+                    "module_risk_levels": {"network_endpoints": "high"},
+                    "score_contributions": {"network_endpoints": -15},
+                },
+            },
+            {
+                "id": "ext3",
+                "security": {
+                    "module_risk_levels": {"network_endpoints": "medium"},
+                    "score_contributions": {"network_endpoints": -5},
+                },
+            },
+            {
+                "id": "ext4",
+                "security": {
+                    "module_risk_levels": {"network_endpoints": "low"},
+                    "score_contributions": {"network_endpoints": -2},
+                },
+            },
+        ]
+
+        html = self.component.render(extensions)
+
+        # With 4 extensions total, critical should be 25% (1/4)
+        # The bar segment should have width: 25.0%
+        self.assertIn("Critical Risk: 1 (25.0%)", html)
+
+        # Verify the bar width is set correctly
+        # Should contain style="width: 25.0%" for critical segment
+        self.assertRegex(
+            html,
+            r'class="risk-bar-segment risk-critical".*?style="width: 25\.0%"',
+        )
+
+    def test_critical_risk_in_stats_aggregation(self):
+        """Test that critical risk is properly aggregated in statistics."""
+        extensions = [
+            {
+                "id": "ext1",
+                "security": {
+                    "module_risk_levels": {"network_endpoints": "critical"},
+                    "score_contributions": {"network_endpoints": -20},
+                },
+            },
+            {
+                "id": "ext2",
+                "security": {
+                    "module_risk_levels": {"network_endpoints": "critical"},
+                    "score_contributions": {"network_endpoints": -18},
+                },
+            },
+        ]
+
+        # Call the internal stats method directly
+        stats = self.component._calculate_module_stats(extensions)
+
+        # Verify critical_count exists and is correct
+        self.assertIn("network_endpoints", stats)
+        self.assertEqual(stats["network_endpoints"]["critical_count"], 2)
+        self.assertEqual(stats["network_endpoints"]["total_extensions"], 2)
+
+        # Verify other counts remain zero
+        self.assertEqual(stats["network_endpoints"]["high_count"], 0)
+        self.assertEqual(stats["network_endpoints"]["medium_count"], 0)
+        self.assertEqual(stats["network_endpoints"]["low_count"], 0)
+        self.assertEqual(stats["network_endpoints"]["none_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -126,6 +126,7 @@ class ModuleBreakdownComponent(BaseComponent):
         # Initialize stats for each module
         for module_key in MODULE_DISPLAY_NAMES:
             stats[module_key] = {
+                "critical_count": 0,
                 "high_count": 0,
                 "medium_count": 0,
                 "low_count": 0,
@@ -193,6 +194,7 @@ class ModuleBreakdownComponent(BaseComponent):
                 continue  # Skip modules with no data
 
             # Risk distribution bars
+            critical = stats.get("critical_count", 0)
             high = stats.get("high_count", 0)
             medium = stats.get("medium_count", 0)
             low = stats.get("low_count", 0)
@@ -200,6 +202,7 @@ class ModuleBreakdownComponent(BaseComponent):
             total = stats.get("total_extensions", 0)
 
             # Calculate percentages
+            critical_pct = (critical / total * 100) if total > 0 else 0
             high_pct = (high / total * 100) if total > 0 else 0
             medium_pct = (medium / total * 100) if total > 0 else 0
             low_pct = (low / total * 100) if total > 0 else 0
@@ -207,6 +210,8 @@ class ModuleBreakdownComponent(BaseComponent):
 
             # Build comprehensive tooltip
             tooltip_parts = []
+            if critical > 0:
+                tooltip_parts.append(f"Critical Risk: {critical} ({critical_pct:.1f}%)")
             if high > 0:
                 tooltip_parts.append(f"High Risk: {high} ({high_pct:.1f}%)")
             if medium > 0:
@@ -220,6 +225,11 @@ class ModuleBreakdownComponent(BaseComponent):
 
             # Build enhanced risk distribution bar with integrated labels
             risk_bar_html = f'<div class="risk-distribution-bar-enhanced" title="{self._safe_escape(tooltip_text)}">'
+
+            # Critical risk segment
+            if critical > 0:
+                label = f"{critical}" if critical_pct >= 10 else ""
+                risk_bar_html += f'<div class="risk-bar-segment risk-critical" style="width: {critical_pct:.1f}%"><span class="risk-label">{label}</span></div>'
 
             # High risk segment
             if high > 0:
