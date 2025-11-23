@@ -98,6 +98,263 @@ Acceptance Criteria: [checklist from template]
 
 **See**: [_gh-reference.md](_gh-reference.md#label-sync-timing) for sync automation details
 
+## Roadmap Structure Requirements
+
+**Template**: [docs/templates/roadmap-template.md](../../docs/templates/roadmap-template.md)
+
+**Standards**: [DOCUMENTATION_STANDARDS.md](../../docs/contributing/DOCUMENTATION_STANDARDS.md) § 11 Roadmap Documentation
+
+**Validation**: [ROADMAP_CHECKLIST.md](../../docs/contributing/ROADMAP_CHECKLIST.md)
+
+### Required Heading Hierarchy
+
+**Phase Headings** (creates FEATURE issues):
+```markdown
+## Phase 1: Data Visualization
+## Phase 2: CLI Improvements
+```
+- MUST use level 2 headings (`##`)
+- Pattern: `## Phase N: Descriptive Name`
+- Each phase creates one parent FEATURE issue
+
+**Task Headings** (creates TASK issues):
+```markdown
+### Task 1.1: Display Security Notes (1-2 hours)
+### Task 1.2: Add Score Chart (2-4 hours)
+### Task 2.1: Enhanced CLI (4-6 hours)
+```
+- MUST use level 3 headings (`###`)
+- Pattern: `### Task N.M: Task Name (effort estimate)`
+- Alternative: `### N.M Task Name (effort estimate)`
+- Each task creates one child TASK issue
+
+**Dependency Headings** (creates blocked-by relationships):
+```markdown
+#### Blocked By
+#123
+#124, #125
+```
+- MUST use level 4 heading (`####`)
+- Issue numbers with `#` prefix
+- Supports line-separated or comma-separated
+
+### Required Metadata
+
+**Frontmatter** (top of roadmap):
+```markdown
+**Status**: 📋 Planning | ✅ Complete | 🔄 In Progress
+**Target Version**: vX.Y.Z
+**Estimated Effort**: 1-2 days (6-8 hours)
+**Impact**: Brief description of what changes
+**Type**: Major Feature | Enhancement | Bugfix | Refactoring
+**Breaking Changes**: YES | NO
+```
+
+**Effort Estimates** (in task headings, maps to complexity labels):
+| Estimate | Complexity | Example |
+|----------|------------|---------|
+| <2 hours | XS | `(1-2 hours)` or `⏱️ 90min` |
+| 2-4 hours | S | `(2-4 hours)` |
+| 4-8 hours | M | `(0.5-1 day)` or `(4-8 hours)` |
+| 1-2 days | L | `(1-2 days)` |
+| >2 days | XL | `(2-3 days)` |
+
+### Task Content Structure
+
+**Each task section MUST include**:
+
+```markdown
+### Task N.M: Task Name (effort)
+
+**Goal**: One-sentence objective
+
+**Priority**: CRITICAL | HIGH | MEDIUM | LOW
+
+**Complexity**: XS | S | M | L | XL
+
+#### Blocked By
+
+None  # Or list issue numbers
+
+#### Changes Required
+
+**Files to Create:**
+- `path/to/file.py` - Description
+
+**Files to Modify:**
+- `path/to/file.py` - What changes
+
+**Tests to Add:**
+- `path/to/test_file.py` - Test description
+
+#### Implementation Details
+
+{Enough detail for implementation without being prescriptive}
+
+**Code Example** (optional but recommended):
+```python
+# Example implementation pattern
+```
+
+#### Testing Requirements
+
+**Unit Tests**:
+- [ ] `test_feature_with_data()` - Tests with valid data
+- [ ] `test_feature_without_data()` - Tests missing data handling
+
+**Manual Testing**:
+1. {Step-by-step verification}
+
+#### Acceptance Criteria
+
+**Functional**:
+- [ ] {Specific testable requirement}
+- [ ] {Edge case handled}
+
+**Quality**:
+- [ ] All new tests passing
+- [ ] Code coverage maintained at X%+
+- [ ] Pre-commit hooks passing
+
+#### Files Modified
+
+- `file1.py`
+- `file2.py`
+
+#### Tests Affected
+
+- `test_file1.py`
+```
+
+### Parsing Logic
+
+**How the command processes roadmaps**:
+
+1. **Detect Phases**:
+   - Search for `## Phase N:` headings
+   - Extract phase name from heading text
+   - Store as FEATURE issue to create
+
+2. **Detect Tasks**:
+   - Search for `### Task N.M:` or `### N.M` headings
+   - Extract task name and effort estimate
+   - Map effort to complexity label (XS/S/M/L/XL)
+   - Store as TASK issue to create
+   - Link to parent phase based on N number
+
+3. **Extract Dependencies**:
+   - Search for `#### Blocked By` headings within tasks
+   - Parse issue numbers from following lines
+   - Store for relationship creation
+
+4. **Extract Content**:
+   - All content under task heading becomes issue body
+   - Preserves markdown formatting
+   - Includes code blocks, lists, tables
+
+5. **Create Issues**:
+   - Create all FEATURE issues (phases) first
+   - Create all TASK issues (tasks) second
+   - Add labels AFTER creation (triggers sync)
+
+6. **Set Relationships** (if `--auto-link`):
+   - Set parent-child via GraphQL API
+   - Set blocked-by via REST API
+   - Verify all relationships created
+
+### Validation Before Running
+
+**Pre-flight checks**:
+
+```bash
+# 1. Verify heading structure
+grep -E "^#{1,4} " <roadmap-file> | head -20
+# Should show: ## Phase N, ### Task N.M pattern
+
+# 2. Check effort estimates present
+grep -E "^### (Task )?[0-9]+\.[0-9]+" <roadmap-file>
+# Each line should have (X hours) or (X days)
+
+# 3. Verify milestone exists
+gh api repos/:owner/:repo/milestones --jq '.[] | select(.title == "vX.Y.Z")'
+# Should return milestone object
+
+# 4. Check for placeholder text
+grep -n "{" <roadmap-file>
+# Should return empty or only code examples
+```
+
+**Use validation checklist**: [ROADMAP_CHECKLIST.md](../../docs/contributing/ROADMAP_CHECKLIST.md)
+
+### Common Parsing Issues
+
+**❌ Will NOT Parse**:
+- `# Phase 1:` - Wrong level (use `##`)
+- `#### Task 1.1:` - Wrong level (use `###`)
+- `### Task without effort` - Missing estimate
+- `### Blocked By` - Wrong level (use `####`)
+
+**✅ Will Parse Correctly**:
+- `## Phase 1: Name` - Correct phase format
+- `### Task 1.1: Name (2 hours)` - Correct task format
+- `### 1.1 Name (2 hours)` - Alternative task format
+- `#### Blocked By` - Correct dependency format
+
+### Example Roadmap Structure
+
+**Complete minimal example**:
+
+```markdown
+# v5.0.4 Feature Name Roadmap
+
+**Status**: 📋 Planning
+**Target Version**: v5.0.4
+**Estimated Effort**: 1 day (6-8 hours)
+**Impact**: Brief description
+**Type**: Enhancement
+**Breaking Changes**: NO
+
+---
+
+## Phase 1: Implementation
+
+### Task 1.1: Add Feature X (2-4 hours)
+
+**Goal**: Implement feature X
+
+**Priority**: HIGH
+**Complexity**: S
+
+#### Blocked By
+
+None
+
+#### Changes Required
+
+**Files to Modify:**
+- `module.py` - Add feature X
+
+**Tests to Add:**
+- `test_module.py` - Test feature X
+
+#### Acceptance Criteria
+
+- [ ] Feature X works as expected
+- [ ] All tests passing
+
+---
+
+### Task 1.2: Add Tests (1-2 hours)
+
+{Follow Task 1.1 structure}
+```
+
+**This creates**:
+- 1 FEATURE issue: "Phase 1: Implementation"
+- 2 TASK issues: "Task 1.1: Add Feature X", "Task 1.2: Add Tests"
+- Parent-child relationship: Phase 1 → Task 1.1, Task 1.2
+- All linked to milestone v5.0.4
+
 ## Examples
 
 ### Create Issues from Plan with Auto-Linking
