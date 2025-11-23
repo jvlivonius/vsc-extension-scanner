@@ -108,9 +108,9 @@ class TestScoreContributionsComponent(unittest.TestCase):
         self.assertIn("values", chart_data)
         self.assertIn("colors", chart_data)
 
-        # Verify base score is always included
-        self.assertIn("Base Score", chart_data["labels"])
-        self.assertIn(100, chart_data["values"])
+        # Verify base score is excluded (always 100, not useful)
+        self.assertNotIn("Base Score", chart_data["labels"])
+        self.assertNotIn(100, chart_data["values"])
 
         # Verify non-zero contributions are included
         self.assertIn("Socket (Supply Chain)", chart_data["labels"])
@@ -118,23 +118,23 @@ class TestScoreContributionsComponent(unittest.TestCase):
         self.assertIn("Dependencies", chart_data["labels"])
         self.assertIn(-5, chart_data["values"])
 
-        # Verify zero contributions are excluded (except base)
-        # Count: base (100) + dependencies (-5) + socket (-15) + permissions (-3) +
-        #        network_endpoints (-10) + obfuscation (-2) = 6 total
-        self.assertEqual(len(chart_data["labels"]), 6)
-        self.assertEqual(len(chart_data["values"]), 6)
-        self.assertEqual(len(chart_data["colors"]), 6)
+        # Verify zero contributions are excluded
+        # Count: dependencies (-5) + socket (-15) + permissions (-3) +
+        #        network_endpoints (-10) + obfuscation (-2) = 5 total
+        self.assertEqual(len(chart_data["labels"]), 5)
+        self.assertEqual(len(chart_data["values"]), 5)
+        self.assertEqual(len(chart_data["colors"]), 5)
 
     def test_chart_data_preparation_sparse(self):
         """Test chart data preparation with sparse score contributions."""
         extensions = [self.extension_sparse_scores]
         chart_data = self.component._prepare_chart_data(extensions)
 
-        # Verify only non-zero + base are included
-        expected_labels = ["Base Score", "Socket (Supply Chain)", "Permissions"]
+        # Verify only non-zero contributions included (base excluded)
+        expected_labels = ["Socket (Supply Chain)", "Permissions"]
         self.assertEqual(chart_data["labels"], expected_labels)
 
-        expected_values = [100, -8, -2]
+        expected_values = [-8, -2]
         self.assertEqual(chart_data["values"], expected_values)
 
         # Verify correct color count
@@ -199,7 +199,6 @@ class TestScoreContributionsComponent(unittest.TestCase):
         # Find indices of specific contributions
         socket_idx = chart_data["labels"].index("Socket (Supply Chain)")
         permissions_idx = chart_data["labels"].index("Permissions")
-        base_idx = chart_data["labels"].index("Base Score")
 
         # Verify color assignments
         self.assertEqual(
@@ -208,9 +207,6 @@ class TestScoreContributionsComponent(unittest.TestCase):
         self.assertEqual(
             chart_data["colors"][permissions_idx], "#ffc107"
         )  # -3 = Yellow (minor)
-        self.assertEqual(
-            chart_data["colors"][base_idx], "#28a745"
-        )  # +100 = Green (positive)
 
     # === Chart.js Integration Tests ===
 
@@ -245,20 +241,20 @@ class TestScoreContributionsComponent(unittest.TestCase):
         extensions = [self.extension_sparse_scores]
         result = self.component.render(extensions)
 
-        # Verify labels are JSON-encoded
+        # Verify labels are JSON-encoded (base excluded)
         self.assertIn("labels: [", result)
-        self.assertIn('"Base Score"', result)
+        self.assertNotIn('"Base Score"', result)
         self.assertIn('"Socket (Supply Chain)"', result)
 
-        # Verify values are JSON-encoded
+        # Verify values are JSON-encoded (base excluded)
         self.assertIn("data: [", result)
-        self.assertIn("100", result)
+        self.assertNotIn("100", result)  # Base score excluded
         self.assertIn("-8", result)
 
         # Verify colors are JSON-encoded
         self.assertIn("backgroundColor: [", result)
-        self.assertIn('"#28a745"', result)  # Green for base
-        self.assertIn('"#ffc107"', result)  # Yellow for -8 and -2
+        self.assertIn('"#dc3545"', result)  # Red for -8
+        self.assertIn('"#ffc107"', result)  # Yellow for -2
 
     def test_to_json_string_list(self):
         """Test _to_json method with string list."""

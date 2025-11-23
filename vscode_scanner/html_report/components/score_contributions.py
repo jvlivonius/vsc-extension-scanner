@@ -168,8 +168,9 @@ class ScoreContributionsComponent(BaseComponent):
         for module_key, module_name in MODULE_ORDER:
             value = score_contributions.get(module_key, 0)
 
-            # Show all non-zero contributions plus base score
-            if value != 0 or module_key == "base":
+            # Skip base score (always 100, not useful for visualization)
+            # Show only non-zero contributions from security modules
+            if value != 0 and module_key != "base":
                 labels.append(module_name)
                 values.append(value)
                 colors.append(self._get_color_for_value(value))
