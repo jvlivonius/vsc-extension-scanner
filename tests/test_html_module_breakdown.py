@@ -88,12 +88,12 @@ class TestModuleBreakdownComponent(unittest.TestCase):
             self.assertIn(display_name, result)
 
     def test_risk_distribution_bars_rendered(self):
-        """Test risk distribution bars are rendered correctly."""
+        """Test enhanced risk distribution bars are rendered correctly."""
         extensions = [self.extension_with_modules]
         result = self.component.render(extensions)
 
-        # Verify risk distribution bar container
-        self.assertIn('<div class="risk-distribution-bar">', result)
+        # Verify enhanced risk distribution bar container (with title attribute)
+        self.assertIn('class="risk-distribution-bar-enhanced"', result)
 
         # Verify risk level segments
         self.assertIn('class="risk-bar-segment risk-high"', result)
@@ -102,17 +102,19 @@ class TestModuleBreakdownComponent(unittest.TestCase):
         self.assertIn('class="risk-bar-segment risk-none"', result)
 
     def test_risk_counts_displayed(self):
-        """Test risk count badges are displayed."""
+        """Test risk count labels are integrated into bars."""
         extensions = [self.extension_with_modules]
         result = self.component.render(extensions)
 
-        # Verify risk counts container
-        self.assertIn('<div class="risk-counts">', result)
+        # Verify risk labels inside bars (not separate badges)
+        self.assertIn('class="risk-label"', result)
 
-        # Verify count badges (format: "1H", "2M", etc.)
-        self.assertIn('class="risk-count risk-high"', result)
-        self.assertIn('class="risk-count risk-medium"', result)
-        self.assertIn('class="risk-count risk-low"', result)
+        # Labels should appear inside segments showing just the count (only when segment width >= 10%)
+        # With single extension, each module gets 100% width, so all labels visible
+        # Labels are numbers only without suffix (e.g., "1", "2", not "1H", "2M")
+        self.assertIn(
+            '<span class="risk-label">1</span>', result
+        )  # Count labels present
 
     def test_score_impact_formatting(self):
         """Test score impact values are formatted correctly."""
@@ -225,9 +227,9 @@ class TestModuleBreakdownComponent(unittest.TestCase):
         extensions = [self.extension_with_modules, extension2]
         result = self.component.render(extensions)
 
-        # Should aggregate risk counts (e.g., socket: 1 high + 1 low = 1H 1L)
-        self.assertIn("1H", result)  # High risk count
-        self.assertIn("1L", result)  # Low risk count
+        # Should aggregate risk counts (e.g., socket: 1 high + 1 low)
+        # Labels show just the number without suffix
+        self.assertIn('<span class="risk-label">1</span>', result)
 
         # Should average score impacts
         # Dependencies: (-5 + -2) / 2 = -3.5
@@ -315,6 +317,120 @@ class TestModuleBreakdownComponent(unittest.TestCase):
 
         # Should render with 0.0 score impact
         self.assertIn("0.0", result)
+
+    # === Portfolio Integration Tests (Phase 1 - Issue #1035 Consolidation) ===
+
+    def test_portfolio_summary_displayed(self):
+        """Test portfolio summary appears in module breakdown section."""
+        extensions = [
+            {
+                "id": "ext1",
+                "security": {
+                    "score": 85,
+                    "module_risk_levels": {"socket": "high"},
+                    "score_contributions": {"socket": -15},
+                },
+            },
+            {
+                "id": "ext2",
+                "security": {
+                    "score": 92,
+                    "module_risk_levels": {"permissions": "medium"},
+                    "score_contributions": {"permissions": -8},
+                },
+            },
+        ]
+
+        result = self.component.render(extensions)
+
+        # Verify portfolio summary section present
+        self.assertIn('<div class="portfolio-summary">', result)
+        self.assertIn("Overall Portfolio Score:", result)
+
+        # Verify portfolio score calculation: (85 + 92) / 2 = 88.5
+        self.assertIn("88.5/100", result)
+
+        # Verify risk level: 88.5 = Medium (70-89)
+        self.assertIn("Medium Risk", result)
+        self.assertIn("🟡", result)
+
+        # Verify extension count
+        self.assertIn("2 extensions", result)
+
+    def test_enhanced_bars_with_integrated_labels(self):
+        """Test enhanced risk bars display integrated labels inside segments."""
+        # Create extension with clear risk distribution
+        extensions = [
+            {
+                "id": "ext1",
+                "security": {
+                    "score": 75,
+                    "module_risk_levels": {"socket": "high"},
+                    "score_contributions": {"socket": -10},
+                },
+            },
+            {
+                "id": "ext2",
+                "security": {
+                    "score": 85,
+                    "module_risk_levels": {"socket": "medium"},
+                    "score_contributions": {"socket": -5},
+                },
+            },
+        ]
+
+        result = self.component.render(extensions)
+
+        # Verify enhanced bar container (not old style)
+        self.assertIn('class="risk-distribution-bar-enhanced"', result)
+        self.assertNotIn('class="risk-distribution-bar"', result)
+
+        # Verify labels integrated inside segments (format: "1H", "1M", etc.)
+        self.assertIn('class="risk-label"', result)
+
+        # Verify segments have proper structure
+        self.assertIn('class="risk-bar-segment risk-high"', result)
+        self.assertIn('class="risk-bar-segment risk-medium"', result)
+
+    def test_comprehensive_tooltips_on_enhanced_bars(self):
+        """Test tooltips show complete risk distribution details."""
+        extensions = [
+            {
+                "id": "ext1",
+                "security": {
+                    "score": 88,
+                    "module_risk_levels": {"socket": "high"},
+                    "score_contributions": {"socket": -12},
+                },
+            },
+            {
+                "id": "ext2",
+                "security": {
+                    "score": 92,
+                    "module_risk_levels": {"socket": "medium"},
+                    "score_contributions": {"socket": -8},
+                },
+            },
+            {
+                "id": "ext3",
+                "security": {
+                    "score": 95,
+                    "module_risk_levels": {"socket": "low"},
+                    "score_contributions": {"socket": -5},
+                },
+            },
+        ]
+
+        result = self.component.render(extensions)
+
+        # Verify tooltip attribute present
+        self.assertIn('title="', result)
+
+        # Verify tooltip contains risk distribution info
+        # Socket should show: 1 high (33.3%), 1 medium (33.3%), 1 low (33.3%)
+        self.assertIn("High Risk:", result)
+        self.assertIn("Medium Risk:", result)
+        self.assertIn("Low Risk:", result)
 
 
 if __name__ == "__main__":

@@ -236,6 +236,47 @@ class ScoreContributionsComponent(BaseComponent):
             },
         }
 
+    def calculate_portfolio_metrics(
+        self, extensions: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Calculate portfolio-level metrics from extensions.
+
+        This method can be used by other components that need portfolio stats.
+
+        Args:
+            extensions: List of extension data
+
+        Returns:
+            Dict with portfolio_score, portfolio_risk, extension_count
+        """
+        if not extensions:
+            return {
+                "extension_count": 0,
+                "portfolio_score": 0,
+                "portfolio_risk": "unknown",
+            }
+
+        # Collect extension scores
+        extension_scores = []
+        for ext in extensions:
+            security = ext.get("security", {})
+            if "score" in security:
+                extension_scores.append(security["score"])
+
+        # Calculate portfolio score
+        portfolio_score = (
+            round(sum(extension_scores) / len(extension_scores), 1)
+            if extension_scores
+            else 0
+        )
+
+        return {
+            "extension_count": len(extensions),
+            "portfolio_score": portfolio_score,
+            "portfolio_risk": self._get_risk_level(portfolio_score),
+        }
+
     def _get_risk_level(self, score: float) -> str:
         """
         Determine risk level from portfolio score.

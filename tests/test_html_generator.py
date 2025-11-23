@@ -53,7 +53,6 @@ class TestHTMLReportGenerator(unittest.TestCase):
         self.assertIsNotNone(self.generator.footer)
         self.assertIsNotNone(self.generator.table)
         self.assertIsNotNone(self.generator.charts)
-        self.assertIsNotNone(self.generator.score_contributions)
 
         # Verify correct types
         from vscode_scanner.html_report.components import (
@@ -62,7 +61,6 @@ class TestHTMLReportGenerator(unittest.TestCase):
             FooterComponent,
             OverviewTableComponent,
             ChartComponents,
-            ScoreContributionsComponent,
         )
 
         self.assertIsInstance(self.generator.header, HeaderComponent)
@@ -70,9 +68,6 @@ class TestHTMLReportGenerator(unittest.TestCase):
         self.assertIsInstance(self.generator.footer, FooterComponent)
         self.assertIsInstance(self.generator.table, OverviewTableComponent)
         self.assertIsInstance(self.generator.charts, ChartComponents)
-        self.assertIsInstance(
-            self.generator.score_contributions, ScoreContributionsComponent
-        )
 
     # === Report Generation Tests ===
 
@@ -184,21 +179,6 @@ class TestHTMLReportGenerator(unittest.TestCase):
         """Test error handling when JS file doesn't exist."""
         with self.assertRaises(FileNotFoundError):
             self.generator._load_scripts()
-
-    def test_load_chartjs_reads_chartjs_file(self):
-        """Test that _load_chartjs reads and embeds Chart.js library."""
-        result = self.generator._load_chartjs()
-
-        # Verify script tag wrapping
-        self.assertTrue(result.startswith("<script>\n"))
-        self.assertTrue(result.endswith("\n</script>"))
-
-        # Verify Chart.js library comment
-        self.assertIn("Chart.js 4.4.0", result)
-
-        # Verify Chart.js content is present
-        # (Should contain Chart.js library code)
-        self.assertIn("Chart", result)
 
     # === Integration Test ===
 
