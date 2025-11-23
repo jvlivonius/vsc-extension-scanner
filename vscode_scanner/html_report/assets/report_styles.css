@@ -1097,25 +1097,46 @@ td.col-verified {
     font-size: 14px;
 }
 
-/* Risk Distribution Bar */
-.risk-distribution-bar {
+/* Enhanced Risk Distribution Bar with Integrated Labels */
+.risk-distribution-bar-enhanced {
     display: flex;
-    height: 24px;
+    height: 32px;
     border-radius: 4px;
     overflow: hidden;
-    margin-bottom: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    cursor: help;
 }
 
 .risk-bar-segment {
     height: 100%;
-    transition: opacity 0.2s ease;
+    transition: all 0.2s ease;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
 .risk-bar-segment:hover {
-    opacity: 0.8;
-    cursor: help;
+    opacity: 0.85;
+    filter: brightness(1.1);
+}
+
+/* Risk labels inside bars */
+.risk-label {
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Risk segment colors */
+.risk-bar-segment.risk-critical {
+    background-color: #8b0000;
 }
 
 .risk-bar-segment.risk-high {
@@ -1134,38 +1155,29 @@ td.col-verified {
     background-color: #6c757d;
 }
 
-/* Risk Counts */
-.risk-counts {
-    display: flex;
-    gap: 12px;
-    font-size: 12px;
+/* Print optimization for enhanced bars */
+@media print {
+    .risk-distribution-bar-enhanced {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+        border: 1px solid #ddd;
+    }
+
+    .risk-bar-segment {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
 }
 
-.risk-count {
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-weight: 600;
-    white-space: nowrap;
-}
+/* Mobile responsiveness for enhanced bars */
+@media (max-width: 768px) {
+    .risk-distribution-bar-enhanced {
+        height: 28px;
+    }
 
-.risk-count.risk-high {
-    background-color: #ffe6e6;
-    color: #dc3545;
-}
-
-.risk-count.risk-medium {
-    background-color: #fff8e6;
-    color: #856404;
-}
-
-.risk-count.risk-low {
-    background-color: #e6f4ea;
-    color: #28a745;
-}
-
-.risk-count.risk-none {
-    background-color: #f1f3f5;
-    color: #6c757d;
+    .risk-label {
+        font-size: 10px;
+    }
 }
 
 /* Score Impact Styling */
@@ -1231,5 +1243,72 @@ td.col-verified {
     .risk-counts {
         flex-wrap: wrap;
         gap: 8px;
+    }
+}
+
+/* Score Contributions Chart Section */
+.score-contributions {
+    margin: 30px 0;
+    padding: 20px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.score-contributions h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #212529;
+}
+
+.score-contributions-description {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+/* Portfolio Summary Section */
+.portfolio-summary {
+    background: #f8f9fa;
+    border-left: 4px solid #2196F3;
+    padding: 15px 20px;
+    margin: 15px 0 20px 0; /* Added 20px bottom margin for spacing before description */
+    border-radius: 4px;
+}
+
+.portfolio-score {
+    font-size: 1.2em;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.portfolio-info {
+    font-size: 0.95em;
+    color: #666;
+}
+
+.score-chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+#scoreContributionsChart {
+    max-width: 100%;
+    max-height: 400px;
+}
+
+/* Print optimization for score chart */
+@media print {
+    .score-contributions {
+        page-break-inside: avoid;
+        border: 1px solid #000;
+    }
+
+    .score-chart-container {
+        height: 300px;
     }
 }

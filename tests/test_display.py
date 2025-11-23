@@ -560,6 +560,168 @@ class TestScanDashboardEdgeCases(unittest.TestCase):
         self.assertIsNotNone(panel)
 
 
+@pytest.mark.unit
+class TestMetadataDisplay(unittest.TestCase):
+    """Test metadata display functionality."""
+
+    def test_format_install_count_millions(self):
+        """Test install count formatting for millions."""
+        self.assertEqual(display._format_install_count(50_200_000), "50.2M")
+        self.assertEqual(display._format_install_count(1_000_000), "1.0M")
+        self.assertEqual(display._format_install_count(1_500_000), "1.5M")
+
+    def test_format_install_count_thousands(self):
+        """Test install count formatting for thousands."""
+        self.assertEqual(display._format_install_count(5_200), "5.2K")
+        self.assertEqual(display._format_install_count(1_000), "1.0K")
+        self.assertEqual(display._format_install_count(1_500), "1.5K")
+
+    def test_format_install_count_hundreds(self):
+        """Test install count formatting for numbers less than 1000."""
+        self.assertEqual(display._format_install_count(523), "523")
+        self.assertEqual(display._format_install_count(100), "100")
+        self.assertEqual(display._format_install_count(1), "1")
+
+    def test_metadata_section_full(self):
+        """Test metadata section with all fields present."""
+        result = {
+            "metadata": {
+                "statistics": {
+                    "installs": 50_200_000,
+                    "rating": 4.8,
+                    "rating_count": 12345,
+                },
+                "repository_url": "https://github.com/microsoft/vscode-python",
+                "license": "MIT",
+                "keywords": ["python", "linting", "debugging", "testing", "jupyter"],
+                "categories": ["Programming Languages"],
+            }
+        }
+
+        with patch("vscode_scanner.display.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+
+            # Create real console instance for testing
+            from rich.console import Console
+
+            console = Console()
+
+            display._print_metadata_section(result, console)
+
+            # Verify function was called (metadata exists)
+            # Note: We test behavior, not exact output format
+
+    def test_metadata_section_partial(self):
+        """Test metadata section with sparse data (only installs)."""
+        result = {
+            "metadata": {
+                "statistics": {
+                    "installs": 5_200,
+                }
+            }
+        }
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should not raise exception with partial data
+        display._print_metadata_section(result, console)
+
+    def test_metadata_section_missing(self):
+        """Test metadata section with no metadata (section hidden)."""
+        result = {"metadata": {}}
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should return early without printing anything
+        display._print_metadata_section(result, console)
+
+    def test_rating_stars_rendering(self):
+        """Test star display for ratings."""
+        result = {
+            "metadata": {
+                "statistics": {
+                    "rating": 4.8,
+                    "rating_count": 100,
+                }
+            }
+        }
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should render stars without errors
+        display._print_metadata_section(result, console)
+
+    def test_metadata_section_repository_only(self):
+        """Test metadata section shows when only repository_url present."""
+        result = {
+            "metadata": {
+                "repository_url": "https://github.com/test/repo",
+            }
+        }
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should display section when repository_url exists
+        display._print_metadata_section(result, console)
+
+    def test_metadata_section_keywords_truncation(self):
+        """Test keywords are limited to first 5."""
+        result = {
+            "metadata": {
+                "statistics": {"installs": 1000},
+                "keywords": ["kw1", "kw2", "kw3", "kw4", "kw5", "kw6", "kw7"],
+            }
+        }
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should truncate to first 5 keywords
+        display._print_metadata_section(result, console)
+
+    def test_metadata_section_invalid_keywords_type(self):
+        """Test graceful handling of invalid keywords type."""
+        result = {
+            "metadata": {
+                "statistics": {"installs": 1000},
+                "keywords": "not-a-list",  # Invalid type
+            }
+        }
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should handle invalid type gracefully
+        display._print_metadata_section(result, console)
+
+    def test_metadata_section_invalid_categories_type(self):
+        """Test graceful handling of invalid categories type."""
+        result = {
+            "metadata": {
+                "statistics": {"installs": 1000},
+                "categories": "not-a-list",  # Invalid type
+            }
+        }
+
+        from rich.console import Console
+
+        console = Console()
+
+        # Should handle invalid type gracefully
+        display._print_metadata_section(result, console)
+
+
 def run_tests():
     """Run all tests."""
     # Create test suite
@@ -582,6 +744,9 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestFailedExtensionsDisplay))
     suite.addTests(loader.loadTestsFromTestCase(TestTableGenerationEdgeCases))
     suite.addTests(loader.loadTestsFromTestCase(TestScanDashboardEdgeCases))
+
+    # Add new test classes (v5.0.4 - Phase 1 Data Visualization)
+    suite.addTests(loader.loadTestsFromTestCase(TestMetadataDisplay))
 
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)

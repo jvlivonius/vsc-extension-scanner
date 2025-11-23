@@ -904,3 +904,98 @@ def format_security_modules(
 
     console.print(table)
     console.print()  # Add spacing after table
+
+    # Add metadata section
+    _print_metadata_section(result, console)
+
+
+def _format_install_count(count: int) -> str:
+    """
+    Format install count with M/K suffixes.
+
+    Args:
+        count: Install count
+
+    Returns:
+        Formatted string (e.g., "50.2M", "1.5K", "523")
+    """
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    elif count >= 1_000:
+        return f"{count / 1_000:.1f}K"
+    else:
+        return str(count)
+
+
+def _print_metadata_section(result: Dict, console: Console) -> None:
+    """
+    Print enhanced metadata section with popularity and links.
+
+    Shows install count, rating, repository URL, license, keywords, and categories
+    when available in the scan result metadata.
+
+    Args:
+        result: Scan result dict containing metadata
+        console: Rich console for output
+    """
+    from .utils import sanitize_string
+
+    metadata = result.get("metadata", {})
+    statistics = metadata.get("statistics", {})
+
+    # Only show if we have interesting metadata
+    if not (statistics or metadata.get("repository_url")):
+        return
+
+    console.print("[bold]📊 Extension Metadata[/bold]")
+    console.print("─" * 50)
+
+    # Install count
+    installs = statistics.get("installs")
+    if installs:
+        formatted_installs = _format_install_count(installs)
+        console.print(f"Popularity: {formatted_installs} installs")
+
+    # Rating
+    rating = statistics.get("rating")
+    rating_count = statistics.get("rating_count")
+    if rating:
+        stars = "★" * int(rating) + "☆" * (5 - int(rating))
+        rating_text = f"{rating:.1f} {stars}"
+        if rating_count:
+            rating_text += f" ({rating_count:,} ratings)"
+        console.print(f"Rating: {rating_text}")
+
+    # Repository (sanitize URL to prevent injection attacks)
+    repo_url = metadata.get("repository_url")
+    if repo_url:
+        safe_url = sanitize_string(repo_url, max_length=500)
+        console.print(
+            f"Repository: [link]{safe_url}[/link]"
+        )  # nosem: missing-string-sanitization-rich-console
+
+    # License (sanitize to prevent injection attacks)
+    license_name = metadata.get("license")
+    if license_name:
+        safe_license = sanitize_string(license_name, max_length=100)
+        console.print(
+            f"License: {safe_license}"
+        )  # nosem: missing-string-sanitization-rich-console
+
+    # Keywords (limit to first 5, sanitize each)
+    keywords = metadata.get("keywords", [])
+    if keywords and isinstance(keywords, list):
+        safe_keywords = [sanitize_string(kw, max_length=50) for kw in keywords[:5]]
+        console.print(
+            f"Keywords: {', '.join(safe_keywords)}"
+        )  # nosem: missing-string-sanitization-rich-console
+
+    # Categories (sanitize each)
+    categories = metadata.get("categories", [])
+    if categories and isinstance(categories, list):
+        safe_categories = [sanitize_string(cat, max_length=50) for cat in categories]
+        console.print(
+            f"Categories: {', '.join(safe_categories)}"
+        )  # nosem: missing-string-sanitization-rich-console
+
+    console.print()  # Add spacing after metadata section
