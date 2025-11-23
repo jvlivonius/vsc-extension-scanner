@@ -68,17 +68,21 @@ class TestScoreContributionsComponent(unittest.TestCase):
 
         # Verify section structure
         self.assertIn('<section class="score-contributions">', result)
-        self.assertIn("<h2>📊 Score Breakdown Visualization</h2>", result)
+        self.assertIn("<h2>📊 Portfolio Security Analysis</h2>", result)
+
+        # Verify portfolio summary
+        self.assertIn('<div class="portfolio-summary">', result)
+        self.assertIn("Overall Portfolio Score:", result)
 
         # Verify description
         self.assertIn(
-            "This chart shows how each security module affects the overall security score",
+            "This chart shows the average contribution of each security module",
             result,
         )
 
         # Verify canvas element
         self.assertIn('<canvas id="scoreContributionsChart"', result)
-        self.assertIn('aria-label="Score contributions horizontal bar chart"', result)
+        self.assertIn('aria-label="Portfolio security contributions chart"', result)
 
         # Verify Chart.js configuration
         self.assertIn("new Chart(ctx, config)", result)
@@ -224,8 +228,8 @@ class TestScoreContributionsComponent(unittest.TestCase):
         self.assertIn("responsive: true", result)
         self.assertIn("maintainAspectRatio: false", result)
 
-        # Verify title
-        self.assertIn("Security Score Contributions by Module", result)
+        # Verify title reflects aggregation
+        self.assertIn("Average Security Contributions Across 1 Extension", result)
 
         # Verify legend is hidden (using bar colors instead)
         self.assertIn("legend: {", result)
@@ -246,10 +250,12 @@ class TestScoreContributionsComponent(unittest.TestCase):
         self.assertNotIn('"Base Score"', result)
         self.assertIn('"Socket (Supply Chain)"', result)
 
-        # Verify values are JSON-encoded (base excluded)
+        # Verify values are JSON-encoded (base excluded from chart data)
         self.assertIn("data: [", result)
-        self.assertNotIn("100", result)  # Base score excluded
         self.assertIn("-8", result)
+
+        # Note: "100" appears in portfolio score display (e.g., "0/100")
+        # but not in chart data values
 
         # Verify colors are JSON-encoded
         self.assertIn("backgroundColor: [", result)
@@ -309,17 +315,92 @@ class TestScoreContributionsComponent(unittest.TestCase):
         result = self.component.render(extensions)
         self.assertEqual(result, "")
 
-    def test_uses_first_extension_data(self):
-        """Test that component uses first extension's data when multiple exist."""
+    def test_aggregate_multiple_extensions(self):
+        """Test aggregation across multiple extensions calculates averages correctly."""
+        # Extension 1: socket=-15, permissions=-3
+        # Extension 2: socket=-8, permissions=-2
+        # Expected averages: socket=-11.5, permissions=-2.5
         extensions = [
             self.extension_with_scores,
             self.extension_sparse_scores,
         ]
         chart_data = self.component._prepare_chart_data(extensions)
 
-        # Verify it uses first extension (full scores)
+        # Verify aggregation occurred
+        self.assertIn("Socket (Supply Chain)", chart_data["labels"])
+        self.assertIn("Permissions", chart_data["labels"])
+
+        # Verify averaged values (rounded to 1 decimal)
+        socket_idx = chart_data["labels"].index("Socket (Supply Chain)")
+        permissions_idx = chart_data["labels"].index("Permissions")
+
+        # socket: (-15 + -8) / 2 = -11.5
+        self.assertEqual(chart_data["values"][socket_idx], -11.5)
+
+        # permissions: (-3 + -2) / 2 = -2.5
+        self.assertEqual(chart_data["values"][permissions_idx], -2.5)
+
+    def test_aggregate_single_extension(self):
+        """Test aggregation with single extension (backward compatibility)."""
+        extensions = [self.extension_with_scores]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Should work identically to before
         self.assertIn("Dependencies", chart_data["labels"])
-        self.assertIn(-5, chart_data["values"])
+        deps_idx = chart_data["labels"].index("Dependencies")
+        self.assertEqual(chart_data["values"][deps_idx], -5.0)
+
+        # Verify metadata
+        self.assertEqual(chart_data["metadata"]["extension_count"], 1)
+
+    def test_portfolio_score_calculation(self):
+        """Test portfolio score calculation across multiple extensions."""
+        # Create extensions with known scores
+        ext1 = {
+            "id": "ext1",
+            "security": {
+                "score": 72,
+                "score_contributions": {"socket": -10},
+            },
+        }
+        ext2 = {
+            "id": "ext2",
+            "security": {
+                "score": 88,
+                "score_contributions": {"permissions": -5},
+            },
+        }
+        ext3 = {
+            "id": "ext3",
+            "security": {
+                "score": 85,
+                "score_contributions": {"obfuscation": -3},
+            },
+        }
+
+        chart_data = self.component._prepare_chart_data([ext1, ext2, ext3])
+
+        # Verify portfolio score: (72 + 88 + 85) / 3 = 81.67 → 81.7
+        self.assertEqual(chart_data["metadata"]["portfolio_score"], 81.7)
+        self.assertEqual(chart_data["metadata"]["extension_count"], 3)
+
+    def test_portfolio_risk_levels(self):
+        """Test risk level determination from portfolio scores."""
+        # Test low risk (90-100)
+        self.assertEqual(self.component._get_risk_level(95), "low")
+        self.assertEqual(self.component._get_risk_level(90), "low")
+
+        # Test medium risk (70-89)
+        self.assertEqual(self.component._get_risk_level(85), "medium")
+        self.assertEqual(self.component._get_risk_level(70), "medium")
+
+        # Test high risk (50-69)
+        self.assertEqual(self.component._get_risk_level(65), "high")
+        self.assertEqual(self.component._get_risk_level(50), "high")
+
+        # Test critical risk (0-49)
+        self.assertEqual(self.component._get_risk_level(45), "critical")
+        self.assertEqual(self.component._get_risk_level(0), "critical")
 
 
 if __name__ == "__main__":

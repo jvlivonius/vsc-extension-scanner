@@ -1345,6 +1345,26 @@ td.col-verified {
     line-height: 1.6;
 }
 
+/* Portfolio Summary Section */
+.portfolio-summary {
+    background: #f8f9fa;
+    border-left: 4px solid #2196F3;
+    padding: 15px 20px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+
+.portfolio-score {
+    font-size: 1.2em;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.portfolio-info {
+    font-size: 0.95em;
+    color: #666;
+}
+
 .score-chart-container {
     position: relative;
     height: 400px;

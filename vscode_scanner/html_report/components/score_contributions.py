@@ -33,7 +33,7 @@ class ScoreContributionsComponent(BaseComponent):
         self, extensions: List[Dict[str, Any]], *args, **kwargs
     ) -> str:
         """
-        Render score contributions chart section.
+        Render aggregated score contributions chart section.
 
         Args:
             extensions: List of extension data dictionaries
@@ -41,29 +41,56 @@ class ScoreContributionsComponent(BaseComponent):
             **kwargs: Additional keyword arguments (ignored, for compatibility)
 
         Returns:
-            HTML string for score contributions chart section
+            HTML string for score contributions chart section with portfolio summary
         """
-        # Extract score contributions from first extension (or aggregate)
+        # Extract aggregated score contributions
         chart_data = self._prepare_chart_data(extensions)
 
         if not chart_data["labels"]:
             # No score contribution data available
             return ""
 
+        # Extract metadata
+        metadata = chart_data.get("metadata", {})
+        ext_count = metadata.get("extension_count", 0)
+        portfolio_score = metadata.get("portfolio_score", 0)
+        portfolio_risk = metadata.get("portfolio_risk", "unknown")
+
+        # Risk emoji mapping
+        risk_emoji = {
+            "low": "🟢",
+            "medium": "🟡",
+            "high": "🔴",
+            "critical": "🔴🔴",
+        }
+
         # Generate JavaScript data structures
         labels_json = self._to_json(chart_data["labels"])
         values_json = self._to_json(chart_data["values"])
         colors_json = self._to_json(chart_data["colors"])
 
+        # Pluralize extension(s)
+        ext_plural = "s" if ext_count != 1 else ""
+
         return f"""
         <section class="score-contributions">
-            <h2>📊 Score Breakdown Visualization</h2>
+            <h2>📊 Portfolio Security Analysis</h2>
+            <div class="portfolio-summary">
+                <div class="portfolio-score">
+                    <strong>Overall Portfolio Score:</strong> {portfolio_score}/100
+                    ({portfolio_risk.title()} Risk {risk_emoji.get(portfolio_risk, "")})
+                </div>
+                <div class="portfolio-info">
+                    Average contributions across {ext_count} extension{ext_plural}
+                </div>
+            </div>
             <p class="score-contributions-description">
-                This chart shows how each security module affects the overall security score.
-                Positive values (green) improve the score, while negative values (red/yellow) reduce it.
+                This chart shows the average contribution of each security module across all
+                scanned extensions. Positive values (green) improve scores, while negative
+                values (red/yellow) indicate security concerns that affect multiple extensions.
             </p>
             <div class="score-chart-container">
-                <canvas id="scoreContributionsChart" aria-label="Score contributions horizontal bar chart"></canvas>
+                <canvas id="scoreContributionsChart" aria-label="Portfolio security contributions chart"></canvas>
             </div>
         </section>
 
@@ -75,7 +102,7 @@ class ScoreContributionsComponent(BaseComponent):
             const chartData = {{
                 labels: {labels_json},
                 datasets: [{{
-                    label: 'Score Impact',
+                    label: 'Average Score Impact',
                     data: {values_json},
                     backgroundColor: {colors_json},
                     borderColor: '#333',
@@ -93,7 +120,7 @@ class ScoreContributionsComponent(BaseComponent):
                     plugins: {{
                         title: {{
                             display: true,
-                            text: 'Security Score Contributions by Module',
+                            text: 'Average Security Contributions Across {ext_count} Extension{ext_plural}',
                             font: {{ size: 16 }}
                         }},
                         legend: {{
@@ -104,7 +131,7 @@ class ScoreContributionsComponent(BaseComponent):
                                 label: function(context) {{
                                     const value = context.parsed.x;
                                     const sign = value >= 0 ? '+' : '';
-                                    return 'Impact: ' + sign + value;
+                                    return 'Average Impact: ' + sign + value;
                                 }}
                             }}
                         }}
@@ -113,7 +140,7 @@ class ScoreContributionsComponent(BaseComponent):
                         x: {{
                             title: {{
                                 display: true,
-                                text: 'Score Impact'
+                                text: 'Average Score Impact'
                             }},
                             grid: {{
                                 display: true
@@ -137,45 +164,94 @@ class ScoreContributionsComponent(BaseComponent):
         self, extensions: List[Dict[str, Any]]
     ) -> Dict[str, List[Any]]:
         """
-        Prepare chart data from extension scan results.
+        Prepare aggregated chart data from all extension scan results.
 
-        Uses first extension's score_contributions for display.
-        In multi-extension reports, could aggregate across all extensions.
+        Calculates average contributions across all extensions to show
+        portfolio-wide security posture.
 
         Args:
             extensions: List of extension data
 
         Returns:
-            Dict with labels, values, and colors lists
+            Dict with labels, values (averages), colors, and metadata
         """
         if not extensions:
-            return {"labels": [], "values": [], "colors": []}
+            return {"labels": [], "values": [], "colors": [], "metadata": {}}
 
-        # Get score contributions from first extension
-        # (In future: could aggregate across all extensions)
-        first_ext = extensions[0]
-        security = first_ext.get("security", {})
-        score_contributions = security.get("score_contributions", {})
+        # Aggregate contributions across all extensions
+        module_sums = {}  # {module_key: sum_of_contributions}
+        module_counts = {}  # {module_key: count_of_non_zero_values}
+        extension_scores = []  # [72, 87, 82, ...]
 
-        if not score_contributions:
-            return {"labels": [], "values": [], "colors": []}
+        for ext in extensions:
+            security = ext.get("security", {})
+            score_contributions = security.get("score_contributions", {})
 
+            # Collect extension score
+            if "score" in security:
+                extension_scores.append(security["score"])
+
+            # Aggregate module contributions
+            for module_key, _ in MODULE_ORDER:
+                if module_key == "base":
+                    continue  # Skip base score
+
+                value = score_contributions.get(module_key, 0)
+                if value != 0:
+                    module_sums[module_key] = module_sums.get(module_key, 0) + value
+                    module_counts[module_key] = module_counts.get(module_key, 0) + 1
+
+        # Calculate averages
         labels = []
         values = []
         colors = []
 
-        # Process modules in defined order
         for module_key, module_name in MODULE_ORDER:
-            value = score_contributions.get(module_key, 0)
+            if module_key == "base":
+                continue
 
-            # Skip base score (always 100, not useful for visualization)
-            # Show only non-zero contributions from security modules
-            if value != 0 and module_key != "base":
+            if module_key in module_sums:
+                # Average contribution for this module
+                avg_value = module_sums[module_key] / module_counts[module_key]
                 labels.append(module_name)
-                values.append(value)
-                colors.append(self._get_color_for_value(value))
+                values.append(round(avg_value, 1))  # Round to 1 decimal
+                colors.append(self._get_color_for_value(avg_value))
 
-        return {"labels": labels, "values": values, "colors": colors}
+        # Calculate portfolio metrics
+        portfolio_score = (
+            round(sum(extension_scores) / len(extension_scores), 1)
+            if extension_scores
+            else 0
+        )
+
+        return {
+            "labels": labels,
+            "values": values,
+            "colors": colors,
+            "metadata": {
+                "extension_count": len(extensions),
+                "portfolio_score": portfolio_score,
+                "portfolio_risk": self._get_risk_level(portfolio_score),
+            },
+        }
+
+    def _get_risk_level(self, score: float) -> str:
+        """
+        Determine risk level from portfolio score.
+
+        Args:
+            score: Portfolio security score (0-100)
+
+        Returns:
+            Risk level string: 'low', 'medium', 'high', or 'critical'
+        """
+        if score >= 90:
+            return "low"
+        if score >= 70:
+            return "medium"
+        if score >= 50:
+            return "high"
+        return "critical"
 
     def _get_color_for_value(self, value: float) -> str:
         """
