@@ -68,6 +68,8 @@ class HTMLReportGenerator:
         )
 
         # Build HTML document using components
+        # IMPORTANT: Load Chart.js BEFORE score_contributions component
+        # to ensure Chart constructor is available when initialization script runs
         html_doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,6 +79,7 @@ class HTMLReportGenerator:
     {self._load_styles()}
 </head>
 <body>
+    {self._load_chartjs()}
     <div class="container">
         {self.header.render(summary, pie_chart_html)}
         {self.module_breakdown.render(extensions)}
@@ -86,7 +89,6 @@ class HTMLReportGenerator:
         {self.table.render(extensions)}
         {self.footer.render(summary)}
     </div>
-    {self._load_chartjs()}
     {self._load_scripts()}
 </body>
 </html>"""
