@@ -191,15 +191,14 @@ class ScoreContributionsComponent(BaseComponent):
             if "score" in security:
                 extension_scores.append(security["score"])
 
-            # Aggregate module contributions
+            # Aggregate module contributions (include zeros for portfolio-wide average)
             for module_key, _ in MODULE_ORDER:
                 if module_key == "base":
                     continue  # Skip base score
 
                 value = score_contributions.get(module_key, 0)
-                if value != 0:
-                    module_sums[module_key] = module_sums.get(module_key, 0) + value
-                    module_counts[module_key] = module_counts.get(module_key, 0) + 1
+                module_sums[module_key] = module_sums.get(module_key, 0) + value
+                module_counts[module_key] = module_counts.get(module_key, 0) + 1
 
         # Calculate averages
         labels = []
@@ -213,9 +212,11 @@ class ScoreContributionsComponent(BaseComponent):
             if module_key in module_sums:
                 # Average contribution for this module
                 avg_value = module_sums[module_key] / module_counts[module_key]
-                labels.append(module_name)
-                values.append(round(avg_value, 1))  # Round to 1 decimal
-                colors.append(self._get_color_for_value(avg_value))
+                # Only show modules with non-zero average
+                if avg_value != 0:
+                    labels.append(module_name)
+                    values.append(round(avg_value, 1))  # Round to 1 decimal
+                    colors.append(self._get_color_for_value(avg_value))
 
         # Calculate portfolio metrics
         portfolio_score = (

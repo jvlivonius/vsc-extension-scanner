@@ -353,6 +353,44 @@ class TestScoreContributionsComponent(unittest.TestCase):
         # Verify metadata
         self.assertEqual(chart_data["metadata"]["extension_count"], 1)
 
+    def test_aggregate_includes_zeros(self):
+        """Test that aggregation includes zero values in average calculation."""
+        # Extension 1: socket=-10, dependencies=-5
+        # Extension 2: socket=0, dependencies=0 (implicit)
+        # Expected: socket=-5.0, dependencies=-2.5
+        ext1 = {
+            "id": "ext1",
+            "security": {
+                "score": 90,
+                "score_contributions": {
+                    "socket": -10,
+                    "dependencies": -5,
+                },
+            },
+        }
+        ext2 = {
+            "id": "ext2",
+            "security": {
+                "score": 100,
+                "score_contributions": {
+                    # No socket or dependencies - implicit zeros
+                },
+            },
+        }
+
+        extensions = [ext1, ext2]
+        chart_data = self.component._prepare_chart_data(extensions)
+
+        # Verify socket includes ext2's implicit zero
+        self.assertIn("Socket (Supply Chain)", chart_data["labels"])
+        socket_idx = chart_data["labels"].index("Socket (Supply Chain)")
+        self.assertEqual(chart_data["values"][socket_idx], -5.0)  # (-10 + 0) / 2 = -5.0
+
+        # Verify dependencies includes ext2's implicit zero
+        self.assertIn("Dependencies", chart_data["labels"])
+        deps_idx = chart_data["labels"].index("Dependencies")
+        self.assertEqual(chart_data["values"][deps_idx], -2.5)  # (-5 + 0) / 2 = -2.5
+
     def test_portfolio_score_calculation(self):
         """Test portfolio score calculation across multiple extensions."""
         # Create extensions with known scores
