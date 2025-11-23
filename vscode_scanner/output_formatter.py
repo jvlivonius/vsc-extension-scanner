@@ -173,6 +173,14 @@ class OutputFormatter:
             },
             "scan_status": result.get("scan_status", "error"),
             "scan_timestamp": result.get("analysis_timestamp"),
+            # Preserve original metadata structure for display functions
+            "metadata": {
+                "statistics": statistics,
+                "repository_url": metadata.get("repository_url"),
+                "license": metadata.get("license"),
+                "keywords": metadata.get("keywords", []),
+                "categories": metadata.get("categories", []),
+            },
         }
 
         # Add success-specific fields
