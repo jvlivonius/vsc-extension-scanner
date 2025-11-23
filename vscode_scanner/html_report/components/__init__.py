@@ -12,7 +12,6 @@ from .charts import ChartComponents
 from .detail_view import DetailViewComponent
 from .overview_table import OverviewTableComponent
 from .module_breakdown import ModuleBreakdownComponent
-from .security_notes import SecurityNotesComponent
 from .score_contributions import ScoreContributionsComponent
 
 __all__ = [
@@ -24,6 +23,5 @@ __all__ = [
     "DetailViewComponent",
     "OverviewTableComponent",
     "ModuleBreakdownComponent",
-    "SecurityNotesComponent",
     "ScoreContributionsComponent",
 ]
