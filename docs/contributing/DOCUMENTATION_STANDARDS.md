@@ -696,14 +696,211 @@ Run the test suite...
 
 ---
 
+## § 11: Roadmap Documentation
+
+**Purpose**: Standards for creating structured roadmaps that support both human planning and automated GitHub issue creation via `/gh:issues-create` command.
+
+### When to Create Roadmaps
+
+**Create a roadmap when:**
+- Multi-task feature (3+ related tasks)
+- Major version bump (breaking changes, architectural changes)
+- Complex refactoring (affects multiple modules)
+- Version planning (releases with multiple features)
+
+**Don't create a roadmap for:**
+- Single-task changes (create issue directly)
+- Trivial updates (documentation fixes, typo corrections)
+- Hotfixes (use expedited process)
+
+### Required Template
+
+**Use**: [docs/templates/roadmap-template.md](../templates/roadmap-template.md)
+
+**Location**:
+- Planning: `docs/project/vX.Y.Z-feature-roadmap.md`
+- Completed: Archive to `docs/archive/plans/vX.Y.Z-feature-roadmap.md`
+
+### Critical Structure Requirements
+
+**For `/gh:issues-create` Parsing Compatibility:**
+
+**1. Heading Hierarchy** (MUST follow exactly):
+```markdown
+## Phase N: Phase Name       ← Creates FEATURE issue (parent)
+### Task N.M: Task Name (effort)  ← Creates TASK issue (child)
+#### Blocked By              ← Dependency section
+```
+
+**2. Metadata Frontmatter**:
+```markdown
+**Status**: 📋 Planning | ✅ Complete | 🔄 In Progress
+**Target Version**: vX.Y.Z
+**Estimated Effort**: 1-2 days (6-8 hours)
+**Impact**: One-sentence benefit
+**Type**: Major Feature | Enhancement | Bugfix | Refactoring
+**Breaking Changes**: YES | NO
+```
+
+**3. Effort Estimates** (in task headings):
+- XS: <2 hours → `(1-2 hours)`
+- S: 2-4 hours → `(2-4 hours)`
+- M: 4-8 hours → `(0.5-1 day)` or `(4-8 hours)`
+- L: 1-2 days → `(1-2 days)`
+- XL: >2 days → `(2-3 days)`
+
+**4. Dependency Notation**:
+```markdown
+#### Blocked By
+#123
+#124, #125
+```
+- Must use level 4 heading (`####`)
+- Issue numbers with `#` prefix
+- Supports line-separated or comma-separated
+
+### Task Content Requirements
+
+**Each task MUST include:**
+- **Goal**: One-sentence objective
+- **Priority**: CRITICAL | HIGH | MEDIUM | LOW
+- **Complexity**: XS | S | M | L | XL
+- **Changes Required**: Files to create/modify/test
+- **Implementation Details**: Enough guidance for implementation
+- **Testing Requirements**: Unit/integration/manual tests
+- **Acceptance Criteria**: Testable requirements (use checkboxes)
+- **Files Modified**: List of affected files
+- **Tests Affected**: List of test files
+
+**Optional but recommended:**
+- **Blocked By**: Dependencies (if applicable)
+- **Code Examples**: Implementation guidance
+- **Notes**: Special considerations
+
+### Required Sections
+
+**Minimum for automation compatibility:**
+1. Header block (metadata)
+2. Executive Summary
+3. Task Breakdown (with proper heading hierarchy)
+4. Testing Strategy
+5. Success Criteria
+6. Documentation Updates
+7. Release Checklist
+
+**Recommended additions:**
+- Context & Background (for complex features)
+- Implementation Order (for multi-phase work)
+- Risks & Mitigations (for high-risk changes)
+- Appendix (examples, benchmarks)
+
+### Quality Standards
+
+**Human Readability:**
+- ✅ Clear hierarchy with consistent numbering (1.1, 1.2, 2.1)
+- ✅ Visual indicators (📋 Planning, ✅ Complete emojis)
+- ✅ Scannable structure (tables, lists, code blocks)
+- ✅ Enough context for unfamiliar readers
+- ✅ Examples are complete and correct
+
+**Automation Compatibility:**
+- ✅ Predictable heading patterns (## Phase, ### Task)
+- ✅ Standardized metadata in frontmatter
+- ✅ Effort estimates in consistent format
+- ✅ Dependencies use `#### Blocked By` pattern
+- ✅ All tasks have acceptance criteria
+
+**Content Quality:**
+- ✅ Acceptance criteria are testable
+- ✅ Implementation details sufficient for agent
+- ✅ Testing strategy complete
+- ✅ No broken links
+- ✅ No placeholder text left (`{Variable}`)
+
+### Validation Process
+
+**Before running** `/gh:issues-create`:
+
+**Use checklist**: [ROADMAP_CHECKLIST.md](ROADMAP_CHECKLIST.md)
+
+**Automated checks**:
+```bash
+# Verify heading structure
+grep -E "^#{1,4} " <roadmap-file> | head -20
+
+# Check effort estimates present
+grep -E "^### (Task )?[0-9]+\.[0-9]+" <roadmap-file>
+
+# Check dependency format
+grep -A 5 "#### Blocked By" <roadmap-file>
+
+# Verify milestone exists
+gh api repos/:owner/:repo/milestones --jq '.[] | select(.title == "vX.Y.Z")'
+```
+
+**Manual review**:
+- [ ] Template structure followed
+- [ ] All placeholders replaced
+- [ ] Acceptance criteria testable
+- [ ] Links are valid
+- [ ] Markdown renders correctly
+
+### Common Pitfalls
+
+**❌ AVOID:**
+- Wrong heading levels (`# Phase` or `#### Task`)
+- Non-sequential task numbers (1.1, 1.3, 1.5)
+- Missing effort estimates
+- Vague acceptance criteria ("make it better")
+- Broken or missing documentation links
+- Wrong dependency format (not `#### Blocked By`)
+- Missing frontmatter fields
+
+**✅ DO:**
+- Follow template structure exactly
+- Use sequential task numbers (1.1, 1.2, 1.3)
+- Include effort estimates for all tasks
+- Make criteria specific and testable
+- Validate all links before creating issues
+- Use `#### Blocked By` for dependencies
+- Complete all required metadata fields
+
+### Examples
+
+**Good Roadmap**:
+- [v5.0.4-phase1-completion-roadmap.md](../project/v5.0.4-phase1-completion-roadmap.md) - Complete example
+
+**Template Reference**:
+- [roadmap-template.md](../templates/roadmap-template.md) - Canonical template with inline guidance
+
+### Integration with Workflow
+
+**Roadmap Lifecycle**:
+1. Create roadmap from template
+2. Fill in all sections and tasks
+3. Validate with ROADMAP_CHECKLIST.md
+4. Run `/gh:issues-create create-from-plan <roadmap> --milestone vX.Y.Z`
+5. Verify issues created correctly
+6. Implement tasks (use `/gh:implement-issue <issue-number>`)
+7. Archive roadmap after completion
+
+**Documentation Flow**:
+```
+Template → Roadmap → Issues → Implementation → Completion → Archive
+```
+
+---
+
 ## References
 
 - **[docs/README.md](../README.md)** - Documentation index and navigation
 - **[CHANGELOG.md](../../CHANGELOG.md)** - Historical documentation changes
 - **[STATUS.md](../project/STATUS.md)** - Current project status and metrics
+- **[Roadmap Template](../templates/roadmap-template.md)** - Canonical roadmap template
+- **[Roadmap Checklist](ROADMAP_CHECKLIST.md)** - Validation checklist
 
 ---
 
-**Document Version:** 1.0.0
-**Last Updated:** 2025-11-09
+**Document Version:** 1.1.0
+**Last Updated:** 2025-11-23
 **Status:** Complete ✅
