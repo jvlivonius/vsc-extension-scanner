@@ -1,9 +1,88 @@
 # Project Status
 
-**Last Updated:** 2025-11-22
-**Status:** v5.0.3 Released ✅ (Module Risk Display Feature)
+**Last Updated:** 2025-11-24
+**Status:** v5.0.4 Released ✅ (Data Visualization & Portfolio Analysis)
 
 > **Note:** For current version number, see [PRD.md](PRD.md)
+
+---
+
+## Release: v5.0.4 ✅ (Data Visualization & Portfolio Analysis)
+
+**Released:** 2025-11-24
+**Type:** Patch Release - Feature Enhancement
+**Schema Version:** 5.0 (unchanged from v5.0.0)
+**Total Tests:** 1,314 (all passing, 89.39% coverage maintained)
+
+### Key Achievements
+
+**Portfolio Analysis Dashboard - Strategic Security Insights:**
+- **Aggregated Metrics**: Portfolio-level security analytics across all scanned extensions
+  - Total positive/negative score contributions per module
+  - Professional Chart.js-powered visualizations with gradient color schemes
+  - Numeric-only labels for optimal readability
+  - Strategic overview of security module impact across entire extension collection
+- **Self-Contained Design**: All visualizations work offline (no CDN dependencies)
+  - Included Chart.js library (chart.min.js) in HTML reports
+  - No external resource loading required
+  - Fully functional in air-gapped environments
+
+**Enhanced Score Contributions Visualization:**
+- **Per-Extension Analysis**: Detailed breakdown showing how each security module affects scores
+  - Interactive bar charts with color-coded risk levels
+  - Visual representation of positive (green) and negative (red) score impacts
+  - Transparent calculation methodology
+- **Portfolio-Level View**: Aggregated view showing security trends
+  - Consolidated score impacts across all extensions
+  - Identify which modules contribute most to portfolio risk
+  - Publication-ready professional presentation
+
+**Enhanced Metadata Display:**
+- **Richer CLI Output**: Improved `--detailed` mode with preserved metadata structure
+  - Install counts, ratings, rating counts
+  - Repository URLs for source code verification
+  - License information
+  - Categories and keywords from extension metadata
+  - Maintained original API response structure for accuracy
+
+### Implementation Quality
+
+- **Test Coverage**: 89.39% (exceeds 80% threshold)
+  - 1,314 tests passing (1 skipped)
+  - Comprehensive test suite for new visualization components (445 lines)
+  - Enhanced module breakdown tests
+  - Metadata display validation tests
+- **Security**: 0 vulnerabilities detected
+- **Architecture**: 0 violations
+- **Code Quality**: All pre-commit hooks passing
+
+### Bug Fixes
+
+- **HTML Report Rendering**: Fixed empty SecurityNotesComponent display issue
+- **Critical Risk Level**: Added support for "critical" risk level in module breakdown charts
+- **Chart.js Loading**: Resolved race condition with proper initialization sequence
+- **Score Calculation**: Aligned table and chart score displays for consistency
+- **Metadata Preservation**: Fixed CLI detailed display to maintain original structure
+
+### Benefits
+
+**User Experience:**
+- **Portfolio Insights**: Understand security trends across entire extension collection
+- **Professional Presentation**: Publication-ready HTML reports with interactive charts
+- **Actionable Data**: Clear visibility into which security modules drive scores
+- **Offline Capability**: All visualizations work without internet connection
+
+**Technical Excellence:**
+- Self-contained HTML reports (no external dependencies)
+- Graceful degradation when Chart.js unavailable
+- Consistent data presentation across CLI and HTML outputs
+- Modular component architecture (score_contributions.py - 326 lines)
+
+### Roadmap Reference
+
+- Implemented following [v5.0.4-roadmap.md](../archive/plans/v5.0.4-roadmap.md)
+- Completes Phase 1 (Data Visualization) from [v5.x-enhancement-opportunities.md](v5.x-enhancement-opportunities.md)
+- Foundation for future enhancements (filtering, drill-down, time-series analysis)
 
 ---
 

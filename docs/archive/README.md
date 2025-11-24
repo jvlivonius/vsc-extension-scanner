@@ -48,6 +48,8 @@ docs/archive/
 | **v5.0.0** | 2025-11-08 | 🚨 BREAKING: Schema redesign, 32 → 12 columns (-60%), 60% storage reduction, 30% faster queries ✅ | [Summary](summaries/v5.0.0-release-notes.md) |
 | **v5.0.1** | 2025-11-09 | Stability improvements, bug fixes | [Summary](summaries/v5.0.1-release-notes.md) |
 | **v5.0.2** | 2025-11-09 | Test quality improvements, comprehensive project state analysis ✅ | [Plan](plans/v5.0.2-roadmap.md), [Summary](summaries/v5.0.2-release-notes.md), [Review](reviews/v5.0.2-comprehensive-project-state-analysis.md) |
+| **v5.0.3** | 2025-11-22 | Module-by-module risk display feature ✅ | [Summary](summaries/v5.0.3-release-notes.md) |
+| **v5.0.4** | 2025-11-24 | Data visualization & portfolio analysis enhancements ✅ | [Plan](plans/v5.0.4-roadmap.md), [Summary](summaries/v5.0.4-release-notes.md) |
 
 ### GitHub Projects Documentation (2025-11-20) ✅
 
