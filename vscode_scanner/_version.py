@@ -5,5 +5,5 @@ This is the single source of truth for version numbers.
 All other modules should import from here.
 """
 
-__version__ = "5.0.3"
+__version__ = "5.0.4"
 SCHEMA_VERSION = "5.0"

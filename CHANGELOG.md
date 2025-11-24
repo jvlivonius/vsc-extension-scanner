@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.4] - 2025-11-24
+
+### Added
+
+- **Portfolio Analysis Dashboard**: New portfolio-level security analytics in HTML reports (#1038)
+  - Aggregated score contributions across all scanned extensions
+  - Interactive Chart.js-powered bar charts with gradient color schemes
+  - Visual representation of which security modules contribute most to portfolio risk
+  - Numeric-only labels for optimal readability
+- **Enhanced Score Contributions Visualization**: Detailed per-extension and portfolio-level charts
+  - Color-coded bar charts showing positive/negative score impacts
+  - Self-contained Chart.js library (no CDN dependencies, fully offline-capable)
+  - Professional visualization with consistent risk-level color coding
+- **Enhanced Metadata Display**: Richer CLI output in `--detailed` mode
+  - Install counts, ratings, repository URLs, licenses, categories, keywords
+  - Preserved metadata structure from API responses
+  - Improved information density for power users
+
+### Fixed
+
+- **HTML Report Rendering**: Empty SecurityNotesComponent no longer renders in HTML reports
+- **Critical Risk Level Support**: Module breakdown charts now properly display "critical" risk level
+- **Chart.js Loading**: Fixed race condition ensuring Chart.js loads before chart initialization
+- **Score Calculation Alignment**: Fixed inconsistencies between table and chart score displays
+- **Metadata Structure**: Preserved original API response structure in CLI detailed display
+
+### Changed
+
+- Added `chart.min.js` (Chart.js library) for client-side HTML report visualizations
+- Enhanced CSS styling for portfolio analysis section with responsive design
+- Improved `score_contributions.py` component architecture (326 lines, modular design)
+- Updated `module_breakdown.py` with support for 4-level risk classification
+
+### Testing
+
+- Added comprehensive test suite `test_html_score_contributions.py` (445 lines)
+- Enhanced `test_html_module_breakdown.py` with critical risk level tests
+- Enhanced `test_display.py` with metadata display validation
+- All 1,314 tests passing (1 skipped)
+- Test coverage: 89.39% (exceeds 80% threshold)
+- 0 security vulnerabilities
+- 0 architecture violations
+
+### Benefits
+
+- **Portfolio Insights**: See security trends across entire extension collection
+- **Professional Presentation**: Publication-ready HTML reports with interactive charts
+- **Actionable Data**: Understand which modules contribute most to security scores
+- **Self-Contained Reports**: No external dependencies, fully offline-capable
+- **Backward Compatible**: Drop-in replacement for v5.0.3
+
+---
+
 ## [5.0.3] - 2025-11-22
 
 ### Added
