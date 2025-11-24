@@ -70,10 +70,10 @@ Orchestrate GitHub issue implementation using Task tool subprocess isolation wit
    c. **Validate Response**: Check JSON format → fail if invalid
    d. **Update Acceptance Criteria**: Check completed AC boxes in sub-task issue body
    e. **Update Status**: Set sub-task to "In Review" → verify transition
-5. **Create PR**: Single PR closing all sub-tasks and parent → verify "Closes #N" syntax
-6. **Update Parent Acceptance Criteria**: Check parent's AC boxes based on sub-task completion
-7. **Update Parent Definition of Done**: Check DoD boxes based on overall feature completion
-8. **Update Status (Parent)**: Set parent to "In Review" → verify transition
+5. **Update Parent Acceptance Criteria**: Check parent's AC boxes based on sub-task completion
+6. **Update Parent Definition of Done**: Check DoD boxes based on overall feature completion
+7. **Update Status (Parent)**: Set parent to "In Review" → verify transition
+8. **Create PR**: Single PR closing all sub-tasks and parent → verify "Closes #N" syntax
 
 ## Configuration
 
